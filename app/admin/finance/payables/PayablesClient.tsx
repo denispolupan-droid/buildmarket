@@ -18,6 +18,18 @@ export type SupplierTransaction = {
   order_number:  number | null;
 };
 
+/** Непогашений борг: одна проводка (прихід або РН дропшипу) із залишком */
+export type OpenCharge = {
+  id: string;
+  date: string;
+  total: number;
+  allocated: number;
+  remaining: number;
+  docNumber: string | null;
+  orderNumber: number | null;
+  description: string;
+};
+
 export type SupplierAging = {
   d0_30: number; d31_60: number; d61_90: number; d90p: number;
   oldest_date: string | null;
@@ -91,6 +103,11 @@ export default function PayablesClient({ balances: allBalances }: Props) {
   const [payDate,   setPayDate]   = useState(today);
   const [payNote,   setPayNote]   = useState('');
   const [paySaving, setPaySaving] = useState(false);
+  // Як рознести суму по боргах. За замовчуванням — найстаріші: так закривається
+  // те, що висить найдовше, і старіння боргу не росте на порожньому місці.
+  const [payFill,   setPayFill]   = useState<'oldest' | 'newest' | 'manual'>('oldest');
+  const [charges,   setCharges]   = useState<OpenCharge[] | null>(null);
+  const [manual,    setManual]    = useState<Record<string, string>>({});
 
   function openPay(b: SupplierBalance) {
     setPayFor(b.supplier_id);
@@ -98,6 +115,38 @@ export default function PayablesClient({ balances: allBalances }: Props) {
     setPayMode('transfer');
     setPayDate(today);
     setPayNote('');
+    setPayFill('oldest');
+    setManual({});
+    setCharges(null);
+    // Список боргів тягнемо при відкритті: він потрібен і для попереднього
+    // перегляду («що саме закриється»), і для ручного рознесення.
+    fetch(`/api/admin/finance/supplier-payments?supplier_id=${b.supplier_id}`)
+      .then(r => r.ok ? r.json() : { charges: [] })
+      .then(d => setCharges(d.charges ?? []))
+      .catch(() => setCharges([]));
+  }
+
+  /** Що закриє введена сума — рахуємо на льоту, тим самим правилом, що й сервер */
+  function previewLines(): { id: string; amount: number }[] {
+    const amount = parseFloat(payAmount.replace(',', '.'));
+    if (!charges || !Number.isFinite(amount) || amount <= 0) return [];
+    if (payFill === 'manual') {
+      return Object.entries(manual)
+        .map(([id, v]) => ({ id, amount: parseFloat(String(v).replace(',', '.')) }))
+        .filter(l => Number.isFinite(l.amount) && l.amount > 0);
+    }
+    const sorted = [...charges].sort((a, b) => (a.date === b.date ? a.id.localeCompare(b.id) : a.date.localeCompare(b.date)));
+    if (payFill === 'newest') sorted.reverse();
+    let left = Math.round(amount * 100);
+    const out: { id: string; amount: number }[] = [];
+    for (const c of sorted) {
+      if (left <= 0) break;
+      const take = Math.min(left, Math.round(c.remaining * 100));
+      if (take <= 0) continue;
+      out.push({ id: c.id, amount: take / 100 });
+      left -= take;
+    }
+    return out;
   }
 
   async function submitPay() {
@@ -111,11 +160,24 @@ export default function PayablesClient({ balances: allBalances }: Props) {
       const res = await fetch('/api/admin/finance/supplier-payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplier_id: payFor, amount, payment_mode: payMode, payment_date: payDate, note: payNote }),
+        body: JSON.stringify({
+          supplier_id: payFor, amount, payment_mode: payMode, payment_date: payDate, note: payNote,
+          allocation_mode: payFill,
+          allocations: payFill === 'manual'
+            ? previewLines().map(l => ({ charge_id: l.id, amount: l.amount }))
+            : undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        showToast(`Оплату зафіксовано (${data.doc_number ?? ''})`, 'success');
+        const left = Number(data.unallocated ?? 0);
+        showToast(
+          data.warning
+            ? data.warning
+            : `Оплату зафіксовано (${data.doc_number ?? ''}) · закрито документів: ${data.allocated ?? 0}`
+              + (left > 0.005 ? ` · аванс ${left.toFixed(2)} ₴` : ''),
+          data.warning ? 'error' : 'success',
+        );
         setPayFor(null);
         router.refresh();
       } else {
@@ -446,6 +508,94 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                       style={{ height: '36px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer' }}>
                       Скасувати
                     </button>
+
+                    {/* Рознесення оплати по боргах. Без нього оплата зменшувала
+                        загальне сальдо, і питання «за які накладні ми ще винні»
+                        лишалось без відповіді. */}
+                    <div style={{ flexBasis: '100%', borderTop: '1px dashed var(--border)', paddingTop: '12px', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        <span style={thStyle}>Рознести на</span>
+                        {([
+                          { key: 'oldest', label: 'найстаріші накладні' },
+                          { key: 'newest', label: 'найновіші' },
+                          { key: 'manual', label: 'вибрати вручну' },
+                        ] as const).map(o => (
+                          <button key={o.key} type="button" onClick={() => setPayFill(o.key)}
+                            style={{
+                              height: '28px', padding: '0 12px', borderRadius: '999px', cursor: 'pointer', fontSize: '12px',
+                              fontWeight: payFill === o.key ? 700 : 600,
+                              border: `1.5px solid ${payFill === o.key ? '#1E3A5F' : 'var(--border)'}`,
+                              background: payFill === o.key ? '#EAF1F8' : 'var(--bg-card)',
+                              color: payFill === o.key ? '#1E3A5F' : 'var(--text-secondary)',
+                            }}>
+                            {o.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {charges === null ? (
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Завантажуємо борги…</div>
+                      ) : charges.length === 0 ? (
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          Непогашених накладних немає — оплата ляже авансом.
+                        </div>
+                      ) : (() => {
+                        const lines = previewLines();
+                        const picked = new Map(lines.map(l => [l.id, l.amount]));
+                        const sum = lines.reduce((t, l) => t + l.amount, 0);
+                        const amount = parseFloat(payAmount.replace(',', '.')) || 0;
+                        const rest = Math.round((amount - sum) * 100) / 100;
+                        return (
+                          <div>
+                            <div style={{ maxHeight: '190px', overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
+                              {charges.map((c, i) => {
+                                const take = picked.get(c.id) ?? 0;
+                                return (
+                                  <div key={c.id} style={{
+                                    display: 'grid', gridTemplateColumns: '80px 120px 1fr 110px 120px', gap: '8px', alignItems: 'center',
+                                    padding: '6px 10px', fontSize: '12px',
+                                    background: take > 0 ? '#F0FDF4' : 'transparent',
+                                    borderBottom: i < charges.length - 1 ? '1px solid var(--border-light)' : 'none',
+                                  }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>{c.date.slice(8, 10)}.{c.date.slice(5, 7)}.{c.date.slice(2, 4)}</span>
+                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#B45309' }}>{c.docNumber ?? '—'}</span>
+                                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {c.orderNumber != null ? (
+                                        <Link href={`/admin?status=&q=${c.orderNumber}`} style={{ color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none' }}>
+                                          #{c.orderNumber}
+                                        </Link>
+                                      ) : c.description}
+                                    </span>
+                                    <span style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                      {fmt(c.remaining)} ₴
+                                      {c.allocated > 0.005 && (
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}> із {fmt(c.total)}</span>
+                                      )}
+                                    </span>
+                                    {payFill === 'manual' ? (
+                                      <input
+                                        value={manual[c.id] ?? ''}
+                                        onChange={e => setManual(m => ({ ...m, [c.id]: e.target.value }))}
+                                        inputMode="decimal" placeholder="0.00"
+                                        style={{ ...inp, height: '26px', width: '100%', boxSizing: 'border-box', textAlign: 'right' }} />
+                                    ) : (
+                                      <span style={{ textAlign: 'right', fontWeight: 700, color: take > 0 ? '#15803D' : 'var(--text-muted)', fontFamily: 'monospace' }}>
+                                        {take > 0 ? `−${fmt(take)} ₴` : '—'}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              Закриється документів: <b>{lines.length}</b> на <b>{fmt(sum)} ₴</b>
+                              {rest > 0.005 && <span style={{ color: '#B45309' }}> · аванс {fmt(rest)} ₴</span>}
+                              {rest < -0.005 && <span style={{ color: '#DC2626' }}> · рознесено більше за оплату на {fmt(-rest)} ₴</span>}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 )}
 
