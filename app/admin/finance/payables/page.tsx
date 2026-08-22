@@ -21,7 +21,7 @@ export default async function PayablesPage() {
   //    без range() PostgREST мовчки обрізав би на 1000 → неправильні баланси постачальників)
   const entries = await fetchAllRows((f, t) => db
     .from('money_entries')
-    .select('counterparty_id, doc_type, amount, business_date, description, doc_id')
+    .select('counterparty_id, doc_type, amount, business_date, description, doc_id, order_id')
     .eq('account_type', 'supplier')
     .not('counterparty_id', 'is', null)
     .order('business_date', { ascending: true })
@@ -33,6 +33,15 @@ export default async function PayablesPage() {
     ? await db.from('acc_documents').select('id, doc_number, doc_type').in('id', docIds)
     : { data: [] };
   const docMap = new Map((docs ?? []).map(d => [d.id as string, { number: d.doc_number as string | null, type: d.doc_type as string }]));
+
+  // 2b. Номери замовлень. Проводка знає order_id, а от опис — не завжди: борг
+  //     дропшипу з 21.07 створює інша гілка коду, і номер у текст не потрапляє.
+  //     Тягнемо його з бази, тож номер видно і в старих, і в нових рядках.
+  const orderIds = [...new Set((entries ?? []).map(e => e.order_id).filter(Boolean))] as string[];
+  const ordersRes = orderIds.length
+    ? await db.from('orders').select('id, order_number').in('id', orderIds)
+    : { data: [] };
+  const orderNumMap = new Map((ordersRes.data ?? []).map(o => [o.id as string, o.order_number as number]));
 
   // 3. Назви постачальників
   const supplierIds = [...new Set(
@@ -75,6 +84,7 @@ export default async function PayablesPage() {
       doc_id:        (e.doc_id as string) ?? null,
       doc_number:    docInfo?.number ?? null,
       acc_doc_type:  docInfo?.type  ?? null,
+      order_number:  e.order_id ? (orderNumMap.get(e.order_id as string) ?? null) : null,
     });
   }
 

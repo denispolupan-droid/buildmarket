@@ -46,7 +46,7 @@ export default async function SupplierActPage({
       .eq('counterparty_id', String(supplierId))
       .lt('business_date', dateFrom),
     db.from('money_entries')
-      .select('doc_type, amount, business_date, description, doc_id, created_at')
+      .select('doc_type, amount, business_date, description, doc_id, order_id, created_at')
       .eq('account_type', 'supplier')
       .eq('counterparty_id', String(supplierId))
       .gte('business_date', dateFrom)
@@ -64,6 +64,14 @@ export default async function SupplierActPage({
     ? await db.from('acc_documents').select('id, doc_number, doc_type').in('id', docIds)
     : { data: [] };
   const docMap = new Map((docs ?? []).map(d => [d.id as string, { number: d.doc_number as string | null, type: d.doc_type as string }]));
+
+  // Номер замовлення — з бази, а не з тексту проводки: у боргів дропшипу,
+  // створених з 21.07, опис номера не містить, хоча order_id у проводці є.
+  const ordIds = [...new Set(entries.map(e => e.order_id).filter(Boolean))] as string[];
+  const { data: ords } = ordIds.length
+    ? await db.from('orders').select('id, order_number').in('id', ordIds)
+    : { data: [] };
+  const ordNumMap = new Map((ords ?? []).map(o => [o.id as string, o.order_number as number]));
 
   const rows: ActRow[] = entries.map(e => {
     const amt     = Number(e.amount);
@@ -83,6 +91,7 @@ export default async function SupplierActPage({
       credit:      amt > 0 ? amt : 0,
       docHref,
       docLabel: docInfo?.number ?? null,
+      orderNumber: e.order_id ? (ordNumMap.get(e.order_id as string) ?? null) : null,
     };
   });
 

@@ -460,13 +460,14 @@ export async function postSaleDoc(
 
   const { data: doc } = await db
     .from('acc_documents')
-    .select('id, order_id, status')
+    .select('id, order_id, status, orders(order_number)')
     .eq('id', docId)
     .single();
   if (!doc) throw new Error(`postSaleDoc: документ ${docId} не знайдено`);
   if (doc.status !== 'draft') return; // вже проведено — ідемпотентний вихід
 
   const by = opts.confirmed_by ?? 'system';
+  const orderNumber = (doc as { orders?: { order_number?: number } | null }).orders?.order_number ?? null;
   await confirmDocument(docId, by);
 
   const { data: lines } = await db
@@ -521,7 +522,9 @@ export async function postSaleDoc(
         docId,
         docType:        'sale',
         orderId:        doc.order_id ?? undefined,
-        description:    'Дропшип: борг перед постачальником',
+        description:    orderNumber
+          ? `Дропшип: борг перед постачальником (замовлення #${orderNumber})`
+          : 'Дропшип: борг перед постачальником',
         idempotencyKey: `dropship-payable:${docId}:${supplierId}`,
         createdBy:      by,
       }),

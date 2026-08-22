@@ -14,6 +14,8 @@ export type SupplierTransaction = {
   doc_id:        string | null;
   doc_number:    string | null;
   acc_doc_type:  string | null;
+  /** Замовлення, через яке виник борг (дропшип) — щоб було видно, за що саме */
+  order_number:  number | null;
 };
 
 export type SupplierAging = {
@@ -519,6 +521,13 @@ export default function PayablesClient({ balances: allBalances }: Props) {
 
                             <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                               {txn.description}
+                              {txn.order_number != null && (
+                                <Link href={`/admin?status=&q=${txn.order_number}`}
+                                  title="Відкрити замовлення"
+                                  style={{ marginLeft: '6px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                                  #{txn.order_number}
+                                </Link>
+                              )}
                             </span>
 
                             <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>

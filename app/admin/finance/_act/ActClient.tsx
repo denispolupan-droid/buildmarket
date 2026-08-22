@@ -12,6 +12,8 @@ export type ActRow = {
   credit: number;
   docHref: string | null;
   docLabel: string | null;
+  /** Замовлення-джерело: у дропшипі борг виникає саме по ньому */
+  orderNumber?: number | null;
 };
 
 type Props = {
@@ -219,6 +221,12 @@ export default function ActClient({
                 ) : null}
                 {row.docLabel && <span style={{ color: '#94A3B8', fontSize: '11px' }}>—</span>}
                 <span style={{ color: '#1E293B', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.description}</span>
+                {row.orderNumber != null && (
+                  <a href={`/admin?status=&q=${row.orderNumber}`} title="Відкрити замовлення"
+                    style={{ color: '#1D4ED8', fontSize: '12px', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+                    #{row.orderNumber}
+                  </a>
+                )}
               </div>
               <span style={{ textAlign: 'right', fontWeight: row.debit > 0 ? 700 : 400, color: row.debit > 0 ? '#DC2626' : '#94A3B8', fontFamily: 'monospace' }}>
                 {row.debit > 0.005 ? `${fmt(row.debit)} ₴` : ''}
