@@ -57,11 +57,25 @@ export default async function PayablesPage() {
   }
   const allocByPayment = new Map<string, { charge_entry_id: string; amount: number }[]>();
   const closedByCharge = new Map<string, number>();
+  // Зворотний бік: яка оплата закрила цей борг — щоб позначка «оплачено» вела
+  // на конкретну платіжку, а не просто повідомляла факт.
+  const payersByCharge = new Map<string, { payment_entry_id: string; amount: number }[]>();
   for (const a of allocRows) {
     if (!allocByPayment.has(a.payment_entry_id)) allocByPayment.set(a.payment_entry_id, []);
     allocByPayment.get(a.payment_entry_id)!.push({ charge_entry_id: a.charge_entry_id, amount: Number(a.amount) });
     closedByCharge.set(a.charge_entry_id, (closedByCharge.get(a.charge_entry_id) ?? 0) + Number(a.amount));
+    if (!payersByCharge.has(a.charge_entry_id)) payersByCharge.set(a.charge_entry_id, []);
+    payersByCharge.get(a.charge_entry_id)!.push({ payment_entry_id: a.payment_entry_id, amount: Number(a.amount) });
   }
+  // Довідник оплат: номер платіжки й документ, на який вести посилання
+  const paymentInfo = new Map((entries ?? [])
+    .filter(e => Number(e.amount) > 0)
+    .map(e => [e.id as string, {
+      date: e.business_date as string,
+      docId: (e.doc_id as string) ?? null,
+      docNumber: e.doc_id ? (docMap.get(e.doc_id as string)?.number ?? null) : null,
+      docType: e.doc_id ? (docMap.get(e.doc_id as string)?.type ?? null) : null,
+    }]));
   // Довідник боргів: щоб у рознесенні показати номер накладної й замовлення
   const chargeInfo = new Map((entries ?? [])
     .filter(e => Number(e.amount) < 0)
@@ -126,6 +140,15 @@ export default async function PayablesPage() {
           }))
         : [],
       closed:        amt < 0 ? (closedByCharge.get(e.id as string) ?? 0) : 0,
+      paid_by:       amt < 0
+        ? (payersByCharge.get(e.id as string) ?? []).map(p => ({
+            amount:    p.amount,
+            date:      paymentInfo.get(p.payment_entry_id)?.date ?? '',
+            docId:     paymentInfo.get(p.payment_entry_id)?.docId ?? null,
+            docNumber: paymentInfo.get(p.payment_entry_id)?.docNumber ?? null,
+            docType:   paymentInfo.get(p.payment_entry_id)?.docType ?? null,
+          }))
+        : [],
     });
   }
 

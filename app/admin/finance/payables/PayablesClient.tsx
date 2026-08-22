@@ -21,6 +21,8 @@ export type SupplierTransaction = {
   allocations:   { amount: number; date: string; total: number; docNumber: string | null; orderNumber: number | null }[];
   /** Для боргу: скільки з нього вже погашено */
   closed:        number;
+  /** Для боргу: якими оплатами його закрито */
+  paid_by:       { amount: number; date: string; docId: string | null; docNumber: string | null; docType: string | null }[];
 };
 
 /** Непогашений борг: одна проводка (прихід або РН дропшипу) із залишком */
@@ -64,6 +66,13 @@ export type SupplierBalance = {
 
 function fmt(n: number) {
   return Math.abs(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function creditHref(docType: string | null, docId: string | null): string | null {
+  if (!docId) return null;
+  if (docType === 'supplier_payment' || docType === 'supplier_payment_reversal') return `/admin/finance/voucher/${docId}`;
+  if (docType === 'receipt' || docType === 'stock_in') return `/admin/procurement/receipts/${docId}`;
+  return `/admin/accounting/documents/${docId}`;
 }
 
 function docLink(txn: SupplierTransaction): { href: string; label: string } | null {
@@ -698,13 +707,35 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                                   {allocOpen ? '▾' : '▸'} закрила {txn.allocations.length} док.
                                 </button>
                               )}
-                              {!isPayment && txn.closed > 0.005 && (
-                                <span style={{ marginLeft: '8px', fontSize: '11.5px', fontWeight: 600, color: Math.abs(txn.closed - Math.abs(txn.amount)) < 0.005 ? '#15803D' : '#B45309' }}>
-                                  {Math.abs(txn.closed - Math.abs(txn.amount)) < 0.005
-                                    ? '✓ оплачено'
-                                    : `частково: ${fmt(txn.closed)} із ${fmt(Math.abs(txn.amount))} ₴`}
-                                </span>
-                              )}
+                              {!isPayment && txn.closed > 0.005 && (() => {
+                                const full = Math.abs(txn.closed - Math.abs(txn.amount)) < 0.005;
+                                const label = full ? '✓ оплачено' : `частково: ${fmt(txn.closed)} із ${fmt(Math.abs(txn.amount))} ₴`;
+                                const color = full ? '#15803D' : '#B45309';
+                                const single = txn.paid_by.length === 1 ? txn.paid_by[0] : null;
+                                // Одна оплата — ведемо просто на неї; кілька —
+                                // розкриваємо перелік, бо вести «на першу» було б
+                                // напівправдою.
+                                const singleHref = single ? creditHref(single.docType, single.docId) : null;
+                                if (single && singleHref) {
+                                  return (
+                                    <Link href={singleHref} onClick={e => e.stopPropagation()}
+                                      title={`Закрито документом ${single.docNumber ?? ''} від ${single.date ? new Date(single.date).toLocaleDateString('uk-UA') : '—'}`}
+                                      style={{ marginLeft: '8px', fontSize: '11.5px', fontWeight: 600, color, textDecoration: 'none', borderBottom: `1px dotted ${color}` }}>
+                                      {label}
+                                    </Link>
+                                  );
+                                }
+                                if (txn.paid_by.length > 1) {
+                                  return (
+                                    <button type="button"
+                                      onClick={e => { e.stopPropagation(); setOpenAlloc(m => ({ ...m, [txn.entry_id]: !allocOpen })); }}
+                                      style={{ marginLeft: '8px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, color }}>
+                                      {allocOpen ? '▾' : '▸'} {label} · {txn.paid_by.length} оплати
+                                    </button>
+                                  );
+                                }
+                                return <span style={{ marginLeft: '8px', fontSize: '11.5px', fontWeight: 600, color }}>{label}</span>;
+                              })()}
                             </span>
 
                             <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
@@ -716,6 +747,29 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                               </div>
                             </div>
                           </div>
+
+                          {!isPayment && allocOpen && txn.paid_by.length > 0 && (
+                            <div style={{ background: 'var(--bg-soft)', padding: '6px 20px 10px 40px' }}>
+                              {txn.paid_by.map((p, i) => (
+                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 150px', gap: '8px', padding: '3px 0', fontSize: '12px', alignItems: 'center' }}>
+                                  <span style={{ color: 'var(--text-muted)' }}>
+                                    {p.date ? new Date(p.date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                                  </span>
+                                  <span>
+                                    {creditHref(p.docType, p.docId) ? (
+                                      <Link href={creditHref(p.docType, p.docId)!} onClick={e => e.stopPropagation()}
+                                        style={{ color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontFamily: 'monospace' }}>
+                                        {p.docNumber ?? 'Оплата'}
+                                      </Link>
+                                    ) : (p.docNumber ?? 'Оплата')}
+                                  </span>
+                                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#15803D', fontWeight: 600 }}>
+                                    {fmt(p.amount)} ₴
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
                           {isPayment && allocOpen && (
                             <div style={{ background: 'var(--bg-soft)', padding: '6px 20px 10px 40px' }}>
