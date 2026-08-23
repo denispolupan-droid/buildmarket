@@ -460,14 +460,20 @@ export async function postSaleDoc(
 
   const { data: doc } = await db
     .from('acc_documents')
-    .select('id, order_id, status, orders(order_number)')
+    .select('id, order_id, status')
     .eq('id', docId)
     .single();
   if (!doc) throw new Error(`postSaleDoc: документ ${docId} не знайдено`);
   if (doc.status !== 'draft') return; // вже проведено — ідемпотентний вихід
 
   const by = opts.confirmed_by ?? 'system';
-  const orderNumber = (doc as { orders?: { order_number?: number } | null }).orders?.order_number ?? null;
+  // Номер замовлення — окремим запитом, лише щоб підписати проводку боргу.
+  // Помилка тут не має зривати проведення: підпис — не гроші.
+  let orderNumber: number | null = null;
+  if (doc.order_id) {
+    const { data: ord } = await db.from('orders').select('order_number').eq('id', doc.order_id).maybeSingle();
+    orderNumber = (ord?.order_number as number) ?? null;
+  }
   await confirmDocument(docId, by);
 
   const { data: lines } = await db
