@@ -125,7 +125,46 @@ export async function POST(
     .filter(i => i.qty > 0);
 
   if (shipItems.length === 0) {
-    return NextResponse.json({ error: 'Всі позиції замовлення вже відвантажені' }, { status: 409 });
+    const coveredByDrafts = allOrderItems.every(i => (draftedBySku[i.sku] ?? 0) >= i.qty);
+    if (!coveredByDrafts) {
+      return NextResponse.json({ error: 'Всі позиції замовлення вже відвантажені' }, { status: 409 });
+    }
+
+    // Чернетки покривають усе замовлення — лишається привести статус у
+    // відповідність і донести номер у маркетплейс, як після звичайної відгрузки.
+    const reTtn = bodyTtn ?? (order.tracking_number as string | null) ?? null;
+    const reIsPickup = (order as { delivery_type?: string }).delivery_type === 'pickup';
+    const reStatus = reIsPickup ? 'delivered' : 'shipped';
+    const reNow = new Date().toISOString();
+    if (reIsPickup) await completeOrderDelivery(order.id, user.email ?? 'admin');
+    await db.from('orders').update({
+      status: reStatus,
+      shipped_at: reNow,
+      ...(reIsPickup ? { delivered_at: reNow } : {}),
+    }).eq('id', id);
+
+    const rePromId = order.prom_order_id as number | null;
+    if (rePromId && reTtn) {
+      setPromTTN(rePromId, reTtn, (order.delivery_type as string | null) ?? 'nova_poshta')
+        .catch(err => console.warn('[ship] setPromTTN failed (re-ship):', err));
+    }
+    const reRozId = order.rozetka_order_id as number | null;
+    const reRozStatus = reRozId ? ourStatusToRozetkaStatus(reStatus) : null;
+    if (reRozId && reRozStatus) {
+      const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
+      setRozetkaOrderStatusChained(reRozId, reRozStatus, {
+        ...(reTtn ? { ttn: reTtn } : {}),
+        currentStatus: typeof cabinet.status === 'number' ? cabinet.status : null,
+      }).catch(err => console.warn('[ship] setRozetkaOrderStatus failed (re-ship):', err));
+    }
+
+    return NextResponse.json({
+      ok: true,
+      fully_shipped: true,
+      status: reStatus,
+      reused_drafts: true,
+      shipped_items: allOrderItems.map(i => ({ sku: i.sku, qty: i.qty })),
+    });
   }
 
   // contract_id для orders (якщо ще не проставлено)
