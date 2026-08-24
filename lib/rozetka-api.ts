@@ -60,6 +60,23 @@ async function loginAndCacheToken(): Promise<string> {
   return token;
 }
 
+/**
+ * Чи це відмова через недійсний токен. Rozetka відповідає на такий випадок
+ * HTTP 200 із success:false і кодом 1020 — не 401, тож звичайний ретрай по
+ * статусу його не бачив, і синк падав до кінця 22-годинного кешу.
+ * Живий приклад: {"success":false,"errors":{"code":1020,"description":"Невірний токен доступу"}}
+ */
+export function isInvalidTokenError(json: unknown): boolean {
+  if (!json || typeof json !== 'object') return false;
+  const j = json as { success?: boolean; message?: string; errors?: { code?: number; message?: string; description?: string } };
+  if (j.success !== false) return false;
+  if (j.errors?.code === 1020) return true;
+  const text = [j.message, j.errors?.message, j.errors?.description].filter(Boolean).join(' ').toLowerCase();
+  return text.includes('incorrect_access_token')
+    || text.includes('невірний токен')
+    || text.includes('invalid access token');
+}
+
 async function getValidToken(): Promise<string> {
   const [token, expiresAt] = await Promise.all([
     getSetting('rozetka_token'),
@@ -104,6 +121,15 @@ export async function rozetkaFetchRaw(path: string, init?: RequestInit, _retried
     await loginAndCacheToken();
     return rozetkaFetchRaw(path, init, true);
   }
+  // Замість PDF могла прийти JSON-відмова про недійсний токен — читаємо копію,
+  // щоб не витратити тіло відповіді, потрібне викликачу.
+  if (!_retried && res.headers.get('content-type')?.includes('json')) {
+    const probe = await res.clone().json().catch(() => null);
+    if (isInvalidTokenError(probe)) {
+      await loginAndCacheToken();
+      return rozetkaFetchRaw(path, init, true);
+    }
+  }
   return res;
 }
 
@@ -133,6 +159,13 @@ export async function rozetkaFetch<T>(path: string, init?: RequestInit, _retried
     success: boolean; content: T; message?: string;
     errors?: { message?: string; code?: number; description?: string; details?: unknown };
   };
+  if (isInvalidTokenError(json) && !_retried) {
+    // Токен міг померти раніше за наш кеш (Rozetka гасить попередню сесію при
+    // новому вході). Логінимось наново й повторюємо — один раз.
+    await loginAndCacheToken();
+    return rozetkaFetch<T>(path, init, true);
+  }
+
   if (!json.success) {
     // Причина відмови лежить в errors.description/details — без неї в логах було
     // лише «unsuccessful response» і збої пушів статусів не можна було діагностувати.
