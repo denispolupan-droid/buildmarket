@@ -5,6 +5,7 @@
 // Скільки по боргу лишилось = |сума| − рознесене на нього.
 
 import { createServiceClient } from '../supabase';
+import { fetchAllRows } from '../db-paginate';
 import type { OpenCharge } from './allocation';
 
 export type SupplierCharge = OpenCharge & {
@@ -24,37 +25,48 @@ export type SupplierCharge = OpenCharge & {
 export async function supplierCharges(supplierId: number, onlyOpen = true): Promise<SupplierCharge[]> {
   const db = createServiceClient();
 
-  const { data: entries } = await db
+  // Через сторінки: PostgREST мовчки віддає лише перші 1000 рядків, а сортування
+  // тут за датою зростання — обрізало б саме НАЙНОВІШІ накладні, тобто ті, які
+  // зазвичай і оплачують. При ~30 відвантаженнях на день межа настає за місяць.
+  type ChargeRow = { id: string; amount: number; business_date: string; description: string | null; doc_id: string | null; order_id: string | null };
+  const charges = await fetchAllRows<ChargeRow>((f, t) => db
     .from('money_entries')
     .select('id, amount, business_date, description, doc_id, order_id')
     .eq('account_type', 'supplier')
     .eq('counterparty_id', String(supplierId))
     .lt('amount', 0)
-    .order('business_date', { ascending: true });
+    .order('business_date', { ascending: true })
+    .order('id', { ascending: true })
+    .range(f, t));
 
-  const charges = entries ?? [];
   if (!charges.length) return [];
 
-  const { data: allocs } = await db
-    .from('supplier_payment_allocations')
-    .select('charge_entry_id, amount')
-    .in('charge_entry_id', charges.map(c => c.id));
-
+  // Рознесення тягнемо порціями: у .in() список ідентифікаторів іде в URL, а
+  // відповідь так само обмежена тисячею рядків.
   const allocated = new Map<string, number>();
-  for (const a of (allocs ?? [])) {
-    allocated.set(a.charge_entry_id as string, (allocated.get(a.charge_entry_id as string) ?? 0) + Number(a.amount));
+  for (let i = 0; i < charges.length; i += 200) {
+    const ids = charges.slice(i, i + 200).map(c => c.id);
+    const allocs = await fetchAllRows<{ charge_entry_id: string; amount: number }>((f, t) => db
+      .from('supplier_payment_allocations')
+      .select('charge_entry_id, amount')
+      .in('charge_entry_id', ids)
+      .order('charge_entry_id', { ascending: true })
+      .range(f, t));
+    for (const a of allocs) {
+      allocated.set(a.charge_entry_id, (allocated.get(a.charge_entry_id) ?? 0) + Number(a.amount));
+    }
   }
 
   // Номери документів і замовлень — щоб у списку було видно, за що борг
   const docIds = [...new Set(charges.map(c => c.doc_id).filter(Boolean))] as string[];
   const { data: docs } = docIds.length
-    ? await db.from('acc_documents').select('id, doc_number, doc_type').in('id', docIds)
+    ? await db.from('acc_documents').select('id, doc_number, doc_type').in('id', docIds).limit(5000)
     : { data: [] };
   const docMap = new Map((docs ?? []).map(d => [d.id as string, d]));
 
   const orderIds = [...new Set(charges.map(c => c.order_id).filter(Boolean))] as string[];
   const { data: orders } = orderIds.length
-    ? await db.from('orders').select('id, order_number').in('id', orderIds)
+    ? await db.from('orders').select('id, order_number').in('id', orderIds).limit(5000)
     : { data: [] };
   const orderMap = new Map((orders ?? []).map(o => [o.id as string, o.order_number as number]));
 
