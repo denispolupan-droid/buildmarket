@@ -588,13 +588,37 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                                         <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}> із {fmt(c.total)}</span>
                                       )}
                                     </span>
-                                    {payFill === 'manual' ? (
-                                      <input
-                                        value={manual[c.id] ?? ''}
-                                        onChange={e => setManual(m => ({ ...m, [c.id]: e.target.value }))}
-                                        inputMode="decimal" placeholder="0.00"
-                                        style={{ ...inp, height: '26px', width: '100%', boxSizing: 'border-box', textAlign: 'right' }} />
-                                    ) : (
+                                    {payFill === 'manual' ? (() => {
+                                      const entered = parseFloat(String(manual[c.id] ?? '').replace(',', '.')) || 0;
+                                      const full = Math.abs(entered - c.remaining) < 0.005;
+                                      // Скільки з оплати ще вільно (без цього рядка)
+                                      const usedElsewhere = Object.entries(manual)
+                                        .filter(([id]) => id !== c.id)
+                                        .reduce((t, [, v]) => t + (parseFloat(String(v).replace(',', '.')) || 0), 0);
+                                      const free = Math.max(0, (parseFloat(payAmount.replace(',', '.')) || 0) - usedElsewhere);
+                                      const fill = Math.round(Math.min(c.remaining, free) * 100) / 100;
+                                      return (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <input type="checkbox" checked={full}
+                                            disabled={!full && fill <= 0}
+                                            title={full ? 'Зняти рознесення на цю накладну'
+                                              : fill < c.remaining ? `Закрити частково: вільно лише ${fmt(fill)} ₴`
+                                              : 'Закрити накладну повністю'}
+                                            onChange={e => setManual(m => {
+                                              const next = { ...m };
+                                              if (e.target.checked) next[c.id] = fill.toFixed(2);
+                                              else delete next[c.id];
+                                              return next;
+                                            })}
+                                            style={{ width: '15px', height: '15px', flexShrink: 0, cursor: (!full && fill <= 0) ? 'not-allowed' : 'pointer' }} />
+                                          <input
+                                            value={manual[c.id] ?? ''}
+                                            onChange={e => setManual(m => ({ ...m, [c.id]: e.target.value }))}
+                                            inputMode="decimal" placeholder="0.00"
+                                            style={{ ...inp, height: '26px', width: '100%', minWidth: 0, boxSizing: 'border-box', textAlign: 'right' }} />
+                                        </div>
+                                      );
+                                    })() : (
                                       <span style={{ textAlign: 'right', fontWeight: 700, color: take > 0 ? '#15803D' : 'var(--text-muted)', fontFamily: 'monospace' }}>
                                         {take > 0 ? `−${fmt(take)} ₴` : '—'}
                                       </span>
