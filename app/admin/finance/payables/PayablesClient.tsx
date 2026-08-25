@@ -592,7 +592,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                                 </span>
                               </label>
                             )}
-                            <div style={{ maxHeight: '190px', overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
+                            <div style={{ height: '260px', minHeight: '120px', maxHeight: '70vh', overflowY: 'auto', resize: 'vertical', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
                               {charges.map((c, i) => {
                                 const take = picked.get(c.id) ?? 0;
                                 return (
