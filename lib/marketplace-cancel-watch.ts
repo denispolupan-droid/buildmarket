@@ -46,18 +46,25 @@ async function handleCancelledOrder(
   order: OurOrder,
   marketplace: string,
 ): Promise<'auto_cancelled' | 'needs_return'> {
-  const { data: saleDoc } = await db
+  // Відвантажена посилка лишає по собі РН: доставлена — confirmed, ще в дорозі —
+  // draft. Різниця принципова: у першому випадку товар у покупця і потрібне
+  // повернення, у другому він їде назад, а борг постачальнику вже проведено
+  // (міграція 103) — коли посилка повернеться, людина має сказати, куди подівся
+  // товар. Шукати тільки confirmed не можна: посилку в дорозі це не побачить.
+  const { data: saleDocs } = await db
     .from('acc_documents')
-    .select('id, doc_number')
+    .select('id, doc_number, status')
     .eq('order_id', order.id)
     .eq('doc_type', 'sale')
-    .eq('status', 'confirmed')
-    .maybeSingle();
+    .in('status', ['draft', 'confirmed']);
 
-  if (saleDoc) {
-    // Відвантажено — фізичне повернення приймає людина
+  const deliveredDoc = (saleDocs ?? []).find(d => d.status === 'confirmed');
+  const draftDocs    = (saleDocs ?? []).filter(d => d.status === 'draft');
+
+  if (deliveredDoc) {
+    // Доставлено — фізичне повернення приймає людина
     alertAdmin(
-      `${marketplace}: замовлення #${order.order_number} скасовано/повернуто покупцем, але воно ВЖЕ ВІДВАНТАЖЕНЕ (${saleDoc.doc_number})`,
+      `${marketplace}: замовлення #${order.order_number} скасовано/повернуто покупцем, але воно ВЖЕ ВІДВАНТАЖЕНЕ (${deliveredDoc.doc_number})`,
       'Прийміть товар і оформіть «↩ Повернення» в картці замовлення — це коректно сторнує виручку, COGS і борг постачальнику.',
     );
     return 'needs_return';
@@ -77,16 +84,11 @@ async function handleCancelledOrder(
   } catch { /* резерву могло не бути */ }
 
   // Гасимо чернетку-РН (створюється при відвантаженні, проводиться при доставці).
-  // Заказ до доставки не дійде → інакше вона висить у «комісіях в дорозі» й
-  // фальшиво завищує очікувану комісію маркетплейсу. Чернетка проводок не має,
-  // тож cancelDocument просто ставить status=cancelled без сторно.
-  const { data: draftDocs } = await db
-    .from('acc_documents')
-    .select('id')
-    .eq('order_id', order.id)
-    .eq('doc_type', 'sale')
-    .eq('status', 'draft');
-  for (const d of draftDocs ?? []) {
+  // Замовлення до доставки не дійде → інакше вона висить у «комісіях в дорозі» й
+  // фальшиво завищує очікувану комісію маркетплейсу. Проводки чернетки (борг
+  // постачальнику і товар у дорозі) при цьому ЛИШАЮТЬСЯ висіти навмисно: їх
+  // знімає рішення людини про долю посилки, а не скасування документа.
+  for (const d of draftDocs) {
     try {
       await cancelDocument(d.id, `cron:${marketplace.toLowerCase()}-cancel-watch`, 'Замовлення скасовано покупцем на маркетплейсі');
     } catch (e) {
@@ -96,7 +98,9 @@ async function handleCancelledOrder(
 
   alertAdmin(
     `${marketplace}: замовлення #${order.order_number} скасовано покупцем — автоматично скасовано і в нас`,
-    'Товар не був відвантажений, облікових сторно не потрібно.',
+    draftDocs.length
+      ? 'УВАГА: посилка вже в дорозі, борг постачальнику проведено при відвантаженні. Коли вона повернеться — вкажіть у «Фінанси → Кредиторка», куди подівся товар (повернули постачальнику / лишили собі). Інакше борг лишиться завищеним.'
+      : 'Товар не був відвантажений, облікових сторно не потрібно.',
   );
   return 'auto_cancelled';
 }
