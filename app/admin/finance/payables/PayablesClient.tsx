@@ -561,8 +561,37 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                         const sum = lines.reduce((t, l) => t + l.amount, 0);
                         const amount = parseFloat(payAmount.replace(',', '.')) || 0;
                         const rest = Math.round((amount - sum) * 100) / 100;
+                        // «Вибрати всі»: розкладає суму по відкритих накладних
+                        // згори вниз (список іде від найстаріших), доки вистачає
+                        // грошей. Останню закриває частково — так само, як це
+                        // зробив би автоматичний режим.
+                        const fillAll = () => setManual(() => {
+                          let left = Math.round((parseFloat(payAmount.replace(',', '.')) || 0) * 100);
+                          const next: Record<string, string> = {};
+                          for (const c of charges) {
+                            if (left <= 0) break;
+                            const take = Math.min(left, Math.round(c.remaining * 100));
+                            if (take <= 0) continue;
+                            next[c.id] = (take / 100).toFixed(2);
+                            left -= take;
+                          }
+                          return next;
+                        });
+                        const allPicked = lines.length > 0 && (rest <= 0.005 || lines.length === charges.length);
+
                         return (
                           <div>
+                            {payFill === 'manual' && (
+                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                <input type="checkbox" checked={allPicked}
+                                  onChange={e => (e.target.checked ? fillAll() : setManual({}))}
+                                  style={{ width: '15px', height: '15px', cursor: 'pointer' }} />
+                                Вибрати всі неоплачені
+                                <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
+                                  — {charges.length} на {fmt(charges.reduce((t, c) => t + c.remaining, 0))} ₴
+                                </span>
+                              </label>
+                            )}
                             <div style={{ maxHeight: '190px', overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: '8px' }}>
                               {charges.map((c, i) => {
                                 const take = picked.get(c.id) ?? 0;
