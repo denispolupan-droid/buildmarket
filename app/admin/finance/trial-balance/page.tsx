@@ -18,7 +18,8 @@ const db = createClient(
 const ACCOUNT_LABELS: Record<string, string> = {
   customer: 'Покупці (дебіторка)', supplier: 'Постачальники (кредиторка)',
   partner: 'Партнери', cash: 'Каса', bank: 'Банк', acquiring: 'Еквайринг',
-  advance: 'Аванси', inventory_asset: 'Товарні запаси', revenue: 'Виручка',
+  advance: 'Аванси', inventory_asset: 'Товарні запаси',
+  inventory_transit: 'Товари в дорозі', revenue: 'Виручка',
   cogs: 'Собівартість', variance: 'Відхилення', rounding: 'Округлення',
   correction: 'Коригування', marketplace_balance: 'Баланс маркетплейсів',
   marketplace_fee: 'Комісії маркетплейсів', logistics: 'Логістика',

@@ -94,6 +94,30 @@ describe('Smoke: доставка закриває замовлення доку
     expect(draftId, 'чернетка РН має створитись').toBeTruthy();
     await db.from('acc_documents').update({ meta: { test: true } }).eq('id', draftId);
 
+    // Міграція 103: борг перед постачальником виникає ВЖЕ ТУТ — постачальник
+    // передав товар перевізникові і датує накладну цим днем. До 103 він
+    // зʼявлявся лише при доставці, і звірка розходилась на суму «в дорозі».
+    const atShipment = await db
+      .from('money_entries')
+      .select('account_type, amount')
+      .eq('order_id', orderId);
+    const shipRows = atShipment.data ?? [];
+    expect(
+      shipRows.some(r => r.account_type === 'supplier' && Number(r.amount) < 0),
+      'борг перед постачальником має бути вже після відвантаження',
+    ).toBe(true);
+    expect(
+      shipRows.some(r => r.account_type === 'inventory_transit' && Number(r.amount) > 0),
+      'товар має стати на рахунок «в дорозі»',
+    ).toBe(true);
+    expect(
+      shipRows.some(r => r.account_type === 'revenue'),
+      'виручки до вручення покупцю бути не повинно',
+    ).toBe(false);
+    const debtAtShipment = shipRows
+      .filter(r => r.account_type === 'supplier')
+      .reduce((s, r) => s + Number(r.amount), 0);
+
     // Те саме, що робить крон, коли НП каже «Відправлення отримано»
     const closedOrder = await completeShipmentByTtn(TTN, 'smoke');
     expect(closedOrder, 'completeShipmentByTtn має знайти чернетку за ТТН').toBe(orderId);
@@ -116,6 +140,22 @@ describe('Smoke: доставка закриває замовлення доку
       payable!.some(p => String(p.description).includes(String(orderNumber))),
       'у підписі проводки має бути номер замовлення',
     ).toBe(true);
+
+    // Доставка НЕ повторює борг: він уже був проведений при відвантаженні
+    const debtAfterDelivery = (payable ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    expect(
+      Math.round(debtAfterDelivery * 100),
+      'доставка не має додавати боргу — він виник при відвантаженні',
+    ).toBe(Math.round(debtAtShipment * 100));
+
+    // Транзит закривається собівартістю: товар вручено, він більше не в дорозі
+    const { data: transitRows } = await db
+      .from('money_entries')
+      .select('amount')
+      .eq('order_id', orderId)
+      .eq('account_type', 'inventory_transit');
+    const transitLeft = (transitRows ?? []).reduce((s, r) => s + Number(r.amount), 0);
+    expect(Math.round(transitLeft * 100), 'рахунок «в дорозі» має обнулитись').toBe(0);
 
     // Виручка проведена
     const { data: revenue } = await db

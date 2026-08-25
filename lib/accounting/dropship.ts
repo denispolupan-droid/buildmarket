@@ -376,6 +376,20 @@ export async function createSaleDraft(
     }),
   });
 
+  // Борг перед постачальником виникає вже тут: постачальник передав товар
+  // перевізникові і датує накладну цим днем. Помилка не має зривати
+  // відвантаження — посилка фізично вже поїхала, а postSaleDoc при доставці
+  // доведе борг як страховку.
+  try {
+    await syncDropshipPayable(doc.id, {
+      shipping_supplier_id: input.shipping_supplier_id ?? null,
+      business_date:        input.business_date,
+      created_by:           input.confirmed_by,
+    });
+  } catch (err) {
+    console.error('[dropship] борг при відвантаженні не проведено:', doc.id, err);
+  }
+
   return doc.id;
 }
 
@@ -393,7 +407,7 @@ export async function createSaleDraft(
 export async function syncSaleDraftLines(
   orderId: string,
   items: { sku: string; qty: number; price: number }[],
-  _by = 'system',
+  by = 'system',
 ): Promise<{ synced: number; needsManual: boolean; reason?: string }> {
   const db = createServiceClient();
 
@@ -444,7 +458,126 @@ export async function syncSaleDraftLines(
   const { error } = await db.from('acc_document_lines').insert(newLines);
   if (error) throw new Error((error as { message?: string }).message ?? String(error));
 
+  // Позиції змінились — отже змінився і борг перед постачальником: він виник
+  // ще при відвантаженні, тож зводимо його під нові рядки, а не чекаємо доставки.
+  await syncDropshipPayable(docId, { created_by: by });
+
   return { synced: 1, needsManual: false };
+}
+
+// ── Борг перед постачальником: виникає при ВІДВАНТАЖЕННІ ─────────────────────
+//
+// Постачальник виписує накладну датою передачі посилки перевізникові, тож і борг
+// у нас має виникати тоді ж, а не при врученні покупцю (до міграції 103 було саме
+// так, і звірка з постачальником розходилась рівно на суму товару «в дорозі»).
+//
+//   відвантаження:  DR inventory_transit / CR supplier
+//   доставка:       DR cogs              / CR inventory_transit   (postSaleDoc)
+//
+// Функція не «нараховує», а ЗВОДИТЬ: рахує, скільки має бути за поточними рядками
+// РН, дивиться, скільки вже проведено по цьому документу, і пише різницю. Тому її
+// безпечно кликати повторно — і при створенні чернетки, і після редагування
+// позицій замовлення (syncSaleDraftLines), і з бекфіл-скрипта, і як страховку
+// при доставці.
+export async function syncDropshipPayable(
+  docId: string,
+  opts: { shipping_supplier_id?: number | null; business_date?: string; created_by?: string } = {},
+): Promise<{ changed: number }> {
+  const db = createServiceClient();
+
+  const { data: doc } = await db
+    .from('acc_documents')
+    .select('id, order_id, status')
+    .eq('id', docId)
+    .maybeSingle();
+  if (!doc) throw new Error(`syncDropshipPayable: документ ${docId} не знайдено`);
+  // Скасований документ не чіпаємо: долю товару в дорозі вирішує людина
+  // (повернули постачальнику / лишили собі), а не перерахунок рядків.
+  if (doc.status === 'cancelled') return { changed: 0 };
+
+  const { data: lines } = await db
+    .from('acc_document_lines')
+    .select('sku, qty, cost_price, fulfillment_type, supplier_id')
+    .eq('document_id', docId);
+  const dropLines = (lines ?? []).filter(l => l.fulfillment_type === 'dropship');
+
+  // Постачальник рядка: override із замовлення → рядок РН → мапінг SKU
+  let supplierMap: Map<string, number | null> | null = null;
+  if (dropLines.some(l => !opts.shipping_supplier_id && !l.supplier_id)) {
+    const { data: m } = await db
+      .from('supplier_sku_map')
+      .select('our_sku, supplier_id')
+      .in('our_sku', dropLines.map(l => l.sku));
+    supplierMap = new Map((m ?? []).map(r => [r.our_sku, r.supplier_id]));
+  }
+
+  // Рахунок у копійках: на double різниця двох сум дає «хвости» на 0,01 ₴,
+  // і кожен виклик писав би копійчану проводку-коригування.
+  const kop = (n: number) => Math.round(n * 100);
+
+  const desired = new Map<string, number>();
+  for (const l of dropLines) {
+    const supplierId = String(opts.shipping_supplier_id ?? l.supplier_id ?? supplierMap?.get(l.sku) ?? '');
+    if (!supplierId || supplierId === 'null' || supplierId === 'undefined') continue;
+    const cost = kop(Number(l.cost_price ?? 0) * Number(l.qty));
+    if (cost <= 0) continue;
+    desired.set(supplierId, (desired.get(supplierId) ?? 0) + cost);
+  }
+
+  // Скільки вже проведено по цьому документу: борг іде мінусом на рахунку
+  // постачальника, сторно і коригування — плюсом, тож сума дає чистий залишок.
+  const { data: postedRows } = await db
+    .from('money_entries')
+    .select('counterparty_id, amount')
+    .eq('doc_id', docId)
+    .eq('account_type', 'supplier')
+    .limit(1000);
+  const posted = new Map<string, number>();
+  const seenCount = new Map<string, number>();
+  for (const e of postedRows ?? []) {
+    const k = String(e.counterparty_id);
+    posted.set(k, (posted.get(k) ?? 0) - kop(Number(e.amount)));
+    seenCount.set(k, (seenCount.get(k) ?? 0) + 1);
+  }
+
+  let orderNumber: number | null = null;
+  if (doc.order_id) {
+    const { data: ord } = await db.from('orders').select('order_number').eq('id', doc.order_id).maybeSingle();
+    orderNumber = (ord?.order_number as number) ?? null;
+  }
+  const suffix = orderNumber ? ` (замовлення #${orderNumber})` : '';
+
+  let changed = 0;
+  for (const supplierId of new Set([...desired.keys(), ...posted.keys()])) {
+    const delta = (desired.get(supplierId) ?? 0) - (posted.get(supplierId) ?? 0);
+    if (Math.abs(delta) < 1) continue;
+    const seen = seenCount.get(supplierId) ?? 0;
+    await recordTxn({
+      // Зростання боргу — товар пішов від постачальника в дорогу; зменшення —
+      // дзеркально (зменшили кількість у замовленні ще до вручення).
+      debitAccount:   delta > 0 ? 'inventory_transit' : 'supplier',
+      debitParty:     delta > 0 ? null : supplierId,
+      creditAccount:  delta > 0 ? 'supplier' : 'inventory_transit',
+      creditParty:    delta > 0 ? supplierId : null,
+      amount:         Math.abs(delta) / 100,
+      businessDate:   opts.business_date,
+      docId,
+      docType:        'sale',
+      orderId:        doc.order_id ?? undefined,
+      description:    delta > 0
+        ? `Дропшип: борг перед постачальником${suffix}`
+        : `Дропшип: коригування боргу${suffix}`,
+      // Перша проводка лишає історичний ключ (щоб не задвоїти борг по документах,
+      // проведених до міграції 103); наступні нумеруються станом леджера, тож
+      // повтор після збою дає той самий ключ і нічого не дублює.
+      idempotencyKey: seen === 0
+        ? `dropship-payable:${docId}:${supplierId}`
+        : `dropship-payable-adj:${docId}:${supplierId}:${seen}`,
+      createdBy:      opts.created_by,
+    });
+    changed++;
+  }
+  return { changed };
 }
 
 // postSaleDoc — проводить конкретну РН (draft → confirmed): виручка + FIFO/COGS по
@@ -467,13 +600,6 @@ export async function postSaleDoc(
   if (doc.status !== 'draft') return; // вже проведено — ідемпотентний вихід
 
   const by = opts.confirmed_by ?? 'system';
-  // Номер замовлення — окремим запитом, лише щоб підписати проводку боргу.
-  // Помилка тут не має зривати проведення: підпис — не гроші.
-  let orderNumber: number | null = null;
-  if (doc.order_id) {
-    const { data: ord } = await db.from('orders').select('order_number').eq('id', doc.order_id).maybeSingle();
-    orderNumber = (ord?.order_number as number) ?? null;
-  }
   await confirmDocument(docId, by);
 
   const { data: lines } = await db
@@ -481,6 +607,15 @@ export async function postSaleDoc(
     .select('sku, qty, cost_price, fulfillment_type, supplier_id')
     .eq('document_id', docId);
   const dropLines = (lines ?? []).filter(l => l.fulfillment_type === 'dropship');
+
+  // Страховка для чернеток, створених до міграції 103: тоді борг при
+  // відвантаженні не проводився, і собівартість списалася б із порожнього
+  // транзиту. Для нових РН різниця нульова — жодної проводки не буде.
+  await syncDropshipPayable(docId, {
+    shipping_supplier_id: opts.shipping_supplier_id,
+    business_date:        opts.business_date,
+    created_by:           by,
+  });
 
   const dropshipCOGS = dropLines.reduce(
     (s, l) => s + Number(l.qty) * Number(l.cost_price ?? 0), 0,
@@ -492,50 +627,13 @@ export async function postSaleDoc(
       orderId:        doc.order_id ?? undefined,
       businessDate:   opts.business_date,
       createdBy:      by,
+      // Дропшип-товар на нашому складі не був: списуємо з транзиту, куди його
+      // поставив syncDropshipPayable у момент відвантаження.
+      creditAccount:  'inventory_transit',
       idempotencyKey: `cogs:${doc.order_id}:${docId}`,
     });
   }
 
-  // Борг перед постачальниками по dropship-рядках: shipping_supplier_id override →
-  // line.supplier_id → мапінг SKU. Ключ per-doc — мультипосилки не злипаються.
-  let supplierMap: Map<string, number | null> | null = null;
-  const needSkuMap = dropLines.some(l => !opts.shipping_supplier_id && !l.supplier_id);
-  if (needSkuMap) {
-    const { data: m } = await db
-      .from('supplier_sku_map')
-      .select('our_sku, supplier_id')
-      .in('our_sku', dropLines.map(l => l.sku));
-    supplierMap = new Map((m ?? []).map(r => [r.our_sku, r.supplier_id]));
-  }
-
-  const groups = new Map<string, number>();
-  for (const l of dropLines) {
-    const supplierId = String(opts.shipping_supplier_id ?? l.supplier_id ?? supplierMap?.get(l.sku) ?? '');
-    if (!supplierId || supplierId === 'null' || supplierId === 'undefined') continue;
-    const cost = Number(l.cost_price ?? 0) * Number(l.qty);
-    if (cost <= 0) continue;
-    groups.set(supplierId, (groups.get(supplierId) ?? 0) + cost);
-  }
-
-  await Promise.all(
-    [...groups.entries()].map(([supplierId, amount]) =>
-      recordTxn({
-        debitAccount:   'inventory_asset',
-        creditAccount:  'supplier',
-        creditParty:    supplierId,
-        amount,
-        businessDate:   opts.business_date,
-        docId,
-        docType:        'sale',
-        orderId:        doc.order_id ?? undefined,
-        description:    orderNumber
-          ? `Дропшип: борг перед постачальником (замовлення #${orderNumber})`
-          : 'Дропшип: борг перед постачальником',
-        idempotencyKey: `dropship-payable:${docId}:${supplierId}`,
-        createdBy:      by,
-      }),
-    ),
-  );
 }
 
 // ── Сторно dropship-специфічних проводок при скасуванні замовлення ───────────
@@ -563,7 +661,7 @@ export async function reverseDropshipLedgerExtras(params: {
     .from('money_entries')
     .select('txn_id, account_type, counterparty_id, amount, description, doc_type')
     .eq('doc_id', params.docId)
-    .in('account_type', ['cogs', 'supplier', 'inventory_asset']);
+    .in('account_type', ['cogs', 'supplier', 'inventory_asset', 'inventory_transit']);
 
   if (!entries?.length) return;
 

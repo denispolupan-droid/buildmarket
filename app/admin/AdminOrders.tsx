@@ -350,6 +350,86 @@ function CounterpartyPicker({ orderId, customerId, onPicked }: {
  * `pad` добиває ряд порожніми плитками — щоб на десктопі блок клієнта в усіх
  * рядках починався з тієї самої вертикалі.
  */
+// Посилку не забрали, замовлення скасували — а товар десь є. З міграції 103 борг
+// перед постачальником уже проведено (він виникає при відвантаженні), тож автоматом
+// вирішити не можна: товар або поїхав назад постачальнику, або лишився в нас.
+// Компонент сам питає бекенд, чи висить транзит, і мовчить, якщо ні.
+const decisionBtn: React.CSSProperties = {
+  height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
+  cursor: 'pointer', border: '1px solid var(--border)', background: '#fff', color: 'var(--text-primary)',
+};
+
+function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; orderNumber: number }) {
+  const router = useRouter();
+  const [amount, setAmount] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/orders/${orderId}/transit-resolve`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (alive && d?.ok) setAmount(Number(d.total) || 0); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [orderId]);
+
+  if (!amount || amount <= 0) return null;
+
+  async function decide(decision: 'to_supplier' | 'keep') {
+    const ok = confirm(decision === 'to_supplier'
+      ? `Замовлення №${orderNumber}: товар на ${amount!.toFixed(2)} ₴ повернувся постачальнику?\n\nБорг перед ним буде знято.`
+      : `Замовлення №${orderNumber}: товар на ${amount!.toFixed(2)} ₴ лишається в нас?\n\nВін стане на склад, борг перед постачальником лишиться.`);
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/transit-resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(decision === 'to_supplier'
+          ? `Борг перед постачальником знято на ${Number(data.amount ?? 0).toFixed(2)} ₴`
+          : `Товар оприбутковано на склад на ${Number(data.amount ?? 0).toFixed(2)} ₴`, 'success');
+        setAmount(0);
+        router.refresh();
+      } else {
+        showToast(data.error ?? 'Не вдалося провести рішення', 'error');
+      }
+    } catch {
+      showToast('Не вдалося провести рішення', 'error');
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{
+      marginTop: '4px', padding: '7px 9px', borderRadius: '8px',
+      border: '1px solid #FDE68A', background: '#FFFBEB',
+    }}>
+      <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#B45309' }}>
+        Товар у дорозі — {amount.toFixed(2)} ₴
+      </div>
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 6px' }}>
+        Борг перед постачальником проведено при відвантаженні. Куди подівся товар?
+      </div>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <button onClick={() => decide('to_supplier')} disabled={busy}
+          title="Товар поїхав назад постачальнику — борг перед ним знімається"
+          style={{ ...decisionBtn, border: '1px solid #FDE68A', color: '#B45309' }}>
+          Повернули постачальнику
+        </button>
+        <button onClick={() => decide('keep')} disabled={busy}
+          title="Товар лишається в нас — оприбуткуємо на склад, борг перед постачальником лишається"
+          style={decisionBtn}>
+          Лишили собі
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ItemThumbs({ items, thumbs, size, max, pad, className, style }: {
   items: OrderItem[]; thumbs: Record<string, string>; size: number; max: number;
   pad?: boolean; className?: string; style?: CSSProperties;
@@ -4975,6 +5055,11 @@ export default function AdminOrders({
                                     style={{ ...btn, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontWeight: 600 }}>
                                     <RotateCcw size={13} /> Повернення
                                   </button>
+                                )}
+                                {/* Скасували вже відвантажене — товар десь їде або вже в нас.
+                                    Компонент сам зникає, якщо в дорозі нічого не висить. */}
+                                {isAdmin && order.status === 'cancelled' && (
+                                  <TransitDecisionBox orderId={order.id} orderNumber={order.order_number} />
                                 )}
                               </div>
                             );

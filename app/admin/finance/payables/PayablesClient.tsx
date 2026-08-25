@@ -97,9 +97,22 @@ const thStyle: React.CSSProperties = {
   color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em',
 };
 
-type Props = { balances: SupplierBalance[] };
+/** Посилка повернулась, а товар ще ніде: чекає рішення людини */
+export type PendingTransit = {
+  docId:          string;
+  docNumber:      string | null;
+  docDate:        string;
+  orderId:        string | null;
+  orderNumber:    number | null;
+  orderStatus:    string | null;
+  trackingNumber: string | null;
+  amount:         number;
+  suppliers:      { id: number; name: string; amount: number }[];
+};
 
-export default function PayablesClient({ balances: allBalances }: Props) {
+type Props = { balances: SupplierBalance[]; pendingTransit?: PendingTransit[] };
+
+export default function PayablesClient({ balances: allBalances, pendingTransit = [] }: Props) {
   const today      = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
@@ -109,6 +122,39 @@ export default function PayablesClient({ balances: allBalances }: Props) {
   const [dateTo,           setDateTo]           = useState(today);
   const [dateApplied,      setDateApplied]      = useState(false);
   const [expanded,         setExpanded]         = useState<Set<number>>(new Set());
+
+  // ── Доля товару з посилок, які не забрали ──
+  // Автоматично вирішити не можна: товар або поїхав назад постачальнику
+  // (борг знімається), або лишився в нас (борг лишається, товар на склад).
+  const [transitBusy, setTransitBusy] = useState<string | null>(null);
+
+  async function decideTransit(p: PendingTransit, decision: 'to_supplier' | 'keep') {
+    if (!p.orderId) return;
+    const what = decision === 'to_supplier'
+      ? `Повернути постачальнику товар на ${p.amount.toFixed(2)} ₴? Борг буде знято.`
+      : `Лишити товар на ${p.amount.toFixed(2)} ₴ у себе? Він стане на склад, борг лишиться.`;
+    if (!confirm(what)) return;
+    setTransitBusy(p.docId);
+    try {
+      const res = await fetch(`/api/admin/orders/${p.orderId}/transit-resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, doc_id: p.docId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(decision === 'to_supplier'
+          ? `Борг знято на ${Number(data.amount ?? 0).toFixed(2)} ₴`
+          : `Товар оприбутковано на склад на ${Number(data.amount ?? 0).toFixed(2)} ₴`, 'success');
+        router.refresh();
+      } else {
+        showToast(data.error ?? 'Не вдалося провести рішення', 'error');
+      }
+    } catch {
+      showToast('Не вдалося провести рішення', 'error');
+    }
+    setTransitBusy(null);
+  }
 
   // ── Фіксація оплати постачальнику ──
   const [payFor,    setPayFor]    = useState<number | null>(null);
@@ -262,10 +308,12 @@ export default function PayablesClient({ balances: allBalances }: Props) {
   const totalOverpaid  = balances.filter(b => b.balance > 0).reduce((s, b) => s + b.balance, 0);
   const debtCount      = balances.filter(b => b.balance < 0).length;
   const overpaidCount  = balances.filter(b => b.balance > 0).length;
-  // «В дорозі» — стан на зараз (не залежить від фільтра дат): відвантажено, не доставлено
+  // «В дорозі» — стан на зараз (не залежить від фільтра дат): відвантажено, не доставлено.
+  // З міграції 103 борг за такою посилкою вже проведений (виникає при відвантаженні),
+  // тож це ЧАСТИНА боргу — показуємо як довідку, а не додаємо зверху.
   const totalTransit   = balances.reduce((s, b) => s + (b.in_transit_total ?? 0), 0);
   const transitCount   = balances.reduce((s, b) => s + (b.in_transit_items?.length ?? 0), 0);
-  const totalOwed      = totalDebt + totalTransit;
+  const totalOwed      = totalDebt;
 
   const periodLabel = dateApplied
     ? `${dateFrom} — ${dateTo}`
@@ -346,25 +394,83 @@ export default function PayablesClient({ balances: allBalances }: Props) {
         )}
       </div>
 
+      {/* Посилки, що повернулись: борг уже проведено, доля товару невідома. */}
+      {pendingTransit.length > 0 && (
+        <div className="fin-card" style={{ marginBottom: '20px', borderLeft: '3px solid #B45309' }}>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: '#B45309', marginBottom: '2px' }}>
+            Повернулись — потрібне рішення: {pendingTransit.length}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+            Замовлення скасовано, а борг перед постачальником уже проведено при відвантаженні.
+            Скажіть, куди подівся товар — інакше борг висітиме далі.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {pendingTransit.map(p => (
+              <div key={p.docId} style={{
+                display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                padding: '8px 10px', borderRadius: '8px', background: 'var(--bg-soft)',
+                border: '1px solid var(--border-light)', fontSize: '12.5px',
+              }}>
+                <span style={{ color: 'var(--text-muted)', minWidth: '78px' }}>
+                  {p.docDate ? new Date(p.docDate).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                </span>
+                <span style={{ fontWeight: 700 }}>
+                  {p.orderNumber ? `Замовлення #${p.orderNumber}` : (p.docNumber ?? '—')}
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {p.suppliers.map(s => s.name).join(', ') || '—'}
+                  {p.trackingNumber ? ` · ТТН ${p.trackingNumber}` : ''}
+                </span>
+                <span style={{ marginLeft: 'auto', fontWeight: 800, color: '#B45309', fontVariantNumeric: 'tabular-nums' }}>
+                  {fmt(p.amount)} ₴
+                </span>
+                <button
+                  onClick={() => decideTransit(p, 'to_supplier')}
+                  disabled={transitBusy === p.docId}
+                  style={{
+                    padding: '5px 10px', borderRadius: '7px', border: '1px solid var(--border)',
+                    background: 'var(--bg-card)', color: 'var(--text-secondary)',
+                    fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Повернули постачальнику
+                </button>
+                <button
+                  onClick={() => decideTransit(p, 'keep')}
+                  disabled={transitBusy === p.docId}
+                  style={{
+                    padding: '5px 10px', borderRadius: '7px', border: '1px solid var(--border)',
+                    background: 'var(--bg-card)', color: 'var(--text-secondary)',
+                    fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Лишили собі
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
         {[
           {
             label: 'Разом до сплати',
             value: totalOwed > 0 ? `${fmt(totalOwed)} ₴` : '—',
-            sub: 'проведений борг + в дорозі',
+            sub: totalTransit > 0 ? `з них ${fmt(totalTransit)} ₴ ще в дорозі` : 'весь борг за отриманим товаром',
             color: totalOwed > 0 ? '#DC2626' : undefined,
           },
           {
-            label: 'Отримано клієнтами (борг)',
-            value: totalDebt > 0 ? `${fmt(totalDebt)} ₴` : '—',
+            label: 'Отримано клієнтами',
+            value: totalDebt - totalTransit > 0 ? `${fmt(totalDebt - totalTransit)} ₴` : '—',
             sub: `${debtCount} пост. · ${periodLabel}`,
             color: totalDebt > 0 ? '#DC2626' : undefined,
           },
           {
             label: 'В дорозі (не доставлено)',
             value: totalTransit > 0 ? `${fmt(totalTransit)} ₴` : '—',
-            sub: transitCount > 0 ? `${transitCount} посилок · борг виникне при доставці` : 'посилок немає',
+            sub: transitCount > 0 ? `${transitCount} посилок · борг уже проведено` : 'посилок немає',
             color: totalTransit > 0 ? '#B45309' : undefined,
           },
           {
@@ -397,7 +503,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
           {balances.map(b => {
             const isOpen      = expanded.has(b.supplier_id);
             const transit     = b.in_transit_total ?? 0;
-            const totalOwedB  = -b.balance + transit; // >0 = винні разом (проведено + в дорозі)
+            const totalOwedB  = -b.balance; // >0 = винні; транзит уже всередині (міграція 103)
             const isDebt      = totalOwedB > 0.005;
             const accentColor = isDebt ? '#DC2626' : '#15803D';
 
@@ -482,7 +588,7 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                     </div>
                     {isDebt && transit > 0 && (
                       <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                        отримано: {fmt(Math.max(-b.balance, 0))} · в дорозі: <span style={{ color: '#B45309', fontWeight: 700 }}>{fmt(transit)}</span>
+                        отримано: {fmt(Math.max(totalOwedB - transit, 0))} · в дорозі: <span style={{ color: '#B45309', fontWeight: 700 }}>{fmt(transit)}</span>
                       </div>
                     )}
                   </div>
@@ -668,11 +774,11 @@ export default function PayablesClient({ balances: allBalances }: Props) {
                   </div>
                 )}
 
-                {/* В дорозі: відвантажені, ще не доставлені посилки — борг виникне при доставці */}
+                {/* В дорозі: відвантажені, ще не доставлені посилки. Борг за ними вже проведений */}
                 {isOpen && (b.in_transit_items?.length ?? 0) > 0 && (
                   <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', padding: '10px 20px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginBottom: '6px' }}>
-                      В дорозі — {b.in_transit_items!.length} посилок на {fmt(transit)} ₴ (борг проведеться при доставці)
+                      В дорозі — {b.in_transit_items!.length} посилок на {fmt(transit)} ₴ (борг уже в сумі до сплати)
                     </div>
                     {b.in_transit_items!.map(it => (
                       <div key={it.doc_id} style={{ display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px', gap: '8px', padding: '4px 0', fontSize: '12px', alignItems: 'center' }}>

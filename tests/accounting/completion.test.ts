@@ -2,7 +2,10 @@
  * Integration test — Варіант 3: продаж проводиться при ДОСТАВЦІ, а не відгрузці.
  *
  * Перевіряє нову машинерію (Етап 2):
- *   createSaleDraft      — при відгрузці: РН-чернетка, БЕЗ проводок, резерв тримається;
+ *   createSaleDraft      — при відгрузці: РН-чернетка, резерв тримається. Проводок
+ *                          немає для ВЛАСНОГО складу (саме такі тут сценарії);
+ *                          для дропшипу з міграції 103 тут одразу зʼявляється борг
+ *                          перед постачальником — це перевіряє delivery-smoke;
  *   applyCompletionEffects — при доставці: РН проводиться (виручка + FIFO/COGS),
  *                            резерв знімається; повторний виклик ідемпотентний.
  *
@@ -89,7 +92,7 @@ describe('Варіант 3 — продаж при доставці', () => {
     await db.from('acc_documents').update({ meta: { ...(draft?.meta ?? {}), test: true } }).eq('id', docId);
     expect(draft?.status).toBe('draft');
     expect(draft?.tracking_number).toBe('59TESTTRACK001');
-    expect(await moneyEntries(docId)).toHaveLength(0);          // ← нічого не проведено
+    expect(await moneyEntries(docId)).toHaveLength(0);          // ← власний склад: нічого не проведено
     expect(await hasActiveReservation(orderId)).toBe(true);     // ← резерв тримається
 
     // Доставка → проводимо РН: виручка + склад, резерв знімається

@@ -4,6 +4,7 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
 import PayablesClient, { type SupplierBalance, type TransitItem } from './PayablesClient';
+import { pendingTransitDecisions } from '../../../../lib/accounting/transit';
 
 export const dynamic = 'force-dynamic';
 
@@ -186,10 +187,10 @@ export default async function PayablesPage() {
   }
 
   // 5. Дропшип «в дорозі»: відвантажені, ще не доставлені посилки (РН-чернетки).
-  // Борг у леджері виникає лише при доставці (postSaleDoc), але постачальник уже
-  // відвантажив — показуємо окремо, щоб «разом до сплати» збігався з рахунком
-  // постачальника. Групування дзеркалить postSaleDoc: dropship-рядки чернетки,
-  // постачальник = line.supplier_id → мапінг SKU.
+  // Борг за ними в леджері УЖЕ Є — з міграції 103 він виникає при відвантаженні
+  // (syncDropshipPayable). Тут ми лише розшифровуємо, яка частина боргу поки що
+  // їде, а яка вже вручена покупцю. Групування дзеркалить syncDropshipPayable:
+  // dropship-рядки чернетки, постачальник = line.supplier_id → мапінг SKU.
   const draftDocs = await fetchAllRows((f, t) => db
     .from('acc_documents')
     .select('id, order_id, doc_number, doc_date, tracking_number')
@@ -264,10 +265,14 @@ export default async function PayablesPage() {
     agg.in_transit_total = Math.round(((agg.in_transit_total ?? 0) + amount) * 100) / 100;
   }
 
-  // Сортуємо за ЗАГАЛЬНИМ боргом (проведений + в дорозі): balance від'ємний = винні,
-  // транзит завжди додає до боргу. Не фільтруємо по балансу тут — клієнт сам вирішує.
+  // Сортуємо за боргом (balance від'ємний = винні). Транзит окремо НЕ додаємо:
+  // з міграції 103 борг за посилкою в дорозі вже проведений і сидить у balance.
+  // Не фільтруємо по балансу тут — клієнт сам вирішує.
+  // Посилки, що повернулись і чекають рішення про долю товару (див. lib/accounting/transit)
+  const pendingTransit = await pendingTransitDecisions();
+
   const balances: SupplierBalance[] = [...aggMap.values()]
-    .sort((a, b) => (a.balance - (a.in_transit_total ?? 0)) - (b.balance - (b.in_transit_total ?? 0)));
+    .sort((a, b) => a.balance - b.balance);
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1200px' }}>
@@ -281,7 +286,7 @@ export default async function PayablesPage() {
       <FinanceTabs />
 
       <div style={{ marginTop: '20px' }}>
-        <PayablesClient balances={balances} />
+        <PayablesClient balances={balances} pendingTransit={pendingTransit} />
       </div>
     </div>
   );

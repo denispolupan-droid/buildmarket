@@ -32,7 +32,7 @@ import { createServiceClient } from '../supabase';
 export type AccountType =
   | 'customer' | 'supplier' | 'partner'
   | 'cash' | 'bank' | 'acquiring' | 'novapay' | 'advance'
-  | 'inventory_asset'
+  | 'inventory_asset' | 'inventory_transit'
   | 'revenue' | 'cogs' | 'variance' | 'rounding' | 'correction'
   | 'marketplace_balance' | 'marketplace_fee'
   // Витратні рахунки (CHECK у БД — міграція 046)
@@ -600,11 +600,18 @@ export async function recordCOGS(params: {
   businessDate?: string;
   createdBy?:    string;
   idempotencyKey?: string;
+  /**
+   * Звідки списується собівартість. За замовчуванням склад (inventory_asset).
+   * Для дропшипу — inventory_transit: товару на нашому складі ніколи не було,
+   * транзитний актив і борг перед постачальником виникли ще при відвантаженні
+   * (міграція 103, syncDropshipPayable).
+   */
+  creditAccount?: 'inventory_asset' | 'inventory_transit';
 }): Promise<string> {
   return recordTxn({
     debitAccount:  'cogs',
     debitParty:    null,
-    creditAccount: 'inventory_asset',
+    creditAccount: params.creditAccount ?? 'inventory_asset',
     creditParty:   null,
     amount:        params.amount,
     businessDate:  params.businessDate,
