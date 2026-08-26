@@ -175,6 +175,8 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
   const [manual,    setManual]    = useState<Record<string, string>>({});
   /** Розгорнуті рознесення оплат: «на що пішла ця оплата» */
   const [openAlloc, setOpenAlloc] = useState<Record<string, boolean>>({});
+  // Звірка з постачальником: показати самі лише накладні, за якими ще є що платити
+  const [onlyUnpaid, setOnlyUnpaid] = useState(false);
 
   function openPay(b: SupplierBalance) {
     setPayFor(b.supplier_id);
@@ -839,8 +841,31 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                 )}
 
                 {/* Transactions */}
-                {isOpen && (
+                {isOpen && (() => {
+                  // Неоплачене = борг (мінус), який закритий не повністю. Саме цей
+                  // перелік звіряють із накладними постачальника.
+                  const isUnpaid = (t: SupplierTransaction) => t.amount < 0 && (Math.abs(t.amount) - t.closed) > 0.005;
+                  const unpaid = b.transactions.filter(isUnpaid);
+                  const unpaidSum = unpaid.reduce((s, t) => s + (Math.abs(t.amount) - t.closed), 0);
+                  const shown = onlyUnpaid ? unpaid : b.transactions;
+                  return (
                   <div style={{ borderTop: '1px solid var(--border)' }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                      padding: '8px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border-light)',
+                    }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        <input type="checkbox" checked={onlyUnpaid}
+                          onChange={e => setOnlyUnpaid(e.target.checked)}
+                          style={{ width: '15px', height: '15px', cursor: 'pointer' }} />
+                        Тільки неоплачені
+                      </label>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {unpaid.length
+                          ? <>накладних: <b style={{ color: 'var(--text-secondary)' }}>{unpaid.length}</b> на <b style={{ color: '#DC2626' }}>{fmt(unpaidSum)} ₴</b></>
+                          : 'неоплачених накладних немає'}
+                      </span>
+                    </div>
                     <div className="sup-txn-row" style={{
                       display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
                       padding: '6px 20px', gap: '8px',
@@ -854,14 +879,16 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                       <span style={{ textAlign: 'right' }}>Сума</span>
                     </div>
 
-                    {b.transactions.length === 0 ? (
+                    {shown.length === 0 ? (
                       <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                        Немає операцій за обраний період
+                        {onlyUnpaid ? 'Усі накладні за період оплачені' : 'Немає операцій за обраний період'}
                       </div>
                     ) : (() => {
                       let running = 0;
-                      return b.transactions.map((txn, idx) => {
-                        running += txn.amount;
+                      return shown.map((txn, idx) => {
+                        // У відфільтрованому переліку наростаючий баланс сенсу не має —
+                        // там не всі операції. Замість нього показуємо залишок по накладній.
+                        if (!onlyUnpaid) running += txn.amount;
                         const isPayment = txn.amount > 0;
                         const link = docLink(txn);
 
@@ -944,9 +971,15 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                               <div style={{ fontSize: '13px', fontWeight: 700, color: isPayment ? '#15803D' : '#DC2626' }}>
                                 {isPayment ? '+' : '−'}{fmt(txn.amount)} ₴
                               </div>
-                              <div style={{ fontSize: '10px', color: running < 0 ? '#DC2626' : '#15803D', marginTop: '1px' }}>
-                                баланс: {running < 0 ? '−' : '+'}{fmt(running)} ₴
-                              </div>
+                              {onlyUnpaid ? (
+                                <div style={{ fontSize: '10px', color: '#DC2626', marginTop: '1px' }}>
+                                  лишилось: {fmt(Math.abs(txn.amount) - txn.closed)} ₴
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '10px', color: running < 0 ? '#DC2626' : '#15803D', marginTop: '1px' }}>
+                                  баланс: {running < 0 ? '−' : '+'}{fmt(running)} ₴
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1024,7 +1057,8 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                       </div>
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}
