@@ -1,4 +1,5 @@
 import { createServiceClient } from './supabase';
+import { jwtSecondsLeft } from './novapay-jwt';
 
 // NovaPay Business Cabinet API v2.0 (SOAP, business.novapay.ua).
 // Автентифікація UserAuthenticationJWT з ОДНОРАЗОВОЮ РОТАЦІЄЮ: кожен виклик
@@ -67,6 +68,16 @@ async function soapCall(method: string, fields: Record<string, string | number |
   return text;
 }
 
+/** Обрив зв'язку (таймаут / впала мережа), а не відмова НП по суті запиту. */
+function isTransportError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return err.name === 'TimeoutError'
+    || err.name === 'AbortError'
+    || err.name === 'TypeError'          // fetch failed
+    || err.message.includes('fetch failed')
+    || err.message.includes('ECONNRESET');
+}
+
 type Db = ReturnType<typeof createServiceClient>;
 
 async function setting(db: Db, key: string): Promise<string | null> {
@@ -82,12 +93,24 @@ async function setting(db: Db, key: string): Promise<string | null> {
 async function authOnce(login: string, refreshToken: string, certificate: string): Promise<{
   jwt: string; newToken: string | null; newCert: string | null;
 }> {
-  const xml = await soapCall('UserAuthenticationJWT', {
-    request_ref: crypto.randomUUID(),
-    refresh_token: refreshToken,
-    login,
-    public_certificate: certificate,
-  });
+  // request_ref один на обидві спроби — навмисно, див. коментар до повтору нижче.
+  const ref = crypto.randomUUID();
+  const fields = { request_ref: ref, refresh_token: refreshToken, login, public_certificate: certificate };
+
+  let xml: string;
+  try {
+    xml = await soapCall('UserAuthenticationJWT', fields);
+  } catch (err) {
+    // Обрив саме на автентифікації — найдорожчий: НП уже провернула ротацію, а
+    // нового токена ми не побачили, і ланцюжок мертвий назавжди (людині треба
+    // перевипускати доступ у кабінеті — 26.08 це сталось утретє). Повторюємо з
+    // ТИМ САМИМ request_ref: якщо НП вважає його ключем ідемпотентності, вона
+    // віддасть ту саму пару токен/сертифікат і ланцюжок уціліє. Якщо ні —
+    // гірше не стане: без повтору цей токен усе одно вже мертвий.
+    if (!isTransportError(err)) throw err;
+    console.warn('[novapay] авторизація обірвалась — повтор із тим самим request_ref');
+    xml = await soapCall('UserAuthenticationJWT', fields);
+  }
 
   const jwt = tag(xml, 'jwt');
   if (tag(xml, 'result') === 'error' || !jwt) {
@@ -183,7 +206,9 @@ const JWT_KEY = 'novapay_jwt';
 async function getJwt(db: Db, forceNew = false): Promise<string> {
   if (!forceNew) {
     const cached = await setting(db, JWT_KEY);
-    if (cached) return cached;
+    // 15 с запасу: виклик до НП іде 8–60 с, і jwt, якому лишилась секунда,
+    // тільки змарнує його — а потім усе одно доведеться авторизуватись.
+    if (jwtSecondsLeft(cached) > 15) return cached!;
   }
   const jwt = await authenticate(db);
   await db.from('app_settings').upsert({ key: JWT_KEY, value: jwt });
