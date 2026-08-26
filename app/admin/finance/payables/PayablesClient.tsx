@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, CheckCircle, Search, X, Banknote } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
+import { parseMoney } from '../../../../lib/parse-money';
 
 export type SupplierTransaction = {
   doc_type:      string;
@@ -190,11 +191,11 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
 
   /** Що закриє введена сума — рахуємо на льоту, тим самим правилом, що й сервер */
   function previewLines(): { id: string; amount: number }[] {
-    const amount = parseFloat(payAmount.replace(',', '.'));
+    const amount = parseMoney(payAmount);
     if (!charges || !Number.isFinite(amount) || amount <= 0) return [];
     if (payFill === 'manual') {
       return Object.entries(manual)
-        .map(([id, v]) => ({ id, amount: parseFloat(String(v).replace(',', '.')) }))
+        .map(([id, v]) => ({ id, amount: parseMoney(v) }))
         .filter(l => Number.isFinite(l.amount) && l.amount > 0);
     }
     const sorted = [...charges].sort((a, b) => (a.date === b.date ? a.id.localeCompare(b.id) : a.date.localeCompare(b.date)));
@@ -212,7 +213,7 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
   }
 
   async function submitPay() {
-    const amount = parseFloat(payAmount.replace(',', '.'));
+    const amount = parseMoney(payAmount);
     if (!payFor || !Number.isFinite(amount) || amount <= 0) {
       showToast('Вкажіть коректну суму', 'error');
       return;
@@ -672,14 +673,14 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                         const lines = previewLines();
                         const picked = new Map(lines.map(l => [l.id, l.amount]));
                         const sum = lines.reduce((t, l) => t + l.amount, 0);
-                        const amount = parseFloat(payAmount.replace(',', '.')) || 0;
+                        const amount = parseMoney(payAmount) || 0;
                         const rest = Math.round((amount - sum) * 100) / 100;
                         // «Вибрати всі»: розкладає суму по відкритих накладних
                         // згори вниз (список іде від найстаріших), доки вистачає
                         // грошей. Останню закриває частково — так само, як це
                         // зробив би автоматичний режим.
                         const fillAll = () => setManual(() => {
-                          let left = Math.round((parseFloat(payAmount.replace(',', '.')) || 0) * 100);
+                          let left = Math.round((parseMoney(payAmount) || 0) * 100);
                           const next: Record<string, string> = {};
                           for (const c of charges) {
                             if (left <= 0) break;
@@ -731,13 +732,13 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                                       )}
                                     </span>
                                     {payFill === 'manual' ? (() => {
-                                      const entered = parseFloat(String(manual[c.id] ?? '').replace(',', '.')) || 0;
+                                      const entered = parseMoney(manual[c.id]) || 0;
                                       const full = Math.abs(entered - c.remaining) < 0.005;
                                       // Скільки з оплати ще вільно (без цього рядка)
                                       const usedElsewhere = Object.entries(manual)
                                         .filter(([id]) => id !== c.id)
-                                        .reduce((t, [, v]) => t + (parseFloat(String(v).replace(',', '.')) || 0), 0);
-                                      const free = Math.max(0, (parseFloat(payAmount.replace(',', '.')) || 0) - usedElsewhere);
+                                        .reduce((t, [, v]) => t + (parseMoney(v) || 0), 0);
+                                      const free = Math.max(0, (parseMoney(payAmount) || 0) - usedElsewhere);
                                       const fill = Math.round(Math.min(c.remaining, free) * 100) / 100;
                                       return (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -773,6 +774,19 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                               Закриється документів: <b>{lines.length}</b> на <b>{fmt(sum)} ₴</b>
                               {rest > 0.005 && <span style={{ color: '#B45309' }}> · аванс {fmt(rest)} ₴</span>}
                               {rest < -0.005 && <span style={{ color: '#DC2626' }}> · рознесено більше за оплату на {fmt(-rest)} ₴</span>}
+                              {Math.abs(rest) > 0.005 && sum > 0 && (
+                                // Найчастіший намір — заплатити рівно за вибране.
+                                // Без цього суму переписують руками, а скопійована
+                                // з цього ж рядка вона приїздить із пробілами.
+                                <button type="button" onClick={() => setPayAmount(sum.toFixed(2))}
+                                  style={{
+                                    marginLeft: '8px', padding: '2px 8px', borderRadius: '999px',
+                                    border: '1px solid var(--border)', background: 'var(--bg-card)',
+                                    color: 'var(--text-secondary)', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer',
+                                  }}>
+                                  платити рівно {fmt(sum)} ₴
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
