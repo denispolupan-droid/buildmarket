@@ -415,7 +415,14 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                   {p.docDate ? new Date(p.docDate).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
                 </span>
                 <span style={{ fontWeight: 700 }}>
-                  {p.orderNumber ? `Замовлення #${p.orderNumber}` : (p.docNumber ?? '—')}
+                  {p.orderNumber ? (
+                    // Нова вкладка навмисно: рішення ухвалюють, подивившись склад
+                    // замовлення, і повертатись треба сюди ж, до кнопок.
+                    <Link href={`/admin?status=&q=${p.orderNumber}`} target="_blank"
+                      style={{ color: 'var(--brand-blue)', textDecoration: 'none' }}>
+                      Замовлення #{p.orderNumber}
+                    </Link>
+                  ) : (p.docNumber ?? '—')}
                 </span>
                 <span style={{ color: 'var(--text-muted)' }}>
                   {p.suppliers.map(s => s.name).join(', ') || '—'}
@@ -787,7 +794,12 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                         </span>
                         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#B45309' }}>{it.doc_number ?? '—'}</span>
                         <span style={{ color: 'var(--text-secondary)' }}>
-                          {it.order_number ? `Замовлення #${it.order_number}` : ''}{it.tracking_number ? ` · ТТН ${it.tracking_number}` : ''}
+                          {it.order_number ? (
+                            <Link href={`/admin?status=&q=${it.order_number}`} target="_blank"
+                              style={{ color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none' }}>
+                              Замовлення #{it.order_number}
+                            </Link>
+                          ) : null}{it.tracking_number ? ` · ТТН ${it.tracking_number}` : ''}
                         </span>
                         <span style={{ textAlign: 'right', fontWeight: 700, color: '#B45309' }}>−{fmt(it.amount)} ₴</span>
                       </div>
