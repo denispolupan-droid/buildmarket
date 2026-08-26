@@ -62,6 +62,8 @@ export type SupplierBalance = {
   balance:        number;
   transactions:   SupplierTransaction[];
   aging?:         SupplierAging;
+  /** Сальдо на початок періоду (лише коли застосовано фільтр дат) */
+  opening?:       number;
   /** Дропшип «в дорозі»: відвантажено, ще не доставлено. Борг за ним уже проведений */
   in_transit_total?: number;
   /** Та його частина, яку ще НЕ оплатили — тільки вона є всередині боргу */
@@ -291,19 +293,27 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
     }
 
     if (dateApplied) {
+      // Борг — це САЛЬДО на дату «по», а не оборот за період. Якщо рахувати лише
+      // проводки всередині періоду, то накладна з минулого місяця, закрита оплатою
+      // цього, дасть самий плюс — і борг вийде заниженим (живий випадок 26.08:
+      // серпень показував 10 635,20 замість 25 990,70). Тому обороти беремо за
+      // період, а баланс — вхідне сальдо плюс ці обороти.
       result = result.map(b => {
-        const txns = b.transactions.filter(t =>
-          (!dateFrom || t.business_date >= dateFrom) &&
-          (!dateTo   || t.business_date <= dateTo)
-        );
-        let receipts = 0, payments = 0, bal = 0;
-        for (const t of txns) {
-          bal += t.amount;
+        const txns: SupplierTransaction[] = [];
+        let opening = 0, receipts = 0, payments = 0, turnover = 0;
+        for (const t of b.transactions) {
+          if (dateFrom && t.business_date < dateFrom) { opening += t.amount; continue; }
+          if (dateTo   && t.business_date > dateTo)   continue;
+          txns.push(t);
+          turnover += t.amount;
           if (t.amount < 0) receipts += Math.abs(t.amount);
-          else payments += t.amount;
+          else              payments += t.amount;
         }
-        return { ...b, transactions: txns, total_receipts: receipts, total_payments: payments, balance: bal };
-      }).filter(b => b.transactions.length > 0);
+        const balance = Math.round((opening + turnover) * 100) / 100;
+        return { ...b, transactions: txns, total_receipts: receipts, total_payments: payments, balance, opening: Math.round(opening * 100) / 100 };
+      // Постачальник без операцій у періоді, але з боргом, теж лишається:
+      // сальдо існує незалежно від того, чи був цього місяця рух.
+      }).filter(b => b.transactions.length > 0 || Math.abs(b.balance) > 0.01);
     } else {
       result = result.filter(b => Math.abs(b.balance) > 0.01);
     }
@@ -330,6 +340,10 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
   const periodLabel = dateApplied
     ? `${dateFrom} — ${dateTo}`
     : 'за весь час';
+  // Борг показуємо станом на кінець періоду. Якщо період уже закінчився, довідка
+  // «в дорозі» до нього не стосується: вона про те, що їде ЗАРАЗ.
+  const balanceAsOf  = dateApplied && dateTo < today ? dateTo : null;
+  const transitFitsPeriod = !balanceAsOf;
 
   return (
     <>
@@ -477,13 +491,15 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
           {
             label: 'Разом до сплати',
             value: totalOwed > 0 ? `${fmt(totalOwed)} ₴` : '—',
-            sub: totalTransitOpen > 0 ? `з них ${fmt(totalTransitOpen)} ₴ ще в дорозі` : 'весь борг за отриманим товаром',
+            sub: balanceAsOf
+              ? `станом на ${balanceAsOf}`
+              : totalTransitOpen > 0 ? `з них ${fmt(totalTransitOpen)} ₴ ще в дорозі` : 'весь борг за отриманим товаром',
             color: totalOwed > 0 ? '#DC2626' : undefined,
           },
           {
             label: 'Отримано клієнтами',
-            value: totalDebt - totalTransitOpen > 0 ? `${fmt(totalDebt - totalTransitOpen)} ₴` : '—',
-            sub: `${debtCount} пост. · ${periodLabel}`,
+            value: transitFitsPeriod && totalDebt - totalTransitOpen > 0 ? `${fmt(totalDebt - totalTransitOpen)} ₴` : '—',
+            sub: transitFitsPeriod ? `${debtCount} пост. · ${periodLabel}` : 'рахуємо лише на сьогодні',
             color: totalDebt > 0 ? '#DC2626' : undefined,
           },
           {
@@ -879,12 +895,35 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                       <span style={{ textAlign: 'right' }}>Сума</span>
                     </div>
 
+                    {/* Вхідне сальдо: без нього наростаючий підсумок у переліку
+                        починався б з нуля і не сходився б із боргом унизу. */}
+                    {dateApplied && !onlyUnpaid && Math.abs(b.opening ?? 0) > 0.005 && (
+                      <div className="sup-txn-row" style={{
+                        display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px',
+                        padding: '7px 20px', gap: '8px', alignItems: 'center',
+                        background: 'var(--bg-soft)', borderBottom: '1px solid var(--border-light)',
+                      }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {new Date(dateFrom).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                        </span>
+                        <span className="oc-hide-m" />
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                          Вхідне сальдо
+                        </span>
+                        <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: (b.opening ?? 0) < 0 ? '#DC2626' : '#15803D' }}>
+                          {(b.opening ?? 0) < 0 ? '−' : '+'}{fmt(b.opening ?? 0)} ₴
+                        </span>
+                      </div>
+                    )}
+
                     {shown.length === 0 ? (
                       <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
                         {onlyUnpaid ? 'Усі накладні за період оплачені' : 'Немає операцій за обраний період'}
                       </div>
                     ) : (() => {
-                      let running = 0;
+                      // Наростаючий підсумок починаємо з вхідного сальдо — інакше
+                      // останній рядок показував би оборот періоду, а не борг.
+                      let running = onlyUnpaid ? 0 : (b.opening ?? 0);
                       return shown.map((txn, idx) => {
                         // У відфільтрованому переліку наростаючий баланс сенсу не має —
                         // там не всі операції. Замість нього показуємо залишок по накладній.
