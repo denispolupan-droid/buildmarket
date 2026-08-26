@@ -200,6 +200,20 @@ export default async function PayablesPage() {
     .range(f, t));
 
   const draftIds = (draftDocs ?? []).map(d => d.id as string);
+
+  // Скільки з боргу за посилками в дорозі вже оплачено. Борг виникає при
+  // відвантаженні, тож заплатити за посилку можна ще до вручення — і тоді
+  // «в дорозі» перестає бути часткою суми до сплати. Без цього підпис
+  // «з них … ще в дорозі» показував більше, ніж увесь борг.
+  const draftIdSet = new Set(draftIds);
+  const paidByDocSupplier = new Map<string, number>();
+  for (const e of (entries ?? [])) {
+    const amt = Number(e.amount);
+    if (amt >= 0 || !e.doc_id) continue;
+    if (!draftIdSet.has(e.doc_id as string)) continue;
+    const key = `${parseInt(e.counterparty_id as string)}:${e.doc_id}`;
+    paidByDocSupplier.set(key, (paidByDocSupplier.get(key) ?? 0) + (closedByCharge.get(e.id as string) ?? 0));
+  }
   const { data: draftLines } = draftIds.length
     ? await db.from('acc_document_lines')
         .select('document_id, sku, qty, cost_price, fulfillment_type, supplier_id')
@@ -253,6 +267,7 @@ export default async function PayablesPage() {
       });
     }
     const agg = aggMap.get(supplierId)!;
+    const paid = Math.min(amount, paidByDocSupplier.get(key) ?? 0);
     const item: TransitItem = {
       doc_id:          docId,
       doc_number:      (doc.doc_number as string) ?? null,
@@ -260,9 +275,11 @@ export default async function PayablesPage() {
       order_number:    doc.order_id ? (orderNumById.get(doc.order_id as string) ?? null) : null,
       tracking_number: (doc.tracking_number as string) ?? null,
       amount:          Math.round(amount * 100) / 100,
+      paid:            Math.round(paid * 100) / 100,
     };
     agg.in_transit_items = [...(agg.in_transit_items ?? []), item];
     agg.in_transit_total = Math.round(((agg.in_transit_total ?? 0) + amount) * 100) / 100;
+    agg.in_transit_open  = Math.round(((agg.in_transit_open ?? 0) + (amount - paid)) * 100) / 100;
   }
 
   // Сортуємо за боргом (balance від'ємний = винні). Транзит окремо НЕ додаємо:

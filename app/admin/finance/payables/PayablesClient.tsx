@@ -50,6 +50,8 @@ export type TransitItem = {
   order_number:    number | null;
   tracking_number: string | null;
   amount:          number;
+  /** Скільки з цієї посилки вже оплачено постачальнику (борг виник при відвантаженні) */
+  paid:            number;
 };
 
 export type SupplierBalance = {
@@ -60,8 +62,10 @@ export type SupplierBalance = {
   balance:        number;
   transactions:   SupplierTransaction[];
   aging?:         SupplierAging;
-  /** Дропшип «в дорозі»: відвантажено, ще не доставлено — борг виникне при доставці */
+  /** Дропшип «в дорозі»: відвантажено, ще не доставлено. Борг за ним уже проведений */
   in_transit_total?: number;
+  /** Та його частина, яку ще НЕ оплатили — тільки вона є всередині боргу */
+  in_transit_open?: number;
   in_transit_items?: TransitItem[];
 };
 
@@ -313,6 +317,11 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
   // З міграції 103 борг за такою посилкою вже проведений (виникає при відвантаженні),
   // тож це ЧАСТИНА боргу — показуємо як довідку, а не додаємо зверху.
   const totalTransit   = balances.reduce((s, b) => s + (b.in_transit_total ?? 0), 0);
+  // Оплачену частину з боргу вже прибрали, тож «часткою боргу» є лише неоплачена.
+  // Інакше після оплати за посилку, яка ще їде, «з них у дорозі» показувало б
+  // більше, ніж увесь борг (живий випадок 26.08: борг 24 183,10, у дорозі 25 147,40).
+  const totalTransitOpen = balances.reduce((s, b) => s + (b.in_transit_open ?? b.in_transit_total ?? 0), 0);
+  const totalTransitPaid = Math.round((totalTransit - totalTransitOpen) * 100) / 100;
   const transitCount   = balances.reduce((s, b) => s + (b.in_transit_items?.length ?? 0), 0);
   const totalOwed      = totalDebt;
 
@@ -466,19 +475,21 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
           {
             label: 'Разом до сплати',
             value: totalOwed > 0 ? `${fmt(totalOwed)} ₴` : '—',
-            sub: totalTransit > 0 ? `з них ${fmt(totalTransit)} ₴ ще в дорозі` : 'весь борг за отриманим товаром',
+            sub: totalTransitOpen > 0 ? `з них ${fmt(totalTransitOpen)} ₴ ще в дорозі` : 'весь борг за отриманим товаром',
             color: totalOwed > 0 ? '#DC2626' : undefined,
           },
           {
             label: 'Отримано клієнтами',
-            value: totalDebt - totalTransit > 0 ? `${fmt(totalDebt - totalTransit)} ₴` : '—',
+            value: totalDebt - totalTransitOpen > 0 ? `${fmt(totalDebt - totalTransitOpen)} ₴` : '—',
             sub: `${debtCount} пост. · ${periodLabel}`,
             color: totalDebt > 0 ? '#DC2626' : undefined,
           },
           {
             label: 'В дорозі (не доставлено)',
             value: totalTransit > 0 ? `${fmt(totalTransit)} ₴` : '—',
-            sub: transitCount > 0 ? `${transitCount} посилок · борг уже проведено` : 'посилок немає',
+            sub: transitCount > 0
+              ? `${transitCount} посилок · ${totalTransitPaid > 0.005 ? `${fmt(totalTransitPaid)} ₴ уже оплачено` : 'борг уже проведено'}`
+              : 'посилок немає',
             color: totalTransit > 0 ? '#B45309' : undefined,
           },
           {
@@ -511,6 +522,7 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
           {balances.map(b => {
             const isOpen      = expanded.has(b.supplier_id);
             const transit     = b.in_transit_total ?? 0;
+            const transitOpen = b.in_transit_open ?? transit;   // неоплачена частина — тільки вона сидить у борзі
             const totalOwedB  = -b.balance; // >0 = винні; транзит уже всередині (міграція 103)
             const isDebt      = totalOwedB > 0.005;
             const accentColor = isDebt ? '#DC2626' : '#15803D';
@@ -594,9 +606,9 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                     <div style={{ fontSize: '16px', fontWeight: 800, color: accentColor }}>
                       {isDebt ? '−' : '+'}{fmt(totalOwedB)} ₴
                     </div>
-                    {isDebt && transit > 0 && (
+                    {isDebt && transitOpen > 0 && (
                       <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                        отримано: {fmt(Math.max(totalOwedB - transit, 0))} · в дорозі: <span style={{ color: '#B45309', fontWeight: 700 }}>{fmt(transit)}</span>
+                        отримано: {fmt(Math.max(totalOwedB - transitOpen, 0))} · в дорозі: <span style={{ color: '#B45309', fontWeight: 700 }}>{fmt(transitOpen)}</span>
                       </div>
                     )}
                   </div>
@@ -799,7 +811,10 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                 {isOpen && (b.in_transit_items?.length ?? 0) > 0 && (
                   <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', padding: '10px 20px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginBottom: '6px' }}>
-                      В дорозі — {b.in_transit_items!.length} посилок на {fmt(transit)} ₴ (борг уже в сумі до сплати)
+                      В дорозі — {b.in_transit_items!.length} посилок на {fmt(transit)} ₴
+                      {transit - transitOpen > 0.005
+                        ? ` (з них ${fmt(transit - transitOpen)} ₴ уже оплачено)`
+                        : ' (борг уже в сумі до сплати)'}
                     </div>
                     {b.in_transit_items!.map(it => (
                       <div key={it.doc_id} style={{ display: 'grid', gridTemplateColumns: '100px 140px 1fr 140px', gap: '8px', padding: '4px 0', fontSize: '12px', alignItems: 'center' }}>
@@ -815,7 +830,9 @@ export default function PayablesClient({ balances: allBalances, pendingTransit =
                             </Link>
                           ) : null}{it.tracking_number ? ` · ТТН ${it.tracking_number}` : ''}
                         </span>
-                        <span style={{ textAlign: 'right', fontWeight: 700, color: '#B45309' }}>−{fmt(it.amount)} ₴</span>
+                        <span style={{ textAlign: 'right', fontWeight: 700, color: it.paid >= it.amount - 0.005 ? '#15803D' : '#B45309' }}>
+                          {it.paid >= it.amount - 0.005 ? `${fmt(it.amount)} ₴ · оплачено` : `−${fmt(it.amount)} ₴`}
+                        </span>
                       </div>
                     ))}
                   </div>
