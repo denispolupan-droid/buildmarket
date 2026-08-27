@@ -99,8 +99,11 @@ const nextConfig: NextConfig = {
       // Storage bucket was named "products" — R2's public URL is already scoped to a
       // single bucket, so "products" is dropped here rather than re-keying the R2
       // objects (which were migrated 1:1 without that prefix) to match.
+      // Правило ТІЛЬКИ для імен із хешем: під тим самим префіксом живуть обкладинки
+      // блогу (blog/covers/<slug>.png — перезаписуються під тим самим ім'ям при
+      // перегенерації) і промо-картинки з навмисним max-age=300 — їм рік не можна.
       {
-        source: '/img/products/:path*',
+        source: '/img/products/:brand/:name(.*-[0-9a-f]{10})\.webp',
         destination: `${R2_PUBLIC_URL}/:path*`,
       },
 
