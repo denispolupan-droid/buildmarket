@@ -1400,7 +1400,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
         NOT when already on a dedicated /shop/[category] page (it renders this server-side) */}
     {catInfo?.meta && (
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 4px 32px' }}>
-        <CategoryAbout lang={lang} name={catInfo.name} meta={catInfo.meta} />
+        <CategoryAbout lang={lang} name={catInfo.name} meta={catInfo.meta} accent={categoryAccent(selCat, catInfo?.parentSlug)} />
       </div>
     )}
 
