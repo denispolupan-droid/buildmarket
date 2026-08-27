@@ -74,3 +74,6 @@ supabase/.temp/
 
 # перевірочні збірки в окремий каталог (NEXT_DIST_DIR), щоб не чіпати dev-сервер
 /.next-*/
+
+# бекапи разових чисток даних (canonicalize-*)
+/scripts/supabase/backups/

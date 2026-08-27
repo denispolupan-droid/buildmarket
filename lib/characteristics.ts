@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { canonicalCharValue } from './char-values';
 
 // Єдина точка нормалізації характеристик перед БУДЬ-ЯКИМ записом у
 // product_characteristics (адмін-форма, AI-генерація, Prom-заливка, імпорти).
@@ -89,7 +90,7 @@ function mergeMultiValues(values: string[]): string {
  *  • лейбли-синоніми зведені до канонічних, апостроф уніфіковано;
  *  • sort_order 1..N за порядком словника (невідомі — перед Брендом/Країною).
  */
-export function normalizeChars(chars: CharInput[], dict: CharDictionary): CharNormalized[] {
+export function normalizeChars(chars: CharInput[], dict: CharDictionary, category?: string | null): CharNormalized[] {
   type Row = { label: string; value: string; idx: number };
   const groups = new Map<string, Row[]>();
   let idx = 0;
@@ -100,7 +101,9 @@ export function normalizeChars(chars: CharInput[], dict: CharDictionary): CharNo
     const label = dict.aliasMap.get(normCharKey(rawLabel)) ?? rawLabel;
     const k = normCharKey(label);
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push({ label, value, idx: idx++ });
+    // Значення-переліки теж зводимо до канону (див. char-values): інакше
+    // «Тип використання» знову розповзеться на 11 формулювань.
+    groups.get(k)!.push({ label, value: canonicalCharValue(label, value, category), idx: idx++ });
   }
 
   const rows: Row[] = [];
@@ -128,7 +131,7 @@ export function normalizeChars(chars: CharInput[], dict: CharDictionary): CharNo
 }
 
 /** Зручний шорткат: словник + нормалізація одним викликом. */
-export async function normalizeCharsDb(supabase: Db, chars: CharInput[]): Promise<CharNormalized[]> {
+export async function normalizeCharsDb(supabase: Db, chars: CharInput[], category?: string | null): Promise<CharNormalized[]> {
   const dict = await loadCharDictionary(supabase);
-  return normalizeChars(chars, dict);
+  return normalizeChars(chars, dict, category);
 }
