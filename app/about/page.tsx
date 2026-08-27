@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import Reveal from '../components/Reveal';
 import { ShieldCheck, Users, Package, Award, X, Check, Zap, Eye, Cpu, TrendingUp, Gauge, Smartphone, Bot, CreditCard, Plug, FileText, Truck, PlayCircle, Calculator, RefreshCw, ClipboardList, Layers, Handshake } from 'lucide-react';
 import { mergeVisibleBrands } from '../../lib/brands';
-import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../lib/supabase';
+import { getBrandLogosCached, getVisibleBrandLogosCached, getBrandsCached } from '../../lib/supabase';
 
 export const metadata: Metadata = {
   title: 'Про компанію FIXLINE — цифрова платформа будівельних рішень',
@@ -82,7 +82,7 @@ const stats = [
 export default async function AboutPage() {
   const brandLogos = await getBrandLogosCached();
   const visibleBrandLogos = await getVisibleBrandLogosCached();
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos, await getBrandsCached());
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',

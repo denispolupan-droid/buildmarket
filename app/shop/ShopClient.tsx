@@ -388,22 +388,42 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     setGridCols(n);
     localStorage.setItem('shop_grid_cols', String(n));
   }
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(() => {
-    if (!initialCategory) return new Set<string>();
+  // Розкриті гілки сайдбара для категорії: вона сама (якщо має дітей) і всі предки
+  const expandedFor = (target: string | null | undefined): Set<string> => {
+    if (!target) return new Set<string>();
     const expanded = new Set<string>();
     const catMap = new Map(categories.map(c => [c.slug, c]));
-    // Expand the category itself if it has children
-    const hasChildren = categories.some(c => c.parent_slug === initialCategory);
-    if (hasChildren) expanded.add(initialCategory);
-    // Expand all ancestors
-    let slug: string | null = initialCategory;
+    const hasChildren = categories.some(c => c.parent_slug === target);
+    if (hasChildren) expanded.add(target);
+    let slug: string | null = target;
     while (slug) {
       const cat = catMap.get(slug);
       if (cat?.parent_slug) { expanded.add(cat.parent_slug); slug = cat.parent_slug; }
       else break;
     }
     return expanded;
-  });
+  };
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(() => expandedFor(initialCategory));
+
+  // «Назад» з товару на категорію, обрану кліком у сайдбарі. Той клік — наш
+  // pushState, роутер Next про нього не знає, тож на повернення він відновлює
+  // СВОЄ дерево — /shop без категорії, — а в адресі вже /shop/<категорія>:
+  // показувався весь магазин під URL категорії. Синхронізуємось з адресою
+  // одразу після гідрації, як popstate нижче робить для «назад» усередині
+  // магазину. useLayoutEffect, а не ініціалізатор стану: сервер рендерить те,
+  // що знає роутер, і читати window до гідрації — hydration mismatch.
+  useLayoutEffect(() => {
+    if (initialBrand || initialSaleOnly) return;
+    const path = window.location.pathname;
+    if (!path.startsWith(shopBase + '/')) return;
+    const rest = decodeURIComponent(path.slice(shopBase.length + 1));
+    if (!rest || rest.includes('/') || rest === 'sale' || rest === (initialCategory ?? '')) return;
+    if (!categories.some(c => c.slug === rest)) return;
+    setSelCat(rest);
+    setExpandedCats(expandedFor(rest));
+    publishCategoryView({ targetPath: path, header: null, about: null });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);

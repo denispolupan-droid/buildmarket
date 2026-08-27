@@ -12,7 +12,15 @@ export type BrandTile = {
 // homepage/About page via the "Логотипи брендів" modal's "показувати на головній"
 // checkbox (see BrandLogosModal + brand_logos.show_on_home). DB brands already present
 // in BRANDS are skipped — the static entry (with its own color/style) wins.
-export function mergeVisibleBrands(dbBrands: { name: string; logoUrl: string }[]): BrandTile[] {
+//
+// activeBrands — бренди, у яких зараз є активні товари (getBrandsCached). Плитка
+// веде на /shop/brand/<slug>, а та сторінка знає лише такі бренди: бренд із
+// логотипом, але без жодного активного товару (Bostik — 6 товарів, усі
+// вимкнені) давав 404 просто з головної. Без списку фільтр не застосовується.
+export function mergeVisibleBrands(
+  dbBrands: { name: string; logoUrl: string }[],
+  activeBrands?: string[],
+): BrandTile[] {
   const staticNames = new Set(BRANDS.map(b => b.name.toUpperCase()));
   const extra: BrandTile[] = dbBrands
     .filter(b => !staticNames.has(b.name.toUpperCase()))
@@ -23,7 +31,10 @@ export function mergeVisibleBrands(dbBrands: { name: string; logoUrl: string }[]
       color: 'var(--text-primary)',
       style: {},
     }));
-  return [...BRANDS, ...extra];
+  const tiles = [...BRANDS, ...extra];
+  if (!activeBrands) return tiles;
+  const active = new Set(activeBrands.map(b => b.trim().toUpperCase()));
+  return tiles.filter(t => active.has(t.name.trim().toUpperCase()));
 }
 
 // Single source of truth for the brand tiles shown on the homepage carousel and the

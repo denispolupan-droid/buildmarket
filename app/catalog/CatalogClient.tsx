@@ -198,20 +198,34 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     return () => mq.removeEventListener('change', onChange);
   }, []);
   const effectiveViewMode = isMobile ? 'grid' : viewMode;
-  const [expandedCats, setExpandedCats]  = useState<Set<string>>(() => {
-    if (!initialCategory) return new Set<string>();
+  const expandedFor = (target: string): Set<string> => {
+    if (!target) return new Set<string>();
     const expanded = new Set<string>();
     const catMap = new Map(categories.map(c => [c.slug, c]));
-    const childSlugs = new Set(categories.filter(c => c.parent_slug === initialCategory).map(c => c.slug));
-    let slug: string | null = initialCategory;
+    const childSlugs = new Set(categories.filter(c => c.parent_slug === target).map(c => c.slug));
+    let slug: string | null = target;
     while (slug) {
       const cat = catMap.get(slug);
       if (cat?.parent_slug) { expanded.add(cat.parent_slug); slug = cat.parent_slug; }
       else break;
     }
-    if (childSlugs.size > 0) expanded.add(initialCategory);
+    if (childSlugs.size > 0) expanded.add(target);
     return expanded;
-  });
+  };
+  const [expandedCats, setExpandedCats]  = useState<Set<string>>(() => expandedFor(initialCategory));
+
+  // «Назад» з товару: категорію ми міняємо через replaceState('?category=…'),
+  // роутер Next цього не бачить і на повернення відновлює /catalog без
+  // параметра — увесь каталог під адресою категорії. Синхронізуємось з
+  // адресою після гідрації (див. той самий прийом у ShopClient).
+  useLayoutEffect(() => {
+    const urlCat = new URLSearchParams(window.location.search).get('category') ?? '';
+    if (!urlCat || urlCat === initialCategory) return;
+    if (!categories.some(c => c.slug === urlCat)) return;
+    setSelCat(urlCat);
+    setExpandedCats(expandedFor(urlCat));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [mobilePanel,   setMobilePanel]   = useState<'cats' | 'filters' | null>(null);
   const [quantities,    setQuantities]    = useState<Record<string, number>>({});
   const [inputVals,     setInputVals]     = useState<Record<string, string>>({});

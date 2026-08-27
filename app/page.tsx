@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
 };
 import { Truck, Store, LayoutGrid, CheckCircle, PackageCheck, ShoppingCart, Phone, ArrowRight } from 'lucide-react';
-import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached, getProductsCached } from '../lib/supabase';
+import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached, getProductsCached, getBrandsCached } from '../lib/supabase';
 import { getShowcaseSkusCached } from '../lib/showcase-server';
 import { mergeVisibleBrands } from '../lib/brands';
 import Footer from './components/Footer';
@@ -41,7 +41,7 @@ export default async function Home() {
   const products = await getPreviewProductsCached(allSlugs, 2);
   const brandLogos = await getBrandLogosCached();
   const visibleBrandLogos = await getVisibleBrandLogosCached();
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos, await getBrandsCached());
   const reviewStats = await getReviewStatsCached();
 
   // Чипи хітів біля пошуку: закріплена вітрина магазину; якщо закріплених

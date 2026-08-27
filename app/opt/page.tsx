@@ -10,7 +10,7 @@ import Reveal from '../components/Reveal';
 import ModelCompare from '../components/ModelCompare';
 import { WHOLESALE_MIN } from '../../lib/site';
 import { mergeVisibleBrands } from '../../lib/brands';
-import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../lib/supabase';
+import { getBrandLogosCached, getVisibleBrandLogosCached, getBrandsCached } from '../../lib/supabase';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -136,7 +136,7 @@ export default async function OptPage() {
     getVisibleBrandLogosCached(),
   ]);
   // Без обрізання: показуємо ВСІ бренди з логотипами — сітка сама добирає ряди
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos, await getBrandsCached());
 
   const faqLd = {
     '@context': 'https://schema.org',

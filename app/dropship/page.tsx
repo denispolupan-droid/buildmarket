@@ -9,7 +9,7 @@ import Footer from '../components/Footer';
 import Reveal from '../components/Reveal';
 import ModelCompare from '../components/ModelCompare';
 import { mergeVisibleBrands } from '../../lib/brands';
-import { getBrandLogosCached, getVisibleBrandLogosCached } from '../../lib/supabase';
+import { getBrandLogosCached, getVisibleBrandLogosCached, getBrandsCached } from '../../lib/supabase';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -164,7 +164,7 @@ export default async function DropshipPage() {
   // Без обрізання до 12: заголовок обіцяє «Бренди, які ви продаєте», а показувати
   // дропшиперу неповний асортимент — вводити в оману. На /opt той самий блок і
   // так виводить усі бренди.
-  const brandTiles = mergeVisibleBrands(visibleBrandLogos);
+  const brandTiles = mergeVisibleBrands(visibleBrandLogos, await getBrandsCached());
 
   const faqLd = {
     '@context': 'https://schema.org',
