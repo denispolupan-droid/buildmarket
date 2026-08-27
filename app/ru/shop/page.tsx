@@ -50,7 +50,7 @@ export default function RuShopPage() {
         {/* Заголовок, хлібні крихти і блок «Про категорію» рендерить сам
             ShopClient від обраної категорії — і на сервері, і при перемиканні */}
         <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
-          <ShopLoader />
+          <ShopLoader lang="ru" />
         </div>
         <Footer />
       </div>

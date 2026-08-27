@@ -18,8 +18,8 @@ import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductPublic, Category, ReviewStats } from '../../lib/supabase';
-import { getCategoryMeta } from '../../lib/category-descriptions';
-import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
+import type { CategoryMeta } from '../../lib/category-descriptions';
+import { useCategoryMeta } from '../../lib/use-category-meta';
 import { publishCategoryView } from '../../lib/category-view';
 import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyCompact';
 import { orderByShowcase, isShowcaseVisible } from '../../lib/showcase';
@@ -267,9 +267,11 @@ type Props = {
   initialSearch?: string;
   /** SKU вітрини по порядку — товари, закріплені адміном першими на головній. */
   showcaseSkus?: string[];
+  /** Опис/FAQ/гайд стартової категорії — з сервера, щоб текст був у HTML; решта — через /api/category-meta */
+  initialMeta?: CategoryMeta | null;
 };
 
-export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, initialSearch, showcaseSkus = [] }: Props) {
+export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, initialSearch, showcaseSkus = [], initialMeta = null }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
@@ -296,6 +298,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // «Про категорію». Рахуються з selCat і на сервері при першому рендері
   // (SSR: заголовок, опис і FAQ потрапляють у HTML — SEO як раніше), і на
   // клієнті при миттєвому перемиканні.
+  // Словники описів більше не в бандлі: стартова категорія — з пропса
+  // (SSR + гідрація збігаються), перемикання — запит до /api/category-meta.
+  const meta = useCategoryMeta(selCat, lang, { slug: initialCategory, meta: initialMeta });
   const catInfo = useMemo(() => {
     if (!selCat) return null;
     const cat = categories.find(c => c.slug === selCat);
@@ -303,10 +308,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     const name = lang === 'ru' ? getCategoryNameRu(cat.slug, cat.name) : cat.name;
     const parentCat = cat.parent_slug ? categories.find(c => c.slug === cat.parent_slug) : null;
     const parentName = parentCat ? (lang === 'ru' ? getCategoryNameRu(parentCat.slug, parentCat.name) : parentCat.name) : null;
-    const meta = (lang === 'ru' ? getCategoryMetaRu(cat.slug) : getCategoryMeta(cat.slug)) ?? null;
     const description = lang === 'ru' ? (getCategoryDescriptionRu(cat.slug, name) || null) : (meta?.description ?? null);
     return { name, parentSlug: cat.parent_slug ?? null, parentName, description, meta };
-  }, [selCat, categories, lang]);
+  }, [selCat, categories, lang, meta]);
   // На sale- і бренд-сторінках власний серверний h1 — там наш заголовок стає h2
   const TitleTag: 'h1' | 'h2' = (initialSaleOnly || initialBrand) ? 'h2' : 'h1';
   // Старт — серверні значення; збережені фільтри (повернення з товару)

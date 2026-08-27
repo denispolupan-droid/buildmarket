@@ -54,7 +54,7 @@ export default function ShopSaleRuPage() {
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '0 0 24px' }}>
             Строительная химия со скидкой — от 1 единицы, доставка по всей Украине.
           </p>
-          <ShopLoader initialSaleOnly={true} />
+          <ShopLoader lang="ru" initialSaleOnly={true} />
         </div>
       </div>
       <Footer />

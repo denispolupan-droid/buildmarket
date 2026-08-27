@@ -114,7 +114,7 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
         <div style={{ margin: '0 auto', padding: '12px 16px 64px' }} className="mobile-pad">
-          <ShopLoader initialCategory={category} />
+          <ShopLoader lang="ru" initialCategory={category} />
           <HideOnCategorySwitch><AllProductsLinks products={allCategoryProducts} lang="ru" /></HideOnCategorySwitch>
         </div>
         <Footer />

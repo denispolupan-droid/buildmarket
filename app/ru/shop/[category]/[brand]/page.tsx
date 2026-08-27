@@ -172,7 +172,7 @@ export default async function ShopCategoryBrandRuPage(
             {count} товаров бренда {brandName} в категории «{catNameRu}». Выгодные цены, доставка Новой Почтой или в точки выдачи ROZETKA по всей Украине.
           </p>
 
-          <ShopLoader initialCategory={category} initialBrand={brandName} />
+          <ShopLoader lang="ru" initialCategory={category} initialBrand={brandName} />
           <AllProductsLinks products={allPageProducts} lang="ru" />
         </div>
       </div>

@@ -20,8 +20,8 @@ import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 
 import { WHOLESALE_MIN } from '../../lib/site';
-import { getCategoryMeta } from '../../lib/category-descriptions';
-import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
+import type { CategoryMeta } from '../../lib/category-descriptions';
+import { useCategoryMeta } from '../../lib/use-category-meta';
 import { orderByShowcase, isShowcaseVisible } from '../../lib/showcase';
 import { useStickyCompact } from '../../lib/useStickyCompact';
 import './catalog.css';
@@ -70,9 +70,11 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 620) {
 
 type Props = { products: ProductB2B[]; categories: Category[]; reviewStats?: ReviewStats; initialSearch?: string; initialCategory?: string; initialSaleOnly?: boolean;
   /** SKU вітрини по порядку — товари, закріплені адміном першими на головній. */
-  showcaseSkus?: string[] };
+  showcaseSkus?: string[];
+  /** Опис/FAQ/гайд стартової категорії — з сервера; решта — через /api/category-meta */
+  initialMeta?: CategoryMeta | null };
 
-export default function CatalogClient({ products, categories, reviewStats, initialSearch = '', initialCategory = '', initialSaleOnly = false, showcaseSkus = [] }: Props) {
+export default function CatalogClient({ products, categories, reviewStats, initialSearch = '', initialCategory = '', initialSaleOnly = false, showcaseSkus = [], initialMeta = null }: Props) {
   const [isWholesale, setIsWholesale] = useState(false);
   const [search,        setSearch]        = useState(initialSearch);
   const [selCat,        setSelCat]        = useState(initialCategory);
@@ -80,6 +82,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   const lang     = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
   const t        = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const cName    = (name: string, slug: string) => lang === 'ru' ? getCategoryNameRu(slug, name) : name;
+  // Словники описів більше не в бандлі: стартова категорія — з пропса, перемикання — /api/category-meta
+  const catMeta  = useCategoryMeta(selCat || null, lang, { slug: initialCategory || null, meta: initialMeta });
 
   const catsListRef = useRef<HTMLDivElement>(null);
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1394,8 +1398,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
       </div>
 
       {(() => {
-        // На /ru/catalog — російський словник, інакше опис і FAQ були українською
-        const meta = selCat ? (lang === 'ru' ? getCategoryMetaRu(selCat) : getCategoryMeta(selCat)) : null;
+        // Мета — з хука (стартова з сервера, решта з /api/category-meta, мовою сторінки)
+        const meta = selCat ? catMeta : null;
         const catNameStr = selCat ? cName(categories.find(c => c.slug === selCat)?.name ?? '', selCat) : null;
         if (!meta || !catNameStr) return null;
         return (

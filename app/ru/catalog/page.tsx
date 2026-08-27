@@ -40,7 +40,7 @@ export default async function RuCatalogPage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
-      <CatalogLoader
+      <CatalogLoader lang="ru"
         initialSearch={q ?? ''}
         initialCategory={category ?? ''}
         initialSaleOnly={sale === '1'}
