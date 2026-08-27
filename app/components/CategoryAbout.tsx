@@ -71,9 +71,7 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
   // «Дивіться також» — один ряд під гайдом: підпис і чипи в одній лінії
   const relatedBlock = related.length > 0 && (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px', marginTop: '24px' }}>
-      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>
-        {t.related}
-      </span>
+      <span className="eyebrow alt" style={{ marginRight: '4px' }}>{t.related}</span>
       {related.map(r => (
         <Link key={r.href} href={`${prefix}${r.href}`} className="cat-guide-chip">{r.label} →</Link>
       ))}
@@ -120,16 +118,17 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
         {faq.length > 0 && (
           <div>
             <Reveal>
-              <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {t.faq}
-              </h3>
+              {/* Той самий надзаголовок, що «Про категорію» — це підписи одного рівня */}
+              <h3 className="eyebrow alt" style={{ margin: '0 0 6px' }}>{t.faq}</h3>
             </Reveal>
-            <div className="faq-accordion" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Список без рамок і фонів: сім білих карток поруч із прозою важили
+                більше за самі відповіді. Рядки розділяє тонка лінія. */}
+            <div className="faq-accordion">
               {faq.map(({ q, a }, i) => (
                 <Reveal key={q} delay={i * 40}>
-                  <details style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px' }}>
-                    <summary style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer' }}>{q}</summary>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '10px 0 0' }}>{a}</p>
+                  <details className="faq-item">
+                    <summary style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer', padding: '12px 0' }}>{q}</summary>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>{a}</p>
                   </details>
                 </Reveal>
               ))}
