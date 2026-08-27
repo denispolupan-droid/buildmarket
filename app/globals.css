@@ -1755,9 +1755,10 @@ input, select { font-family: inherit; }
   transition: border-color 0.15s, transform 0.15s;
 }
 .cat-guide-chip:hover { border-color: var(--brand-blue); transform: translateY(-1px); }
-/* FAQ у блоці «Про категорію»: без рамок і фонів, рядки розділяє тонка лінія */
-.faq-accordion .faq-item { border-top: 1px solid var(--border); }
-.faq-accordion .faq-item:last-child { border-bottom: 1px solid var(--border); }
+/* FAQ у блоці «Про категорію»: без рамок і фонів, рядки розділяє hairline —
+   колір рамки на половину прозорості, бо суцільна --border тут читалась як сітка */
+.faq-accordion .faq-item { border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+.faq-accordion .faq-item:last-child { border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
 
 /* ── Спільні фірмові дрібниці контентних сторінок ─────────────────────────
    Заголовок секції в кольорі родини (--cat-accent з інлайну, фолбек синій) —
