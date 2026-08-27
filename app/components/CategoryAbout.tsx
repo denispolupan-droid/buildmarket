@@ -68,16 +68,15 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
   const related = meta.related ?? [];
   const [open, setOpen] = useState(false);
 
+  // «Дивіться також» — один ряд під гайдом: підпис і чипи в одній лінії
   const relatedBlock = related.length > 0 && (
-    <div style={{ marginTop: '28px' }}>
-      <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px', marginTop: '24px' }}>
+      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '4px' }}>
         {t.related}
-      </h3>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-        {related.map(r => (
-          <Link key={r.href} href={`${prefix}${r.href}`} className="cat-guide-chip">{r.label} →</Link>
-        ))}
-      </div>
+      </span>
+      {related.map(r => (
+        <Link key={r.href} href={`${prefix}${r.href}`} className="cat-guide-chip">{r.label} →</Link>
+      ))}
     </div>
   );
 
@@ -115,8 +114,6 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
               </p>
             )}
           </Reveal>
-
-          {faq.length === 0 && relatedBlock}
         </div>
 
         {/* Питання + суміжне */}
@@ -137,7 +134,6 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
                 </Reveal>
               ))}
             </div>
-            {relatedBlock}
           </div>
         )}
       </div>
@@ -171,6 +167,8 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
           </button>
         </div>
       )}
+
+      {relatedBlock}
     </section>
   );
 }
