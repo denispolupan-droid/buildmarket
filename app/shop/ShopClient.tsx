@@ -85,9 +85,11 @@ type CardProps = {
   lang: 'uk' | 'ru';
   onSaveState?: () => void;
   rating?: { avg: number; count: number };
+  /** Перший ряд листингу: без lazy і без fade — це LCP сторінки категорії */
+  priority?: boolean;
 };
 
-function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang, onSaveState, rating }: CardProps) {
+function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggleWish, onWholesaleBlock, isWholesale, lang, onSaveState, rating, priority }: CardProps) {
   const t = (uk: string, ru: string) => lang === 'ru' ? ru : uk;
   const displayName = lang === 'ru' ? ((p as { name_ru?: string | null }).name_ru ?? p.name) : p.name;
   const [qty, setQty] = useState(1);
@@ -133,7 +135,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
 
   return (
     <div className="shop-card">
-      <Link href={lang === 'ru' ? `/ru/product/${p.slug ?? p.sku}?from=shop` : `/product/${p.slug ?? p.sku}?from=shop`} className="shop-card__clickable" onClick={() => onSaveState?.()}>
+      <Link href={lang === 'ru' ? `/ru/product/${p.slug ?? p.sku}` : `/product/${p.slug ?? p.sku}`} className="shop-card__clickable" onClick={() => onSaveState?.()}>
         <div className="shop-card__img">
           <div className="shop-card__badge-stack">
             {salePercent && salePercent > 0 && (
@@ -146,6 +148,9 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
             brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}
             volume={p.volume ?? ''} bc={p.bc} ac={p.ac} type={p.img_type}
             variant="front" imageUrl={p.image ?? undefined}
+            alt={`${displayName}${p.volume && !displayName.includes(p.volume) ? ` ${p.volume}` : ''}`}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
+            priority={priority}
           />
         </div>
         <div className="shop-card__body">
@@ -1323,7 +1328,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
               )}
             </div>
           )}
-          {sorted.slice(0, visibleCount).map(p => {
+          {sorted.slice(0, visibleCount).map((p, cardIndex) => {
             const pricePromo = p.stock?.price_promo ?? null;
             const price = pricePromo ?? (p.stock?.price_retail ?? null);
             const priceOld = pricePromo
@@ -1348,6 +1353,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
                 lang={lang}
                 onSaveState={saveFilterState}
                 rating={reviewStats?.[p.sku]}
+                priority={cardIndex < 4}
               />
             );
           })}

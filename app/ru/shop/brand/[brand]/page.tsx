@@ -1,23 +1,45 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../../../components/Footer';
 import ShopLoader from '../../../../shop/ShopLoader';
 import '../../../../shop/shop.css';
 import { getBrandsCached, getProductsCached } from '../../../../../lib/supabase';
 import { brandMeta, listingStats, productDisplayName, retailPrice } from '../../../../../lib/seo/meta';
+import { brandSlug, legacyBrandSlug } from '../../../../../lib/seo/slug';
 import AllProductsLinks from '../../../../shop/AllProductsLinks';
 
 const BASE = 'https://fixline.com.ua';
 
 export const revalidate = 3600;
 
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
+// ISR у динамічного сегмента вмикається лише за наявності generateStaticParams
+// (див. /shop/[category]): без неї маршрут лишався ƒ і віддавався з no-store
+// попри revalidate — 0,9 с TTFB і ~2 МБ на кожен запит. Параметри — бренди з
+// 5+ товарами, як у sitemap; решта рендериться on-demand і теж кешується.
+export async function generateStaticParams() {
+  const products = await getProductsCached();
+  const counts = new Map<string, number>();
+  for (const p of products) {
+    const b = p.brand?.trim();
+    if (b) counts.set(b, (counts.get(b) ?? 0) + 1);
+  }
+  return [...counts].filter(([, n]) => n >= 5).map(([b]) => ({ brand: brandSlug(b) }));
 }
 
 function findBrandBySlug(slug: string, brands: string[]): string | undefined {
-  return brands.find(b => brandToSlug(b) === slug);
+  return brands.find(b => brandSlug(b) === slug);
+}
+
+// Стара кирилична адреса (/shop/brand/сталь) — 308 на транслітерований слаг:
+// 12 таких URL лежали в sitemap і в індексі, хоч і віддавали 404. Викликається
+// і з generateMetadata (до старту стрімінгу, щоб редірект був справжнім 308),
+// і зі сторінки.
+function legacyBrandRedirect(slug: string, brands: string[]): void {
+  let decoded = slug;
+  try { decoded = decodeURIComponent(slug); } catch { /* сирий не-UTF8 — лишаємо як є */ }
+  const brand = brands.find(b => legacyBrandSlug(b) === decoded.toLowerCase());
+  if (brand) permanentRedirect(`/ru/shop/brand/${brandSlug(brand)}`);
 }
 
 export async function generateMetadata(
@@ -27,7 +49,10 @@ export async function generateMetadata(
   const brands = await getBrandsCached();
   const brand = findBrandBySlug(slug, brands);
 
-  if (!brand) return { robots: { index: false, follow: false }, alternates: { canonical: null } };
+  if (!brand) {
+    legacyBrandRedirect(slug, brands);
+    return { robots: { index: false, follow: false }, alternates: { canonical: null } };
+  }
 
   const allProducts = await getProductsCached();
   const brandProducts = allProducts.filter(
@@ -47,7 +72,10 @@ export default async function ShopBrandRuPage({ params }: { params: Promise<{ br
   ]);
   const brand = findBrandBySlug(slug, brands);
 
-  if (!brand) notFound();
+  if (!brand) {
+    legacyBrandRedirect(slug, brands);
+    notFound();
+  }
 
   const allBrandProducts = allProducts
     .filter(p => p.brand.trim().toLowerCase() === brand.trim().toLowerCase());
@@ -68,7 +96,7 @@ export default async function ShopBrandRuPage({ params }: { params: Promise<{ br
     '@type': 'ItemList',
     name: `${brand} — каталог товаров`,
     url: `${BASE}/ru/shop/brand/${slug}`,
-    numberOfItems: brandProducts.length,
+    numberOfItems: allBrandProducts.length,
     itemListElement: brandProducts.map((p, i) => ({
       '@type': 'ListItem',
       position: i + 1,

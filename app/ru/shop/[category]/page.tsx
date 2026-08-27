@@ -74,7 +74,7 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
     '@type': 'ItemList',
     name: nameRu,
     url: `${BASE}/ru/shop/${category}`,
-    numberOfItems: itemListProducts.length,
+    numberOfItems: allCategoryProducts.length,
     itemListElement: itemListProducts.map((p, i) => ({
       '@type': 'ListItem',
       position: i + 1,

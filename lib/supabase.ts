@@ -100,34 +100,54 @@ const PRODUCT_LIST_SELECT_B2B = `${PRODUCT_LIST_BASE},
   characteristics:product_characteristics(label, value)
 `;
 
+type PostgrestList = {
+  limit(n: number): PromiseLike<{ data: unknown[] | null; error: unknown }>;
+  order(column: string): PostgrestList;
+  range(from: number, to: number): PromiseLike<{ data: unknown[] | null; error: unknown }>;
+};
+
+/**
+ * Вибірка без явного ліміту йде посторінково через fetchAllRows: PostgREST
+ * мовчки ріже відповідь на 1000 рядків, і при рості каталогу товари тихо зникали б
+ * із sitemap, листингів і generateStaticParams. Будівник запиту — функція, а не
+ * готовий об'єкт: builder мутабельний, і .range() кожної сторінки має лягати на
+ * свіжий запит. Другий ключ сортування (sku) — щоб сторінки не «пливли» на
+ * однакових sort_order.
+ */
+async function loadProducts<T>(build: () => PostgrestList, limit?: number): Promise<T[]> {
+  if (limit) {
+    const { data, error } = await build().limit(limit);
+    if (error) throw error;
+    return (data ?? []) as T[];
+  }
+  return fetchAllRows<T>((f, t) => build().order('sku').range(f, t) as PromiseLike<{ data: T[] | null; error: unknown }>);
+}
+
 export async function getProducts(opts?: {
   category?: string;
   search?: string;
   inStockOnly?: boolean;
   limit?: number;
 }): Promise<ProductPublic[]> {
-  let query = supabase
-    .from('products')
-    .select(PRODUCT_LIST_SELECT)
-    .eq('is_active', true)
-    .order('sort_order');
-
-  if (opts?.category) {
-    query = query.eq('category_slug', opts.category);
-  }
-  if (opts?.search) {
-    const term = `%${escapeOrTerm(opts.search)}%`;
-    query = query.or(`name.ilike.${term},sku.ilike.${term},brand.ilike.${term}`);
-  }
-  if (opts?.inStockOnly) {
-    query = query.eq('product_stock.stock_status', 'in_stock');
-  }
-  if (opts?.limit) {
-    query = query.limit(opts.limit);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
+  const build = () => {
+    let query = supabase
+      .from('products')
+      .select(PRODUCT_LIST_SELECT)
+      .eq('is_active', true)
+      .order('sort_order');
+    if (opts?.category) {
+      query = query.eq('category_slug', opts.category);
+    }
+    if (opts?.search) {
+      const term = `%${escapeOrTerm(opts.search)}%`;
+      query = query.or(`name.ilike.${term},sku.ilike.${term},brand.ilike.${term}`);
+    }
+    if (opts?.inStockOnly) {
+      query = query.eq('product_stock.stock_status', 'in_stock');
+    }
+    return query as unknown as PostgrestList;
+  };
+  const data = await loadProducts<ProductPublic>(build, opts?.limit);
 
   // Товари без наявності — в кінець
   const sorted = (data ?? []).sort((a, b) => {
@@ -145,12 +165,11 @@ export async function getProducts(opts?: {
  * а окремий імпорт видно на очі при рев'ю.
  */
 export async function getProductsB2B(): Promise<ProductB2B[]> {
-  const { data, error } = await supabase
+  const data = await loadProducts<ProductB2B>(() => supabase
     .from('products')
     .select(PRODUCT_LIST_SELECT_B2B)
     .eq('is_active', true)
-    .order('sort_order');
-  if (error) throw error;
+    .order('sort_order') as unknown as PostgrestList);
 
   const sorted = (data ?? []).sort((a, b) => {
     const aOut = (a as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
@@ -166,29 +185,26 @@ export async function getProductsLight(opts?: {
   search?: string;
   limit?: number;
 }): Promise<ProductListItem[]> {
-  let query = supabase
-    .from('products')
-    .select(`
-      id, sku, slug, name, name_ru, brand, category_slug, is_active, sort_order,
-      nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
-      stock:product_stock(price_retail, price_retail_old, price_promo, price_old, price_unit, stock_status, stock_qty)
-    `)
-    .eq('is_active', true)
-    .order('sort_order');
-
-  if (opts?.category) {
-    query = query.eq('category_slug', opts.category);
-  }
-  if (opts?.search) {
-    const term = `%${escapeOrTerm(opts.search)}%`;
-    query = query.or(`name.ilike.${term},sku.ilike.${term},brand.ilike.${term}`);
-  }
-  if (opts?.limit) {
-    query = query.limit(opts.limit);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
+  const build = () => {
+    let query = supabase
+      .from('products')
+      .select(`
+        id, sku, slug, name, name_ru, brand, category_slug, is_active, sort_order,
+        nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
+        stock:product_stock(price_retail, price_retail_old, price_promo, price_old, price_unit, stock_status, stock_qty)
+      `)
+      .eq('is_active', true)
+      .order('sort_order');
+    if (opts?.category) {
+      query = query.eq('category_slug', opts.category);
+    }
+    if (opts?.search) {
+      const term = `%${escapeOrTerm(opts.search)}%`;
+      query = query.or(`name.ilike.${term},sku.ilike.${term},brand.ilike.${term}`);
+    }
+    return query as unknown as PostgrestList;
+  };
+  const data = await loadProducts<ProductListItem>(build, opts?.limit);
 
   const sorted = (data ?? []).sort((a, b) => {
     const aOut = (a as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
@@ -328,6 +344,33 @@ export const getProductsB2BCached = unstable_cache(
 export const getProductsLightCached = unstable_cache(
   async (opts?: { category?: string; limit?: number }) => getProductsLight(opts),
   ['products-light'],
+  { revalidate: 60, tags: ['products'] }
+);
+
+/**
+ * Товари для sitemap: лише те, що потрібно карті сайту, — адреса, бренд,
+ * категорія й ДАТА ЗМІНИ. Раніше sitemap брав getProductsCached(), а в тій
+ * вибірці немає updated_at (її свідомо тримають вузькою: усе з неї їде в
+ * браузер), тож lastmod усіх 1 550 товарних URL мовчки падав на дату збірки
+ * статичних сторінок — 1 680 однакових дат, які Google помічає як недостовірні
+ * й перестає враховувати. Окрема вибірка не роздуває листинги й віддає
+ * справжню дату: тригер products_updated_at ставить її на кожен UPDATE
+ * картки, а ціни й залишки живуть у product_stock і її не смикають.
+ */
+export type SitemapProduct = Pick<Product, 'sku' | 'slug' | 'brand' | 'category_slug' | 'updated_at'>;
+
+export async function getSitemapProducts(): Promise<SitemapProduct[]> {
+  return fetchAllRows<SitemapProduct>((f, t) =>
+    supabase.from('products')
+      .select('sku, slug, brand, category_slug, updated_at')
+      .eq('is_active', true)
+      .order('sort_order').order('sku')
+      .range(f, t));
+}
+
+export const getSitemapProductsCached = unstable_cache(
+  async () => getSitemapProducts(),
+  ['products-sitemap'],
   { revalidate: 60, tags: ['products'] }
 );
 

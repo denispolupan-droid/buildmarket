@@ -82,7 +82,7 @@ export default function HomeSearch({ lang }: { lang: 'uk' | 'ru' }) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (active >= 0 && found[active]) {
-      go(`${prefix}/product/${found[active].slug ?? found[active].sku}?from=shop`);
+      go(`${prefix}/product/${found[active].slug ?? found[active].sku}`);
     } else if (q.trim()) {
       go(shopHref);
     }
@@ -134,7 +134,7 @@ export default function HomeSearch({ lang }: { lang: 'uk' | 'ru' }) {
             return (
               <Link
                 key={p.sku}
-                href={`${prefix}/product/${p.slug ?? p.sku}?from=shop`}
+                href={`${prefix}/product/${p.slug ?? p.sku}`}
                 className={`home-search-row${i === active ? ' home-search-row--active' : ''}`}
                 onClick={() => setOpen(false)}
                 onMouseEnter={() => setActive(i)}

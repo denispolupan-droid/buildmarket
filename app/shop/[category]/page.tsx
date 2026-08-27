@@ -78,7 +78,7 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
     '@type': 'ItemList',
     name: cat.name,
     url: `${BASE}/shop/${category}`,
-    numberOfItems: itemListProducts.length,
+    numberOfItems: allCategoryProducts.length,
     itemListElement: itemListProducts.map((p, i) => ({
       '@type': 'ListItem',
       position: i + 1,

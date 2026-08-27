@@ -21,8 +21,7 @@ export const metadata: Metadata = {
     description: 'Статьи о герметиках, монтажной пене и клеях: выбор, применение, типичные ошибки.',
     url: `${BASE}/ru/blog`,
     siteName: 'FIXLINE',
-    // ru_UA, а не ru_RU: сайт орієнтований на Україну, як і решта /ru-сторінок
-    locale: 'ru_UA',
+    locale: 'ru_RU',
     type: 'website',
     images: [{ url: `${BASE}/opengraph-image`, width: 1200, height: 630, alt: 'FIXLINE — строительная химия' }],
   },

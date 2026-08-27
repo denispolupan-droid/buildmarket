@@ -5,9 +5,8 @@ export const metadata: Metadata = {
   title: 'Сторінку не знайдено',
   // robots не задаємо: Next сам додає <meta name="robots" content="noindex"/>
   // для not-found — власний тег давав дубль
-  // Кореневий layout задає canonical на головну, і 404 успадковувала його —
-  // сторінка помилки оголошувала себе копією головної. Явний null прибирає тег:
-  // при коректному 404 канонічної адреси в неї просто немає.
+  // У 404 немає канонічної адреси. Кореневий layout canonical більше не задає,
+  // але явний null лишаємо — щоб тег не з'явився знову, якщо хтось поверне.
   alternates: { canonical: null },
 };
 
@@ -30,7 +29,7 @@ export default function NotFound() {
           Можливо, товар було видалено або URL введено некоректно
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link href="/catalog" style={{
+          <Link href="/shop" style={{
             height: '44px', padding: '0 24px', borderRadius: '10px',
             background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700,
             display: 'inline-flex', alignItems: 'center',

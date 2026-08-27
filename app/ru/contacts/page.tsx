@@ -28,6 +28,7 @@ export default function ContactsRuPage() {
   const localBusinessLd = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
+    '@id': `${BASE}/#organization`,
     name: 'FIXLINE',
     description: 'B2B поставщик строительной химии: герметики, клеи, монтажные пены',
     url: BASE,

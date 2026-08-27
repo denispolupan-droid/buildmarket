@@ -100,6 +100,7 @@ export default async function AboutRuPage() {
   const orgLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    '@id': `${BASE}/#organization`,
     name: 'FIXLINE',
     url: BASE,
     logo: `${BASE}/fixline-logo.png`,

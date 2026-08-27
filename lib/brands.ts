@@ -1,6 +1,4 @@
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
-}
+import { brandSlug as brandToSlug } from './seo/slug';
 
 export type BrandTile = {
   name: string;

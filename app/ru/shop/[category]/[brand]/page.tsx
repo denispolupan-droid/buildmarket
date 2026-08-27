@@ -13,9 +13,7 @@ const BASE = 'https://fixline.com.ua';
 
 export const revalidate = 3600;
 
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
-}
+import { brandSlug as brandToSlug } from '../../../../../lib/seo/slug';
 
 async function resolveParams(categorySlug: string, brandSlug: string) {
   const [categories, products] = await Promise.all([
@@ -121,7 +119,7 @@ export default async function ShopCategoryBrandRuPage(
     '@type': 'ItemList',
     name: `${brandName} ${catNameRu}`,
     url: `${BASE}/ru/shop/${category}/${brandSlug}`,
-    numberOfItems: pageProducts.length,
+    numberOfItems: allPageProducts.length,
     itemListElement: pageProducts.map((p, i) => ({
       '@type': 'ListItem',
       position: i + 1,

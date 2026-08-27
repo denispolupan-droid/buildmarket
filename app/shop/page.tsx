@@ -4,9 +4,7 @@ import Footer from '../components/Footer';
 import ShopLoader from './ShopLoader';
 import './shop.css';
 
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
-}
+import { brandSlug as brandToSlug } from '../../lib/seo/slug';
 
 const BASE = 'https://fixline.com.ua';
 

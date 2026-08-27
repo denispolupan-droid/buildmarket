@@ -51,9 +51,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return productMeta(product, 'ru');
 }
 
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
-}
+import { brandSlug as brandToSlug } from '../../../../lib/seo/slug';
+import { offerExtras } from '../../../../lib/seo/offer-ld';
 
 // Подпись к фасовке по единице: у лент это размер, а не объём —
 // «Объём: 30 мм» читалось как ошибка данных.
@@ -176,7 +175,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
         priceCurrency: 'UAH',
         price: priceUnit,
         availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
+        ...offerExtras(`${BASE}${productPath(product, 'ru')}`),
       },
     } : {}),
     ...(product.characteristics.length > 0 ? {

@@ -23,6 +23,7 @@ export default function ContactsPage() {
   const localBusinessLd = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
+    '@id': 'https://fixline.com.ua/#organization',
     name: 'FIXLINE',
     description: 'B2B постачальник будівельної хімії: герметики, клеї, монтажні піни',
     url: 'https://fixline.com.ua',

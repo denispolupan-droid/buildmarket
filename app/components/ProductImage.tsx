@@ -14,6 +14,8 @@ export type ProductImageProps = {
   variant?: 'front' | 'angle' | 'label'
   imageUrl?: string  // real photo URL — takes priority over SVG
   priority?: boolean // LCP-зображення (головне фото картки товару): preload, eager, без fade
+  alt?: string       // повна назва товару; без неї alt складається з рядків етикетки
+  sizes?: string     // sizes для srcset; без нього браузер на ретині бере w=3840
 }
 
 /* ─── Tube front view ─────────────────────────────────────────── */
@@ -180,7 +182,7 @@ function CanisterAngle({ brand, nl1, nl2, volume, bc = '#1A3A6A', ac = '#3A80C0'
 /* ─── Real photo — fades in on load instead of popping in once the
    network request resolves, so it doesn't visually clash with the
    surrounding scroll-reveal animation ──────────────────────────── */
-function FadeProductImage({ imageUrl, alt, priority }: { imageUrl: string; alt: string; priority?: boolean }) {
+function FadeProductImage({ imageUrl, alt, priority, sizes }: { imageUrl: string; alt: string; priority?: boolean; sizes?: string }) {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => { setLoaded(false); }, [imageUrl]);
   // LCP-зображення не можна ані лінивити, ані ховати в opacity:0 до onLoad —
@@ -195,6 +197,7 @@ function FadeProductImage({ imageUrl, alt, priority }: { imageUrl: string; alt: 
         height={400}
         priority
         fetchPriority="high"
+        sizes={sizes ?? '(max-width: 640px) 100vw, 500px'}
         style={{ height: '100%', width: '100%', objectFit: 'contain', display: 'block' }}
       />
     );
@@ -207,7 +210,7 @@ function FadeProductImage({ imageUrl, alt, priority }: { imageUrl: string; alt: 
       width={400}
       height={400}
       quality={90}
-      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 500px"
+      sizes={sizes ?? '(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 500px'}
       style={{
         height: '100%', width: '100%', objectFit: 'contain', display: 'block',
         opacity: loaded ? 1 : 0, transition: 'opacity 350ms ease',
@@ -224,10 +227,12 @@ export default function ProductImage({
   variant = 'front',
   imageUrl,
   priority,
+  alt,
+  sizes,
   ...rest
 }: ProductImageProps) {
   if (imageUrl) {
-    return <FadeProductImage imageUrl={imageUrl} priority={priority} alt={[rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')} />;
+    return <FadeProductImage imageUrl={imageUrl} priority={priority} sizes={sizes} alt={alt ?? [rest.brand, rest.nl1, rest.nl2, rest.volume].filter(Boolean).join(' ')} />;
   }
   if (type === 'canister') {
     return variant === 'angle'

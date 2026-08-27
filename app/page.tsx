@@ -80,6 +80,7 @@ export default async function Home() {
   const orgLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    '@id': 'https://fixline.com.ua/#organization',
     name: 'FIXLINE',
     url: 'https://fixline.com.ua',
     logo: 'https://fixline.com.ua/fixline-logo.png',
@@ -104,6 +105,7 @@ export default async function Home() {
   const localBusinessLd = {
     '@context': 'https://schema.org',
     '@type': ['LocalBusiness', 'HardwareStore'],
+    '@id': 'https://fixline.com.ua/#organization',
     name: 'FIXLINE',
     description: 'B2B постачальник будівельної хімії: герметики, монтажні піни, клеї, ґрунтовки оптом і в роздріб.',
     url: 'https://fixline.com.ua',

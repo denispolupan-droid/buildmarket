@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     description: 'Продавайте строительную химию без склада. Балансовая система, автоматическое оформление заказов по Украине.',
     url: `${BASE}/ru/dropship`,
     siteName: 'FIXLINE',
-    locale: 'ru_UA',
+    locale: 'ru_RU',
     type: 'website',
     images: [{ url: `${BASE}/opengraph-image`, width: 1200, height: 630, alt: 'FIXLINE — дропшиппинг строительной химии' }],
   },

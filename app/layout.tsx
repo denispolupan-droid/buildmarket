@@ -19,14 +19,11 @@ export const metadata: Metadata = {
   description: 'B2B платформа для оптових закупівель будівельної хімії. Герметики, монтажні піни, клеї, рідкі цвяхи. Оптові ціни для дилерів та підрядників. Строительная химия оптом по Украине.',
   keywords: ['будівельна хімія', 'строительная химия', 'герметики', 'монтажна піна', 'монтажная пена', 'клеї оптом', 'клеи оптом', 'будівельна хімія оптом', 'строительная химия оптом', 'Україна', 'Украина'],
   metadataBase: new URL('https://fixline.com.ua'),
-  alternates: {
-    canonical: 'https://fixline.com.ua',
-    languages: {
-      'uk': 'https://fixline.com.ua',
-      'ru': 'https://fixline.com.ua/ru',
-      'x-default': 'https://fixline.com.ua',
-    },
-  },
+  // canonical і hreflang тут НЕ задаємо. Кореневі alternates успадковує кожна
+  // сторінка без власних — /cart, /login, /register, /account, /order-success,
+  // /invoice, /vidatkova, «товар не знайдено» — і всі вони оголошували себе
+  // копією головної. Індексовані сторінки задають canonical самі (lib/seo/meta,
+  // generateMetadata), а службовим він і не потрібен.
   openGraph: {
     siteName: 'FIXLINE',
     locale: 'uk_UA',
@@ -38,10 +35,9 @@ export const metadata: Metadata = {
     title: 'FIXLINE — будівельна хімія оптом',
     description: 'Герметики, монтажні піни, клеї — гуртом та в роздріб по всій Україні.',
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  // robots: index, follow — це і так поведінка за замовчуванням, а явний тег
+  // тут давав на 404-й два суперечливі <meta robots> (noindex від Next і
+  // index, follow від layout). Сторінки з noindex задають його самі.
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

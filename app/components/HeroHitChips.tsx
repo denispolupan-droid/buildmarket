@@ -55,7 +55,7 @@ export default function HeroHitChips({ products, lang }: Props) {
             const name = lang === 'ru' ? (p.name_ru ?? p.name) : p.name;
             if (price == null) return null;
             return (
-              <Link key={p.sku} href={`${prefix}/product/${p.slug ?? p.sku}?from=shop`} className="home-hit-card" title={name}>
+              <Link key={p.sku} href={`${prefix}/product/${p.slug ?? p.sku}`} className="home-hit-card" title={name}>
                 <span className="home-hit-card__img">
                   <ProductImage
                     brand={p.brand} nl1={p.nl1 ?? ''} nl2={p.nl2 ?? undefined}

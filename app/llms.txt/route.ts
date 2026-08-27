@@ -23,7 +23,7 @@ function price(stock: Row['stock']): number | null {
   return s.price_promo ?? s.price_retail ?? null;
 }
 
-const brandToSlug = (brand: string) => brand.trim().toLowerCase().replace(/\s+/g, '-');
+import { brandSlug as brandToSlug } from '../../lib/seo/slug';
 
 export async function GET() {
   const supabase = getSupabase();

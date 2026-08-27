@@ -95,6 +95,7 @@ export default async function AboutPage() {
   const orgLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    '@id': 'https://fixline.com.ua/#organization',
     name: 'FIXLINE',
     url: 'https://fixline.com.ua',
     logo: 'https://fixline.com.ua/fixline-logo.png',

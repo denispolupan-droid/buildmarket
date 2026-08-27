@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     description: `Оптовые цены для дилеров, подрядчиков и магазинов. Минимальный заказ ${WHOLESALE_MIN} грн, доставка по всей Украине.`,
     url: `${BASE}/ru/opt`,
     siteName: 'FIXLINE',
-    locale: 'ru_UA',
+    locale: 'ru_RU',
     type: 'website',
     images: [{ url: `${BASE}/opengraph-image`, width: 1200, height: 630, alt: 'FIXLINE — строительная химия оптом' }],
   },

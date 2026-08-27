@@ -3,8 +3,9 @@ import { AI_BOT_TOKENS_ALLOWED, AI_BOT_TOKENS_TRAINING } from '../lib/ai-crawler
 
 // Приватні розділи: кабінети, кошик, службові й персональні сторінки. Список
 // один на всі групи — див. коментар нижче, чому його доводиться повторювати.
+// /_next/ тут навмисно НЕМАЄ: Google рендерить сторінки і просить не закривати
+// JS/CSS/зображення, інакше в Search Console «заблоковані ресурси».
 const DISALLOW = [
-  '/_next/',
   '/admin/',
   '/cabinet/',
   '/account/',
@@ -18,6 +19,7 @@ const DISALLOW = [
   '/catalog',
   '/ru/catalog',
   '/api/',
+  '/pricelist-preview',
 ];
 
 export default function robots(): MetadataRoute.Robots {

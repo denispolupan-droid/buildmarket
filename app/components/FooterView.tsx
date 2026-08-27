@@ -9,9 +9,7 @@ import type { Category } from '../../lib/supabase';
 import LanguageSwitcher from './LanguageSwitcher';
 import CopyEmailButton from './CopyEmailButton';
 
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
-}
+import { brandSlug as brandToSlug } from '../../lib/seo/slug';
 
 function ViberIcon() {
   return (

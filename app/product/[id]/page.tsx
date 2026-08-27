@@ -52,9 +52,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return productMeta(product, 'uk');
 }
 
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
-}
+import { brandSlug as brandToSlug } from '../../../lib/seo/slug';
+import { offerExtras } from '../../../lib/seo/offer-ld';
 
 // Підпис до фасовки за одиницею: у стрічок це розмір, а не об'єм —
 // «Об'єм: 30 мм» читалось як помилка даних.
@@ -165,7 +164,6 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: productFullName,
-    alternateName: productFullName,
     sku: product.sku,
     brand: { '@type': 'Brand', name: product.brand },
     // Повний опис, а не короткий тизер: у структурованих даних Google читає саме
@@ -186,7 +184,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         availability: inStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
-        seller: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
+        ...offerExtras(`${BASE}${productPath(product)}`),
       },
     } : {}),
     ...(product.characteristics.length > 0 ? {

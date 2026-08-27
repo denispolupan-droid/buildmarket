@@ -126,6 +126,13 @@ const nextConfig: NextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      // Фото товарів: у назві файлу хеш вмісту ({sku}-{sha256:10}.webp, див.
+      // upload-image), тож адреса ніколи не міняє вміст — можна кешувати рік.
+      // R2 віддавав max-age=14400, і кожні 4 години CDN ходив по картинки заново.
+      {
+        source: '/img/products/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
     ];
   },
 };

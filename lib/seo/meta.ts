@@ -48,6 +48,17 @@ const T = {
 
 const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 
+/** Обрізає текст до max символів по межі речення (якщо вона не надто рано) або слова. */
+export function clampDescription(text: string, max: number): string {
+  const s = collapse(text);
+  if (s.length <= max) return s;
+  const head = s.slice(0, max);
+  const sentence = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '));
+  if (sentence >= max * 0.6) return head.slice(0, sentence + 1);
+  const word = head.lastIndexOf(' ');
+  return (word > 0 ? head.slice(0, word) : head).replace(/[,;:—-]$/, '') + '…';
+}
+
 /** Канонічний шлях товару: ЧПУ-слаг, з фолбеком на SKU (старі URL 308-редіректяться). */
 export function productPath(p: { slug?: string | null; sku: string }, lang: Lang = 'uk'): string {
   const path = `/product/${p.slug ?? p.sku}`;
@@ -314,7 +325,10 @@ export function listingStats(products: { stock: ProductStockPublic | null }[]): 
 
 function listingDescription(name: string, stats: ListingStats, lang: Lang, curated?: string | null): string {
   const t = T[lang];
-  if (curated) return curated;
+  // Кураторські описи писались як текст, а не як сніпет: 7 uk і 8 ru довші за
+  // 160 символів (до 187), і Google обрізав їх посеред слова. Ріжемо по межі
+  // речення або слова — самі тексти в lib/category-descriptions* не чіпаємо.
+  if (curated) return clampDescription(curated, 160);
   const range = stats.minPrice && stats.maxPrice && stats.maxPrice > stats.minPrice
     ? `, ${t.pricesFromTo(stats.minPrice, stats.maxPrice)}`
     : stats.minPrice ? `, ${t.priceFrom} ${stats.minPrice} ${t.uah}` : '';

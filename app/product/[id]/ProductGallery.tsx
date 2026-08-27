@@ -33,6 +33,7 @@ export default function ProductGallery({ product, priceOld, priceUnit }: Props) 
             volume={product.volume ?? ''} bc={product.bc} ac={product.ac}
             type={product.img_type} variant="front"
             imageUrl={product.image ?? undefined}
+            alt={`${product.name}${product.volume && !product.name.includes(product.volume) ? ` ${product.volume}` : ''}`}
             priority
           />
           {priceOld && priceUnit > 0 && (

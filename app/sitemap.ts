@@ -1,11 +1,8 @@
 import { MetadataRoute } from 'next';
-import { getProductsCached, getCategoriesCached } from '../lib/supabase';
+import { getSitemapProductsCached, getCategoriesCached } from '../lib/supabase';
 import { getPublishedPostsCached } from '../lib/blog-db';
 import { categoriesWithProducts, duplicateOfParent } from '../lib/seo/meta';
-
-function brandToSlug(brand: string): string {
-  return brand.trim().toLowerCase().replace(/\s+/g, '-');
-}
+import { brandSlug as brandToSlug } from '../lib/seo/slug';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -19,7 +16,7 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [products, categories, dbPosts] = await Promise.all([
-    getProductsCached(), getCategoriesCached(), getPublishedPostsCached(),
+    getSitemapProductsCached(), getCategoriesCached(), getPublishedPostsCached(),
   ]);
 
   // Листинг блогу змінюється щоразу, коли виходить чи правиться стаття — беремо

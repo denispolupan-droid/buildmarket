@@ -9,6 +9,7 @@ import { getCategoriesCached, getProductsLightCached } from '../../../lib/supaba
 import { categoriesWithProducts } from '../../../lib/seo/meta';
 import { CATEGORY_COLORS } from '../../../lib/category-icons';
 import ArticleProducts from './ArticleProducts';
+import { ORG_ID } from '../../../lib/seo/offer-ld';
 
 // Рендер статті з БД — той самий шаблон, що й у статичних статей (lib/blog.ts),
 // тіло — довірений HTML з нашого AI-конвеєра через .article-body.
@@ -76,8 +77,11 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
     image: `${BASE}${cover}`,
     datePublished: date,
     dateModified: post.updated_at,
-    author: { '@type': 'Person', name: lang === 'ru' ? 'Редакция FIXLINE' : 'Редакція FIXLINE' },
-    publisher: { '@type': 'Organization', name: 'FIXLINE', url: BASE },
+    // Автор — організація, а не «Person» з назвою редакції: Google трактує
+    // Person буквально, і вигаданої людини в графі бути не повинно.
+    author: { '@type': 'Organization', '@id': ORG_ID, name: 'FIXLINE', url: BASE },
+    publisher: { '@type': 'Organization', '@id': ORG_ID, name: 'FIXLINE', url: BASE, logo: { '@type': 'ImageObject', url: `${BASE}/fixline-logo.png` } },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${BASE}${prefix}/blog/${post.slug}` },
     url: `${BASE}${prefix}/blog/${post.slug}`,
   };
 
