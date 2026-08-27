@@ -9,7 +9,7 @@ export type PageAction = {
   page_path: string;
   last_at: string;
   total: number;
-  kinds: ('article_boost' | 'article_products' | 'article_new' | 'product_boost' | 'cover' | 'meta_rewrite')[];
+  kinds: ('article_boost' | 'article_products' | 'article_new' | 'article_categories' | 'product_boost' | 'cover' | 'meta_rewrite')[];
   query: string | null;
   products: number | null;
 };
@@ -17,6 +17,7 @@ export type PageAction = {
 export const KIND_LABEL: Record<string, string> = {
   article_boost: 'дожим статті',
   article_products: 'товари',
+  article_categories: 'категорії',
   article_new: 'нова стаття',
   product_boost: 'перепис картки',
   cover: 'обкладинка',

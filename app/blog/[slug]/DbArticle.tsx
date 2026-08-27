@@ -10,6 +10,7 @@ import { categoriesWithProducts } from '../../../lib/seo/meta';
 import { CATEGORY_COLORS } from '../../../lib/category-icons';
 import ArticleProducts from './ArticleProducts';
 import { ORG_ID } from '../../../lib/seo/offer-ld';
+import { linkCategoriesInHtml } from '../../../lib/article-links';
 
 // Рендер статті з БД — той самий шаблон, що й у статичних статей (lib/blog.ts),
 // тіло — довірений HTML з нашого AI-конвеєра через .article-body.
@@ -149,7 +150,8 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
             )}
 
             {/* На /ru внутрішні посилання в тілі статті отримують префікс /ru */}
-            <div className="article-body" dangerouslySetInnerHTML={{ __html: localizeArticleHtml(t.content, lang) }} />
+            {/* Перше згадування категорії в тексті — посилання на неї (lib/article-links), потім /ru-префікси */}
+            <div className="article-body" dangerouslySetInnerHTML={{ __html: localizeArticleHtml(linkCategoriesInHtml(t.content, shopLinks, lang), lang) }} />
 
             {/* Товари статті — ціни й наявність живі, не з тексту */}
             <ArticleProducts skus={post.product_skus ?? []} lang={lang} />
