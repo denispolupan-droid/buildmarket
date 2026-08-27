@@ -42,7 +42,7 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
   'hidroizolyatsiya':           'Гидроизоляция',
   'hidroizolyatsiyni-mastyky':  'Гидроизоляционные мастики',
   'bitumni-mastyky':            'Битумные мастики',
-  'praimery':                   'Праймеры',
+  'praimery':                   'Битумные праймеры',
 
   // Защита дерева
   'zakhyst-derevyny':  'Защита дерева',
