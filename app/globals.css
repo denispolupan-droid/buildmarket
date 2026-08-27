@@ -1716,90 +1716,36 @@ input, select { font-family: inherit; }
   .cat-about-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
 }
 
-/* ── Гід покупця на сторінці категорії (CategoryAbout → meta.guide) ────────
-   Картка у кольорі родини: нитка ліворуч — той самий мотив, що гілка сайдбара
-   (.cat-branch). Згорнутий стан — лише max-height + затухання до фону картки:
-   текст цілком лишається в HTML, пошук читає його повністю. */
-.cat-guide {
-  position: relative;
-  margin-top: 32px;
-  padding: 24px 28px 28px 32px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-}
-.cat-guide::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-  background: var(--brand-blue);
-  background: linear-gradient(to bottom,
-    color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 85%, transparent),
-    color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 35%, transparent));
-}
-.cat-guide-head {
-  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;
-}
-.cat-guide-title {
-  font-size: clamp(19px, 2vw, 23px); font-weight: 800; line-height: 1.25;
-  color: var(--text-primary); margin: 6px 0 0; letter-spacing: -0.3px;
-}
-.cat-guide-toggle {
-  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
-  height: 38px; padding: 0 16px; margin-top: 4px;
-  border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 45%, transparent);
-  background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 10%, transparent);
-  color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
-}
-.cat-guide-toggle:hover { background: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 18%, transparent); transform: translateY(-1px); }
-[data-theme="dark"] .cat-guide-toggle { color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 60%, white); }
-
-/* Тіло: текст + оглавлення праворуч. Згорнуто — 3 рядки після заголовка й
-   затухання; оглавлення в згорнутому стані сховане, бо тягнуло б висоту. */
+/* ── Гід «Як вибрати» на сторінці категорії (CategoryAbout → meta.guide) ────
+   Продовження лівої колонки «Про категорію» тією самою типографікою.
+   Згорнутий стан — лише max-height + затухання до фону сторінки: текст цілком
+   лишається в HTML, пошук читає його повністю. */
 .cat-guide-body {
-  display: grid; grid-template-columns: minmax(0, 68ch) minmax(200px, 1fr);
-  gap: 40px; align-items: start; margin-top: 18px;
-  max-height: 7.4em; overflow: hidden; position: relative;
+  position: relative; overflow: hidden;
+  max-height: 6.6em;
   transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .cat-guide.is-open .cat-guide-body { max-height: 400em; }
 .cat-guide-body::after {
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4.5em; pointer-events: none;
-  background: linear-gradient(to bottom, transparent, var(--bg-card) 80%);
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3.2em; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg-soft) 85%);
   transition: opacity 0.3s;
 }
 .cat-guide.is-open .cat-guide-body::after { opacity: 0; }
-.cat-guide-toc { display: none; position: sticky; top: 96px; }
-.cat-guide.is-open .cat-guide-toc { display: block; }
-.cat-guide-toc ol { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; color: var(--text-secondary); }
-.cat-guide-toc li { margin: 6px 0; }
-.cat-guide-toc a { color: inherit; text-decoration: none; }
-.cat-guide-toc a:hover { color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black); }
-.cat-guide-text section { scroll-margin-top: 96px; }
-.cat-guide-h3 { font-size: 16.5px; font-weight: 700; color: var(--text-primary); margin: 22px 0 4px; }
-.cat-guide-text section:first-child .cat-guide-h3 { margin-top: 0; }
-.cat-guide-p { font-size: 15px; line-height: 1.75; color: var(--text-secondary); margin: 10px 0 0; }
-.cat-guide-link { color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black); font-weight: 600; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 40%, transparent); text-underline-offset: 3px; }
-.cat-guide-link:hover { text-decoration-color: currentColor; }
-.cat-guide-more {
-  display: block; margin: 8px auto 0; padding: 8px 14px;
-  background: none; border: none; cursor: pointer;
-  font-size: 13px; font-weight: 700; color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 72%, black);
+.cat-guide-toggle {
+  display: inline-block; margin-top: 10px; padding: 0;
+  background: none; border: none; cursor: pointer; font-family: inherit;
 }
+.cat-guide-toggle:hover { text-decoration: underline; text-underline-offset: 3px; }
+.cat-guide-link { color: var(--brand-blue); font-weight: 600; text-decoration: underline; text-decoration-color: rgba(72, 128, 184, 0.35); text-underline-offset: 3px; }
+.cat-guide-link:hover { text-decoration-color: currentColor; }
 .cat-guide-chip {
   display: inline-flex; align-items: center; height: 32px; padding: 0 12px;
   border-radius: 999px; border: 1px solid var(--border); background: var(--bg-card);
   font-size: 13px; font-weight: 600; color: var(--text-primary); text-decoration: none;
   transition: border-color 0.15s, transform 0.15s;
 }
-.cat-guide-chip:hover { border-color: color-mix(in srgb, var(--cat-accent, var(--brand-blue)) 45%, transparent); transform: translateY(-1px); }
-@media (max-width: 1000px) {
-  .cat-guide { padding: 20px 18px 22px 22px; }
-  .cat-guide-body { grid-template-columns: 1fr; }
-  .cat-guide-toc { display: none !important; }
-}
+.cat-guide-chip:hover { border-color: var(--brand-blue); transform: translateY(-1px); }
 
 /* ── Спільні фірмові дрібниці контентних сторінок ─────────────────────────
    Заголовок секції в кольорі родини (--cat-accent з інлайну, фолбек синій) —
