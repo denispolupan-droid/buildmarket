@@ -1720,12 +1720,21 @@ input, select { font-family: inherit; }
    Продовження лівої колонки «Про категорію» тією самою типографікою.
    Згорнутий стан — лише max-height + затухання до фону сторінки: текст цілком
    лишається в HTML, пошук читає його повністю. */
+.cat-guide { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--border); }
 .cat-guide-body {
   position: relative; overflow: hidden;
-  max-height: 6.6em;
+  max-height: 6.2em;
   transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .cat-guide.is-open .cat-guide-body { max-height: 400em; }
+/* Згорнуто — одна колонка 68ch; розгорнуто на десктопі — дві колонки на всю
+   ширину, розділ не рветься між колонками. */
+.cat-guide-text { max-width: 68ch; }
+.cat-guide-text section { break-inside: avoid; }
+@media (min-width: 1001px) {
+  .cat-guide.is-open .cat-guide-text { max-width: none; column-count: 2; column-gap: 48px; }
+  .cat-guide.is-open .cat-guide-text section:first-child h3 { margin-top: 0; }
+}
 .cat-guide-body::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3.2em; pointer-events: none;
   background: linear-gradient(to bottom, transparent, var(--bg-soft) 85%);

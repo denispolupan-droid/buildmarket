@@ -16,7 +16,7 @@ import type { CategoryMeta } from '../../lib/category-descriptions';
 // сторінки (у магазину немає max-width) або лишала половину екрана порожньою,
 // або розтягувала рядок до нечитабельної довжини.
 //
-// Гайд (meta.guide) — ПРОДОВЖЕННЯ лівої колонки тією самою типографікою, а не
+// Гайд (meta.guide) — окремий ряд ПІД сіткою тією самою типографікою, а не
 // окрема картка: варіант із карткою в кольорі родини виглядав чужим віджетом
 // поруч із блоком «Про категорію» (інший колір, інша щільність). Навіщо гайд:
 // категорії стояли на позиціях 40–60 при живому попиті, бо для пошуку листинг
@@ -33,8 +33,8 @@ type Props = {
 };
 
 const T = {
-  uk: { eyebrow: 'Про категорію', faq: 'Часті питання', read: 'Читати статтю', related: 'Дивіться також', more: 'Читати повністю', less: 'Згорнути' },
-  ru: { eyebrow: 'О категории',   faq: 'Частые вопросы', read: 'Читать статью', related: 'Смотрите также', more: 'Читать полностью', less: 'Свернуть' },
+  uk: { eyebrow: 'Про категорію', faq: 'Часті питання', read: 'Читати статтю', related: 'Дивіться також', guide: 'Гід покупця', more: 'Читати повністю', less: 'Згорнути' },
+  ru: { eyebrow: 'О категории',   faq: 'Частые вопросы', read: 'Читать статью', related: 'Смотрите также', guide: 'Гид покупателя', more: 'Читать полностью', less: 'Свернуть' },
 };
 
 // Мінімальна розмітка посилань у прозі гайда: [текст](/shop/x) → <Link>. Без
@@ -116,30 +116,6 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
             )}
           </Reveal>
 
-          {/* Гайд — тією самою типографікою, згорнутий до заголовка й першого абзацу */}
-          {guide && (
-            <div className={`cat-guide${open ? ' is-open' : ''}`} style={{ maxWidth: '68ch' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: '28px 0 0', letterSpacing: '-0.2px' }}>
-                {guide.title}
-              </h3>
-              <div className="cat-guide-body">
-                {guide.sections.map(s => (
-                  <section key={s.h}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: '18px 0 0' }}>{s.h}</h4>
-                    {s.p.map((para, j) => (
-                      <p key={j} style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.75, margin: '8px 0 0' }}>
-                        {withLinks(para, prefix)}
-                      </p>
-                    ))}
-                  </section>
-                ))}
-              </div>
-              <button type="button" className="cat-guide-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open} style={linkStyle}>
-                {open ? `${t.less} ↑` : `${t.more} ↓`}
-              </button>
-            </div>
-          )}
-
           {faq.length === 0 && relatedBlock}
         </div>
 
@@ -165,6 +141,36 @@ export default function CategoryAbout({ lang, name, meta }: Props) {
           </div>
         )}
       </div>
+
+      {/* Гайд — окремим рядом під сіткою, у тому ж ритмі, що «Про категорію»:
+          той самий надзаголовок і розділювач. Згорнутий — заголовок і перший
+          абзац в одну колонку; розгорнутий — текст у дві колонки на всю ширину,
+          щоб 600 слів не витягували одну колонку, лишаючи другу порожньою. */}
+      {guide && (
+        <div className={`cat-guide${open ? ' is-open' : ''}`}>
+          <span className="eyebrow alt">{t.guide}</span>
+          <h2 style={{ fontSize: 'clamp(18px, 2vw, 22px)', fontWeight: 800, color: 'var(--text-primary)', margin: '8px 0 0', letterSpacing: '-0.3px' }}>
+            {guide.title}
+          </h2>
+          <div className="cat-guide-body">
+            <div className="cat-guide-text">
+              {guide.sections.map(sec => (
+                <section key={sec.h}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '18px 0 0' }}>{sec.h}</h3>
+                  {sec.p.map((para, j) => (
+                    <p key={j} style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.75, margin: '8px 0 0' }}>
+                      {withLinks(para, prefix)}
+                    </p>
+                  ))}
+                </section>
+              ))}
+            </div>
+          </div>
+          <button type="button" className="cat-guide-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open} style={linkStyle}>
+            {open ? `${t.less} ↑` : `${t.more} ↓`}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
