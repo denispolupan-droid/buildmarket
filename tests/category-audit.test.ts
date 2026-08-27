@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { auditCategories, catalogSentence, hasCategoryGap } from '../lib/seo/category-audit';
+import { auditCategories, catalogSentence, hasCategoryGap, nameCoversQuery } from '../lib/seo/category-audit';
 import type { CategoryMeta } from '../lib/category-descriptions';
 
 const BRANDS = ['Ceresit', 'AURA', 'Сталь', 'Титан', 'Lacrysil', 'Knauf'];
@@ -168,5 +168,75 @@ describe('auditCategories', () => {
       brands: BRANDS,
     });
     expect(hasCategoryGap(rows.find(r => r.slug === 'klei')!)).toBe(false);
+  });
+});
+
+describe('auditCategories — стандарт контенту (docs/CONTENT-STANDARD.md)', () => {
+  const guide = { title: 'Як вибрати', sections: [{ h: 'Коли потрібен', p: ['Абзац про вибір матеріалу.'] }, { h: 'Де купити і скільки коштує', p: ['У FIXLINE купити можна від 1 упаковки, ціна від 100 грн.'] }] };
+  const guideNoBuy = { title: 'Як вибрати', sections: [{ h: 'Коли потрібен', p: ['Абзац про вибір матеріалу без комерції.'] }] };
+  const five = (slug: string) => Array.from({ length: 5 }, () => prod(slug, 'Ceresit'));
+
+  it('немає гайда — лише при 5+ товарах і попиті ≥ 25 показів', () => {
+    const rows = auditCategories({
+      categories: [cat('a'), cat('b'), cat('c')],
+      products: [...five('a'), ...five('b'), prod('c', 'Ceresit')],
+      metaUa: { a: meta('У каталозі FIXLINE — Ceresit.', 7), b: meta('У каталозі FIXLINE — Ceresit.', 7), c: meta('У каталозі FIXLINE — Ceresit.', 7) },
+      metaRu: { a: meta('ru', 7), b: meta('ru', 7), c: meta('ru', 7) },
+      brands: BRANDS,
+      demand: { a: { impressions: 40, topQuery: null }, b: { impressions: 5, topQuery: null }, c: { impressions: 200, topQuery: null } },
+    });
+    expect(rows.find(r => r.slug === 'a')!.gaps.noGuide).toBe(true);
+    expect(rows.find(r => r.slug === 'b')!.gaps.noGuide).toBe(false); // попиту немає
+    expect(rows.find(r => r.slug === 'c')!.gaps.noGuide).toBe(false); // 1 товар — тонка, не гайд
+    expect(rows.find(r => r.slug === 'c')!.gaps.thinCategory).toBe(true);
+  });
+
+  it('гайд без «купити», рос. гайд відстає, FAQ < 7 при гайді', () => {
+    const rows = auditCategories({
+      categories: [cat('x')],
+      products: five('x'),
+      metaUa: { x: { ...meta('У каталозі FIXLINE — Ceresit.', 5), guide: guideNoBuy } },
+      metaRu: { x: meta('ru', 5) },
+      brands: BRANDS,
+    });
+    const row = rows.find(r => r.slug === 'x')!;
+    expect(row.gaps.guideNoBuy).toBe(true);
+    expect(row.gaps.ruGuideBehind).toBe(true);
+    expect(row.gaps.thinFaq).toBe(true); // 5 < 7, бо є гайд
+    expect(row.guideWords.ua).toBeGreaterThan(0);
+  });
+
+  it('повний гайд обома мовами й 7 FAQ — без міток', () => {
+    const rows = auditCategories({
+      categories: [cat('y')],
+      products: five('y'),
+      metaUa: { y: { ...meta('У каталозі FIXLINE — Ceresit.', 7), guide } },
+      metaRu: { y: { ...meta('ru', 7), guide } },
+      brands: BRANDS,
+      demand: { y: { impressions: 100, topQuery: 'купити y' } },
+    });
+    const row = rows.find(r => r.slug === 'y')!;
+    expect(row.gaps.noGuide).toBe(false);
+    expect(row.gaps.guideNoBuy).toBe(false);
+    expect(row.gaps.ruGuideBehind).toBe(false);
+    expect(row.gaps.thinFaq).toBe(false);
+  });
+
+  it('H1 ≠ запит: перше значуще слово запиту має бути в назві uk або ru', () => {
+    expect(nameCoversQuery(['Праймери'], 'бітумний праймер')).toBe(false);
+    expect(nameCoversQuery(['Бітумні праймери'], 'бітумний праймер')).toBe(true);
+    expect(nameCoversQuery(['Морилки та тонуючі засоби'], 'морилка для дерева')).toBe(true);
+    expect(nameCoversQuery(['Фарби та покриття'], 'купити фарбу')).toBe(true);
+    expect(nameCoversQuery(['Клей для шпалер', 'Клей для обоев'], 'клей для обоев цена')).toBe(true);
+    const rows = auditCategories({
+      categories: [cat('praimery', 'Праймери')],
+      products: five('praimery'),
+      metaUa: { praimery: { ...meta('У каталозі FIXLINE — Ceresit.', 7), guide } },
+      metaRu: { praimery: { ...meta('ru', 7), guide } },
+      brands: BRANDS,
+      demand: { praimery: { impressions: 37, topQuery: 'бітумний праймер' } },
+      namesRu: { praimery: 'Праймеры' },
+    });
+    expect(rows[0].gaps.h1Mismatch).toBe(true);
   });
 });

@@ -14,8 +14,13 @@ const GAP_LABELS: { key: keyof CategoryAuditGaps; label: string; tone: Tone; exp
   { key: 'deadBlogLink',  label: 'стаття в 404',     tone: 'danger', explain: 'blogSlug вказує на статтю, якої немає — кнопка «Читати статтю» веде в 404' },
   { key: 'missingBrands', label: 'бренд не згаданий', tone: 'warn',  explain: 'Помітна частка асортименту не потрапила в перелік' },
   { key: 'noCatalogLine', label: 'немає переліку',   tone: 'warn',   explain: 'У seoText немає речення з асортиментом — текст не привʼязаний до каталогу' },
-  { key: 'thinFaq',       label: 'мало FAQ',         tone: 'info',   explain: 'Менше 4 питань хоча б однією мовою' },
+  { key: 'noGuide',       label: 'немає гайда',      tone: 'warn',   explain: '5+ товарів і ≥ 25 показів за 28 днів, а гайда «Як вибрати» немає — стандарт 1.4' },
+  { key: 'guideNoBuy',    label: 'гайд без «купити»', tone: 'warn',  explain: 'У гайді немає розділу «Де купити» — ні «купити», ні «ціна». Сторінка комерційна, текст — порада' },
+  { key: 'h1Mismatch',    label: 'H1 ≠ запит',       tone: 'warn',   explain: 'Слова найчастішого запиту сторінки не входять у назву категорії (uk або ru) — стандарт 1.2' },
+  { key: 'thinCategory',  label: 'тонка категорія',  tone: 'info',   explain: '1–4 товари: пополнити асортимент або не індексувати; гайд не пишемо' },
+  { key: 'thinFaq',       label: 'мало FAQ',         tone: 'info',   explain: 'Менше 4 питань хоча б однією мовою; з гайдом — менше 7' },
   { key: 'ruBehind',      label: 'рос. відстає',     tone: 'info',   explain: 'Російська версія коротша за українську або відсутня' },
+  { key: 'ruGuideBehind', label: 'рос. гайд відстає', tone: 'info',  explain: 'Російський гайд відсутній або коротший за український більш ніж на 30 %' },
 ];
 
 const hasGap = (row: CategoryAuditRow) => Object.values(row.gaps).some(Boolean);
@@ -40,7 +45,8 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
       <p style={{ ...hint, margin: '0 0 14px' }}>
         Розбіжностей: <b style={{ color: 'var(--text-primary)' }}>{withGaps.length}</b> з {rows.length} категорій.
         Бренди звіряються лише в реченні з переліком асортименту (тому, де згадано FIXLINE) — так проза
-        на кшталт «конструкційних сталей» не читається як бренд «Сталь».
+        на кшталт «конструкційних сталей» не читається як бренд «Сталь». Правила — у <code>docs/CONTENT-STANDARD.md</code>;
+        попит — покази за 28 днів із Search Console, рядки відсортовано за ним.
       </p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -74,6 +80,12 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
                 <code style={{ fontSize: 12, color: 'var(--text-muted)' }}>{row.slug}</code>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· {row.productCount} товарів</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· FAQ {row.uaFaq}/{row.ruFaq}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· гайд {row.guideWords.ua ? `${row.guideWords.ua}/${row.guideWords.ru} слів` : '—'}</span>
+                {row.demand && (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }} title="Покази uk+ru за 28 днів і найчастіший запит (GSC)">
+                    · {row.demand.impressions} показів{row.demand.topQuery ? ` · «${row.demand.topQuery}»` : ''}
+                  </span>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
