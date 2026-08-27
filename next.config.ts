@@ -99,11 +99,8 @@ const nextConfig: NextConfig = {
       // Storage bucket was named "products" — R2's public URL is already scoped to a
       // single bucket, so "products" is dropped here rather than re-keying the R2
       // objects (which were migrated 1:1 without that prefix) to match.
-      // Правило ТІЛЬКИ для імен із хешем: під тим самим префіксом живуть обкладинки
-      // блогу (blog/covers/<slug>.png — перезаписуються під тим самим ім'ям при
-      // перегенерації) і промо-картинки з навмисним max-age=300 — їм рік не можна.
       {
-        source: '/img/products/:brand/:name(.*-[0-9a-f]{10})\.webp',
+        source: '/img/products/:path*',
         destination: `${R2_PUBLIC_URL}/:path*`,
       },
 
@@ -132,8 +129,11 @@ const nextConfig: NextConfig = {
       // Фото товарів: у назві файлу хеш вмісту ({sku}-{sha256:10}.webp, див.
       // upload-image), тож адреса ніколи не міняє вміст — можна кешувати рік.
       // R2 віддавав max-age=14400, і кожні 4 години CDN ходив по картинки заново.
+      // Правило ТІЛЬКИ для імен із хешем: під тим самим префіксом живуть обкладинки
+      // блогу (blog/covers/<slug>.png — перезаписуються під тим самим ім'ям при
+      // перегенерації) і промо-картинки з навмисним max-age=300 — їм рік не можна.
       {
-        source: '/img/products/:path*',
+        source: '/img/products/:brand/:name(.*-[0-9a-f]{10})\\.webp',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
     ];
