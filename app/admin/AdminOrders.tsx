@@ -712,7 +712,10 @@ export default function AdminOrders({
   } | null>(null);
   const [invoiceCfg,     setInvoiceCfg]     = useState<Order | null>(null);
   type ContactEntry = { name: string; email: string; note?: string };
-  type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; supplierId: number | null; email: string; contacts: ContactEntry[]; comment: string };
+  // items/scope — для змішаних замовлень: показати, що частина позицій іде з
+  // нашого складу, і дати вибір, чи слати їх постачальнику.
+  type SupplierQLine = { sku: string; name: string; qty: number; source: 'own' | 'dropship' };
+  type SupplierQItem = { orderId: string; orderNumber: number; supplierName: string; supplierId: number | null; email: string; contacts: ContactEntry[]; comment: string; lines: SupplierQLine[]; scope: 'supplier' | 'all' };
   const [supplierQueue,        setSupplierQueue]        = useState<SupplierQItem[] | null>(null);
   const [supplierQueueIdx,     setSupplierQueueIdx]     = useState(0);
   const [supplierQueueLoading, setSupplierQueueLoading] = useState(false);
@@ -791,6 +794,7 @@ export default function AdminOrders({
   const [editingId,   setEditingId]   = useState<string | null>(null);
   const [editItems,   setEditItems]   = useState<OrderItem[]>([]);
   const [editSaving,  setEditSaving]  = useState(false);
+  const [editWarnings, setEditWarnings] = useState<Record<string, string[]>>({});
   const [addName,     setAddName]     = useState('');
   const [addQty,      setAddQty]      = useState(1);
   const [addPrice,    setAddPrice]    = useState('');
@@ -994,9 +998,10 @@ export default function AdminOrders({
         }
         const firstContact = contacts.find(c => c.email?.includes('@'));
         const email = firstContact?.email || d.supplier_email || '';
-        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: d.supplier_name ?? '—', supplierId, email, contacts, comment: '' };
+        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: d.supplier_name ?? '—', supplierId, email, contacts, comment: '',
+                 lines: (d.items ?? []) as SupplierQLine[], scope: 'supplier' as const };
       } catch {
-        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: '—', supplierId: null, email: '', contacts: [], comment: '' };
+        return { orderId: oid, orderNumber: order?.order_number ?? 0, supplierName: '—', supplierId: null, email: '', contacts: [], comment: '', lines: [], scope: 'supplier' as const };
       }
     }));
   }
@@ -1090,14 +1095,16 @@ export default function AdminOrders({
       const res = await fetch(`/api/admin/orders/${item.orderId}/supplier-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined, senderEmail: chosenSender || undefined }),
+        body: JSON.stringify({ overrideEmail: item.email || undefined, comment: item.comment || undefined, senderEmail: chosenSender || undefined, scope: item.scope }),
       });
       // Раніше відповідь не читалась і UI показував успіх навіть коли Resend
       // відхилив лист — тепер невдала відправка лишає замовлення в черзі з помилкою.
-      const data = res.ok ? await res.json() : { results: [] };
+      const data = await res.json().catch(() => ({ results: [] }));
       const failed = (data.results ?? []).filter((r: { emailed: boolean; error?: string }) => !r.emailed);
       if (!res.ok || failed.length) {
-        const reason = failed[0]?.error ?? (res.ok ? 'немає email постачальника' : `HTTP ${res.status}`);
+        // Сервер пояснює відмову текстом (напр. «усі позиції з нашого складу») —
+        // без цього рядка користувач бачив голий код помилки.
+        const reason = failed[0]?.error ?? data.error ?? (res.ok ? 'немає email постачальника' : `HTTP ${res.status}`);
         showToast(`Лист не відправлено: ${reason}`, 'error', 6000);
         advanceSupplierQueue();
         return;
@@ -1608,10 +1615,27 @@ export default function AdminOrders({
   async function saveEdit(orderId: string) {
     setEditSaving(true);
     const total = editItems.reduce((s, i) => s + i.price * i.qty, 0);
-    await fetch(`/api/admin/orders/${orderId}`, {
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items: editItems, total_price: total }),
+    });
+    const d = await res.json().catch(() => ({}));
+
+    // Правка складу зачіпає облік — сервер може її і не пропустити (проведена
+    // РН, закритий період). Тоді нічого не змінилось, і показувати новий склад
+    // у списку не можна: менеджер вирішить, що зберіг.
+    if (!res.ok || d?.error) {
+      setEditWarnings(prev => ({ ...prev, [orderId]: [d?.error ?? 'Не вдалося зберегти зміни'] }));
+      setEditSaving(false);
+      return;
+    }
+
+    setEditWarnings(prev => {
+      const next = { ...prev };
+      if (Array.isArray(d?.warnings) && d.warnings.length) next[orderId] = d.warnings as string[];
+      else delete next[orderId];
+      return next;
     });
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: editItems, total_price: total } : o));
     setEditingId(null);
@@ -3442,6 +3466,21 @@ export default function AdminOrders({
                           </button>
                         </div>
 
+                        {/* Зауваження обліку після правки складу: правку збережено,
+                            але менеджер має побачити наслідки до друку документів. */}
+                        {editWarnings[order.id]?.length > 0 && (
+                          <div style={{ margin: '0 0 8px', fontSize: '12px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '3px' }}>
+                              Збережено, але зверніть увагу:
+                              <button onClick={() => setEditWarnings(prev => { const n = { ...prev }; delete n[order.id]; return n; })}
+                                title="Приховати" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#92400E', lineHeight: 1 }}>
+                                <X size={12} />
+                              </button>
+                            </div>
+                            {editWarnings[order.id].map((w, i) => <div key={i} style={{ marginTop: i ? '3px' : 0 }}>• {w}</div>)}
+                          </div>
+                        )}
+
                         {editingId === order.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {editItems.map((item, idx) => (
@@ -5261,6 +5300,63 @@ export default function AdminOrders({
                 </div>
               ) : item ? (
                 <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Змішане замовлення: частина позицій — з нашого складу. Без цього
+                      блоку постачальник отримував і їх, тобто чуже завдання. */}
+                  {(() => {
+                    const own = item.lines.filter(l => l.source === 'own');
+                    const fromSupplier = item.lines.filter(l => l.source !== 'own');
+                    if (!own.length || !fromSupplier.length) return null;
+                    const chip = (active: boolean): React.CSSProperties => ({
+                      padding: '5px 11px', borderRadius: '999px', fontSize: '12px', cursor: 'pointer',
+                      fontWeight: active ? 700 : 600,
+                      border: `1.5px solid ${active ? '#B45309' : 'var(--border)'}`,
+                      background: active ? '#FEF3C7' : 'var(--bg-card)',
+                      color: active ? '#92400E' : 'var(--text-secondary)',
+                    });
+                    return (
+                      <div style={{ border: '1.5px solid #FCD34D', background: '#FFFBEB', borderRadius: '9px', padding: '11px 13px' }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#B45309', marginBottom: '3px' }}>
+                          Замовлення відвантажується з двох складів
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                          {fromSupplier.length} поз. — від постачальника, {own.length} — з нашого складу.
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '9px' }}>
+                          {item.lines.map(l => {
+                            const skip = l.source === 'own' && item.scope === 'supplier';
+                            return (
+                              <div key={l.sku} style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', opacity: skip ? 0.45 : 1 }}>
+                                <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '999px', whiteSpace: 'nowrap',
+                                  color: l.source === 'own' ? '#15803D' : 'var(--brand-blue)',
+                                  background: l.source === 'own' ? '#DCFCE7' : '#EAF1F8' }}>
+                                  {l.source === 'own' ? 'наш склад' : 'постачальник'}
+                                </span>
+                                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: skip ? 'line-through' : 'none' }}>
+                                  {l.name}
+                                </span>
+                                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{l.qty} шт</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          <button type="button" style={chip(item.scope === 'supplier')}
+                            onClick={() => setSupplierQueue(prev => prev
+                              ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, scope: 'supplier' as const } : it)
+                              : prev)}>
+                            Тільки його позиції ({fromSupplier.length})
+                          </button>
+                          <button type="button" style={chip(item.scope === 'all')}
+                            onClick={() => setSupplierQueue(prev => prev
+                              ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, scope: 'all' as const } : it)
+                              : prev)}>
+                            Усе замовлення ({item.lines.length})
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Відправник — від кого слати постачальнику */}
                   {senders.length > 1 && (
                     <div>

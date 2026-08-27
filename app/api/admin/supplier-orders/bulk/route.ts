@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { resolveSender } from '../../../../../lib/email-sender';
+import { orderItemSources } from '../../../../../lib/orders/item-sources';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   const { data: orders } = await db
     .from('orders')
-    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id')
+    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
     .in('id', orderIds);
 
   if (!orders?.length) return NextResponse.json({ error: 'Orders not found' }, { status: 404 });
@@ -115,7 +116,12 @@ export async function POST(req: NextRequest) {
       city:    order.delivery_city_name ?? '',
       ttn:     order.tracking_number ?? null,
     });
-    const items = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
+    const allItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
+    // Тільки те, що справді їде від постачальника: у змішаному замовленні
+    // позиції з нашого складу до нього потрапляти не мають. Поштучна відправка
+    // дає вибір у модалці, а тут вибирати нема кому — шлемо лише його частину.
+    const sources = await orderItemSources(db, order.id, allItems, order.channel_code);
+    const items = allItems.filter(i => sources.get(i.sku) !== 'own');
     for (const item of items) {
       const mapping = supplierMap.get(item.sku);
       if (!mapping?.supplier_id) continue;

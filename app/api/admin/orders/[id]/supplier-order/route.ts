@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { resolveSender } from '../../../../../../lib/email-sender';
+import { orderItemSources } from '../../../../../../lib/orders/item-sources';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -57,15 +58,26 @@ export async function GET(
   const { id } = await params;
   const db = createServiceClient();
 
-  const { data: order } = await db.from('orders').select('items, tracking_number').eq('id', id).single();
+  const { data: order } = await db.from('orders').select('items, tracking_number, channel_code').eq('id', id).single();
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const skus = ((order.items ?? []) as { sku: string }[]).map((i) => i.sku);
+  const orderItems = (order.items ?? []) as { sku: string; name: string; brand?: string; qty: number }[];
+  const skus = orderItems.map((i) => i.sku);
   const supplierMap = await resolveSkuMapping(db, skus);
 
   const supplierIds = [...new Set([...supplierMap.values()].map(r => r.supplier_id).filter(Boolean))];
   const { data: suppliers } = await db
     .from('suppliers').select('id, name, email, notes').in('id', supplierIds);
+
+  // Розклад по джерелах — щоб модалка могла попередити, що частина позицій іде
+  // з нашого складу, і дати вибір: слати постачальнику все чи тільки його.
+  const sources = await orderItemSources(db, id, orderItems, order.channel_code);
+  const items = orderItems.map(i => ({
+    sku:    i.sku,
+    name:   `${i.brand ? i.brand + ' ' : ''}${i.name}`,
+    qty:    i.qty,
+    source: sources.get(i.sku) ?? 'dropship',
+  }));
 
   const first = suppliers?.[0];
   const supplierEmail = first?.email ?? extractEmail(first?.notes ?? '') ?? '';
@@ -74,6 +86,9 @@ export async function GET(
     supplier_name:    suppliers?.map((s) => s.name).join(', ') ?? '—',
     supplier_email:   supplierEmail,
     tracking_number:  order.tracking_number ?? null,
+    items,
+    own_count:      items.filter(i => i.source === 'own').length,
+    supplier_count: items.filter(i => i.source !== 'own').length,
   });
 }
 
@@ -92,7 +107,7 @@ export async function POST(
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id')
+    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
     .eq('id', id)
     .single();
 
@@ -102,13 +117,26 @@ export async function POST(
   const overrideEmail: string | undefined   = body.overrideEmail || undefined;
   const overrideComment: string | undefined = body.comment       || undefined;
   const senderEmail: string | undefined     = body.senderEmail   || undefined;
+  // Що саме слати: тільки позиції постачальника (за замовчуванням) чи все
+  // замовлення. Раніше вибору не було — і в лист потрапляли позиції, які ми
+  // відвантажуємо зі свого складу.
+  const scope: 'supplier' | 'all' = body.scope === 'all' ? 'all' : 'supplier';
 
   // Відправник (основний / вибраний) + Resend-клієнт із ключем для домену.
   // fromName/fromEmail йдуть у тему й тіло листа — щоб при відправці від budmag
   // ніде не згадувався fixline.
   const { from: FROM, fromName, fromEmail, resend, anonymize } = await resolveSender(db, senderEmail);
 
-  const orderItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
+  const allItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
+
+  const sources = await orderItemSources(db, id, allItems, order.channel_code);
+  const orderItems = scope === 'all' ? allItems : allItems.filter(i => sources.get(i.sku) !== 'own');
+  if (!orderItems.length) {
+    return NextResponse.json(
+      { error: 'Усі позиції цього замовлення відвантажуються з нашого складу — постачальнику надсилати нічого' },
+      { status: 400 },
+    );
+  }
   const skus = orderItems.map(i => i.sku);
 
   const supplierMap = await resolveSkuMapping(db, skus);

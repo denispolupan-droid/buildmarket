@@ -10,6 +10,7 @@ import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
+import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
@@ -60,7 +61,7 @@ export async function POST(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, shipping_supplier_id, total_price, rozetka_data')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, shipping_supplier_id, total_price, rozetka_data, fulfillment_mode')
     .eq('id', id)
     .single();
 
@@ -276,6 +277,20 @@ export async function POST(
     ...(fullyShipped && isPickup ? { delivered_at: now } : {}),
     ...(orderContractId ? { contract_id: orderContractId } : {}),
   }).eq('id', id);
+
+  // Режим виконання за ФАКТОМ, а не за вибором менеджера при підтвердженні:
+  // роутер міг перерішити (товар знайшовся на своєму складі), і тоді посилка
+  // їде з двох складів, а журнал показував «Пост.». Позначка «Mix» саме звідси.
+  try {
+    const sources = await orderItemSources(db, order.id, allOrderItems, order.channel_code);
+    const mode = modeFromSources(sources);
+    if (mode !== order.fulfillment_mode) {
+      await db.from('orders').update({ fulfillment_mode: mode }).eq('id', id);
+    }
+  } catch (err) {
+    // Мітка в журналі не варта зірваної відгрузки
+    console.error('[ship] fulfillment_mode recompute failed:', err);
+  }
 
   const { data: saleDoc } = await db
     .from('acc_documents')
