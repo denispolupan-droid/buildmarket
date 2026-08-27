@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { getOrderFulfillmentInfo } from '../../../../../../lib/accounting/dropship';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { getOrderReservations } from '../../../../../../lib/accounting/reservations';
+import { knownItemSources } from '../../../../../../lib/orders/item-sources';
 import { computePromCommission } from '../../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commission';
 
@@ -125,11 +126,19 @@ export async function GET(
     supplierStockMap.set(s.sku, s.stock_status === 'in_stock');
   }
 
+  // Для позицій, доля яких уже вирішена (є рядок РН або активний резерв),
+  // показуємо ФАКТ, а не план. План рахується від сьогоднішніх залишків, тож
+  // позиція, яку ми списали зі свого складу останньою, заднім числом виглядала б
+  // як «від постачальника» — і картка сперечалась із міткою «Mix» у журналі
+  // (живий випадок 27.08, замовлення #26081075).
+  const known = await knownItemSources(db, id);
+
   // Enrich plan items with availability info
   const enrichedPlan = {
     ...plan,
     items: plan.items.map(src => ({
       ...src,
+      fulfillment_type:   known.get(src.sku) ?? src.fulfillment_type,
       available_own:      ownAvailMap.get(src.sku) ?? 0,
       supplier_in_stock:  supplierStockMap.get(src.sku) ?? false,
     })),

@@ -3685,8 +3685,14 @@ export default function AdminOrders({
                                                 color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)' }}
                                             >
                                               <option value="dropship">{supplierName ?? 'Постач.'}</option>
-                                              {(planSrc.available_own ?? 0) >= item.qty && (
-                                                <option value="own">Наш ({planSrc.available_own})</option>
+                                              {/* Варіант «наш» показуємо і тоді, коли залишку вже
+                                                  немає, але позиція саме звідти й поїхала: інакше
+                                                  select не має що показати під своїм значенням і
+                                                  малює перший варіант — тобто постачальника. */}
+                                              {((planSrc.available_own ?? 0) >= item.qty || (effectiveSrc ?? planSrc.fulfillment_type) === 'own') && (
+                                                <option value="own">
+                                                  {(planSrc.available_own ?? 0) >= item.qty ? `Наш (${planSrc.available_own})` : 'Наш склад'}
+                                                </option>
                                               )}
                                             </select>
                                             );

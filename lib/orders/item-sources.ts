@@ -21,14 +21,16 @@ export { modeFromSources, type ItemSource } from './fulfillment-mode';
 
 type Db = ReturnType<typeof createServiceClient>;
 
-export async function orderItemSources(
-  db: Db,
-  orderId: string,
-  items: { sku: string; qty: number }[],
-  channelCode?: string | null,
-): Promise<Map<string, ItemSource>> {
+/**
+ * Джерела, які вже ВІДОМІ з фактів: рядки РН і активні резерви. Без плану —
+ * тобто для позицій, доля яких ще не вирішена, ключа просто не буде.
+ *
+ * Саме це потрібно там, де план брехав би: для вже відвантаженого замовлення він
+ * рахується від СЬОГОДНІШНІХ залишків, і позиція, яку ми списали зі складу
+ * останньою, заднім числом виглядає як «від постачальника».
+ */
+export async function knownItemSources(db: Db, orderId: string): Promise<Map<string, ItemSource>> {
   const out = new Map<string, ItemSource>();
-  if (!items.length) return out;
 
   const { data: docs } = await db
     .from('acc_documents')
@@ -67,6 +69,19 @@ export async function orderItemSources(
       .is('released_at', null);
     for (const r of reserved ?? []) out.set(r.sku as string, 'own');
   }
+
+  return out;
+}
+
+export async function orderItemSources(
+  db: Db,
+  orderId: string,
+  items: { sku: string; qty: number }[],
+  channelCode?: string | null,
+): Promise<Map<string, ItemSource>> {
+  if (!items.length) return new Map();
+
+  const out = await knownItemSources(db, orderId);
 
   // Те, чого в накладних ще немає (не відвантажене), питаємо в роутера
   const missing = items.filter(i => !out.has(i.sku));
