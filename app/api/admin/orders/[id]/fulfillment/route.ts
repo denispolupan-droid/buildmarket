@@ -4,7 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { getOrderFulfillmentInfo } from '../../../../../../lib/accounting/dropship';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { getOrderReservations } from '../../../../../../lib/accounting/reservations';
-import { knownItemSources } from '../../../../../../lib/orders/item-sources';
+import { knownItemPlan, type KnownSource } from '../../../../../../lib/orders/item-sources';
 import { computePromCommission } from '../../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commission';
 
@@ -32,12 +32,21 @@ export async function GET(
   const items = (order.items ?? []) as { sku: string; qty: number; price?: number }[];
   const skus = items.map(i => i.sku);
 
+  // Джерело фіксується при відвантаженні — у рядках видаткової. Якщо воно вже
+  // зафіксоване для ВСІХ позицій, роутер більше не питаємо: він рахує від
+  // сьогоднішніх залишків, тобто заново «вирішує» те, що давно вирішено, і
+  // затримує картку на кожному відкритті вже відправленого замовлення.
+  const fixed = await knownItemPlan(db, id);
+  const allFixed = items.length > 0 && items.every(i => fixed.has(i.sku));
+
   const [info, plan, reservations, balances, stockRows, ledgerRows, confirmedSales] = await Promise.all([
     getOrderFulfillmentInfo(order.items ?? []),
-    resolveOrderFulfillment(
-      items.map(i => ({ sku: i.sku, qty: i.qty })),
-      { channel_code: order.channel_code ?? 'website' },
-    ),
+    allFixed
+      ? Promise.resolve(planFromFixed(items, fixed))
+      : resolveOrderFulfillment(
+          items.map(i => ({ sku: i.sku, qty: i.qty })),
+          { channel_code: order.channel_code ?? 'website' },
+        ),
     getOrderReservations(id),
     // Own warehouse availability
     db.from('stock_balance')
@@ -126,23 +135,50 @@ export async function GET(
     supplierStockMap.set(s.sku, s.stock_status === 'in_stock');
   }
 
-  // Для позицій, доля яких уже вирішена (є рядок РН або активний резерв),
-  // показуємо ФАКТ, а не план. План рахується від сьогоднішніх залишків, тож
-  // позиція, яку ми списали зі свого складу останньою, заднім числом виглядала б
-  // як «від постачальника» — і картка сперечалась із міткою «Mix» у журналі
-  // (живий випадок 27.08, замовлення #26081075).
-  const known = await knownItemSources(db, id);
-
-  // Enrich plan items with availability info
+  // Для позицій, доля яких уже вирішена, показуємо ФАКТ, а не план. Це важливо
+  // і в змішаному випадку, коли частина замовлення вже поїхала, а частина ні:
+  // план для відвантаженої позиції збрехав би (живий випадок 27.08, #26081075).
   const enrichedPlan = {
     ...plan,
     items: plan.items.map(src => ({
       ...src,
-      fulfillment_type:   known.get(src.sku) ?? src.fulfillment_type,
+      fulfillment_type:   fixed.get(src.sku)?.fulfillment_type ?? src.fulfillment_type,
       available_own:      ownAvailMap.get(src.sku) ?? 0,
       supplier_in_stock:  supplierStockMap.get(src.sku) ?? false,
     })),
   };
 
-  return NextResponse.json({ ...info, plan: enrichedPlan, reservations, fact, commission_estimate: commissionEstimate });
+  return NextResponse.json({
+    ...info,
+    plan: enrichedPlan,
+    reservations,
+    fact,
+    commission_estimate: commissionEstimate,
+    // Джерело зафіксоване документами — картка може показати його як факт,
+    // а не як щось, що зараз перераховується.
+    source_fixed: allFixed,
+  });
+}
+
+/** План із зафіксованих рядків — той самий формат, що віддає роутер. */
+function planFromFixed(
+  items: { sku: string; qty: number }[],
+  fixed: Map<string, KnownSource>,
+) {
+  const planItems = items.map(i => {
+    const src = fixed.get(i.sku)!;
+    return {
+      sku:              i.sku,
+      qty:              i.qty,
+      fulfillment_type: src.fulfillment_type,
+      warehouse_id:     src.warehouse_id ?? 0,
+      supplier_id:      src.supplier_id,
+    };
+  });
+  return {
+    items:        planItems,
+    has_own:      planItems.some(p => p.fulfillment_type === 'own'),
+    has_dropship: planItems.some(p => p.fulfillment_type === 'dropship'),
+    unresolved:   [] as string[],
+  };
 }

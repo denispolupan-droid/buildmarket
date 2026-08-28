@@ -29,8 +29,21 @@ type Db = ReturnType<typeof createServiceClient>;
  * рахується від СЬОГОДНІШНІХ залишків, і позиція, яку ми списали зі складу
  * останньою, заднім числом виглядає як «від постачальника».
  */
-export async function knownItemSources(db: Db, orderId: string): Promise<Map<string, ItemSource>> {
-  const out = new Map<string, ItemSource>();
+export type KnownSource = {
+  fulfillment_type: ItemSource;
+  qty:              number;
+  warehouse_id:     number | null;
+  supplier_id:      number | null;
+};
+
+/**
+ * Те саме, але з деталями рядка (склад, постачальник, кількість) — щоб картка
+ * замовлення могла показати зафіксоване джерело, НЕ питаючи роутер заново.
+ * Саме перерахунок плану на кожне відкриття створював враження, що система
+ * щоразу вирішує наново, хоча рішення давно записане в накладній.
+ */
+export async function knownItemPlan(db: Db, orderId: string): Promise<Map<string, KnownSource>> {
+  const out = new Map<string, KnownSource>();
 
   const { data: docs } = await db
     .from('acc_documents')
@@ -43,34 +56,50 @@ export async function knownItemSources(db: Db, orderId: string): Promise<Map<str
   if (docIds.length) {
     const { data: lines } = await db
       .from('acc_document_lines')
-      .select('sku, fulfillment_type')
+      .select('sku, qty, fulfillment_type, warehouse_id, supplier_id')
       .in('document_id', docIds)
       .limit(1000);
     for (const l of lines ?? []) {
-      // Часткові відвантаження: та сама SKU може траплятись у кількох РН. Досить
-      // одного дропшип-рядка, щоб позиція вважалась постачальниковою — саме її
-      // він і має побачити в листі.
-      const prev = out.get(l.sku as string);
-      const cur = (l.fulfillment_type === 'dropship' ? 'dropship' : 'own') as ItemSource;
-      out.set(l.sku as string, prev === 'dropship' ? 'dropship' : cur);
+      const sku = l.sku as string;
+      const type = (l.fulfillment_type === 'dropship' ? 'dropship' : 'own') as ItemSource;
+      const prev = out.get(sku);
+      // Часткові відвантаження: сумуємо кількість, а тип «дропшип» переважає.
+      out.set(sku, {
+        fulfillment_type: prev?.fulfillment_type === 'dropship' ? 'dropship' : type,
+        qty:              (prev?.qty ?? 0) + Number(l.qty),
+        warehouse_id:     (l.warehouse_id as number) ?? prev?.warehouse_id ?? null,
+        supplier_id:      (l.supplier_id as number) ?? prev?.supplier_id ?? null,
+      });
     }
   }
 
-  // Активний резерв — це вже прийняте рішення «беремо зі свого складу», і питати
-  // про такі позиції роутера НЕ МОЖНА: власний резерв цього ж замовлення
-  // зменшує qty_available, і позиція виглядає недоступною сама для себе —
-  // роутер відповів би «дропшип» саме на те, що ми відклали собі.
+  // Активний резерв — теж уже прийняте рішення «беремо зі свого складу», і питати
+  // про такі позиції роутера НЕ МОЖНА: власний резерв цього ж замовлення зменшує
+  // qty_available, і позиція виглядає недоступною сама для себе — роутер відповів
+  // би «дропшип» саме на те, що ми відклали собі.
   if (!out.size) {
     const { data: reserved } = await db
       .from('stock_reservations')
-      .select('sku')
+      .select('sku, qty, warehouse_id')
       .eq('order_id', orderId)
       .eq('reservation_status', 'active')
       .is('released_at', null);
-    for (const r of reserved ?? []) out.set(r.sku as string, 'own');
+    for (const r of reserved ?? []) {
+      out.set(r.sku as string, {
+        fulfillment_type: 'own',
+        qty:              Number(r.qty),
+        warehouse_id:     (r.warehouse_id as number) ?? null,
+        supplier_id:      null,
+      });
+    }
   }
 
   return out;
+}
+
+export async function knownItemSources(db: Db, orderId: string): Promise<Map<string, ItemSource>> {
+  const plan = await knownItemPlan(db, orderId);
+  return new Map([...plan].map(([sku, src]) => [sku, src.fulfillment_type]));
 }
 
 export async function orderItemSources(

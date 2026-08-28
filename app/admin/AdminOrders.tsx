@@ -20,6 +20,8 @@ type FulfillmentData = OrderFulfillmentInfo & {
   fact?: { revenue: number; cogs: number; commission: number; delivery: number; posted_docs: number } | null;
   /** Серверна оцінка комісії МП (брекети Rozetka / категорійні ставки Prom) для непроведених */
   commission_estimate?: number | null;
+  /** Джерело всіх позицій уже зафіксоване документами — сервер не питав роутер заново */
+  source_fixed?: boolean;
 };
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { phoneLocal, phoneLocalDigits } from '../../lib/notify/phone';
@@ -3654,6 +3656,20 @@ export default function AdminOrders({
                                             // (з'явився нюанс у постачальника, приїхав товар на свій склад).
                                             const srcEditable = SOURCE_EDITABLE_STATUSES.includes(order.status);
                                             const busy = savingSource === `${order.id}:${item.sku}`;
+                                            // Джерело вже зафіксоване документами і міняти його пізно —
+                                            // показуємо як факт. Замкнений select виглядав так, ніби
+                                            // вибір ще триває, а насправді рішення давно записане в РН.
+                                            if (!srcEditable && fulfillmentData[order.id]?.source_fixed) {
+                                              const own = effectiveSrc === 'own';
+                                              return (
+                                                <span
+                                                  title="Зафіксовано при відвантаженні — за цим рядком видаткової поїхав товар"
+                                                  style={{ fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap',
+                                                    color: own ? '#15803D' : 'var(--brand-blue)' }}>
+                                                  {own ? 'Наш склад' : (supplierName ?? 'Постач.')}
+                                                </span>
+                                              );
+                                            }
                                             return (
                                             <select
                                               value={effectiveSrc ?? planSrc.fulfillment_type}
