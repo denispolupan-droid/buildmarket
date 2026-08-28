@@ -69,6 +69,19 @@ export const getCategoryContentCached = unstable_cache(
   { revalidate: 300, tags: [CATEGORY_CONTENT_TAG] },
 );
 
+/** Найсвіжіший updated_at по категорії (обидві мови) — lastmod у sitemap: переписаний гайд має сигналити Google перечитати сторінку. */
+export const getCategoryContentUpdatedCached = unstable_cache(
+  async (): Promise<Record<string, string>> => {
+    const { data, error } = await db().from('category_content').select('slug, updated_at').limit(1000);
+    if (error) throw error;
+    const out: Record<string, string> = {};
+    for (const r of (data ?? []) as { slug: string; updated_at: string }[]) if (!out[r.slug] || r.updated_at > out[r.slug]) out[r.slug] = r.updated_at;
+    return out;
+  },
+  ['category-content-updated'],
+  { revalidate: 300, tags: [CATEGORY_CONTENT_TAG] },
+);
+
 export async function getCategoryMeta(slug: string, lang: 'uk' | 'ru' = 'uk'): Promise<CategoryMeta | null> {
   return (await getCategoryContentCached(lang))[slug] ?? null;
 }

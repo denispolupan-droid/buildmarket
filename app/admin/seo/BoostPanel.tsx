@@ -5,7 +5,10 @@ import Link from 'next/link';
 import { badge, btnGhost, btnPrimary, card, hint, TONE } from './ui';
 
 // «Дожим» — посилення сторінки під конкретний пошуковий запит.
-// Товар (~$0.04) переписує картку; стаття (~$0.20) розширює наявний текст.
+// Товар (~$0.04) переписує картку; стаття (~$0.20) розширює наявний текст;
+// категорія (~$0.10) — редактор /admin/seo/categories/<slug> із запитом як
+// ціллю для генерації: там текст пишеться за стандартом і вичитується перед
+// збереженням, тому сюди він не вбудований.
 // Головне правило розділу: якщо під запит уже є стаття, дожимаємо ЇЇ, а не
 // створюємо другу — дві сторінки під один запит канібалізують одна одну.
 
@@ -18,12 +21,14 @@ type ExistingPost = {
 };
 
 export default function BoostPanel({
-  query, setQuery, skus, setSkus, onDone,
+  query, setQuery, skus, setSkus, categorySlug, onDone,
 }: {
   query: string;
   setQuery: (v: string) => void;
   skus: string;
   setSkus: (v: string) => void;
+  /** slug категорії, якщо обраний запит веде на сторінку категорії */
+  categorySlug?: string | null;
   /** дія завершилась — оновити позначки «що робили» в таблиці запитів */
   onDone: () => void;
 }) {
@@ -190,6 +195,15 @@ export default function BoostPanel({
         >
           {busy === 'article' ? '⏳ Пишемо (1–2 хв)…' : existing?.length ? 'Все одно нова стаття' : 'Стаття під запит'}
         </button>
+        {categorySlug && (
+          <Link
+            href={`/admin/seo/categories/${categorySlug}?q=${encodeURIComponent(query.trim())}`}
+            title="Запит веде на сторінку категорії: текст під нього пишеться в редакторі категорії за стандартом"
+            style={{ ...btnPrimary, textDecoration: 'none', opacity: query.trim() ? 1 : 0.5 }}
+          >
+            Дожати категорію →
+          </Link>
+        )}
       </div>
 
       {found.length > 0 && (

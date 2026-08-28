@@ -22,6 +22,7 @@ export const KIND_LABEL: Record<string, string> = {
   product_boost: 'перепис картки',
   cover: 'обкладинка',
   meta_rewrite: 'мета',
+  category_content: 'текст категорії',
 };
 
 /** Ключ журналу: без домену, параметрів і без /ru — обидві мови в один рядок. */

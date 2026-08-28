@@ -34,6 +34,9 @@ type Props = {
   gaps: string[];
   demand: AuditDemand | null;
   queries: { query: string; impressions: number; position: number }[];
+  /** запит із вкладки «Запити» — ціль для генерації й позначка в журналі */
+  initialWish?: string;
+  productGaps: { count: number; noChars: number; noRu: number; thin: number };
 };
 
 const GAP_LABEL: Record<string, { label: string; tone: Tone }> = {
@@ -66,14 +69,15 @@ const joinP = (p: string[]) => p.join('\n\n');
 const splitP = (s: string) => s.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
 
 export default function CategoryEditor(props: Props) {
-  const { slug, name, nameRu, priced, family, familyProducts, categories, posts, gaps, demand, queries } = props;
+  const { slug, name, nameRu, priced, family, familyProducts, categories, posts, gaps, demand, queries, productGaps } = props;
   const [lang, setLang] = useState<Lang>('uk');
   const [data, setData] = useState<Record<Lang, EditorContent>>({ uk: props.initial.uk ?? clone(EMPTY), ru: props.initial.ru ?? clone(EMPTY) });
   const [saved, setSaved] = useState<Record<Lang, string>>({ uk: JSON.stringify(props.initial.uk ?? EMPTY), ru: JSON.stringify(props.initial.ru ?? EMPTY) });
   const [busy, setBusy] = useState<'save' | 'gen' | null>(null);
   const [msg, setMsg] = useState<{ tone: Tone; text: string } | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [wish, setWish] = useState('');
+  const [wish, setWish] = useState(props.initialWish ?? '');
+  const boostQuery = props.initialWish ?? '';
   const [showSkus, setShowSkus] = useState(false);
   const [preview, setPreview] = useState(true);
 
@@ -95,7 +99,7 @@ export default function CategoryEditor(props: Props) {
     try {
       const res = await fetch(`/api/admin/category-content/${encodeURIComponent(slug)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lang, source: c.source === 'ai' ? 'ai' : 'manual', content: { description: c.description, seoText: c.seoText || null, faq: c.faq, guide: c.guide, related: c.related, blogSlug: c.blogSlug || null } }),
+        body: JSON.stringify({ lang, source: c.source === 'ai' ? 'ai' : 'manual', query: boostQuery || undefined, content: { description: c.description, seoText: c.seoText || null, faq: c.faq, guide: c.guide, related: c.related, blogSlug: c.blogSlug || null } }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? res.statusText);
@@ -143,9 +147,15 @@ export default function CategoryEditor(props: Props) {
         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· {familyProducts.length} товарів</span>
         {demand && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· {demand.impressions} показів/28 дн{demand.topQuery ? ` · «${demand.topQuery}»` : ''}</span>}
       </div>
-      {gaps.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
+      {(gaps.length > 0 || productGaps.count > 0 || boostQuery) && (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+          {boostQuery && <span style={badge('info')} title="Запит із вкладки «Запити»: генерація цілиться в нього, збереження запишеться в Журнал з цим запитом">дожим під «{boostQuery}»</span>}
           {gaps.map(g => GAP_LABEL[g] ? <span key={g} style={badge(GAP_LABEL[g].tone)}>{GAP_LABEL[g].label}</span> : null)}
+          {productGaps.count > 0 && (
+            <Link href="/admin/seo/products" style={{ ...badge('warn'), textDecoration: 'none' }} title="Картки товарів родини з пробілами (вкладка «Товари»): без характеристик гайду немає з чого брати витрату й типи">
+              картки з пробілами: {productGaps.count}{productGaps.noChars ? ` · без характеристик ${productGaps.noChars}` : ''}{productGaps.noRu ? ` · без ru ${productGaps.noRu}` : ''} →
+            </Link>
+          )}
         </div>
       )}
 

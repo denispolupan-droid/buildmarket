@@ -8,6 +8,7 @@ import { categoryFamilySlugs } from '../../../../../lib/seo/meta';
 import { queryAll } from '../../../../../lib/gsc';
 import { toLangNeutralPath } from '../../../../../lib/seo/history';
 import type { PricedProduct } from '../../../../../lib/seo/guide-prices';
+import { loadProductQueue } from '../../../../../lib/seo/product-gaps';
 import CategoryEditor, { type EditorContent } from './CategoryEditor';
 
 export const dynamic = 'force-dynamic';
@@ -22,9 +23,10 @@ type ProductRow = { sku: string; name: string; brand: string | null; volume: str
  * каталогу так само, як на сайті) і кнопкою «Згенерувати за стандартом».
  * Гейт розділу — у layout /admin/seo.
  */
-export default async function CategoryEditorPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CategoryEditorPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ q?: string }> }) {
   const { slug } = await params;
-  const [categories, products, posts, rows, metaUa, metaRu] = await Promise.all([
+  const { q } = await searchParams;
+  const [categories, products, posts, rows, metaUa, metaRu, queue] = await Promise.all([
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
       db.from('categories').select('slug, name, parent_slug').order('name').range(f, t)),
     fetchAllRows<ProductRow>((f, t) =>
@@ -34,6 +36,7 @@ export default async function CategoryEditorPage({ params }: { params: Promise<{
     getCategoryContentRows(slug),
     getCategoryContentCached('uk'),
     getCategoryContentCached('ru'),
+    loadProductQueue().catch(() => ({ items: [], total: 0 })),
   ]);
   const cat = categories.find(c => c.slug === slug);
   if (!cat) notFound();
@@ -41,6 +44,10 @@ export default async function CategoryEditorPage({ params }: { params: Promise<{
   const family = categoryFamilySlugs(categories, slug);
   const famSet = new Set(family);
   const priced: PricedProduct[] = products.map(p => ({ sku: p.sku, category_slug: p.category_slug, price: p.stock?.price_promo ?? p.stock?.price_retail ?? null }));
+  // Пробіли карток родини (вкладка «Товари»): без характеристик/витрати гайд писати нема з чого
+  const familySkus = new Set(products.filter(p => p.category_slug && famSet.has(p.category_slug)).map(p => p.sku));
+  const queueItems = queue.items.filter(i => familySkus.has(i.sku));
+  const productGaps = { count: queueItems.length, noChars: queueItems.filter(i => i.gaps.noChars || i.missingLabels.length > 0).length, noRu: queueItems.filter(i => i.gaps.noRu).length, thin: queueItems.filter(i => i.gaps.thinDesc).length };
   const familyProducts = products
     .filter(p => p.category_slug && famSet.has(p.category_slug))
     .map(p => ({ sku: p.sku, name: p.name, brand: p.brand ?? '', volume: p.volume, price: p.stock?.price_promo ?? p.stock?.price_retail ?? null }))
@@ -91,6 +98,8 @@ export default async function CategoryEditorPage({ params }: { params: Promise<{
       gaps={audit ? Object.entries(audit.gaps).filter(([, v]) => v).map(([k]) => k) : []}
       demand={demand}
       queries={queries}
+      initialWish={q?.trim() ?? ''}
+      productGaps={productGaps}
     />
   );
 }

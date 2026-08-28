@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { getSitemapProductsCached, getCategoriesCached } from '../lib/supabase';
 import { getPublishedPostsCached } from '../lib/blog-db';
+import { getCategoryContentUpdatedCached } from '../lib/category-content';
 import { categoriesWithProducts, duplicateOfParent } from '../lib/seo/meta';
 import { brandSlug as brandToSlug } from '../lib/seo/slug';
 
@@ -15,8 +16,8 @@ const SITE_UPDATED = new Date('2026-08-05');
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, categories, dbPosts] = await Promise.all([
-    getSitemapProductsCached(), getCategoriesCached(), getPublishedPostsCached(),
+  const [products, categories, dbPosts, contentUpdated] = await Promise.all([
+    getSitemapProductsCached(), getCategoriesCached(), getPublishedPostsCached(), getCategoryContentUpdatedCached(),
   ]);
 
   // Листинг блогу змінюється щоразу, коли виходить чи правиться стаття — беремо
@@ -51,6 +52,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (b) bumpMax(brandUpdated, b, d);
     if (b && p.category_slug) bumpMax(catBrandUpdated, `${p.category_slug}::${b}`, d);
   }
+  // …і дата правки тексту категорії (гайд, FAQ) в адмінці — теж зміна сторінки
+  for (const [slug, at] of Object.entries(contentUpdated)) bumpMax(categoryUpdated, slug, new Date(at));
   const significantBrands = [...brandCounts.entries()]
     .filter(([, count]) => count >= 5)
     .map(([brand]) => brand);

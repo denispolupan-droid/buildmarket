@@ -19,7 +19,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { slug } = await params;
-  const body = await req.json().catch(() => null) as { lang?: string; content?: CategoryContentInput; source?: 'manual' | 'ai' } | null;
+  const body = await req.json().catch(() => null) as { lang?: string; content?: CategoryContentInput; source?: 'manual' | 'ai'; query?: string } | null;
   const lang = body?.lang === 'ru' ? 'ru' : body?.lang === 'uk' ? 'uk' : null;
   if (!lang || !body?.content || typeof body.content.description !== 'string') {
     return NextResponse.json({ error: 'lang і content обов’язкові' }, { status: 400 });
@@ -37,6 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
   await logSeoAction({
     page: `/shop/${slug}`,
     action: 'category_content',
+    query: body.query ?? null,
     meta: { lang, source: body.source ?? 'manual', words: JSON.stringify(content).split(/\s+/).length, warnings: warnings.length },
     by: auth.user.email ?? null,
   });

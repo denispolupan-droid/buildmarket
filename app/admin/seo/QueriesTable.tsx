@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { badge, card, chip, hint, num, pct, path as pathStyle, td, tdNum, th, TONE } from './ui';
 import { actionKey, KIND_LABEL, type PageAction } from './use-seo-actions';
 
@@ -31,6 +32,12 @@ const PERIODS = [7, 28, 90] as const;
 
 type SortKey = 'impressions' | 'clicks' | 'position' | 'ctr' | 'delta';
 
+/** slug категорії з /shop/<slug> (uk або /ru), інакше null — для посилання в редактор */
+export function categorySlug(p: string): string | null {
+  const m = p.replace(/^https?:\/\/[^/]+/, '').replace(/^\/ru(?=\/)/, '').match(/^\/shop\/([^/?#]+)$/);
+  return m && !['sale', 'brand'].includes(m[1]) ? m[1] : null;
+}
+
 export function pageKind(p: string): 'product' | 'shop' | 'blog' | 'other' {
   const s = p.replace(/^\/ru/, '');
   if (s.startsWith('/product/')) return 'product';
@@ -51,7 +58,7 @@ export default function QueriesTable({
   actions, onPick,
 }: {
   actions: Map<string, PageAction>;
-  onPick: (query: string, sku: string) => void;
+  onPick: (query: string, sku: string, path: string) => void;
 }) {
   const [days, setDays] = useState<(typeof PERIODS)[number]>(28);
   const [range, setRange] = useState<(typeof RANGES)[number]['key']>('boost');
@@ -180,12 +187,24 @@ export default function QueriesTable({
               return (
                 <tr
                   key={`${r.query}|${r.path}|${i}`}
-                  onClick={() => onPick(r.query, m?.[1] ?? '')}
+                  onClick={() => onPick(r.query, m?.[1] ?? '', r.path)}
                   style={{ cursor: 'pointer' }}
                   title="Клік — підставити запит у форму дожиму"
                 >
                   <td style={{ ...td, fontWeight: 600 }}>{r.query}</td>
-                  <td style={td}><span style={pathStyle}>{r.path}</span></td>
+                  <td style={td}>
+                    <span style={pathStyle}>{r.path}</span>
+                    {categorySlug(r.path) && (
+                      <Link
+                        href={`/admin/seo/categories/${categorySlug(r.path)}?q=${encodeURIComponent(r.query)}`}
+                        onClick={e => e.stopPropagation()}
+                        title="Відкрити редактор категорії з цим запитом як ціллю для тексту"
+                        style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}
+                      >
+                        дожати →
+                      </Link>
+                    )}
+                  </td>
                   <td style={td}>
                     {done ? (
                       <span
