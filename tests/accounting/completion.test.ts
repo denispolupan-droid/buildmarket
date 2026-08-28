@@ -19,6 +19,7 @@ import { randomUUID } from 'node:crypto';
 import { createDocument, confirmDocument } from '../../lib/accounting/documents';
 import { createReservation, hasActiveReservation } from '../../lib/accounting/reservations';
 import { createSaleDraft } from '../../lib/accounting/dropship';
+import { loadFixtures } from './fixtures';
 import { applyCompletionEffects, completeShipmentByTtn, allOrderSalesPosted } from '../../lib/accounting/completion';
 
 let db: SupabaseClient;
@@ -47,15 +48,10 @@ beforeAll(async () => {
   if (!url || !key) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY');
   db = createClient(url, key, { auth: { persistSession: false } });
 
-  const [whRes, supRes, prodRes] = await Promise.all([
-    db.from('warehouses').select('id').order('id').limit(1),
-    db.from('suppliers').select('id').order('id').limit(1),
-    db.from('products').select('sku').order('sort_order').limit(1),
-  ]);
-  warehouseId = whRes.data?.[0]?.id;
-  supplierId  = supRes.data?.[0]?.id;
-  testSku     = prodRes.data?.[0]?.sku;
-  if (!warehouseId || !supplierId || !testSku) throw new Error('Fixtures not found');
+  const fx = await loadFixtures(db);
+  warehouseId = fx.warehouseId;
+  supplierId  = fx.supplierId;
+  testSku     = fx.sku;
 
   // Гарантуємо запас на складі (FIFO-партія) для списання при проведенні продажу.
   const receipt = await createDocument({

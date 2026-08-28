@@ -19,6 +19,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 import { createSaleDraft } from '../../lib/accounting/dropship';
 import { completeShipmentByTtn, allOrderSalesPosted } from '../../lib/accounting/completion';
+import { loadFixtures } from './fixtures';
 
 let db: SupabaseClient;
 let warehouseId: number;
@@ -37,15 +38,10 @@ beforeAll(async () => {
   if (!url || !key) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY');
   db = createClient(url, key, { auth: { persistSession: false } });
 
-  const [whRes, supRes, prodRes] = await Promise.all([
-    db.from('warehouses').select('id').order('id').limit(1),
-    db.from('suppliers').select('id').order('id').limit(1),
-    db.from('products').select('sku').order('sort_order').limit(1),
-  ]);
-  warehouseId = whRes.data?.[0]?.id;
-  supplierId  = supRes.data?.[0]?.id;
-  testSku     = prodRes.data?.[0]?.sku;
-  if (!warehouseId || !supplierId || !testSku) throw new Error('Fixtures not found');
+  const fx = await loadFixtures(db);
+  warehouseId = fx.warehouseId;
+  supplierId  = fx.supplierId;
+  testSku     = fx.sku;
 
   // Звʼязок SKU → постачальник: без нього борг перед постачальником не
   // нараховується (postSaleDoc бере постачальника з рядка або з цієї мапи).

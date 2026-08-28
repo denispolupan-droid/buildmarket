@@ -16,6 +16,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createSaleDraft } from '../../lib/accounting/dropship';
 import { resolveTransit, pendingTransitDecisions, transitBalanceForOrder } from '../../lib/accounting/transit';
+import { loadFixtures } from './fixtures';
 
 let db: SupabaseClient;
 let supplierId: number;
@@ -28,13 +29,9 @@ beforeAll(async () => {
   if (!url || !key) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY');
   db = createClient(url, key, { auth: { persistSession: false } });
 
-  const [supRes, prodRes] = await Promise.all([
-    db.from('suppliers').select('id').order('id').limit(1),
-    db.from('products').select('sku').order('sort_order').limit(1),
-  ]);
-  supplierId = supRes.data?.[0]?.id;
-  testSku    = prodRes.data?.[0]?.sku;
-  if (!supplierId || !testSku) throw new Error('Fixtures not found');
+  const fx = await loadFixtures(db);
+  supplierId = fx.supplierId;
+  testSku    = fx.sku;
 });
 
 afterAll(async () => {

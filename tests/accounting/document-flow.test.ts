@@ -17,6 +17,7 @@ import { createDocument, confirmDocument, cancelDocument } from '../../lib/accou
 import { createReservation, releaseReservation } from '../../lib/accounting/reservations';
 import { recordSupplierPayment, recordCOGS, recordTxn } from '../../lib/accounting/money';
 import { reverseDropshipLedgerExtras } from '../../lib/accounting/dropship';
+import { loadFixtures } from './fixtures';
 
 // ── Фікстури (знаходяться динамічно в beforeAll) ──────────────────────────────
 
@@ -73,33 +74,13 @@ beforeAll(async () => {
 
   db = createClient(url, key, { auth: { persistSession: false } });
 
-  // Знаходимо реальний склад, постачальника та SKU
-  // Використовуємо limit(1) замість .single() — стійкіше до PostgREST помилок
-  const [whRes, supRes, prodRes, custRes] = await Promise.all([
-    db.from('warehouses').select('id').order('id').limit(1),
-    db.from('suppliers').select('id').order('id').limit(1),
-    db.from('products').select('sku').order('sort_order').limit(1),
-    db.from('customers').select('id').order('created_at').limit(1),
-  ]);
-
-  console.log('DB URL:', url);
-  console.log('warehouses:', whRes.data?.length, whRes.error?.message);
-  console.log('suppliers:', supRes.data?.length, supRes.error?.message);
-  console.log('products:', prodRes.data?.length, prodRes.error?.message);
-
-  const wh   = whRes.data?.[0]   ?? null;
-  const sup  = supRes.data?.[0]  ?? null;
-  const prod = prodRes.data?.[0] ?? null;
-  const cust = custRes.data?.[0] ?? null;
-
-  if (!wh)   throw new Error(`No warehouses: ${whRes.error?.message}`);
-  if (!sup)  throw new Error(`No suppliers: ${supRes.error?.message}`);
-  if (!prod) throw new Error(`No products: ${prodRes.error?.message}`);
-
-  warehouseId = wh.id;
-  supplierId  = sup.id;
-  testSku     = prod.sku;
-  customerId  = cust?.id ?? '';
+  // Реальний склад, постачальник, SKU і клієнт — із повтором на транзиторній
+  // відмові тестової бази (див. коментар у fixtures.ts).
+  const fx = await loadFixtures(db);
+  warehouseId = fx.warehouseId;
+  supplierId  = fx.supplierId;
+  testSku     = fx.sku;
+  customerId  = fx.customerId ?? '';
 
   // Знаходимо другий склад (для тестів transfer)
   const { data: wh2 } = await db
