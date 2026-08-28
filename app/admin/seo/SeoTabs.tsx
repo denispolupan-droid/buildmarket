@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 const TABS: { href: string; label: string; exact?: boolean; hint: string }[] = [
   { href: '/admin/seo',            label: 'Запити',    exact: true, hint: 'Запити з Search Console і дожим під них' },
   { href: '/admin/seo/pages',      label: 'Сторінки',  hint: 'Зріз по сторінках: покази, кліки, позиція, динаміка' },
+  { href: '/admin/seo/demand',     label: 'Попит',     hint: 'Що шукають: топ товарів за попитом і запити без своєї картки' },
   { href: '/admin/seo/snippets',   label: 'Сніпети',   hint: 'Втрати CTR і фактичні title/description зі сторінок' },
   { href: '/admin/seo/products',   label: 'Товари',    hint: 'Черга товарів з пробілами контенту' },
   { href: '/admin/seo/categories', label: 'Категорії', hint: 'Текст категорії проти фактичного асортименту' },

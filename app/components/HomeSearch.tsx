@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { logSearch } from '../../lib/search-log';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Search } from 'lucide-react';
@@ -72,6 +73,16 @@ export default function HomeSearch({ lang }: { lang: 'uk' | 'ru' }) {
   useEffect(() => { setActive(-1); }, [debouncedQ]);
 
   const showDropdown = open && debouncedQ.trim().length >= 2;
+
+  // Порожня видача — найцінніший сигнал попиту: людина шукала, а ми не мали чого
+  // показати. Пишемо після паузи в наборі й лише коли індекс уже завантажений,
+  // інакше «нічого не знайдено» означало б просто «ще не встигли».
+  useEffect(() => {
+    if (products === null) return;
+    const term = debouncedQ.trim();
+    if (term.length < 3) return;
+    if (found.length === 0) logSearch(term, 0);
+  }, [debouncedQ, found.length, products]);
   const shopHref = `${prefix}/shop?q=${encodeURIComponent(q.trim())}`;
 
   function go(href: string) {
@@ -81,6 +92,7 @@ export default function HomeSearch({ lang }: { lang: 'uk' | 'ru' }) {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    logSearch(q, found.length);
     if (active >= 0 && found[active]) {
       go(`${prefix}/product/${found[active].slug ?? found[active].sku}`);
     } else if (q.trim()) {
