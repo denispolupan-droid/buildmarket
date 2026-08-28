@@ -6,6 +6,8 @@ import type { CategoryFaq, CategoryGuide, CategoryRelated, CategoryMeta } from '
 import { resolveGuidePrices, type PricedProduct } from '../../../../../lib/seo/guide-prices';
 import type { AuditDemand } from '../../../../../lib/seo/category-audit';
 import { badge, btnGhost, btnPrimary, card, chip, hint, type Tone } from '../../ui';
+import HelpBox from '../../HelpBox';
+import { HELP_CATEGORY_EDITOR } from '../../help-content';
 
 export type EditorContent = {
   description: string;
@@ -139,6 +141,7 @@ export default function CategoryEditor(props: Props) {
 
   return (
     <div>
+      <HelpBox content={HELP_CATEGORY_EDITOR} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <Link href="/admin/seo/categories" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}>← Категорії</Link>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{name}</h2>

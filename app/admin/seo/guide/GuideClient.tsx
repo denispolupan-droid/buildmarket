@@ -83,8 +83,8 @@ export default function GuideClient() {
       <section style={{ marginBottom: 26 }}>
         <h2 style={h2}>Що якою дією лагодиться</h2>
         <p style={{ ...hint, margin: '0 0 14px' }}>
-          Відповідає на єдине питання перед кожним запуском: тиснути «Посилити товар», «Стаття під запит»
-          чи взагалі не тиснути.
+          Відповідає на єдине питання перед кожним запуском: тиснути «Посилити товар», «Стаття під запит»,
+          «Дожати категорію» чи взагалі не тиснути.
         </p>
         <div style={card}>
           {HELP_QUERIES.table && <HelpTableView table={HELP_QUERIES.table} />}
