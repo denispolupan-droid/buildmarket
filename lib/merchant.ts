@@ -92,17 +92,26 @@ export type FileUpload = {
   issues?: { title: string; description?: string; severity?: string; count?: string }[];
 };
 
+/**
+ * Приймаємо і голий id, і повне імʼя ресурсу з listDataSources
+ * (`accounts/123/dataSources/456`). Передати `name` — найприродніша помилка:
+ * шлях склеювався вдвічі й Merchant віддавав 404 замість зрозумілої відмови.
+ */
+function dsId(dataSource: string): string {
+  return dataSource.split('/').pop() ?? dataSource;
+}
+
 /** Стан останньої виборки фіду. */
-export async function latestUpload(dataSourceId: string): Promise<FileUpload> {
+export async function latestUpload(dataSource: string): Promise<FileUpload> {
   return merchantCall<FileUpload>(
-    `/datasources/v1/accounts/${MERCHANT_ACCOUNT}/dataSources/${dataSourceId}/fileUploads/latest`,
+    `/datasources/v1/accounts/${MERCHANT_ACCOUNT}/dataSources/${dsId(dataSource)}/fileUploads/latest`,
   );
 }
 
 /** Позачергова виборка фіду — не чекаючи розкладу. */
-export async function fetchNow(dataSourceId: string): Promise<void> {
+export async function fetchNow(dataSource: string): Promise<void> {
   await merchantCall(
-    `/datasources/v1/accounts/${MERCHANT_ACCOUNT}/dataSources/${dataSourceId}:fetch`,
+    `/datasources/v1/accounts/${MERCHANT_ACCOUNT}/dataSources/${dsId(dataSource)}:fetch`,
     { method: 'POST', body: '{}' },
   );
 }
