@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const { company, contact, phone, email, deliveryType, deliverySubtype, deliveryAddress,
           deliveryCityRef, deliveryCityName, deliveryWarehouseRef, paymentType, comment, items,
           promoCode,
-          utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer_url } = body;
+          utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer_url, gclid } = body;
 
   const phoneClean = String(phone ?? '').replace(/[\s\-()]/g, '');
   if (!contact?.trim())   return NextResponse.json({ error: 'Вкажіть контактну особу' }, { status: 400 });
@@ -169,6 +169,9 @@ export async function POST(req: NextRequest) {
       utm_content:           utm_content ?? null,
       utm_term:              utm_term ?? null,
       referrer_url:          referrer_url ?? null,
+      // Ключ для офлайн-конверсій Google Ads. Карткові замовлення переносять
+      // payload цілком, тож сюди він потрапляє один раз і доїжджає до orders.
+      gclid:                 typeof gclid === 'string' ? gclid.slice(0, 200) : null,
     };
 
     const { error: pendingErr } = await admin.from('pending_card_orders').insert({
@@ -256,6 +259,7 @@ export async function POST(req: NextRequest) {
       utm_content:    utm_content ?? null,
       utm_term:       utm_term ?? null,
       referrer_url:   referrer_url ?? null,
+      gclid:          typeof gclid === 'string' ? gclid.slice(0, 200) : null,
     })
     .select('id, order_number')
     .single();

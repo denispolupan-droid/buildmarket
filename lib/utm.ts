@@ -10,6 +10,8 @@ export type UtmData = {
   utm_content?: string;
   utm_term?: string;
   referrer_url?: string;
+  /** Ідентифікатор рекламного кліку Google — ключ для вивантаження офлайн-конверсій */
+  gclid?: string;
 };
 
 export function captureUtm(): void {
@@ -22,10 +24,15 @@ export function captureUtm(): void {
   UTM_PARAMS.forEach(k => { if (params.get(k)) data[k] = params.get(k)!; });
   // Google Ads чіпляє до посилання свій gclid і не завжди лишає utm_*. Без цієї
   // гілки платний клік осідав би у звіті як звичайний перехід з google.com.
-  if (!data.utm_source && params.get('gclid')) {
+  const gclid = params.get('gclid');
+  if (!data.utm_source && gclid) {
     data.utm_source = 'google';
     data.utm_medium = 'cpc';
   }
+  // Сам ідентифікатор теж зберігаємо: за ним Google приймає офлайн-конверсії,
+  // тобто фактичну прибутковість замовлення. Відновити його заднім числом
+  // неможливо — він живе лише в посиланні, за яким людина прийшла.
+  if (gclid) data.gclid = gclid;
   if (document.referrer && !document.referrer.includes(window.location.hostname)) {
     data.referrer_url = document.referrer;
   }
