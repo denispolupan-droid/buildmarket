@@ -19,6 +19,8 @@ import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 
 type Lang = 'uk' | 'ru';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const T = {
   uk: {
     deliveryNova: 'Нова Пошта',
@@ -289,16 +291,19 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
 
-  // Save cart to DB for abandoned-cart reminders (debounced 2s)
+  // Save cart to DB for abandoned-cart reminders (debounced 5s).
+  // Адресу перевіряємо повністю, а не на наявність «@»: інакше кожна пауза під
+  // час набору лишала в базі окремий недописаний рядок. 2 с теж було замало —
+  // стільки людина легко думає посеред власної пошти.
   useEffect(() => {
-    if (!loaded || !email?.includes('@') || items.length === 0) return;
+    if (!loaded || !EMAIL_RE.test((email ?? '').trim()) || items.length === 0) return;
     const t = setTimeout(() => {
       fetch('/api/cart/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, items, totalPrice }),
+        body: JSON.stringify({ email: email.trim(), items, totalPrice }),
       }).catch(() => {});
-    }, 2000);
+    }, 5000);
     return () => clearTimeout(t);
   }, [email, items, totalPrice, loaded]);
 
