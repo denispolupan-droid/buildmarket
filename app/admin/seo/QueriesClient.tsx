@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import BoostPanel from './BoostPanel';
 import QueriesTable, { categorySlug } from './QueriesTable';
 import HelpBox from './HelpBox';
@@ -12,6 +12,12 @@ export default function QueriesClient() {
   const [query, setQuery] = useState('');
   const [skus, setSkus] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+
+  // Прихід із «Невидимого попиту» (/admin/seo?q=…): фраза одразу у формі дожиму
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) setQuery(q);
+  }, []);
 
   function pick(q: string, sku: string, path: string) {
     setQuery(q);
