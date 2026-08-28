@@ -7,6 +7,7 @@ import HideOnCategorySwitch from '../../../components/HideOnCategorySwitch';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
 import { getCategoryMetaRu } from '../../../../lib/category-descriptions-ru';
+import { resolveCategoryMeta } from '../../../../lib/seo/guide-prices';
 import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../../lib/seo/meta';
 import '../../../shop/shop.css';
 
@@ -64,10 +65,12 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
   ];
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
-  const meta = getCategoryMetaRu(cat.slug);
 
   const family = new Set(categoryFamilySlugs(categories, cat.slug));
-  const allCategoryProducts = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
+  const allProducts = await getProductsCached();
+  const allCategoryProducts = allProducts.filter(p => p.category_slug && family.has(p.category_slug));
+  // FAQ у JSON-LD — з підставленими цінами, як і в HTML (lib/seo/guide-prices)
+  const meta = resolveCategoryMeta(cat.slug, 'ru', allProducts, categories);
   const itemListProducts = allCategoryProducts.slice(0, 10);
   const itemListLd = itemListProducts.length > 0 ? {
     '@context': 'https://schema.org',

@@ -16,6 +16,7 @@ const GAP_LABELS: { key: keyof CategoryAuditGaps; label: string; tone: Tone; exp
   { key: 'noCatalogLine', label: 'немає переліку',   tone: 'warn',   explain: 'У seoText немає речення з асортиментом — текст не привʼязаний до каталогу' },
   { key: 'noGuide',       label: 'немає гайда',      tone: 'warn',   explain: '5+ товарів і ≥ 25 показів за 28 днів, а гайда «Як вибрати» немає — стандарт 1.4' },
   { key: 'guideNoBuy',    label: 'гайд без «купити»', tone: 'warn',  explain: 'У гайді немає розділу «Де купити» — ні «купити», ні «ціна». Сторінка комерційна, текст — порада' },
+  { key: 'deadPriceSku',  label: 'ціна на знятий товар', tone: 'danger', explain: 'Токен {price:SKU} у гайді/FAQ посилається на артикул, якого немає серед активних товарів — речення з ним не показується. Замінити артикул' },
   { key: 'h1Mismatch',    label: 'H1 ≠ запит',       tone: 'warn',   explain: 'Слова найчастішого запиту сторінки не входять у назву категорії (uk або ru) — стандарт 1.2' },
   { key: 'thinCategory',  label: 'тонка категорія',  tone: 'info',   explain: '1–4 товари: пополнити асортимент або не індексувати; гайд не пишемо' },
   { key: 'thinFaq',       label: 'мало FAQ',         tone: 'info',   explain: 'Менше 4 питань хоча б однією мовою; з гайдом — менше 7' },

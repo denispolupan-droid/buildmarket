@@ -240,3 +240,19 @@ describe('auditCategories — стандарт контенту (docs/CONTENT-ST
     expect(rows[0].gaps.h1Mismatch).toBe(true);
   });
 });
+
+describe('deadPriceSku — токени живих цін', () => {
+  const cats = [{ slug: 'germetyky', name: 'Герметики', parent_slug: null }];
+  const meta = { description: 'Від {min}', guide: { title: 'Гайд', sections: [{ h: 'Де купити', p: ['Ceresit — {price:CR-1}, Lacrysil — {range:LA-1,LA-9}.'] }] } };
+  it('без артикулів у products перевірка не виконується', () => {
+    const [row] = auditCategories({ categories: cats, products: [prod('germetyky', 'Ceresit')], metaUa: { germetyky: meta }, metaRu: {}, brands: [] });
+    expect(row.gaps.deadPriceSku).toBe(false);
+    expect(row.deadPriceSkus).toEqual([]);
+  });
+  it('артикул із токена, якого немає серед активних, — мітка', () => {
+    const products = [{ ...prod('germetyky', 'Ceresit'), sku: 'CR-1' }, { ...prod('germetyky', 'Lacrysil'), sku: 'LA-1' }];
+    const [row] = auditCategories({ categories: cats, products, metaUa: { germetyky: meta }, metaRu: {}, brands: [] });
+    expect(row.deadPriceSkus).toEqual(['LA-9']);
+    expect(row.gaps.deadPriceSku).toBe(true);
+  });
+});

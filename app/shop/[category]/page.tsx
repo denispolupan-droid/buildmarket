@@ -6,6 +6,7 @@ import AllProductsLinks from '../AllProductsLinks';
 import HideOnCategorySwitch from '../../components/HideOnCategorySwitch';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
 import { getCategoryMeta } from '../../../lib/category-descriptions';
+import { resolveCategoryMeta } from '../../../lib/seo/guide-prices';
 import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../lib/seo/meta';
 import '../shop.css';
 
@@ -71,7 +72,8 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
   const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
 
   const family = new Set(categoryFamilySlugs(categories, cat.slug));
-  const allCategoryProducts = (await getProductsCached()).filter(p => p.category_slug && family.has(p.category_slug));
+  const allProducts = await getProductsCached();
+  const allCategoryProducts = allProducts.filter(p => p.category_slug && family.has(p.category_slug));
   const itemListProducts = allCategoryProducts.slice(0, 10);
   const itemListLd = itemListProducts.length > 0 ? {
     '@context': 'https://schema.org',
@@ -102,7 +104,8 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
     })),
   } : null;
 
-  const meta = getCategoryMeta(cat.slug);
+  // FAQ у JSON-LD — з підставленими цінами, як і в HTML (lib/seo/guide-prices)
+  const meta = resolveCategoryMeta(cat.slug, 'uk', allProducts, categories);
   const faqLd = meta?.faq?.length ? {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',

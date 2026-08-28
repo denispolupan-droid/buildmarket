@@ -1,8 +1,7 @@
 import ShopClient from './ShopClient';
 import { getProductsCached, getCategoriesCached, getReviewStatsCached } from '../../lib/supabase';
 import { getShowcaseSkusCached } from '../../lib/showcase-server';
-import { getCategoryMeta } from '../../lib/category-descriptions';
-import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
+import { resolveCategoryMeta } from '../../lib/seo/guide-prices';
 
 type Props = {
   initialSaleOnly?: boolean;
@@ -15,16 +14,15 @@ type Props = {
 
 // Server Component — дані отримуються на сервері, без client-side waterfall
 export default async function ShopLoader({ initialSaleOnly, initialCategory, initialBrand, initialSearch, lang = 'uk' }: Props) {
-  // Опис/FAQ/гайд стартової категорії — на сервері, щоб потрапити в HTML (SEO)
-  const initialMeta = initialCategory
-    ? ((lang === 'ru' ? getCategoryMetaRu(initialCategory) : getCategoryMeta(initialCategory)) ?? null)
-    : null;
   const [products, categories, reviewStats, showcaseSkus] = await Promise.all([
     getProductsCached(),
     getCategoriesCached(),
     getReviewStatsCached(),
     getShowcaseSkusCached('shop'),
   ]);
+  // Опис/FAQ/гайд стартової категорії — на сервері, щоб потрапити в HTML (SEO);
+  // ціни в гайді — живі, з того ж каталогу, що й цінники (lib/seo/guide-prices)
+  const initialMeta = initialCategory ? resolveCategoryMeta(initialCategory, lang, products, categories) : null;
 
   return (
     <ShopClient

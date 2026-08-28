@@ -1,8 +1,7 @@
 import CatalogClient from './CatalogClient';
 import { getProductsB2BCached, getCategoriesCached, getReviewStatsCached } from '../../lib/supabase';
 import { getShowcaseSkusCached } from '../../lib/showcase-server';
-import { getCategoryMeta } from '../../lib/category-descriptions';
-import { getCategoryMetaRu } from '../../lib/category-descriptions-ru';
+import { resolveCategoryMeta } from '../../lib/seo/guide-prices';
 
 type Props = {
   initialSearch?: string;
@@ -14,15 +13,14 @@ type Props = {
 
 // Server Component — дані отримуються на сервері, без client-side waterfall
 export default async function CatalogLoader({ initialSearch, initialCategory, initialSaleOnly, lang = 'uk' }: Props) {
-  const initialMeta = initialCategory
-    ? ((lang === 'ru' ? getCategoryMetaRu(initialCategory) : getCategoryMeta(initialCategory)) ?? null)
-    : null;
   const [products, categories, reviewStats, showcaseSkus] = await Promise.all([
     getProductsB2BCached(),
     getCategoriesCached(),
     getReviewStatsCached(),
     getShowcaseSkusCached('catalog'),
   ]);
+  // Ціни в гайді — роздрібні (promo ?? retail), як у магазині: гайд один на всіх
+  const initialMeta = initialCategory ? resolveCategoryMeta(initialCategory, lang, products, categories) : null;
 
   return (
     <CatalogClient

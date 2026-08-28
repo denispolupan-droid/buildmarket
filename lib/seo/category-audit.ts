@@ -1,4 +1,5 @@
 import type { CategoryMeta } from '../category-descriptions';
+import { tokenSkus } from './guide-prices';
 
 // Аудит категорійного контенту: чи не розійшовся текст категорії з фактичним
 // асортиментом і чи відповідає категорія стандарту контенту
@@ -12,7 +13,7 @@ import type { CategoryMeta } from '../category-descriptions';
 // цьому проза на кшталт «конструкційних сталей» не читається як бренд «Сталь».
 
 export type AuditCategory = { slug: string; name: string; parent_slug: string | null };
-export type AuditProduct = { category_slug: string | null; brand: string | null };
+export type AuditProduct = { category_slug: string | null; brand: string | null; sku?: string };
 /** Попит зі Search Console за 28 днів: покази uk+ru сторінки й найчастіший запит */
 export type AuditDemand = { impressions: number; topQuery: string | null };
 
@@ -43,6 +44,8 @@ export type CategoryAuditGaps = {
   ruGuideBehind: boolean;
   /** слова найчастішого запиту сторінки не входять у назву категорії (uk або ru) */
   h1Mismatch: boolean;
+  /** токен ціни {price:SKU}/{range:…} посилається на артикул, якого немає серед активних товарів */
+  deadPriceSku: boolean;
 };
 
 export type CategoryAuditRow = {
@@ -57,6 +60,8 @@ export type CategoryAuditRow = {
   ruFaq: number;
   /** slug статті, на яку посилається категорія, якщо такої статті немає */
   deadBlogSlug: string | null;
+  /** артикули з токенів ціни, яких немає серед активних товарів (речення з ними випадають з тексту) */
+  deadPriceSkus: string[];
   /** слів у гайді uk / ru (0 — гайда немає) */
   guideWords: { ua: number; ru: number };
   /** покази за 28 днів (uk+ru) і найчастіший запит; null — даних GSC не було */
@@ -152,6 +157,10 @@ export function auditCategories(input: {
     bySlug.get(p.category_slug)!.push(p);
   }
 
+  // Токени живих цін {price:SKU} перевіряємо лише коли передано артикули —
+  // інакше кожен токен виглядав би «мертвим»
+  const skus = products.some(p => p.sku) ? new Set(products.map(p => p.sku).filter(Boolean)) : null;
+
   const slugs = new Set([...categories.map(c => c.slug), ...Object.keys(metaUa)]);
   const rows: CategoryAuditRow[] = [];
 
@@ -194,6 +203,10 @@ export function auditCategories(input: {
     const linked = [ua?.blogSlug, ru?.blogSlug].filter(Boolean) as string[];
     const deadBlogSlug = knownBlog ? (linked.find(s => !knownBlog.has(s)) ?? null) : null;
 
+    const deadPriceSkus = skus
+      ? [...new Set([...(ua ? tokenSkus(ua) : []), ...(ru ? tokenSkus(ru) : [])])].filter(s => !skus.has(s))
+      : [];
+
     const guideUa = guideText(ua);
     const guideRu = guideText(ru);
     const guideWords = { ua: words(guideUa), ru: words(guideRu) };
@@ -214,6 +227,7 @@ export function auditCategories(input: {
       uaFaq,
       ruFaq,
       deadBlogSlug,
+      deadPriceSkus,
       guideWords,
       demand: d,
       gaps: {
@@ -230,6 +244,7 @@ export function auditCategories(input: {
         guideNoBuy: hasGuide && !/купит|ціна|цін[аи]|коштує/iu.test(guideUa),
         ruGuideBehind: hasGuide && guideWords.ru < guideWords.ua * (1 - RU_GUIDE_TOLERANCE),
         h1Mismatch: inDemand && !!d.topQuery && !nameCoversQuery(names, d.topQuery),
+        deadPriceSku: deadPriceSkus.length > 0,
       },
     });
   }

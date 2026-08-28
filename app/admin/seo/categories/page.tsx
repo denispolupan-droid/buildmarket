@@ -51,8 +51,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function SeoCategoriesPage() {
   const [products, categories, posts, demand] = await Promise.all([
-    fetchAllRows<{ category_slug: string | null; brand: string | null }>((f, t) =>
-      db.from('products').select('category_slug, brand').eq('is_active', true).range(f, t)),
+    fetchAllRows<{ sku: string; category_slug: string | null; brand: string | null }>((f, t) =>
+      db.from('products').select('sku, category_slug, brand').eq('is_active', true).range(f, t)),
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
       db.from('categories').select('slug, name, parent_slug').range(f, t)),
     fetchAllRows<{ slug: string }>((f, t) =>
