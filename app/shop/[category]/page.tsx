@@ -5,8 +5,7 @@ import ShopLoader from '../ShopLoader';
 import AllProductsLinks from '../AllProductsLinks';
 import HideOnCategorySwitch from '../../components/HideOnCategorySwitch';
 import { getCategoriesCached, getProductsCached } from '../../../lib/supabase';
-import { getCategoryMeta } from '../../../lib/category-descriptions';
-import { resolveCategoryMeta } from '../../../lib/seo/guide-prices';
+import { getCategoryMeta, resolveCategoryMeta } from '../../../lib/category-content';
 import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../lib/seo/meta';
 import '../shop.css';
 
@@ -44,12 +43,12 @@ export async function generateMetadata(
   // це тонка сторінка, яка тільки псує загальну оцінку розділу. follow лишаємо —
   // хай краулер іде далі по меню. Щойно товар з'явиться, індексація повернеться сама.
   if (products.length === 0) {
-    return { ...categoryMeta(cat, listingStats(products), 'uk', { curatedDescription: getCategoryMeta(category)?.description ?? null }),
+    return { ...categoryMeta(cat, listingStats(products), 'uk', { curatedDescription: (await getCategoryMeta(category, 'uk'))?.description ?? null }),
       robots: { index: false, follow: true } };
   }
 
   return categoryMeta(cat, listingStats(products), 'uk', {
-    curatedDescription: getCategoryMeta(category)?.description ?? null,
+    curatedDescription: (await getCategoryMeta(category, 'uk'))?.description ?? null,
     canonicalSlug: duplicateOfParent(categories, await getProductsCached(), category) ?? undefined,
   });
 }
@@ -105,7 +104,7 @@ export default async function ShopCategoryPage({ params }: { params: Promise<{ c
   } : null;
 
   // FAQ у JSON-LD — з підставленими цінами, як і в HTML (lib/seo/guide-prices)
-  const meta = resolveCategoryMeta(cat.slug, 'uk', allProducts, categories);
+  const meta = await resolveCategoryMeta(cat.slug, 'uk', allProducts, categories);
   const faqLd = meta?.faq?.length ? {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',

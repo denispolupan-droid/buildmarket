@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCategoriesCached, getSupabase } from '../../lib/supabase';
 import { getPublishedPostsCached } from '../../lib/blog-db';
-import { getCategoryMeta } from '../../lib/category-descriptions';
+import { getCategoryContentCached } from '../../lib/category-content';
 import { fetchAllRows } from '../../lib/db-paginate';
 import { llmsTxt, type LlmsTxtInput } from '../../lib/llms-md';
 
@@ -31,7 +31,7 @@ export async function GET() {
   // Через fetchAllRows, а не getProductsCached: там немає .limit(), а PostgREST
   // мовчки ріже відповідь на 1000 рядках — у llms.txt це вилізло б заниженими
   // лічильниками й обрізаним діапазоном цін, які ніхто б не помітив.
-  const [categories, posts, rows] = await Promise.all([
+  const [categories, posts, rows, content] = await Promise.all([
     getCategoriesCached(),
     getPublishedPostsCached(),
     fetchAllRows<Row>((from, to) =>
@@ -41,6 +41,7 @@ export async function GET() {
         .eq('is_active', true)
         .range(from, to),
     ),
+    getCategoryContentCached('uk'),
   ]);
 
   // Категорія рахує всю свою гілку: товари прив'язані до листків, і без цього
@@ -79,7 +80,7 @@ export async function GET() {
         return {
           slug: c.slug,
           name: c.name,
-          description: getCategoryMeta(c.slug)?.description ?? null,
+          description: content[c.slug]?.description ?? null,
           count: s.count,
           minPrice: s.min,
           maxPrice: s.max,

@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { ArrowRight } from 'lucide-react';
 import Reveal from './Reveal';
 import { categoryAccent, categoryIcon } from '../../lib/category-icons';
-import { getCategoryMeta } from '../../lib/category-descriptions';
+import { getCategoryContentCached } from '../../lib/category-content';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { HOME_CATEGORY_CARDS } from '../../lib/home-categories';
 import type { Category } from '../../types';
@@ -19,7 +19,8 @@ type Props = {
   max?: number;
 };
 
-export default function HomeCategoryCards({ categories, lang, max = HOME_CATEGORY_CARDS }: Props) {
+export default async function HomeCategoryCards({ categories, lang, max = HOME_CATEGORY_CARDS }: Props) {
+  const content = await getCategoryContentCached(lang);
   const prefix = lang === 'ru' ? '/ru' : '';
   const allRoots = categories
     .filter(c => !c.parent_slug)
@@ -36,9 +37,7 @@ export default function HomeCategoryCards({ categories, lang, max = HOME_CATEGOR
         const accent = categoryAccent(c.slug) ?? 'var(--brand-blue)';
         const icon = categoryIcon(c.slug);
         const name = lang === 'ru' ? getCategoryNameRu(c.slug, c.name) : c.name;
-        const description = lang === 'ru'
-          ? getCategoryDescriptionRu(c.slug, name)
-          : (getCategoryMeta(c.slug)?.description ?? '');
+        const description = content[c.slug]?.description ?? (lang === 'ru' ? getCategoryDescriptionRu(c.slug, name) : '');
         return (
           <Reveal key={c.slug} delay={i * 70} style={{ height: '100%' }}>
           <Link href={`${prefix}/shop?category=${c.slug}`} className="blog-card home-cat-card" style={{

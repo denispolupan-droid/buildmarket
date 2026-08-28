@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 
 import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsLightCached, getProductFaqCached } from '../../../lib/supabase';
-import { getCategoryMeta } from '../../../lib/category-descriptions';
+import { getCategoryMeta } from '../../../lib/category-content';
 import { getPostSlugForSkuCached } from '../../../lib/blog-db';
 import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../lib/seo/meta';
 import ProductTabs from './ProductTabs';
@@ -94,6 +94,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     permanentRedirect(`/product/${product.slug}${sp.from ? `?from=${sp.from}` : ''}`);
   }
   const sku = product.sku;
+  const categoryBlogSlug = product.category_slug ? (await getCategoryMeta(product.category_slug, 'uk'))?.blogSlug ?? null : null;
 
   const [related, categoryProducts, faq, categories, reviewsData, reviewStats, articleSlugForSku] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
@@ -346,8 +347,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
         {/* Стаття по темі: спершу та, де стоїть саме цей товар, інакше — категорійна */}
         {(() => {
-          const blogSlug = articleSlugForSku
-            ?? (product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null);
+          const blogSlug = articleSlugForSku ?? categoryBlogSlug;
           return blogSlug ? <ArticleLink blogSlug={blogSlug} lang="uk" /> : null;
         })()}
 

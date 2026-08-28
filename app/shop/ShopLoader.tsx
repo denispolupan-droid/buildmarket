@@ -1,7 +1,7 @@
 import ShopClient from './ShopClient';
 import { getProductsCached, getCategoriesCached, getReviewStatsCached } from '../../lib/supabase';
 import { getShowcaseSkusCached } from '../../lib/showcase-server';
-import { resolveCategoryMeta } from '../../lib/seo/guide-prices';
+import { resolveCategoryMeta } from '../../lib/category-content';
 
 type Props = {
   initialSaleOnly?: boolean;
@@ -22,7 +22,7 @@ export default async function ShopLoader({ initialSaleOnly, initialCategory, ini
   ]);
   // Опис/FAQ/гайд стартової категорії — на сервері, щоб потрапити в HTML (SEO);
   // ціни в гайді — живі, з того ж каталогу, що й цінники (lib/seo/guide-prices)
-  const initialMeta = initialCategory ? resolveCategoryMeta(initialCategory, lang, products, categories) : null;
+  const initialMeta = initialCategory ? await resolveCategoryMeta(initialCategory, lang, products, categories) : null;
 
   return (
     <ShopClient

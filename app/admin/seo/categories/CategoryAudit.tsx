@@ -79,6 +79,9 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
                   {row.name}
                 </Link>
                 <code style={{ fontSize: 12, color: 'var(--text-muted)' }}>{row.slug}</code>
+                <Link href={`/admin/seo/categories/${row.slug}`} style={{ fontSize: 12, fontWeight: 600 }}>
+                  {row.gaps.noMeta ? 'створити текст' : 'редагувати'}
+                </Link>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· {row.productCount} товарів</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· FAQ {row.uaFaq}/{row.ruFaq}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· гайд {row.guideWords.ua ? `${row.guideWords.ua}/${row.guideWords.ru} слів` : '—'}</span>

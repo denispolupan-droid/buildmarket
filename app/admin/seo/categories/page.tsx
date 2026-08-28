@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../../../../lib/db-paginate';
-import { CATEGORY_META } from '../../../../lib/category-descriptions';
-import { CATEGORY_META_RU } from '../../../../lib/category-descriptions-ru';
+import { getCategoryContentCached } from '../../../../lib/category-content';
 import { auditCategories, type AuditDemand } from '../../../../lib/seo/category-audit';
 import { CATEGORY_NAMES_RU } from '../../../../lib/ru';
 import { queryAll } from '../../../../lib/gsc';
@@ -59,12 +58,13 @@ export default async function SeoCategoriesPage() {
       db.from('blog_posts').select('slug').eq('is_published', true).range(f, t)),
     loadDemand(),
   ]);
+  const [metaUa, metaRu] = await Promise.all([getCategoryContentCached('uk'), getCategoryContentCached('ru')]);
 
   const rows = auditCategories({
     categories,
     products,
-    metaUa: CATEGORY_META,
-    metaRu: CATEGORY_META_RU,
+    metaUa,
+    metaRu,
     brands: [...new Set(products.map(p => p.brand).filter(Boolean))] as string[],
     blogSlugs: posts.map(p => p.slug),
     demand,

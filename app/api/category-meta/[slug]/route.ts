@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getProductsCached, getCategoriesCached } from '../../../../lib/supabase';
-import { resolveCategoryMeta } from '../../../../lib/seo/guide-prices';
+import { resolveCategoryMeta } from '../../../../lib/category-content';
 
 /**
  * Опис, FAQ і гайд категорії для клієнтського перемикання в магазині та
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const lang = req.nextUrl.searchParams.get('lang') === 'ru' ? 'ru' : 'uk';
   // Ціни підставляються з каталогу — тому кеш хвилина, як у листингу, а не година
   const [products, categories] = await Promise.all([getProductsCached(), getCategoriesCached()]);
-  const meta = resolveCategoryMeta(slug, lang, products, categories);
+  const meta = await resolveCategoryMeta(slug, lang, products, categories);
   return NextResponse.json({ meta }, {
     headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=3600' },
   });

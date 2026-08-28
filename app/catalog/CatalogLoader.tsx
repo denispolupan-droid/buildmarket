@@ -1,7 +1,7 @@
 import CatalogClient from './CatalogClient';
 import { getProductsB2BCached, getCategoriesCached, getReviewStatsCached } from '../../lib/supabase';
 import { getShowcaseSkusCached } from '../../lib/showcase-server';
-import { resolveCategoryMeta } from '../../lib/seo/guide-prices';
+import { resolveCategoryMeta } from '../../lib/category-content';
 
 type Props = {
   initialSearch?: string;
@@ -20,7 +20,7 @@ export default async function CatalogLoader({ initialSearch, initialCategory, in
     getShowcaseSkusCached('catalog'),
   ]);
   // Ціни в гайді — роздрібні (promo ?? retail), як у магазині: гайд один на всіх
-  const initialMeta = initialCategory ? resolveCategoryMeta(initialCategory, lang, products, categories) : null;
+  const initialMeta = initialCategory ? await resolveCategoryMeta(initialCategory, lang, products, categories) : null;
 
   return (
     <CatalogClient

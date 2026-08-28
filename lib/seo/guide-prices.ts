@@ -1,7 +1,4 @@
-import { getCategoryMeta, type CategoryMeta } from '../category-descriptions';
-import { getCategoryMetaRu } from '../category-descriptions-ru';
-import { categoryFamilySlugs, retailPrice } from './meta';
-import type { Category, ProductStockPublic } from '../../types';
+import type { CategoryMeta } from '../category-descriptions';
 
 /**
  * Живі ціни в гайдах і FAQ категорій.
@@ -133,21 +130,4 @@ export function tokenSkus(meta: CategoryMeta): string[] {
     if ((m[1] === 'price' || m[1] === 'range') && m[2]) for (const s of m[2].split(',')) out.add(s.trim());
   }
   return [...out];
-}
-
-/**
- * Мета категорії потрібною мовою з живими цінами — одна точка для ShopLoader,
- * CatalogLoader, /api/category-meta і .md-версії. Ціна товару — та сама, що на
- * ціннику (retailPrice: promo ?? retail); родина категорії — як у листингу.
- */
-export function resolveCategoryMeta(
-  slug: string,
-  lang: 'uk' | 'ru',
-  products: { sku: string; category_slug: string | null; stock: ProductStockPublic | null }[],
-  categories: Pick<Category, 'slug' | 'parent_slug'>[],
-): CategoryMeta | null {
-  const meta = lang === 'ru' ? getCategoryMetaRu(slug) : getCategoryMeta(slug);
-  if (!meta) return null;
-  const priced = products.map(p => ({ sku: p.sku, category_slug: p.category_slug, price: retailPrice(p) }));
-  return resolveGuidePrices(meta, priced, categoryFamilySlugs(categories, slug)).meta;
 }

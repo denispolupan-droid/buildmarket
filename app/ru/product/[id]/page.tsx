@@ -7,7 +7,7 @@ import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
-import { getCategoryMeta } from '../../../../lib/category-descriptions';
+import { getCategoryMeta } from '../../../../lib/category-content';
 import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../../lib/seo/meta';
 import ProductTabs from '../../../product/[id]/ProductTabs';
 import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
@@ -93,6 +93,10 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     permanentRedirect(`/ru/product/${product.slug}${sp.from ? `?from=${sp.from}` : ''}`);
   }
   const sku = product.sku;
+  // Стаття категорії — з ru-контенту, інакше з uk (стаття двомовна, посилання те саме)
+  const categoryBlogSlug = product.category_slug
+    ? (await getCategoryMeta(product.category_slug, 'ru'))?.blogSlug ?? (await getCategoryMeta(product.category_slug, 'uk'))?.blogSlug ?? null
+    : null;
 
   const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
@@ -332,7 +336,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
         <DeliveryInfo lang="ru" />
 
         {/* Статья по теме */}
-        {(() => { const blogSlug = product.category_slug ? getCategoryMeta(product.category_slug)?.blogSlug : null; return blogSlug ? (
+        {(() => { const blogSlug = categoryBlogSlug; return blogSlug ? (
           <ArticleLink blogSlug={blogSlug} lang="ru" />
         ) : null; })()}
 

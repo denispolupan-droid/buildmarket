@@ -17,7 +17,9 @@ export type SeoActionKind =
   | 'article_new'
   | 'product_boost'
   | 'cover'
-  | 'meta_rewrite';
+  | 'meta_rewrite'
+  | 'article_categories'
+  | 'category_content';
 
 const db = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

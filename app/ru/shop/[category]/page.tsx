@@ -6,8 +6,7 @@ import AllProductsLinks from '../../../shop/AllProductsLinks';
 import HideOnCategorySwitch from '../../../components/HideOnCategorySwitch';
 import { getCategoriesCached, getProductsCached } from '../../../../lib/supabase';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../../../lib/ru';
-import { getCategoryMetaRu } from '../../../../lib/category-descriptions-ru';
-import { resolveCategoryMeta } from '../../../../lib/seo/guide-prices';
+import { getCategoryMeta, resolveCategoryMeta } from '../../../../lib/category-content';
 import { categoryMeta, listingStats, productDisplayName, retailPrice, categoryFamilySlugs, duplicateOfParent, categoriesWithProducts } from '../../../../lib/seo/meta';
 import '../../../shop/shop.css';
 
@@ -39,7 +38,7 @@ export async function generateMetadata(
     nameRu,
     // Спершу повний перекладений опис категорії (той самий, що в блоці
     // «О категории»), і лише як фолбек — короткий шаблон
-    curatedDescription: getCategoryMetaRu(cat.slug)?.description ?? getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
+    curatedDescription: (await getCategoryMeta(cat.slug, 'ru'))?.description ?? getCategoryDescriptionRu(cat.slug, nameRu) ?? null,
     canonicalSlug: duplicateOfParent(categories, await getProductsCached(), category) ?? undefined,
   });
   if (products.length === 0) return { ...meta, robots: { index: false, follow: true } };
@@ -70,7 +69,7 @@ export default async function RuShopCategoryPage({ params }: { params: Promise<{
   const allProducts = await getProductsCached();
   const allCategoryProducts = allProducts.filter(p => p.category_slug && family.has(p.category_slug));
   // FAQ у JSON-LD — з підставленими цінами, як і в HTML (lib/seo/guide-prices)
-  const meta = resolveCategoryMeta(cat.slug, 'ru', allProducts, categories);
+  const meta = await resolveCategoryMeta(cat.slug, 'ru', allProducts, categories);
   const itemListProducts = allCategoryProducts.slice(0, 10);
   const itemListLd = itemListProducts.length > 0 ? {
     '@context': 'https://schema.org',

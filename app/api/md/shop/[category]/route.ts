@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCategoriesCached, getProductsCached } from '../../../../../lib/supabase';
-import { resolveCategoryMeta } from '../../../../../lib/seo/guide-prices';
+import { resolveCategoryMeta } from '../../../../../lib/category-content';
 import { categoryFamilySlugs, duplicateOfParent } from '../../../../../lib/seo/meta';
 import { categoryMarkdown, type MdCategoryInput } from '../../../../../lib/llms-md';
 import { SITE_URL } from '../../../../../lib/site';
@@ -59,7 +59,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ categor
     .filter(c => c.count > 0)
     .sort((a, b) => b.count - a.count);
 
-  const meta = resolveCategoryMeta(slug, 'uk', allProducts, categories);
+  const meta = await resolveCategoryMeta(slug, 'uk', allProducts, categories);
   const parent = cat.parent_slug ? categories.find(c => c.slug === cat.parent_slug) ?? null : null;
 
   const input: MdCategoryInput = {
