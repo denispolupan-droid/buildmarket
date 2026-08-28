@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       .range(f, t)),
     fetchAllRows((f, t) => serviceClient
       .from('product_stock')
-      .select('sku, price_retail, price_promo, stock_status')
+      .select('sku, price_retail, price_promo, price_cost, stock_status')
       .range(f, t)),
     serviceClient
       .from('categories')
@@ -129,6 +129,14 @@ export async function GET(request: NextRequest) {
       const description = truncate(rawDesc, 5000);
 
       const productType = categoryPath(p.category_slug);
+
+      // Мітка придатності до реклами: кампанія в Google Ads фільтрується саме за
+      // custom_label, тож без неї довелось би вручну перелічувати артикули і
+      // переписувати список після кожної зміни цін. Рахуємо від прибутку з ОДНІЄЇ
+      // продажі — реклама окупається лише там, де одна угода перекриває десятки
+      // кліків. Мітки навмисно непрозорі: фід закритий ключем, але виносити в
+      // нього суми прибутку все одно не варто.
+      const adsLabel = adsBucket((salePrice ?? price) - Number(s.price_cost ?? 0), available === 'in stock');
       const gKey = `${p.brand.trim().toLowerCase()}::${variantBaseName(p.name)}`;
       const gid = groupId.get(gKey);
 
@@ -146,6 +154,7 @@ export async function GET(request: NextRequest) {
       <g:identifier_exists>false</g:identifier_exists>
       ${gid ? `<g:item_group_id>${x(gid)}</g:item_group_id>` : ''}
       ${productType ? `<g:product_type>${x(productType)}</g:product_type>` : ''}
+      <g:custom_label_0>${adsLabel}</g:custom_label_0>
     </item>`;
     })
     .filter(Boolean)
@@ -168,4 +177,17 @@ ${items}
       'Pragma': 'no-cache',
     },
   });
+}
+
+// Пороги під ціль «заробляти»: на рекламу йде не більше половини валового
+// прибутку. Стеля ставки = прибуток × конверсія × (1 − частка відмов). За фактом
+// сайту (конверсія ~2%, відмов 26%) 400 ₴ прибутку дають ~5,9 ₴ беззбиткового
+// кліку — тобто до 3 ₴ ставки, і половина прибутку лишається нам. Клік у Shopping
+// по будхімії коштує 2–5 ₴, тому нижня межа ads_a саме така висока.
+function adsBucket(unitProfit: number, inStock: boolean): string {
+  if (!inStock || !Number.isFinite(unitProfit)) return 'ads_no';
+  if (unitProfit >= 400) return 'ads_a';   // старт кампанії
+  if (unitProfit >= 250) return 'ads_b';   // розширення, якщо тест зайде
+  if (unitProfit >= 150) return 'ads_c';   // лише за вищої конверсії
+  return 'ads_no';                          // рекламувати збитково
 }
