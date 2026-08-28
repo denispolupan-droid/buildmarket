@@ -19,6 +19,7 @@ import { createServiceClient } from '../supabase';
 import { recordCOGS, recordTxn, type AccountType } from './money';
 import { createDocument, confirmDocument } from './documents';
 import { resolveOrderFulfillment } from './fulfillment';
+import { createReservation, getOrderReservations } from './reservations';
 import type { OrderItem } from '../../types';
 
 // ── Информация о выполнении заказа ────────────────────────────────────────────
@@ -390,7 +391,59 @@ export async function createSaleDraft(
     console.error('[dropship] борг при відвантаженні не проведено:', doc.id, err);
   }
 
+  // Товар зі СВОГО складу фізично поїхав, а списується він лише при доставці
+  // (Варіант 3: РН лишається чернеткою). У проміжку його має тримати резерв,
+  // інакше залишок показує «доступно» на коробку, яка вже в дорозі, і той самий
+  // товар можна продати вдруге. Живий випадок 28.08: клей 1603-016 і герметик
+  // 1001-003 висіли доступними, хоч обидва їхали до покупців.
+  //
+  // Резерву тут може не бути взагалі: менеджер підтвердив замовлення як
+  // «постачальник», а роутер при відгрузці знайшов товар на своєму складі.
+  // Термін не ставимо — резерв знімає проведення при доставці або скасування
+  // замовлення, а не годинник: посилка може їхати довше за будь-який TTL.
+  try {
+    await reserveShippedOwnStock(input.order_id, plan.items.filter(s => s.fulfillment_type === 'own'), input.order_items);
+  } catch (err) {
+    console.error('[dropship] резерв відвантаженого власного товару не створено:', doc.id, err);
+  }
+
   return doc.id;
+}
+
+/**
+ * Тримає власний товар зарезервованим, доки посилка їде. Резервує лише те, чого
+ * ще не тримає активний резерв цього ж замовлення: reserve_order_items вставляє
+ * рядок без перевірок, тож повторний виклик інакше подвоїв би резерв.
+ */
+async function reserveShippedOwnStock(
+  orderId: string,
+  ownSources: { sku: string; qty: number; warehouse_id: number }[],
+  orderItems: { sku: string; qty: number }[],
+): Promise<void> {
+  if (!ownSources.length) return;
+
+  const already = new Map<string, number>();
+  for (const r of await getOrderReservations(orderId)) {
+    already.set(r.sku as string, (already.get(r.sku as string) ?? 0) + Number(r.qty));
+  }
+
+  const byWarehouse = new Map<number, { sku: string; qty: number }[]>();
+  for (const src of ownSources) {
+    const shipped = orderItems.find(i => i.sku === src.sku)?.qty ?? src.qty;
+    const need = Math.min(Number(src.qty), Number(shipped)) - (already.get(src.sku) ?? 0);
+    if (need <= 0) continue;
+    if (!byWarehouse.has(src.warehouse_id)) byWarehouse.set(src.warehouse_id, []);
+    byWarehouse.get(src.warehouse_id)!.push({ sku: src.sku, qty: need });
+  }
+
+  for (const [warehouseId, items] of byWarehouse) {
+    const res = await createReservation({ order_id: orderId, warehouse_id: warehouseId, items });
+    // Не вистачило залишку — відгрузку не спиняємо (коробка вже поїхала), але
+    // мовчати не можна: склад розійшовся з фактом ще ДО цієї відгрузки.
+    if (res.insufficient.length) {
+      console.error('[dropship] не вистачило залишку на резерв відвантаженого:', orderId, res.insufficient);
+    }
+  }
 }
 
 // syncSaleDraftLines — коли редагують позиції замовлення (к-сть/ціна/склад товарів),

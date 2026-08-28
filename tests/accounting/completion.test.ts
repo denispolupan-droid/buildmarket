@@ -42,6 +42,17 @@ async function moneyEntries(docId: string) {
   return data ?? [];
 }
 
+/** Доступний залишок = всього мінус резерв: саме він вирішує, чи можна продати ще раз. */
+async function available(sku: string, warehouseId: number): Promise<number> {
+  const { data } = await db
+    .from('stock_balance')
+    .select('qty_available')
+    .eq('sku', sku)
+    .eq('warehouse_id', warehouseId)
+    .maybeSingle();
+  return Number(data?.qty_available ?? 0);
+}
+
 beforeAll(async () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -106,6 +117,51 @@ describe('Варіант 3 — продаж при доставці', () => {
     expect((await moneyEntries(docId)).length).toBe(before);
 
     await assertInvariants();
+  }, 30000);
+
+  it('відгрузка БЕЗ попереднього резерву все одно тримає власний товар — він уже в дорозі', async () => {
+    // Живий випадок 28.08: менеджер підтвердив замовлення як «постачальник», а
+    // роутер при відгрузці взяв товар зі свого складу. Резерву не було, РН — ще
+    // чернетка, тож списання не відбулось: залишок показував «доступно» на
+    // коробку, яка вже їхала до покупця, і той самий товар можна було продати вдруге.
+    const orderId = randomUUID();
+    const items = [{ sku: testSku, name: 'test', brand: 'test', qty: 1, price: 100 }];
+
+    // Тестова база не має правил маршрутизації взагалі, тож роутер завжди
+    // відповідає «дропшип» — і гілка «свій склад» тут ніколи не перевірялась.
+    // Ставимо те саме правило, що в проді (основний склад, пріоритет 1), і
+    // прибираємо його за собою, щоб не змінити поведінку сусідніх тестів.
+    const { data: rule } = await db.from('fulfillment_rules')
+      .insert({ name: '[TEST] основний склад', warehouse_id: warehouseId, priority: 1, is_active: true })
+      .select('id').single();
+
+    try {
+      const availBefore = await available(testSku, warehouseId);
+      expect(await hasActiveReservation(orderId)).toBe(false);   // резерву свідомо немає
+
+      const docId = await createSaleDraft({
+        order_id: orderId, order_number: 999990, order_items: items,
+        channel_code: 'website', confirmed_by: 'test', tracking_number: '59TESTNORESV1',
+      });
+      await db.from('acc_documents').update({ meta: { test: true } }).eq('id', docId);
+
+      const { data: line } = await db.from('acc_document_lines')
+        .select('fulfillment_type').eq('document_id', docId).maybeSingle();
+      expect(line?.fulfillment_type, 'товар мав піти зі свого складу').toBe('own');
+
+      expect(await hasActiveReservation(orderId), 'відвантажений власний товар має бути зарезервований').toBe(true);
+      expect(await available(testSku, warehouseId), 'доступний залишок має зменшитись на відвантажене')
+        .toBe(availBefore - 1);
+
+      // Доставка списує товар і знімає резерв — подвійного утримання немає
+      await applyCompletionEffects(docId, 'test');
+      expect(await hasActiveReservation(orderId)).toBe(false);
+      expect(await available(testSku, warehouseId)).toBe(availBefore - 1);
+
+      await assertInvariants();
+    } finally {
+      if (rule?.id) await db.from('fulfillment_rules').delete().eq('id', rule.id);
+    }
   }, 30000);
 
   it('часткова відгрузка: 2 посилки = 2 чернетки, проводяться окремо за своєю ТТН', async () => {
