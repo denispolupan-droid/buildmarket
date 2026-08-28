@@ -16,6 +16,7 @@ const FROM = 'FIXLINE <noreply@fixline.com.ua>';
 const BASE = 'https://fixline.com.ua';
 const DAYS_AFTER_DELIVERY = 5;
 const BATCH = 50;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type OrderItem = { sku: string; name: string };
 
@@ -32,15 +33,21 @@ export async function GET(req: NextRequest) {
     .eq('status', 'delivered')
     .is('review_request_sent_at', null)
     .not('email', 'is', null)
+    .neq('email', '')
     .not('review_token', 'is', null)
     .lte('delivered_at', cutoff)
+    .order('delivered_at', { ascending: true })
     .limit(BATCH);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!orders?.length) return NextResponse.json({ sent: 0 });
 
-  let sent = 0, failed = 0;
+  let sent = 0, failed = 0, skipped = 0;
   for (const order of orders) {
+    const email = (order.email ?? '').trim();
+    // Замовлення з маркетплейсів приходять без пошти — тихо пропускаємо,
+    // інакше вони щодня забивають партію і живі адреси до неї не доходять.
+    if (!EMAIL_RE.test(email)) { skipped++; continue; }
     const items = (order.items ?? []) as OrderItem[];
     const firstName = (order.contact ?? '').trim().split(/\s+/)[0] || '';
     const reviewUrl = `${BASE}/review/${order.review_token}`;
@@ -52,7 +59,7 @@ export async function GET(req: NextRequest) {
     try {
       const { error: sendErr } = await resend.emails.send({
         from: FROM,
-        to: order.email as string,
+        to: email,
         subject: `Як вам покупка? Оцініть товари із замовлення №${order.order_number}`,
         html: `
 <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1E293B">
@@ -84,7 +91,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ sent, failed });
+  return NextResponse.json({ sent, failed, skipped });
 }
 
 function escapeHtml(s: string): string {

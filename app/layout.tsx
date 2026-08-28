@@ -51,13 +51,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="preconnect" href="https://pan2.uk" />
         <link rel="dns-prefetch" href="https://pan2.uk" />
+        {/* Темна тема вимкнена: перемикача в UI немає, тож автопідхоплення
+            prefers-color-scheme робило сайт темним у вебв'ю месенджерів
+            (телефон у нічному режимі) без жодного способу повернути світлу.
+            Правила [data-theme="dark"] у globals.css лишаються — просто
+            атрибут ніколи не стає 'dark'. */}
+        <meta name="color-scheme" content="light" />
         {/* Blocking script — applies theme + lang BEFORE first paint, eliminates white flash */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {
-            var t = localStorage.getItem('theme') ||
-              (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', t);
-            if (t === 'dark') document.documentElement.style.background = '#252B38';
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.removeItem('theme');
             document.documentElement.lang = location.pathname.indexOf('/ru') === 0 ? 'ru' : 'uk';
           } catch(e) {}
         ` }} />

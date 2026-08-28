@@ -10,10 +10,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    const saved = localStorage.getItem('theme') as Theme | null;
-    const t = saved ?? 'light';
-    setTheme(t);
-    document.documentElement.setAttribute('data-theme', t);
+    // Темна тема вимкнена (перемикача в UI немає). Збережений 'dark' у тих,
+    // хто встиг натиснути перемикач раніше, більше не піднімається — інакше
+    // вони назавжди лишалися б у темній без способу повернутись.
+    localStorage.removeItem('theme');
+    setTheme('light');
+    document.documentElement.setAttribute('data-theme', 'light');
   }, []);
 
   function toggle() {
