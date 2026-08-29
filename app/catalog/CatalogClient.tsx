@@ -18,6 +18,7 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
+import { resolveFacets, facetTokens, categoryChainOf } from '../../lib/facets';
 
 import { WHOLESALE_MIN } from '../../lib/site';
 import type { CategoryMeta } from '../../lib/category-descriptions';
@@ -334,77 +335,12 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter((v): v is string => !!v && /кг|г$/.test(v)))].sort((a,b) => toGrams(a)-toGrams(b)), [catProducts]);
 
   const allFilters = useMemo(() => {
-    const SKIP_LOWER = new Set([
-      'колір', 'бренд', 'торгова марка',
-      'тип', 'тип фарби', 'тип ґрунтовки', 'тип герметика', 'тип клею',
-      'обсяг', 'об\'єм', 'об\'єм упаковки', 'обсяг упаковки', 'вага',
-      'об\'єм балону', 'об\'єм балона',
-      'назва продукту', 'марка', 'розмір упаковки', 'розфасування',
-      'мінімальна температура застосування', 'максимальна температура застосування',
-      'мінімальна температура експлуатації', 'максимальна температура експлуатації',
-      'мінімальна температура зберігання',   'максимальна температура зберігання',
-      'час висихання поверхні', 'час висихання', 'час повного затвердіння', 'час затвердіння', 'час повного висихання',
-      'час початкового схоплення', 'час поверхневого висихання',
-      'час висихання (від пилу)', 'час висихання від пилу', 'час висихання (наступний шар)',
-      'час висихання (дерево)', 'час висихання (папір)',
-      'час відкритого шару', 'час до наступного шару',
-      'термін зберігання', 'витрата матеріалу', 'витрата', 'витрата фарби', 'витрата ґрунтовки',
-      'первинне розширення', 'вторинне розширення', 'вихід піни',
-      'міцність клейового з\'єднання',
-      'тип приміщення',
-      'еластичність покриття', 'еластичність',
-      'сумісність з основами', 'сумісність',
-      'температурний діапазон', 'температурний діапазон експлуатації',
-      'стан', 'вміст розчинників', 'сумісні поверхні', 'тип продукту',
-      'серія',
-      'розведення', 'розведення водою',
-      'розчинник', 'консистенція', 'готовність до застосування',
-      'ступінь блиску', 'фасування', 'тип проникнення',
-      'термін придатності', 'температура нанесення',
-      'підходящі основи', 'витрата концентрату',
-      'площа обробки',
-      'особливості',
-      'водостійкість', 'клас водостійкості',
-      'ширина шва', 'ширина шва (мм)',
-      'область застосування',
-      'захист від',
-      'кількість шарів', 'кількість шарів нанесення',
-      'тип різання', 'товщина',
-      'час дії',
-      'шліфування',
-      'матеріал',
-      'артикул',
-      'конструкція',
-      'тип інструменту',
-      'матеріал корпусу', 'матеріал лезо', 'матеріал ствола', 'матеріал каркасу', 'матеріал корпус',
-      'посадочний отвір', 'посадковий отвір',
-      'механізм зворотного ходу',
-      'сумісний об\'єм картриджів', 'тип картриджа', 'тип балона', 'тип хвостовика',
-      'застосування', 'модель', 'розміри',
-      'регулювання подачі', 'робоча довжина', 'ширина профілю', 'форма профілю', 'ширина лезо',
-      'рід струму', 'вид зварювання', 'вид покриття',
-      'положення зварювання', 'позиція зварювання', 'просторове положення зварювання', 'просторове положення', 'просторові положення',
-      'метод зварювання', 'струм зварювання', 'тип електродів', 'тип зварювання', 'зварювальний струм (орієнтовно)',
-      'марка електрода', 'тип електрода', 'діаметр електрода',
-      'довжина картриджа', 'діапазон вимірювання',
-      'упаковка', 'кількість ручок', 'капсули', 'кількість у наборі',
-      'наявність індикатора', 'покриття', 'сфера застосування',
-      'серія / модель', 'міцність на зсув', 'тип голівки',
-      'об\'єм / вага',
-      'формат відпуску',
-      'ефект', 'форма випуску', 'стійкість',
-      'матеріал основи', 'стійкість до вологи', 'вантажопідйомність',
-      'площа рулону', 'поверхнева щільність', 'максимальне навантаження',
-      'основа кріплення', 'ширина рулону',
-      'основа',
-      'клас зносостійкості', 'склад', 'умови застосування',
-      'тип покриття', 'сумісність з поверхнями', 'стандарт',
-      'оброблювані поверхні', 'спосіб нанесення', 'інструмент нанесення',
-      'тип ефекту', 'спеціальні ефекти',
-      'сумісність з ґрунтовками', 'сумісність з грунтовками', 'максимальна температура', 'сумісні матеріали',
-      'відтінок', 'сумісність з розчинниками',
-      'об\'єм поглинання',
-    ]);
+    // Фасети — зі словника характеристик (lib/facets), а не з чорного списку:
+    // категорія сама каже, які лейбли є фільтрами і в якому порядку значення.
+    const facets = resolveFacets(categories, selCat);
+    const facetByLabel = new Map(facets.map(f => [f.label, f]));
+    const inInstrumenty = categoryChainOf(categories, selCat).includes('instrumenty');
+
     const map = new Map<string, Map<string, string>>();
     const countsMap = new Map<string, Map<string, number>>();
     const add = (label: string, val: string | null | undefined, split = false) => {
@@ -412,7 +348,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
       if (!v || v === 'Не вказано') return;
       if (!map.has(label)) map.set(label, new Map());
       if (!countsMap.has(label)) countsMap.set(label, new Map());
-      const tokens = split ? v.split(/,\s+/).map(t => t.trim()).filter(Boolean) : [v];
+      const tokens = split ? facetTokens(v) : [v];
       for (const tok of tokens) {
         const key = tok.toLowerCase();
         const cap = tok.charAt(0).toUpperCase() + tok.slice(1);
@@ -421,92 +357,45 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         countsMap.get(label)!.set(key, (countsMap.get(label)!.get(key) ?? 0) + 1);
       }
     };
-    const inInstrumenty = (() => {
-      if (!selCat) return false;
-      const catMap = new Map(categories.map(c => [c.slug, c]));
-      let slug: string | null = selCat;
-      while (slug) { if (slug === 'instrumenty') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
-      return false;
-    })();
-
-    const inMontazhnaPina = (() => {
-      if (!selCat) return false;
-      const catMap = new Map(categories.map(c => [c.slug, c]));
-      let slug: string | null = selCat;
-      while (slug) { if (slug === 'montazhna-pina') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
-      return false;
-    })();
-
-    const inPlastyfikatory = (() => {
-      if (!selCat) return false;
-      const catMap = new Map(categories.map(c => [c.slug, c]));
-      let slug: string | null = selCat;
-      while (slug) { if (slug === 'plastyfikatory') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
-      return false;
-    })();
-
-    const inStrichky = (() => {
-      if (!selCat) return false;
-      const catMap = new Map(categories.map(c => [c.slug, c]));
-      let slug: string | null = selCat;
-      while (slug) { if (slug === 'strichky') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
-      return false;
-    })();
-
-    const inFarby = (() => {
-      if (!selCat) return false;
-      const catMap = new Map(categories.map(c => [c.slug, c]));
-      let slug: string | null = selCat;
-      while (slug) { if (slug === 'farby') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
-      return false;
-    })();
-
-    const inZakhystDerevyny = (() => {
-      if (!selCat) return false;
-      const catMap = new Map(categories.map(c => [c.slug, c]));
-      let slug: string | null = selCat;
-      while (slug) { if (slug === 'zakhyst-derevyny') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
-      return false;
-    })();
-
-    const inKlei = (() => {
-      if (!selCat) return false;
-      const catMap = new Map(categories.map(c => [c.slug, c]));
-      let slug: string | null = selCat;
-      while (slug) { if (slug === 'klei') return true; slug = catMap.get(slug)?.parent_slug ?? null; }
-      return false;
-    })();
 
     for (const p of catProducts) {
       add('Бренд', p.brand);
       if (!inInstrumenty) add('Тип', p.product_type);
       add('Колір', p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value);
       for (const c of p.characteristics ?? []) {
-        const label = c.label?.trim();
-        if (!label || SKIP_LOWER.has(label.toLowerCase()) || label.toLowerCase().includes('колір')) continue;
-        if ((inMontazhnaPina || inPlastyfikatory || inStrichky || inFarby || inZakhystDerevyny || inKlei) && label.toLowerCase() === 'призначення') continue;
-        add(label, c.value, true);
+        const f = facetByLabel.get(c.label?.trim());
+        if (f) add(f.label, c.value, true);
       }
     }
-    const PRIMARY = new Set(['Бренд', 'Колір']);
+
+    const PRIMARY = ['Бренд', 'Тип', 'Колір'];
+    const rank = (label: string) => {
+      const p = PRIMARY.indexOf(label);
+      return p >= 0 ? p : PRIMARY.length + facets.findIndex(f => f.label === label);
+    };
     return [...map.entries()]
-      .filter(([label, vals]) => vals.size > 1 || PRIMARY.has(label))
+      // фасет має сенс, лише коли хоч одне значення щось відсіює: «Поверхня: Метал (60), Дерево (60)»
+      // на 60 товарах — не фільтр. Бренд/Колір лишаємо завжди.
+      .filter(([label, vals]) => label === 'Бренд' || label === 'Колір'
+        || (vals.size > 1 && [...countsMap.get(label)!.values()].some(n => n < catProducts.length)))
       .filter(([, vals]) => vals.size > 0)
-      .sort((a, b) => {
-        const ap = PRIMARY.has(a[0]), bp = PRIMARY.has(b[0]);
-        if (ap !== bp) return ap ? -1 : 1;
-        return b[1].size - a[1].size;
-      })
-      .slice(0, 8)
-      .map(([label, vals]) => ({
-        label,
-        values: [...vals.values()].sort((a, b) => {
-          const na = toNum(a), nb = toNum(b);
-          if (!isNaN(na) && !isNaN(nb)) return na - nb;
-          return a.localeCompare(b, 'uk');
-        }),
-        counts: countsMap.get(label) ?? new Map<string, number>(),
-      }));
+      .sort((a, b) => rank(a[0]) - rank(b[0]))
+      .map(([label, vals]) => {
+        const canon = facetByLabel.get(label)?.values ?? [];
+        const pos = (v: string) => { const i = canon.findIndex(c => c.toLowerCase() === v.toLowerCase()); return i < 0 ? canon.length : i; };
+        return {
+          label,
+          values: [...vals.values()].sort((a, b) => {
+            // спершу порядок довідника, решта — числа, потім за абеткою
+            const pa = pos(a), pb = pos(b);
+            if (pa !== pb) return pa - pb;
+            const na = toNum(a), nb = toNum(b);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b, 'uk');
+          }),
+          counts: countsMap.get(label) ?? new Map<string, number>(),
+        };
+      });
   }, [catProducts, selCat, categories]);
 
   const filtered = useMemo(() => {
@@ -533,7 +422,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         if (label === 'Бренд')      { if (!fvs.has(p.brand.trim().toLowerCase())) return false; }
         else if (label === 'Тип')   { if (!fvs.has((p.product_type ?? '').trim().toLowerCase())) return false; }
         else if (label === 'Колір') { if (!fvs.has((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase())) return false; }
-        else { if (!p.characteristics.some(c => c.label === label && c.value.split(/,\s+/).map(t => t.trim().toLowerCase()).some(tok => fvs.has(tok)))) return false; }
+        else { if (!p.characteristics.some(c => c.label === label && facetTokens(c.value).map(t => t.toLowerCase()).some(tok => fvs.has(tok)))) return false; }
       }
       return true;
     });

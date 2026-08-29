@@ -1,125 +1,142 @@
 /**
- * Канонічні ЗНАЧЕННЯ характеристик-переліків. Словник 082 зводить лейбли, а
- * значення лишались вільним текстом: «Тип використання» мав 11 варіантів
- * замість 3, «Призначення» — 193 формулювання на 406 карток (майже кожна
- * картка зі своєю). У фільтрі листингу це 193 чекбокси по одному товару.
+ * Канонічні ЗНАЧЕННЯ характеристик-переліків (фасетів) — data-driven.
  *
- * «Призначення» залежить від категорії: «Різання металу» для дисків і «захист
- * металу» для фарб — різні речі зі спільним словом, тому правила прив'язані до
- * category_slug. Без категорії працюють лише однозначні загальні правила.
- * Перше правило, що збіглося, виграє; без збігу значення лишається як є —
- * краще недоправити, ніж зіпсувати.
+ * Правила живуть у таблиці characteristic_values (міграція 105; вміст —
+ * CHAR_VALUES у scripts/supabase/char-dictionary.mjs, заливка seed-char-dictionary):
+ * для лейбла — список канонічних значень, у кожного точні синоніми (aliases),
+ * регекси (match_patterns) і категорії, де правило діє (category_slugs; порожньо =
+ * скрізь; slug може бути родиною-предком — «farby» покриває всі фарби).
  *
- * Застосовується в normalizeChars — тобто до КОЖНОГО запису характеристик
- * (адмінка, AI-генерація, Prom-заливка). Разова чистка наявних даних —
- * scripts/supabase/canonicalize-char-values.mts.
+ * Семантика:
+ *  • одиночне значення: точний збіг (значення/аліас) → воно; інакше ПЕРШИЙ
+ *    регекс, що збігся, виграє; без збігу — значення лишається як є (краще
+ *    недоправити, ніж зіпсувати);
+ *  • multiselect: значення ріжеться по «; », кожен шматок: точний збіг → канон,
+ *    інакше збираються ВСІ канони, чиї регекси збіглися («Молотковий та
+ *    перламутровий» → «Молотковий; Перламутровий»); шматок без збігів лишається.
+ *
+ * Застосовується в normalizeChars — до КОЖНОГО запису (адмінка, AI, Prom).
+ * Разова чистка наявних даних — scripts/supabase/canonicalize-char-values.mts.
+ * Нові значення/синоніми додавати в CHAR_VALUES + перезалити seed, а не в код.
  */
 
-const tidy = (s: string) => s.toLowerCase().replace(/[’ʼ`]/g, "'").replace(/\s+/g, ' ').trim();
+export type ValueRuleRow = {
+  label: string;
+  value: string;
+  category_slugs?: string[] | null;
+  aliases?: string[] | null;
+  match_patterns?: string[] | null;
+};
 
-// ── Тип використання ──────────────────────────────────────────────────────
-export const USE_BOTH = 'Внутрішні та зовнішні роботи';
-export const USE_OUT = 'Зовнішні роботи';
-export const USE_IN = 'Внутрішні роботи';
+export type ValueRule = {
+  value: string;
+  cats: string[] | null;      // null = діє скрізь
+  aliases: Set<string>;       // lowercase, разом із самим значенням
+  patterns: RegExp[];
+};
 
-function canonicalUseType(value: string): string {
-  const v = tidy(value);
-  const inside = /внутр|всередині|інтер'єр/.test(v);
-  const outside = /зовн|фасад/.test(v);
-  if ((inside && outside) || /універсальн/.test(v)) return USE_BOTH;
-  if (outside) return USE_OUT;
-  if (inside) return USE_IN;
-  return value;
+/** label → правила в порядку пріоритету */
+export type ValueRules = Map<string, ValueRule[]>;
+
+export type ValueContext = {
+  rules: ValueRules;
+  /** slug категорії товару (лист дерева) */
+  category?: string | null;
+  /** slug → parent_slug, щоб правила родини діяли на підкатегорії */
+  parentOf?: Map<string, string | null>;
+  /** лейбл — multiselect (значення через «; ») */
+  multiselect?: boolean;
+};
+
+export const MULTI_SEP = '; ';
+
+const tidy = (s: string) => String(s ?? '').toLowerCase().replace(/[’ʼ`´]/g, "'").replace(/\s+/g, ' ').trim();
+
+/** Компіляція рядків БД у правила. Невалідний регекс пропускається (не валимо запис). */
+export function buildValueRules(rows: ValueRuleRow[]): ValueRules {
+  const out: ValueRules = new Map();
+  for (const r of rows) {
+    const patterns: RegExp[] = [];
+    for (const p of r.match_patterns ?? []) {
+      try { patterns.push(new RegExp(p, 'i')); } catch { /* зіпсований регекс у довіднику — ігноруємо */ }
+    }
+    const aliases = new Set<string>([tidy(r.value), ...(r.aliases ?? []).map(tidy)]);
+    const cats = r.category_slugs?.length ? r.category_slugs : null;
+    if (!out.has(r.label)) out.set(r.label, []);
+    out.get(r.label)!.push({ value: r.value, cats, aliases, patterns });
+  }
+  return out;
 }
 
-// ── Призначення ───────────────────────────────────────────────────────────
-type Rule = { cats: string[] | '*'; re: RegExp; to: string };
-const R = (cats: string[] | '*', re: RegExp, to: string): Rule => ({ cats, re, to });
-
-const PAINT_METAL = 'Антикорозійний захист та декоративне фарбування металу';
-const PRIMER = 'Ґрунтування та зміцнення поверхонь';
-const MOLD = 'Захист від цвілі та грибка';
-const WOOD_ANTISEPTIC = 'Антисептичний захист деревини';
-const WOOD_DECOR = 'Захист та декорування деревини';
-
-export const PURPOSE_RULES: Rule[] = [
-  // — загальні, однозначні незалежно від категорії —
-  R('*', /гнил|синяв|деревоточ/, WOOD_ANTISEPTIC),
-  R('*', /^склеювання дерев/, 'Склеювання деревини та деревних матеріалів'),
-  R('*', /^тонування (фарб|водоемульсійних|фасадних)/, 'Тонування фарб, лаків і ґрунтовок'),
-  R('*', /^фарбування фасад/, 'Фарбування фасадів'),
-  R('*', /^фарбування стін|^для внутрішніх стін|^стіни та стелі в інтер'єрі/, "Фарбування стін та стель в інтер'єрі"),
-  R('*', /^(зовнішні )?фасадні (поверхні|роботи)/, 'Фарбування фасадів'),
-  R('*', /^(захист|декоративний захист|захисно-декоративн).*деревин/, WOOD_DECOR),
-
-  // — бітумні мастики —
-  R(['bitumni-mastyky'], /^покрівля/, 'Гідроізоляція покрівлі, фундаментів і підвалів'),
-  R(['hidroizolyatsiyni-mastyky'], /вологи/, 'Гідроізоляція'),
-  // — електроди —
-  R(['elektrody'], /зварювання/, 'Зварювання сталей'),
-  // — фарби —
-  R(['farby-3v1-akrylovi'], /вікон|дверей/, "Фарбування вікон, дверей та дерев'яних конструкцій"),
-  R(['farby-3v1-akrylovi'], /дерев|метал/, 'Фарбування дерева, металу та бетону'),
-  R(['farby-3v1-alkidni', 'moltkovi-farby'], /./, PAINT_METAL),
-  R(['grunty'], /./, 'Ґрунтування металу та дерева під емалі'),
-  // — ґрунтовки —
-  R(['gruntivky-gotovi', 'gruntivky-kontsentraty'], /цвіл|грибк/, MOLD),
-  R(['gruntivky-gotovi', 'gruntivky-kontsentraty'], /^видалення висолів$/, 'Видалення висолів'),
-  R(['gruntivky-gotovi', 'gruntivky-kontsentraty'], /підготовка|зміцнення/, PRIMER),
-  // — стрічки —
-  R(['hermetyzuyucha-strichka'], /волог/, 'Герметизація швів у вологих приміщеннях'),
-  R(['hermetyzuyucha-strichka'], /./, 'Герметизація швів, примикань та покрівлі'),
-  R(['malyarna-strichka'], /армування/, 'Армування швів гіпсокартону'),
-  R(['malyarna-strichka'], /./, 'Маскування поверхонь під час фарбування'),
-  R(['montazhna-strichka'], /./, 'Кріплення та фіксація оздоблювальних елементів'),
-  R(['zvukoizolyatsiyna-strichka'], /./, "Акустична розв'язка каркасних конструкцій"),
-  // — клеї —
-  R(['kontaktnyi-klei'], /^взуття/, 'Ремонт взуття: шкіра, гума, текстиль'),
-  R(['kontaktnyi-klei'], /,/, 'Склеювання дерева, пластику, гуми, шкіри та металу'),
-  R(['pina-klei'], /./, 'Склеювання та монтаж будівельних матеріалів'),
-  // — лаки: інтер'єр → камінь → дерево —
-  // камінь/цегла — перед інтер'єром: «камінь… (фасад та інтер'єр)» — усе ще камінь;
-  // «мінеральні» окремо в кінці: «дерев'яних і мінеральних поверхонь в інтер'єрі» — інтер'єр
-  R(['laky'], /камен|цегл|клінкер|граніт/, 'Захист та декорування каменю, бетону та цегли'),
-  R(['laky'], /інтер'єр|всередині приміщень|внутрішніх поверхонь|стін, стелі/, "Захист та декорування поверхонь в інтер'єрі"),
-  R(['laky'], /дерев/, WOOD_DECOR),
-  R(['laky'], /мінеральн/, 'Захист та декорування каменю, бетону та цегли'),
-  // — пластифікатори —
-  R(['plastyfikatory-dlya-betonu'], /армування/, 'Армування бетону (фібра)'),
-  R(['plastyfikatory-dlya-betonu'], /зимов|від'ємн|низьких температур|зниженій температур/, 'Зимове бетонування (протиморозна добавка)'),
-  R(['plastyfikatory-dlya-betonu'], /підлог/, 'Стяжки теплої підлоги'),
-  R(['plastyfikatory-dlya-betonu'], /вапна/, 'Пластифікація кладкових розчинів, заміна вапна'),
-  R(['plastyfikatory-dlya-betonu'], /./, 'Пластифікація бетонних і цементних розчинів'),
-  // — розчинники / очисники —
-  R(['rozchynnyky'], /іржі/, 'Перетворення іржі'),
-  R(['rozchynnyky'], /залишків клею/, 'Видалення залишків клею та наклейок'),
-  R(['rozchynnyky'], /розведення|розбавлення/, 'Розведення фарб та очищення інструменту'),
-  R(['ochysnyky'], /піни/, 'Очищення від монтажної піни'),
-  // — шпаклівки, вологопоглиначі —
-  R(['shpaklivky'], /вирівнювання стін/, 'Вирівнювання стін та стелі'),
-  R(['vologopoglinachi'], /./, 'Поглинання вологи та усунення запахів'),
-];
-
-function canonicalPurpose(value: string, category?: string | null): string {
-  const v = tidy(value);
-  for (const r of PURPOSE_RULES) {
-    if (r.cats !== '*' && (!category || !r.cats.includes(category))) continue;
-    if (r.re.test(v)) return r.to;
+/** Ланцюжок категорій від листа до кореня: ['moltkovi-farby', 'farby-3v1', 'farby']. */
+export function categoryChain(category: string | null | undefined, parentOf?: Map<string, string | null>): string[] {
+  const chain: string[] = [];
+  let slug: string | null | undefined = category;
+  while (slug && !chain.includes(slug)) {
+    chain.push(slug);
+    slug = parentOf?.get(slug) ?? null;
   }
-  return value;
+  return chain;
+}
+
+function applicableRules(label: string, ctx: ValueContext): ValueRule[] {
+  const all = ctx.rules.get(label);
+  if (!all?.length) return [];
+  const chain = categoryChain(ctx.category, ctx.parentOf);
+  return all.filter(r => !r.cats || r.cats.some(c => chain.includes(c)));
+}
+
+function matchOne(text: string, rules: ValueRule[]): string | null {
+  const t = tidy(text);
+  for (const r of rules) if (r.aliases.has(t)) return r.value;
+  for (const r of rules) if (r.patterns.some(re => re.test(t))) return r.value;
+  return null;
+}
+
+function matchAll(text: string, rules: ValueRule[]): string[] {
+  const t = tidy(text);
+  for (const r of rules) if (r.aliases.has(t)) return [r.value];
+  return rules.filter(r => r.patterns.some(re => re.test(t))).map(r => r.value);
 }
 
 /**
- * Канонічне значення для лейбла; для інших лейблів повертає значення без змін.
- * category — slug категорії товару; без нього «Призначення» правиться лише за
- * загальними правилами.
+ * Лише канони, що збіглися (без «залишку» вільного тексту). Для ВИВЕДЕННЯ
+ * одного лейбла з іншого (напр., «Поверхня» з «Призначення» у фарбах).
  */
-export function canonicalCharValue(label: string, value: string, category?: string | null): string {
+export function matchCanonicalValues(label: string, text: string, ctx: ValueContext): string[] {
+  const rules = applicableRules(label, ctx);
+  if (!rules.length || !text) return [];
+  const found: string[] = [];
+  for (const part of text.split(';')) {
+    for (const v of matchAll(part, rules)) if (!found.includes(v)) found.push(v);
+  }
+  // порядок — як у довіднику, а не як у тексті
+  return rules.map(r => r.value).filter(v => found.includes(v));
+}
+
+/**
+ * Канонічне значення для лейбла; без правил (або без збігу) повертає значення
+ * без змін. category — slug категорії товару: без нього діють лише правила,
+ * не прив'язані до категорій.
+ */
+export function canonicalCharValue(label: string, value: string, ctx: ValueContext): string {
   const v = String(value ?? '').trim();
   if (!v) return v;
-  switch (label) {
-    case 'Тип використання': return canonicalUseType(v);
-    case 'Призначення':      return canonicalPurpose(v, category);
-    default:                 return v;
+  const rules = applicableRules(label, ctx);
+  if (!rules.length) return v;
+
+  if (!ctx.multiselect) return matchOne(v, rules) ?? v;
+
+  const out: string[] = [];
+  const push = (s: string) => { if (s && !out.some(x => x.toLowerCase() === s.toLowerCase())) out.push(s); };
+  for (const raw of v.split(';')) {
+    const part = raw.trim();
+    if (!part) continue;
+    const hits = matchAll(part, rules);
+    if (hits.length) hits.forEach(push); else push(part);
   }
+  // канони — у порядку довідника, нерозпізнані шматки — після них
+  const canon = rules.map(r => r.value).filter(x => out.includes(x));
+  const rest = out.filter(x => !canon.includes(x));
+  return [...canon, ...rest].join(MULTI_SEP);
 }

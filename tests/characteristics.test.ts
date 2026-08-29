@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { normalizeChars, normCharKey, type CharDictionary } from '../lib/characteristics';
+import { buildValueRules } from '../lib/char-values';
 
 function dict(): CharDictionary {
   const defs: [string, string[], boolean, number][] = [
@@ -20,7 +21,12 @@ function dict(): CharDictionary {
     if (multi) multiselect.add(label);
     sortMap.set(label, sort);
   }
-  return { aliasMap, multiselect, sortMap };
+  const values = buildValueRules([
+    { label: 'Ступінь блиску', value: 'Матовий', match_patterns: ['^мат'] },
+    { label: 'Ступінь блиску', value: 'Глянцевий', category_slugs: ['farby'], match_patterns: ['глянц'] },
+  ]);
+  const parentOf = new Map<string, string | null>([['farby', null], ['laky', 'farby']]);
+  return { aliasMap, multiselect, sortMap, values, parentOf };
 }
 
 describe('normalizeChars — канонізація, дедуп, порядок', () => {
@@ -81,6 +87,16 @@ describe('normalizeChars — канонізація, дедуп, порядок'
     ], dict());
     expect(out).toHaveLength(1);
     expect(out[0]).toEqual({ label: 'Тип', value: 'Фарба', sort_order: 1 });
+  });
+
+  it('значення фасетів канонізуються за довідником з урахуванням родини категорії', () => {
+    const chars = [{ label: 'Блиск', value: 'матова' }, { label: 'Тип', value: 'глянцева емаль' }];
+    // глобальне правило (Матовий) — без категорії; «глянц» — лише у farby і підкатегоріях
+    expect(normalizeChars([{ label: 'Блиск', value: 'глянцева' }], dict())[0].value).toBe('глянцева');
+    expect(normalizeChars([{ label: 'Блиск', value: 'глянцева' }], dict(), 'laky')[0].value).toBe('Глянцевий');
+    const out = normalizeChars(chars, dict());
+    expect(out.find(c => c.label === 'Ступінь блиску')!.value).toBe('Матовий');
+    expect(out.find(c => c.label === 'Тип')!.value).toBe('глянцева емаль'); // чужий лейбл — без змін
   });
 
   it('одиночний вільнотекстовий multiselect-рядок з комами лишається без змін', () => {

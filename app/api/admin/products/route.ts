@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (characteristics && characteristics.length > 0) {
-    const normalized = await normalizeCharsDb(serviceClient, characteristics as CharInput[]);
+    const normalized = await normalizeCharsDb(serviceClient, characteristics as CharInput[], product.category_slug ?? null);
     const { error: charError } = await serviceClient
       .from('product_characteristics')
       .insert(normalized.map(c => ({ product_sku: product.sku, ...c })));
@@ -188,7 +188,7 @@ export async function PUT(req: NextRequest) {
     .eq('product_sku', sku);
 
   if (characteristics && characteristics.length > 0) {
-    const normalized = await normalizeCharsDb(serviceClient, characteristics as CharInput[]);
+    const normalized = await normalizeCharsDb(serviceClient, characteristics as CharInput[], product?.category_slug ?? null);
     const { error: charError } = await serviceClient
       .from('product_characteristics')
       .insert(normalized.map(c => ({ product_sku: sku, ...c })));

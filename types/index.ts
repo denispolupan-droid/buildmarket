@@ -1,3 +1,12 @@
+/** Фасет категорії для фільтрів листингу (зі словника характеристик, міграція 105). */
+export type CategoryFacet = {
+  label: string;
+  /** канонічні значення в порядку довідника (порожньо — сортувати за даними) */
+  values: string[];
+  /** значення-перелік: у характеристиці зберігається через «; » */
+  multi: boolean;
+};
+
 export type Category = {
   id: number;
   slug: string;
@@ -7,6 +16,8 @@ export type Category = {
   prom_section_url: string | null;
   prom_section_id: number | null;
   created_at: string;
+  /** фасети-фільтри цієї категорії (лише для листових категорій зі стандартом) */
+  facets?: CategoryFacet[];
 };
 
 export type Product = {

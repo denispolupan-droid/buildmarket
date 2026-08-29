@@ -41,10 +41,14 @@ export async function POST(req: NextRequest) {
     bySku.get(r.product_sku)!.push(r);
   }
 
+  // Категорія потрібна для канонізації значень: правила фасетів прив'язані до родин
+  const { data: prods } = await serviceClient.from('products').select('sku, category_slug').in('sku', skus).limit(500);
+  const catOf = new Map((prods ?? []).map(p => [p.sku as string, (p.category_slug as string | null) ?? null]));
+
   const changed: string[] = [];
   for (const [sku, charRows] of bySku) {
     const sorted = [...charRows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
-    const normalized = normalizeChars(sorted, dict);
+    const normalized = normalizeChars(sorted, dict, catOf.get(sku) ?? null);
     const same = normalized.length === sorted.length
       && normalized.every((n, i) => n.label === sorted[i].label && n.value === sorted[i].value && n.sort_order === sorted[i].sort_order);
     if (same) continue;

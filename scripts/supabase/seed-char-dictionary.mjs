@@ -11,7 +11,7 @@
 
 import { readFileSync } from 'fs';
 import { createClient } from '@supabase/supabase-js';
-import { DICTIONARY, CATEGORY_STANDARDS, buildAliasMap, canonicalLabel } from './char-dictionary.mjs';
+import { DICTIONARY, CATEGORY_STANDARDS, CHAR_VALUES, charValueRows, buildAliasMap, canonicalLabel } from './char-dictionary.mjs';
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
@@ -59,6 +59,8 @@ async function main() {
         is_multiselect: !!d.multiselect,
         unit: d.unit ?? null,
         sort_order: d.sort,
+        kind: CHAR_VALUES[d.label] ? 'enum' : (d.kind ?? 'text'),
+        is_filter: !!d.filter,
       })),
       { onConflict: 'label' },
     );
@@ -72,6 +74,26 @@ async function main() {
   if (defErr) throw new Error(defErr.message);
   const defId = new Map(defs.map(d => [d.label, d.id]));
   const idLabel = new Map(defs.map(d => [d.id, d.label]));
+
+  // 1b. Канонічні значення фасетів (міграція 105): повна перезаливка — на таблицю
+  //     ніхто не посилається за id, тож це безпечно й ідемпотентно.
+  const valueRows = charValueRows();
+  for (const r of valueRows) {
+    if (!defId.has(r.label)) throw new Error(`CHAR_VALUES: невідомий лейбл "${r.label}"`);
+    for (const p of r.match_patterns) { try { new RegExp(p, 'i'); } catch { throw new Error(`CHAR_VALUES ${r.label}/${r.value}: зіпсований регекс ${p}`); } }
+  }
+  if (!DRY) {
+    const { error: delErr } = await supabase.from('characteristic_values').delete().gte('id', 0);
+    if (delErr) throw new Error(`values prune: ${delErr.message}`);
+    const { error: insErr } = await supabase.from('characteristic_values').insert(
+      valueRows.map(r => ({
+        definition_id: defId.get(r.label), value: r.value, category_slugs: r.category_slugs,
+        aliases: r.aliases, match_patterns: r.match_patterns, sort_order: r.sort_order,
+      })),
+    );
+    if (insErr) throw new Error(`values insert: ${insErr.message}`);
+  }
+  console.log(`✓ characteristic_values: ${valueRows.length} значень для ${Object.keys(CHAR_VALUES).length} лейблів`);
 
   // Знімок поточного стану — щоб --diff показав, що саме зміниться.
   const current = new Map();
@@ -115,12 +137,25 @@ async function main() {
     const std = CATEGORY_STANDARDS[slug];
     const seen = new Set();
 
+    // Фасети категорії: явний список → is_filter true/false для КОЖНОГО рядка
+    // (чужі глобальні фільтри не просочуються); без списку → NULL (успадкувати).
+    const filters = std?.filters ?? null;
+    const facet = (label) => filters
+      ? { is_filter: filters.includes(label), filter_order: filters.includes(label) ? filters.indexOf(label) + 1 : null }
+      : { is_filter: null, filter_order: null };
+
     if (std) {
       std.req.forEach((label, i) => {
         if (!defId.has(label)) throw new Error(`${slug}: невідомий лейбл у стандарті: "${label}"`);
-        rows.push({ category_slug: slug, definition_id: defId.get(label), required: true, default_value: std.def[label] ?? null, sort_order: i + 1 });
+        rows.push({ category_slug: slug, definition_id: defId.get(label), required: true, default_value: std.def[label] ?? null, sort_order: i + 1, ...facet(label) });
         seen.add(label);
       });
+      for (const label of filters ?? []) {
+        if (seen.has(label)) continue;
+        if (!defId.has(label)) throw new Error(`${slug}: невідомий лейбл у filters: "${label}"`);
+        rows.push({ category_slug: slug, definition_id: defId.get(label), required: false, default_value: null, sort_order: null, ...facet(label) });
+        seen.add(label);
+      }
     }
 
     const stats = coverage.get(slug) ?? new Map();
@@ -131,7 +166,7 @@ async function main() {
       if (seen.has(label)) continue;
       const required = !std && share >= REQUIRED_COVERAGE && total >= MIN_PRODUCTS;
       if (!required && share < OPTIONAL_COVERAGE) continue;
-      rows.push({ category_slug: slug, definition_id: defId.get(label), required, default_value: null, sort_order: null });
+      rows.push({ category_slug: slug, definition_id: defId.get(label), required, default_value: null, sort_order: null, ...facet(label) });
       seen.add(label);
     }
 

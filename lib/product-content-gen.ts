@@ -265,9 +265,9 @@ export async function replaceFaq(supabase: Db, sku: string, faq: FaqPair[], faqR
   if (insErr) throw insErr;
 }
 
-async function replaceChars(supabase: Db, sku: string, chars: { label: string; value: string }[]): Promise<void> {
-  // Канонізація лейблів + дедуп + порядок — спільна логіка з адмін-формою (lib/characteristics)
-  const unique = await normalizeCharsDb(supabase, chars);
+async function replaceChars(supabase: Db, sku: string, chars: { label: string; value: string }[], category: string | null): Promise<void> {
+  // Канонізація лейблів і значень + дедуп + порядок — спільна логіка з адмін-формою (lib/characteristics)
+  const unique = await normalizeCharsDb(supabase, chars, category);
   await supabase.from('product_characteristics').delete().eq('product_sku', sku);
   if (!unique.length) return;
   const { error } = await supabase.from('product_characteristics').insert(
@@ -354,7 +354,7 @@ export async function applyContent(
     const chars = opts.mergeChars?.length
       ? [...opts.mergeChars, ...ua.characteristics]
       : ua.characteristics;
-    await replaceChars(supabase, product.sku, chars);
+    await replaceChars(supabase, product.sku, chars, product.category_slug);
   }
 
   let faqCount = 0;

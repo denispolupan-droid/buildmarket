@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { canonicalCharValue } from './char-values';
+import { buildValueRules, canonicalCharValue, type ValueRules, type ValueRuleRow } from './char-values';
 
 // Єдина точка нормалізації характеристик перед БУДЬ-ЯКИМ записом у
 // product_characteristics (адмін-форма, AI-генерація, Prom-заливка, імпорти).
@@ -22,7 +22,16 @@ export type CharDictionary = {
   multiselect: Set<string>;
   /** канонічний лейбл → глобальний порядок відображення */
   sortMap: Map<string, number>;
+  /** канонічні значення enum-лейблів (characteristic_values, міграція 105) */
+  values: ValueRules;
+  /** slug категорії → parent_slug: правила родини діють на підкатегорії */
+  parentOf: Map<string, string | null>;
 };
+
+/** Порожній словник (тести, деградація без БД). */
+export function emptyCharDictionary(): CharDictionary {
+  return { aliasMap: new Map(), multiselect: new Set(), sortMap: new Map(), values: new Map(), parentOf: new Map() };
+}
 
 /** Нормалізація ключа лейбла: апостроф → ', пробіли, регістр. */
 export function normCharKey(s: string): string {
@@ -46,10 +55,14 @@ const DICT_TTL_MS = 5 * 60_000;
 /** Словник з БД (кеш 5 хв). Порожня таблиця → порожній словник (нормалізація деградує до дедупу). */
 export async function loadCharDictionary(supabase: Db): Promise<CharDictionary> {
   if (dictCache && Date.now() - dictCache.at < DICT_TTL_MS) return dictCache.dict;
-  const { data } = await supabase
-    .from('characteristic_definitions')
-    .select('label, aliases, is_multiselect, sort_order')
-    .limit(1000);
+  const [{ data }, { data: valueRows }, { data: cats }] = await Promise.all([
+    supabase.from('characteristic_definitions').select('label, aliases, is_multiselect, sort_order').limit(1000),
+    supabase.from('characteristic_values')
+      // порядок МАТЧИНГУ = порядок вставки (id), sort_order — лише порядок показу у фільтрі
+      .select('value, category_slugs, aliases, match_patterns, sort_order, characteristic_definitions(label)')
+      .order('id').limit(5000),
+    supabase.from('categories').select('slug, parent_slug').limit(1000),
+  ]);
   const aliasMap = new Map<string, string>();
   const multiselect = new Set<string>();
   const sortMap = new Map<string, number>();
@@ -59,7 +72,15 @@ export async function loadCharDictionary(supabase: Db): Promise<CharDictionary> 
     if (d.is_multiselect) multiselect.add(d.label);
     sortMap.set(d.label, d.sort_order);
   }
-  const dict = { aliasMap, multiselect, sortMap };
+  type VRow = Omit<ValueRuleRow, 'label'> & { characteristic_definitions: { label: string } | null };
+  const values = buildValueRules(
+    ((valueRows ?? []) as unknown as VRow[])
+      .filter(r => r.characteristic_definitions)
+      .map(r => ({ ...r, label: r.characteristic_definitions!.label })),
+  );
+  const parentOf = new Map<string, string | null>();
+  for (const c of (cats ?? []) as { slug: string; parent_slug: string | null }[]) parentOf.set(c.slug, c.parent_slug);
+  const dict: CharDictionary = { aliasMap, multiselect, sortMap, values, parentOf };
   dictCache = { at: Date.now(), dict };
   return dict;
 }
@@ -103,7 +124,8 @@ export function normalizeChars(chars: CharInput[], dict: CharDictionary, categor
     if (!groups.has(k)) groups.set(k, []);
     // Значення-переліки теж зводимо до канону (див. char-values): інакше
     // «Тип використання» знову розповзеться на 11 формулювань.
-    groups.get(k)!.push({ label, value: canonicalCharValue(label, value, category), idx: idx++ });
+    const ctx = { rules: dict.values, category, parentOf: dict.parentOf, multiselect: dict.multiselect.has(label) };
+    groups.get(k)!.push({ label, value: canonicalCharValue(label, value, ctx), idx: idx++ });
   }
 
   const rows: Row[] = [];

@@ -18,7 +18,8 @@ export type {
   ProductStockB2B,
 } from '../types';
 
-import type { Category, Product, ProductFull, ProductListItem, ProductStock, ProductPublic, ProductB2B } from '../types';
+import type { Category, CategoryFacet, Product, ProductFull, ProductListItem, ProductStock, ProductPublic, ProductB2B } from '../types';
+import { computeCategoryFacets, type FacetDefinitionRow, type FacetCategoryRow, type FacetValueRow } from './facets';
 
 // ── Клієнт для браузера / Server Components ───────────────────────────────────
 
@@ -62,7 +63,37 @@ export async function getCategories(): Promise<Category[]> {
     .select('id, slug, name, sort_order, parent_slug, prom_section_url, prom_section_id, created_at')
     .order('sort_order');
   if (error) throw error;
-  return data ?? [];
+  const cats = (data ?? []) as Category[];
+  const facets = await getCategoryFacets(cats);
+  return cats.map(c => (facets[c.slug] ? { ...c, facets: facets[c.slug] } : c));
+}
+
+/**
+ * Фасети-фільтри категорій зі словника характеристик (lib/facets). Таблиці
+ * словника закриті RLS для anon — читаємо service-клієнтом (лише сервер,
+ * результат іде в той самий кеш категорій). Без ключа чи без міграції 105
+ * листинг живе без фасетів, а не падає.
+ */
+async function getCategoryFacets(cats: Category[]): Promise<Record<string, CategoryFacet[]>> {
+  try {
+    const db = createServiceClient();
+    const [defs, rows, values] = await Promise.all([
+      db.from('characteristic_definitions').select('id, label, is_filter, is_multiselect, sort_order').limit(1000),
+      db.from('category_characteristics').select('category_slug, definition_id, is_filter, filter_order').limit(5000),
+      db.from('characteristic_values').select('definition_id, value, category_slugs, sort_order').limit(5000),
+    ]);
+    const err = defs.error ?? rows.error ?? values.error;
+    if (err) throw err;
+    return computeCategoryFacets(
+      (defs.data ?? []) as FacetDefinitionRow[],
+      (rows.data ?? []) as FacetCategoryRow[],
+      (values.data ?? []) as FacetValueRow[],
+      cats,
+    );
+  } catch (e) {
+    console.error('[facets] словник недоступний, листинг без фасетів:', e instanceof Error ? e.message : e);
+    return {};
+  }
 }
 
 // Поля для списку — без description (зберігає ~200KB на запит)
