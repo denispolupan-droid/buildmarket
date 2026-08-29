@@ -6,6 +6,7 @@ import { requireStaff } from '../../../../lib/auth-guard';
 import { generateBlogPost, sanitizeArticleHtml } from '../../../../lib/blog-generator';
 import { buildCovers } from '../../../../lib/blog-cover';
 import { logSeoAction } from '../../../../lib/seo-actions';
+import { refreshCoverage } from '../../../../lib/seo/demand-crawl';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -111,6 +112,10 @@ export async function PATCH(req: NextRequest) {
   const { error } = await serviceClient.from('blog_posts').update(update).eq('id', body.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   bustBlogCache();
+  // Опублікована стаття закриває фрази в «Невидимому попиті» — перерахувати
+  // покриття, щоб черга тем не пропонувала вже написане. Не чекаємо: це ~2 500
+  // рядків і кілька секунд, а відповідь адмінці потрібна одразу.
+  if (body.is_published) refreshCoverage().catch(err => console.error('[demand] refreshCoverage:', err));
   return NextResponse.json({ ok: true });
 }
 
