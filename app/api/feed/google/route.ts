@@ -80,13 +80,15 @@ export async function GET(request: NextRequest) {
   type ProductRow = {
     sku: string; name: string; brand: string; category_slug: string | null;
     volume: string | null; description: string | null; image: string | null;
+    /** головна фасовка лінійки → item_group_id: Shopping групує фасовки в один товар */
+    variant_main_sku: string | null;
   };
   type StockRow = { sku: string; price_retail: number | null; price_unit: number | null; stock_status: string };
 
   const [products, stock] = await Promise.all([
     fetchAllRows<ProductRow>((from, to) => serviceClient
       .from('products')
-      .select('sku, name, brand, category_slug, volume, description, image')
+      .select('sku, name, brand, category_slug, volume, description, image, variant_main_sku')
       .eq('is_active', true)
       .order('sort_order')
       .range(from, to)),
@@ -123,7 +125,8 @@ export async function GET(request: NextRequest) {
       <g:price>${price} ${CURRENCY}</g:price>
       <g:brand>${x(p.brand)}</g:brand>
       <g:mpn>${x(p.sku)}</g:mpn>
-      <g:google_product_category>${googleCategory(p.category_slug)}</g:google_product_category>
+${p.variant_main_sku ? `      <g:item_group_id>${x(p.variant_main_sku)}</g:item_group_id>
+` : ''}      <g:google_product_category>${googleCategory(p.category_slug)}</g:google_product_category>
     </item>`;
     })
     .join('\n');

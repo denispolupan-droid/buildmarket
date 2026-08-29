@@ -179,7 +179,14 @@ function ogTwitter(title: string, description: string, url: string, lang: Lang, 
   };
 }
 
-export function productMeta(product: ProductFull, lang: Lang = 'uk'): Metadata {
+export function productMeta(
+  product: ProductFull,
+  lang: Lang = 'uk',
+  opts: {
+    /** шлях головної фасовки лінійки (без /ru): canonical і hreflang ведуть на неї — фасовка склеюється з головною */
+    canonicalPath?: string | null;
+  } = {},
+): Metadata {
   const title = productTitle(product, lang);
   const description = productDescription(product, lang);
   const path = productPath(product);
@@ -198,7 +205,7 @@ export function productMeta(product: ProductFull, lang: Lang = 'uk'): Metadata {
     // Картинка — з локалізованого шляху (url уже містить /ru): у ru-роута
     // власний opengraph-image з name_ru і російським слоганом
     ...ogTwitter(title, description, url, lang, `${url}/opengraph-image`),
-    alternates: alternatesFor(path, lang),
+    alternates: alternatesFor(opts.canonicalPath ?? path, lang),
   };
 }
 

@@ -35,6 +35,10 @@ export type Product = {
   bc: string;
   ac: string;
   img_type: 'tube' | 'canister';
+  /** sku головної фасовки лінійки (для головної — власний); null — не в лінійці (міграція 108) */
+  variant_main_sku: string | null;
+  /** фаза 2: canonical з цієї фасовки на головну */
+  variant_canonical: boolean;
   is_active: boolean;
   is_hit: boolean;
   is_new: boolean;

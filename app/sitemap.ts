@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next';
 import { getSitemapProductsCached, getCategoriesCached } from '../lib/supabase';
 import { getPublishedPostsCached } from '../lib/blog-db';
 import { getCategoryContentUpdatedCached } from '../lib/category-content';
+import { isNonCanonicalVariant } from '../lib/seo/variants';
 import { categoriesWithProducts, duplicateOfParent } from '../lib/seo/meta';
 import { brandSlug as brandToSlug } from '../lib/seo/slug';
 
@@ -102,7 +103,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // /catalog — закритий B2B, не індексуємо
   const catalogCategoryRoutes: MetadataRoute.Sitemap = [];
 
-  const productRoutes: MetadataRoute.Sitemap = products.map(p => ({
+  // Фасовка з canonical на головну — не канонічна адреса, у sitemap їй не місце
+  // (та сама логіка, що для дочірніх категорій-дублів вище).
+  const productRoutes: MetadataRoute.Sitemap = products.filter(p => !isNonCanonicalVariant(p)).map(p => ({
     url: `${BASE}/product/${p.slug ?? p.sku}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : SITE_UPDATED,
     changeFrequency: 'weekly',

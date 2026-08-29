@@ -9,6 +9,7 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
 import { getCategoryMeta } from '../../../../lib/category-content';
 import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../../lib/seo/meta';
+import { isLineMain, isLineVariant, groupId, productGroupLd } from '../../../../lib/seo/variants';
 import ProductTabs from '../../../product/[id]/ProductTabs';
 import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
 import ProductGallery from '../../../product/[id]/ProductGallery';
@@ -48,7 +49,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!product) return { title: 'Товар не найден', robots: { index: false } };
   // 308 со старого SKU-URL на слаг до начала стриминга страницы
   if (product.slug && id !== product.slug) permanentRedirect(`/ru/product/${product.slug}`);
-  return productMeta(product, 'ru');
+  const main = isLineVariant(product) && product.variant_canonical ? await getProductBySkuCached(product.variant_main_sku!) : null;
+  return productMeta(product, 'ru', { canonicalPath: main ? productPath(main) : null });
 }
 
 import { brandSlug as brandToSlug } from '../../../../lib/seo/slug';
@@ -131,6 +133,8 @@ export default async function RuProductPage({ params, searchParams }: { params: 
   const pricePack   = isRetail ? priceUnit : priceUnit * product.pack_qty;
 
   const variants = findVariants(categoryProducts, product);
+  const lineMain = isLineMain(product) ? product : isLineVariant(product) ? (categoryProducts.find(p => p.sku === product.variant_main_sku) ?? null) : null;
+  const lineMembers = lineMain ? [product, ...variants].filter(p => p.variant_main_sku === lineMain.sku) : [];
 
   const productCat   = categories.find((c) => c.slug === product.category_slug);
   const categoryName = productCat
@@ -182,6 +186,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
         ...offerExtras(`${BASE}${productPath(product, 'ru')}`),
       },
     } : {}),
+    ...(lineMain && isLineVariant(product) ? { isVariantOf: { '@type': 'ProductGroup', '@id': groupId(lineMain, 'ru') } } : {}),
     ...(product.characteristics.length > 0 ? {
       additionalProperty: product.characteristics.map((c) => ({
         '@type': 'PropertyValue',
@@ -215,6 +220,7 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      {isLineMain(product) && lineMembers.length > 1 && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productGroupLd(product, lineMembers, 'ru', (product as { description_ru?: string | null }).description_ru ?? product.description)).replace(/</g, '\\u003c') }} />}
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
       <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>

@@ -69,7 +69,7 @@ export async function getCategories(): Promise<Category[]> {
 const PRODUCT_LIST_BASE = `
   id, sku, slug, name, name_ru, brand, category_slug, is_active, is_hit, is_new, sort_order,
   nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
-  min_order, pack_qty`;
+  min_order, pack_qty, variant_main_sku, variant_canonical`;
 
 /**
  * ПУБЛІЧНА вибірка — усе, що тут перелічено, поїде у вихідний код сторінки та
@@ -190,7 +190,7 @@ export async function getProductsLight(opts?: {
       .from('products')
       .select(`
         id, sku, slug, name, name_ru, brand, category_slug, is_active, sort_order,
-        nl1, nl2, bc, ac, img_type, color, product_type, volume, image,
+        nl1, nl2, bc, ac, img_type, color, product_type, volume, image, variant_main_sku, variant_canonical,
         stock:product_stock(price_retail, price_retail_old, price_promo, price_old, price_unit, stock_status, stock_qty)
       `)
       .eq('is_active', true)
@@ -357,12 +357,12 @@ export const getProductsLightCached = unstable_cache(
  * справжню дату: тригер products_updated_at ставить її на кожен UPDATE
  * картки, а ціни й залишки живуть у product_stock і її не смикають.
  */
-export type SitemapProduct = Pick<Product, 'sku' | 'slug' | 'brand' | 'category_slug' | 'updated_at'>;
+export type SitemapProduct = Pick<Product, 'sku' | 'slug' | 'brand' | 'category_slug' | 'updated_at' | 'variant_main_sku' | 'variant_canonical'>;
 
 export async function getSitemapProducts(): Promise<SitemapProduct[]> {
   return fetchAllRows<SitemapProduct>((f, t) =>
     supabase.from('products')
-      .select('sku, slug, brand, category_slug, updated_at')
+      .select('sku, slug, brand, category_slug, updated_at, variant_main_sku, variant_canonical')
       .eq('is_active', true)
       .order('sort_order').order('sku')
       .range(f, t));

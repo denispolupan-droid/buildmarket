@@ -7,6 +7,7 @@ import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached
 import { getCategoryMeta } from '../../../lib/category-content';
 import { getPostSlugForSkuCached } from '../../../lib/blog-db';
 import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../lib/seo/meta';
+import { isLineMain, isLineVariant, groupId, productGroupLd } from '../../../lib/seo/variants';
 import ProductTabs from './ProductTabs';
 import ProductOrderPanel from './ProductOrderPanel';
 import ProductGallery from './ProductGallery';
@@ -49,7 +50,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // 308 зі старого SKU-URL на слаг ще до початку стрімінгу сторінки —
   // інакше loading.tsx зафіксує статус 200 і редірект стане "м'яким" (meta refresh)
   if (product.slug && id !== product.slug) permanentRedirect(`/product/${product.slug}`);
-  return productMeta(product, 'uk');
+  // Фасовка з canonical на головну лінійки (variant_canonical, міграція 108)
+  const main = isLineVariant(product) && product.variant_canonical ? await getProductBySkuCached(product.variant_main_sku!) : null;
+  return productMeta(product, 'uk', { canonicalPath: main ? productPath(main) : null });
 }
 
 import { brandSlug as brandToSlug } from '../../../lib/seo/slug';
@@ -134,6 +137,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const pricePack = isRetail ? priceUnit : priceUnit * product.pack_qty;
 
   const variants = findVariants(categoryProducts, product);
+  // Лінійка фасовок: головна несе ProductGroup з усіма фасовками, фасовка — isVariantOf на головну
+  const lineMain = isLineMain(product) ? product : isLineVariant(product) ? (categoryProducts.find(p => p.sku === product.variant_main_sku) ?? null) : null;
+  const lineMembers = lineMain ? [product, ...variants].filter(p => p.variant_main_sku === lineMain.sku) : [];
 
   const productCat   = categories.find((c) => c.slug === product.category_slug);
   const categoryName = productCat?.name ?? 'Каталог';
@@ -188,6 +194,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         ...offerExtras(`${BASE}${productPath(product)}`),
       },
     } : {}),
+    ...(lineMain && isLineVariant(product) ? { isVariantOf: { '@type': 'ProductGroup', '@id': groupId(lineMain, 'uk') } } : {}),
     ...(product.characteristics.length > 0 ? {
       additionalProperty: product.characteristics.map((c) => ({
         '@type': 'PropertyValue',
@@ -220,6 +227,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      {isLineMain(product) && lineMembers.length > 1 && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productGroupLd(product, lineMembers, 'uk', product.description)).replace(/</g, '\\u003c') }} />}
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
       <BackButton breadcrumbId="product-breadcrumb" />
       <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
@@ -260,7 +268,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               <div className="product-info__badges" style={{ alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Інші фасовки:</span>
                 {variants.map(v => (
-                  <Link key={v.sku} href={sp.from ? `${productPath(v)}?from=${sp.from}` : productPath(v)} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                  <Link key={v.sku} href={sp.from ? `${productPath(v)}?from=${sp.from}` : productPath(v)} className="badge" title={lineMain && v.sku === lineMain.sku ? 'Головна сторінка лінійки' : undefined} style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
                     {v.volume}
                   </Link>
                 ))}
