@@ -68,16 +68,15 @@ function seedOf(name: string): string {
 
 export type CrawlResult = { categories: number; requests: number; phrases: number; newPhrases: number; seconds: number };
 
-export async function crawlDemand(opts: { onlySlugs?: string[]; delayMs?: number } = {}): Promise<CrawlResult> {
-  const t0 = Date.now();
-  const client = db();
+type Cat = { slug: string; name: string; parent_slug: string | null };
+
+/** Індекс нашого контенту (статті, FAQ, назви й гайди категорій) → функція «яка сторінка відповідає на фразу». */
+async function buildCoverage(client: ReturnType<typeof db>): Promise<{ cats: Cat[]; coveredBy: (phrase: string) => string | null }> {
   const [cats, posts, content] = await Promise.all([
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) => client.from('categories').select('slug, name, parent_slug').range(f, t)),
     fetchAllRows<{ slug: string; title: string; title_ru: string | null; faq: { q: string }[] | null; faq_ru: { q: string }[] | null }>((f, t) => client.from('blog_posts').select('slug, title, title_ru, faq, faq_ru').eq('is_published', true).range(f, t)),
     fetchAllRows<{ slug: string; lang: string; faq: { q: string }[] | null; guide: { title: string; sections: { h: string }[] } | null }>((f, t) => client.from('category_content').select('slug, lang, faq, guide').range(f, t)),
   ]);
-  const targets = opts.onlySlugs ? cats.filter(c => opts.onlySlugs!.includes(c.slug)) : cats;
-
   // Індекс нашого контенту: набір основ → шлях
   const docs: { path: string; stems: Set<string> }[] = [];
   for (const p of posts) {
@@ -95,6 +94,30 @@ export async function crawlDemand(opts: { onlySlugs?: string[]; delayMs?: number
     for (const d of docs) { const hit = ps.filter(s => d.stems.has(s)).length; if (hit / ps.length >= 0.75 && (!best || hit > best.hit)) best = { path: d.path, hit }; }
     return best?.path ?? null;
   };
+  return { cats, coveredBy };
+}
+
+/**
+ * Перерахунок «наша сторінка» по всіх фразах без нового обходу — після публікації
+ * статей, щоб черга тем не пропонувала вже закрите.
+ */
+export async function refreshCoverage(): Promise<{ rows: number; covered: number; changed: number }> {
+  const client = db();
+  const { coveredBy } = await buildCoverage(client);
+  const rows = await fetchAllRows<{ phrase: string; lang: 'uk' | 'ru'; covered_path: string | null }>((f, t) => client.from('search_demand').select('phrase, lang, covered_path').range(f, t));
+  const updates = rows.map(r => ({ ...r, next: coveredBy(r.phrase) })).filter(r => r.next !== r.covered_path);
+  for (const u of updates) {
+    const { error } = await client.from('search_demand').update({ covered_path: u.next }).eq('phrase', u.phrase).eq('lang', u.lang);
+    if (error) throw error;
+  }
+  return { rows: rows.length, covered: rows.filter(r => coveredBy(r.phrase)).length, changed: updates.length };
+}
+
+export async function crawlDemand(opts: { onlySlugs?: string[]; delayMs?: number } = {}): Promise<CrawlResult> {
+  const t0 = Date.now();
+  const client = db();
+  const { cats, coveredBy } = await buildCoverage(client);
+  const targets = opts.onlySlugs ? cats.filter(c => opts.onlySlugs!.includes(c.slug)) : cats;
 
   // GSC: де ми вже показуємось
   const gsc = new Map<string, { i: number; p: number }>();
