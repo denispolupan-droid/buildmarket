@@ -27,13 +27,17 @@ const GAP_LABELS: { key: keyof CategoryAuditGaps; label: string; tone: Tone; exp
 const hasGap = (row: CategoryAuditRow) => Object.values(row.gaps).some(Boolean);
 
 export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
-  const [filter, setFilter] = useState<keyof CategoryAuditGaps | 'any'>('any');
+  // 'any' — лише з зауваженнями (аудит), 'all' — усі категорії: інакше до
+  // редактора чистої категорії з цієї вкладки не дістатися
+  const [filter, setFilter] = useState<keyof CategoryAuditGaps | 'any' | 'all'>('any');
+  const [search, setSearch] = useState('');
 
   const withGaps = useMemo(() => rows.filter(hasGap), [rows]);
-  const visible = useMemo(
-    () => (filter === 'any' ? withGaps : withGaps.filter(r => r.gaps[filter])),
-    [withGaps, filter],
-  );
+  const visible = useMemo(() => {
+    const base = filter === 'all' ? rows : filter === 'any' ? withGaps : withGaps.filter(r => r.gaps[filter]);
+    const q = search.trim().toLowerCase();
+    return q ? rows.filter(r => r.name.toLowerCase().includes(q) || r.slug.includes(q)) : base;
+  }, [rows, withGaps, filter, search]);
   const counts = useMemo(() => {
     const c = {} as Record<keyof CategoryAuditGaps, number>;
     for (const g of GAP_LABELS) c[g.key] = withGaps.filter(r => r.gaps[g.key]).length;
@@ -51,19 +55,28 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
       </p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <button onClick={() => setFilter('any')} style={chip(filter === 'any')}>
-          Усі ({withGaps.length})
+        <button onClick={() => setFilter('any')} style={chip(filter === 'any')} title="Категорії, де аудит знайшов розбіжності">
+          Із зауваженнями ({withGaps.length})
+        </button>
+        <button onClick={() => setFilter('all')} style={chip(filter === 'all')} title="Усі категорії з товарами чи текстом — щоб дістатися редактора будь-якої">
+          Усі ({rows.length})
         </button>
         {GAP_LABELS.filter(g => counts[g.key] > 0).map(g => (
           <button key={g.key} onClick={() => setFilter(g.key)} title={g.explain} style={chip(filter === g.key)}>
             {g.label} ({counts[g.key]})
           </button>
         ))}
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="пошук категорії — назва або slug"
+          style={{ marginLeft: 'auto', padding: '6px 10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-card)', color: 'var(--text-primary)', minWidth: 220 }}
+        />
       </div>
 
       {visible.length === 0 ? (
         <div style={{ ...card, textAlign: 'center', padding: '36px 18px' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-success)' }}>Розбіжностей немає</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-success)' }}>{search ? 'Нічого не знайдено' : 'Розбіжностей немає'}</div>
           <p style={{ ...hint, margin: '6px 0 0' }}>Текст кожної категорії сходиться з фактичним асортиментом.</p>
         </div>
       ) : (
