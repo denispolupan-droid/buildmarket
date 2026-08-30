@@ -210,3 +210,26 @@ describe('герметики (етап 4)', () => {
     expect(canonicalCharValue('Форма випуску', 'картридж 280 мл', c('Форма випуску'))).toBe('Картридж');
   });
 });
+
+describe('монтажна піна (етап 5)', () => {
+  const foamParent = new Map(parentOf); for (const c of ['pistoletna-pina', 'pobutova-pina', 'pina-klei', 'vohnezakhysna-pina']) foamParent.set(c, 'montazhna-pina');
+  const c = (label: string, cat = 'pobutova-pina'): ValueContext => ({ rules, category: cat, parentOf: foamParent });
+  it('спосіб випуску, сезон', () => {
+    expect(canonicalCharValue('Спосіб випуску з балона', 'Професійний пістолет', c('Спосіб випуску з балона'))).toBe('Під пістолет');
+    expect(canonicalCharValue('Спосіб випуску з балона', 'трубка-адаптер', c('Спосіб випуску з балона'))).toBe('Трубка-адаптер');
+    expect(canonicalCharValue('Сезон', 'всесезонний', c('Сезон'))).toBe('Всесезонна');
+    expect(canonicalCharValue('Сезон', 'зима', c('Сезон'))).toBe('Зимова');
+    expect(canonicalCharValue('Сезон', 'зима', { rules, category: 'klei', parentOf: foamParent })).toBe('зима'); // поза піною — вільний текст
+  });
+  it('вихід піни → діапазон за першим числом', () => {
+    expect(canonicalCharValue('Вихід піни', 'до 30 л (залежно від умов)', c('Вихід піни'))).toBe('до 35 л');
+    expect(canonicalCharValue('Вихід піни', 'до 45-50 л', c('Вихід піни'))).toBe('40–50 л');
+    expect(canonicalCharValue('Вихід піни', 'до 65 л', c('Вихід піни'))).toBe('60–70 л');
+    expect(canonicalCharValue('Вихід піни', '70 л', c('Вихід піни'))).toBe('60–70 л');
+  });
+  it('Тип піни = підкатегорія (закритий список з одного значення), у фарбах «Тип» вільний', () => {
+    expect(applicableValues('Тип', c('Тип', 'pina-klei'))).toEqual(['Піна-клей']);
+    expect(canonicalCharValue('Тип', 'Піна-клей монтажна', c('Тип', 'pina-klei'))).toBe('Піна-клей');
+    expect(applicableValues('Тип', { rules, category: 'alkidni-farby', parentOf: foamParent })).toEqual([]);
+  });
+});
