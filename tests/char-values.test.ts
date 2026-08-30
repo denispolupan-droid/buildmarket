@@ -179,3 +179,29 @@ describe('закритий список vs канонізатори (Призн�
     expect(valueInDictionary('Призначення', 'Для теплої підлоги', ctx('Призначення', 'plastyfikatory-dlya-betonu'))).toBe(false);
   });
 });
+
+describe('герметики (етап 4)', () => {
+  const S = 'sylikonovi-germetyky';
+  const sealantParent = new Map(parentOf); sealantParent.set(S, 'germetyky'); sealantParent.set('bitumni-germetyky', 'germetyky'); sealantParent.set('germetyky', null);
+  const c = (label: string, cat = S): ValueContext => ({ rules, category: cat, parentOf: sealantParent, multiselect: label === 'Область застосування' });
+  it('Матеріал: 21 формулювання → 7; нейтральний — окремо; поза герметиками не чіпається', () => {
+    expect(canonicalCharValue('Матеріал', 'Силікон з фунгіцидними добавками', c('Матеріал'))).toBe('Силіконовий');
+    expect(canonicalCharValue('Матеріал', 'Нейтральний силіконовий', c('Матеріал'))).toBe('Силіконовий нейтральний');
+    expect(canonicalCharValue('Матеріал', 'Бітумно-каучуковий, на основі гермабутилу', c('Матеріал', 'bitumni-germetyky'))).toBe('Бітумний');
+    expect(canonicalCharValue('Матеріал', 'МС-полімерний клей-герметик', c('Матеріал'))).toBe('MS-полімер');
+    expect(canonicalCharValue('Матеріал', 'Сталь', { rules, category: 'shurupy-ta-samorizy', parentOf: sealantParent })).toBe('Сталь');
+    expect(applicableValues('Матеріал', c('Матеріал'))).toEqual(['Силіконовий нейтральний', 'Силіконовий', 'Акриловий', 'Поліуретановий', 'MS-полімер', 'Бітумний', 'Силікатний']);
+  });
+  it('Область застосування: вільний текст → перелік канонів; у клеях лишається текстом', () => {
+    expect(matchCanonicalValues('Область застосування', 'Санітарний; Герметизація швів у ванних, кухнях, на фасадах; вікна, двері, сантехніка', c('Область застосування')))
+      .toEqual(['Санітарний', 'Фасади та шви', 'Вікна та двері']);
+    expect(matchCanonicalValues('Область застосування', 'Термостійкий; Каміни, печі, димоходи, барбекю, топки', c('Область застосування')))
+      .toEqual(['Печі та каміни']);
+    expect(valueInDictionary('Область застосування', 'Стропила, балки', { rules, category: 'klei', parentOf: sealantParent, multiselect: true })).toBe(true);
+  });
+  it('Під фарбування, Форма випуску', () => {
+    expect(canonicalCharValue('Під фарбування', 'так, після повного висихання', c('Під фарбування'))).toBe('Так');
+    expect(canonicalCharValue('Під фарбування', 'Ні', c('Під фарбування'))).toBe('Ні');
+    expect(canonicalCharValue('Форма випуску', 'картридж 280 мл', c('Форма випуску'))).toBe('Картридж');
+  });
+});
