@@ -33,7 +33,7 @@ export async function GET() {
   type Stock = { price_retail: number | null; price_cost: number | null; price_old: number | null; stock_qty: number | null; stock_status: string | null };
   type Char = { label: string; value: string; sort_order: number };
   type Product = {
-    sku: string; name: string; rozetka_name: string | null; brand: string; category_slug: string;
+    sku: string; name: string; rozetka_name: string | null; brand: string; category_slug: string; slug: string | null;
     on_rozetka: boolean | null; rozetka_markup_pct: number | null; rozetka_smart: boolean | null;
     image: string | null; color: string | null; volume: string | null;
     description: string | null; description_full: string | null;
@@ -54,7 +54,7 @@ export async function GET() {
     // даних» і лишає картку в останньому стані (реальний кейс: 38 карток Polifarb місяць
     // висіли активними по застарілій ціні). Фід — єдине джерело правди для кабінету.
     fetchAllRows<Product>((from, to) => db.from('products').select(`
-      sku, name, rozetka_name, brand, category_slug, image, color, volume,
+      sku, name, rozetka_name, brand, category_slug, slug, image, color, volume,
       on_rozetka, rozetka_markup_pct, rozetka_smart,
       description, description_full, description_ru, description_full_ru,
       description_mp, description_mp_ru,
@@ -135,7 +135,11 @@ export async function GET() {
       ? (p.image.startsWith('http') ? p.image : `${SITE_URL}${p.image}`)
       : null;
 
-    const productUrl = `${SITE_URL}/shop/${p.category_slug}`;
+    // Посилання на КАРТКУ товару, а не на список. За ним ходить модератор, коли
+    // звіряє пропозицію, і робот, коли перевіряє ціну; сторінка категорії з
+    // півсотнею схожих банок — привід для відмови «інформація не відповідає».
+    // Фолбек на артикул: /product/<sku> сам 308-редіректить на ЧПУ.
+    const productUrl = `${SITE_URL}/product/${p.slug ?? p.sku}`;
     // Опис для маркетплейсу — власний, не той, що на сайті: однаковий текст
     // Google склеює й показує авторитетнішу сторінку (їхню), а хвіст про магазин
     // і доставку Rozetka блокує як згадку стороннього ресурсу. Поки MP-опису в
