@@ -20,6 +20,17 @@ export type FacetCategoryRow = { category_slug: string; definition_id: number; i
 export type FacetValueRow = { definition_id: number; value: string; category_slugs: string[] | null; sort_order: number };
 export type FacetCategoryTree = { slug: string; parent_slug: string | null }[];
 
+/**
+ * Родини, де фільтр «Тип» (products.product_type) не показуємо: в інструменті
+ * тип — це сама підкатегорія, у герметиках він дублює «Область застосування».
+ */
+export const HIDE_TYPE_FILTER_FAMILIES = ['instrumenty', 'germetyky'];
+
+export function hidesTypeFilter(categories: FacetCategoryTree, slug: string | null | undefined): boolean {
+  const chain = categoryChainOf(categories, slug);
+  return HIDE_TYPE_FILTER_FAMILIES.some(f => chain.includes(f));
+}
+
 /** Ланцюжок slug → батько → … (без зациклення). */
 export function categoryChainOf(categories: FacetCategoryTree, slug: string | null | undefined): string[] {
   const parentOf = new Map(categories.map(c => [c.slug, c.parent_slug]));

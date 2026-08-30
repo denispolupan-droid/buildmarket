@@ -21,6 +21,22 @@ import { createClient } from '@supabase/supabase-js';
 import * as charsNS from '../../lib/characteristics';
 import * as valuesNS from '../../lib/char-values';
 import { SEALANT_CATS } from './char-dictionary.mjs';
+
+// «Тип» картки (products.product_type) — виверене власником поле; «Область
+// застосування» виводиться з нього, а не з вільного тексту характеристик.
+const TYPE_TO_AREA: Record<string, string> = {
+  'Санітарний': 'Санітарний', 'Універсальний': 'Універсальний', 'Клей-герметик': 'Універсальний',
+  'Для покрівлі': 'Покрівля', 'Для монтажних швів': 'Монтажні шви', 'Для деформаційних швів': 'Монтажні шви',
+  'Для дерева': 'Дерево', 'Для кольорових швів': 'Санітарний', 'Термостійкий': 'Печі та каміни',
+};
+// Точкові виправлення product_type (рішення власника 30.08)
+const PRODUCT_TYPE_FIXES: Record<string, string> = {
+  '1000-001': 'Для покрівлі',        // Bitugum стиковий — це покрівельний герметик, не «для стиків панелей»
+  '1001-001': 'Універсальний',       // Ceresit CS 11 — універсальний, не «фасадний»
+  '1001-002': 'Для монтажних швів', '1001-003': 'Для монтажних швів', '1001-004': 'Для монтажних швів', // Lacrysil «зовні приміщень А»
+  '1005-001': 'Термостійкий', '1000-002': 'Термостійкий',
+};
+const AREA_CATS = [...SEALANT_CATS, 'nytka-dlya-trub'];
 const { loadCharDictionary, normalizeChars } = ((charsNS as Record<string, unknown>).default ?? charsNS) as typeof charsNS;
 const { canonicalCharValue, matchCanonicalValues, MULTI_SEP } = ((valuesNS as Record<string, unknown>).default ?? valuesNS) as typeof valuesNS;
 
@@ -60,7 +76,7 @@ async function main() {
   const dict = await loadCharDictionary(db);
   if (!dict.values.get('Матеріал')) throw new Error('У characteristic_values немає правил для «Матеріал» — спершу seed-char-dictionary.mjs');
 
-  const products = await fetchAll<Product>('products', 'sku, name, category_slug, product_type, volume', q => q.in('category_slug', SEALANT_CATS));
+  const products = await fetchAll<Product>('products', 'sku, name, category_slug, product_type, volume', q => q.in('category_slug', AREA_CATS));
   const allChars = await fetchAll<Char & { product_sku: string }>('product_characteristics', 'id, product_sku, label, value, sort_order', q => q.in('product_sku', products.map(p => p.sku)));
   const charsOf = new Map<string, Char[]>();
   for (const c of allChars) { if (!charsOf.has(c.product_sku)) charsOf.set(c.product_sku, []); charsOf.get(c.product_sku)!.push(c); }
@@ -75,8 +91,9 @@ async function main() {
   }
 
   console.log(`БД: ${process.env.NEXT_PUBLIC_SUPABASE_URL}${APPLY ? '' : ' (DRY-RUN)'}\nГерметики: ${SEALANT_CATS.length} категорій, ${products.length} товарів`);
-  const stats = { areaDerived: 0, areaDefault: 0, areaKept: [] as string[], materialFromBase: 0, materialDefault: 0, droppedBase: 0, droppedType: 0, packaging: 0, defaults: 0 };
+  const stats = { areaFromType: 0, areaDerived: 0, areaDefault: 0, areaKept: [] as string[], materialFromBase: 0, materialDefault: 0, droppedBase: 0, droppedType: 0, packaging: 0, defaults: 0 };
   const changed: { sku: string; before: Char[]; after: Char[] }[] = [];
+  const typeFixes: { sku: string; before: string | null; after: string }[] = [];
   const dist = new Map<string, Map<string, number>>();
   const bump = (label: string, value: string) => {
     if (!dist.has(label)) dist.set(label, new Map());
@@ -84,6 +101,11 @@ async function main() {
   };
 
   for (const p of products) {
+    if (PRODUCT_TYPE_FIXES[p.sku] && PRODUCT_TYPE_FIXES[p.sku] !== p.product_type) {
+      typeFixes.push({ sku: p.sku, before: p.product_type, after: PRODUCT_TYPE_FIXES[p.sku] });
+      p.product_type = PRODUCT_TYPE_FIXES[p.sku];
+    }
+    const isSealant = SEALANT_CATS.includes(p.category_slug);
     const before = [...(charsOf.get(p.sku) ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || (a.id ?? 0) - (b.id ?? 0));
     const ctx = (label: string) => ({ rules: dict.values, category: p.category_slug, parentOf: dict.parentOf, multiselect: dict.multiselect.has(label) });
     const catDefaults = defaults.get(p.category_slug) ?? new Map<string, string>();
@@ -91,28 +113,30 @@ async function main() {
     for (const c of before) if (!map.has(c.label)) map.set(c.label, c.value);
     const get = (l: string) => map.get(l)?.trim() || null;
 
-    // 1. Матеріал
-    if (!get('Матеріал')) {
+    // 1. Матеріал (лише герметики)
+    if (isSealant && !get('Матеріал')) {
       const fromBase = get('Основа') ? canonicalCharValue('Матеріал', get('Основа')!, ctx('Матеріал')) : null;
       const known = fromBase && dict.values.get('Матеріал')!.some(v => v.value === fromBase);
       if (known) { map.set('Матеріал', fromBase!); stats.materialFromBase++; }
       else if (catDefaults.get('Матеріал')) { map.set('Матеріал', catDefaults.get('Матеріал')!); stats.materialDefault++; }
     }
-    if (map.delete('Основа')) stats.droppedBase++;
+    if (isSealant && map.delete('Основа')) stats.droppedBase++;
 
-    // 2. Область застосування — закритий перелік
-    const pool = [get('Область застосування'), get('Тип герметика'), p.product_type, p.name].filter(Boolean).join('; ');
-    const derived = matchCanonicalValues('Область застосування', pool, ctx('Область застосування'));
-    if (derived.length) { map.set('Область застосування', derived.join(MULTI_SEP)); stats.areaDerived++; }
+    // 2. Область застосування — закритий перелік: спершу з «Типу» картки, інакше з назви/тексту
+    const fromType = p.product_type && TYPE_TO_AREA[p.product_type];
+    const pool = [get('Тип герметика'), p.name, get('Область застосування')].filter(Boolean).join('; ');
+    const derived = fromType ? [fromType] : matchCanonicalValues('Область застосування', pool, ctx('Область застосування'));
+    if (fromType) stats.areaFromType++;
+    if (derived.length) { map.set('Область застосування', derived.join(MULTI_SEP)); if (!fromType) stats.areaDerived++; }
     else if (catDefaults.get('Область застосування')) { map.set('Область застосування', catDefaults.get('Область застосування')!); stats.areaDefault++; }
     else if (get('Область застосування')) stats.areaKept.push(`${p.sku} «${get('Область застосування')}»`);
     if (map.delete('Тип герметика')) stats.droppedType++;
 
-    // 3. Форма випуску
-    if (!get('Форма випуску')) { map.set('Форма випуску', packagingOf(p)); stats.packaging++; }
+    // 3. Форма випуску (лише герметики)
+    if (isSealant && !get('Форма випуску')) { map.set('Форма випуску', packagingOf(p)); stats.packaging++; }
 
     // 4. Дефолти
-    for (const label of ['Під фарбування', 'Тип використання', 'Колір']) {
+    for (const label of isSealant ? ['Під фарбування', 'Тип використання', 'Колір'] : []) {
       if (!get(label) && catDefaults.get(label)) { map.set(label, catDefaults.get(label)!); stats.defaults++; }
     }
 
@@ -123,7 +147,9 @@ async function main() {
   }
 
   console.log(`\nМатеріал: з «Основа» ${stats.materialFromBase}, дефолт ${stats.materialDefault}; «Основа» видалено ${stats.droppedBase}, «Тип герметика» видалено ${stats.droppedType}`);
-  console.log(`Область застосування: виведено ${stats.areaDerived}, дефолт ${stats.areaDefault}, лишено як є ${stats.areaKept.length}`);
+  console.log(`Область застосування: з «Типу» ${stats.areaFromType}, з тексту ${stats.areaDerived}, дефолт ${stats.areaDefault}, лишено як є ${stats.areaKept.length}`);
+  console.log(`product_type: ${typeFixes.length} виправлень${typeFixes.map(f => `
+   ${f.sku}: ${f.before ?? '∅'} → ${f.after}`).join('')}`);
   for (const s of stats.areaKept) console.log(`   ? ${s}`);
   console.log(`Форма випуску проставлено: ${stats.packaging}; інші дефолти: ${stats.defaults}`);
   console.log('\nРозподіл фасетів після чистки:');
@@ -145,6 +171,10 @@ async function main() {
     const { error: i } = await db.from('product_characteristics').insert(c.after.map(x => ({ product_sku: c.sku, label: x.label, value: x.value, sort_order: x.sort_order })));
     if (i) throw new Error(`${c.sku} insert: ${i.message}`);
   }
-  console.log(`записано: ${changed.length} товарів`);
+  for (const f of typeFixes) {
+    const { error } = await db.from('products').update({ product_type: f.after }).eq('sku', f.sku);
+    if (error) throw new Error(`${f.sku} product_type: ${error.message}`);
+  }
+  console.log(`записано: ${changed.length} товарів, ${typeFixes.length} product_type`);
 }
 main().catch(e => { console.error(e); process.exit(1); });

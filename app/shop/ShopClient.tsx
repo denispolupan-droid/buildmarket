@@ -4,7 +4,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffe
 import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
-import { resolveFacets, facetTokens, categoryChainOf } from '../../lib/facets';
+import { resolveFacets, facetTokens, hidesTypeFilter } from '../../lib/facets';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ShoppingCart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
@@ -637,7 +637,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     // категорія сама каже, які лейбли є фільтрами і в якому порядку значення.
     const facets = resolveFacets(categories, selCat);
     const facetByLabel = new Map(facets.map(f => [f.label, f]));
-    const inInstrumenty = categoryChainOf(categories, selCat).includes('instrumenty');
+    const inInstrumenty = hidesTypeFilter(categories, selCat); // «Тип» ховаємо в інструменті й герметиках
 
     const map = new Map<string, Map<string, string>>();
     const countsMap = new Map<string, Map<string, number>>();

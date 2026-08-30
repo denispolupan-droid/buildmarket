@@ -194,10 +194,14 @@ describe('герметики (етап 4)', () => {
   });
   it('Область застосування: вільний текст → перелік канонів; у клеях лишається текстом', () => {
     expect(matchCanonicalValues('Область застосування', 'Санітарний; Герметизація швів у ванних, кухнях, на фасадах; вікна, двері, сантехніка', c('Область застосування')))
-      .toEqual(['Санітарний', 'Фасади та шви', 'Вікна та двері']);
+      .toEqual(['Санітарний']);
+    expect(matchCanonicalValues('Область застосування', 'Герметик для монтажних швів, стики панелей', c('Область застосування'))).toEqual(['Монтажні шви']);
     expect(matchCanonicalValues('Область застосування', 'Термостійкий; Каміни, печі, димоходи, барбекю, топки', c('Область застосування')))
       .toEqual(['Печі та каміни']);
     expect(valueInDictionary('Область застосування', 'Стропила, балки', { rules, category: 'klei', parentOf: sealantParent, multiselect: true })).toBe(true);
+    // нитка — окреме значення, лише для неї
+    expect(applicableValues('Область застосування', { rules, category: 'nytka-dlya-trub', parentOf: sealantParent })).toEqual(["Різьбові з'єднання"]);
+    expect(matchCanonicalValues('Область застосування', 'Водопостачання, опалення, газ', { rules, category: 'nytka-dlya-trub', parentOf: sealantParent, multiselect: true })).toEqual(["Різьбові з'єднання"]);
   });
   it('Під фарбування, Форма випуску', () => {
     expect(canonicalCharValue('Під фарбування', 'так, після повного висихання', c('Під фарбування'))).toBe('Так');

@@ -18,7 +18,7 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
-import { resolveFacets, facetTokens, categoryChainOf } from '../../lib/facets';
+import { resolveFacets, facetTokens, hidesTypeFilter } from '../../lib/facets';
 
 import { WHOLESALE_MIN } from '../../lib/site';
 import type { CategoryMeta } from '../../lib/category-descriptions';
@@ -339,7 +339,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     // категорія сама каже, які лейбли є фільтрами і в якому порядку значення.
     const facets = resolveFacets(categories, selCat);
     const facetByLabel = new Map(facets.map(f => [f.label, f]));
-    const inInstrumenty = categoryChainOf(categories, selCat).includes('instrumenty');
+    const inInstrumenty = hidesTypeFilter(categories, selCat); // «Тип» ховаємо в інструменті й герметиках
 
     const map = new Map<string, Map<string, string>>();
     const countsMap = new Map<string, Map<string, number>>();
