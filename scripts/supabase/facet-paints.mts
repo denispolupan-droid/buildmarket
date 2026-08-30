@@ -59,7 +59,8 @@ const TYPE_BY_CAT: Record<string, string> = {
 function fixProductType(p: Product): string | null {
   const name = p.name.toLowerCase();
   if (!p.product_type) return TYPE_BY_CAT[p.category_slug] ?? null;
-  if (/ґрунт-емаль/.test(name)) return 'Ґрунт-емаль 3 в 1';
+  if (/ґрунт-емаль/.test(name)) return 'Акрилова емаль';   // Lacrysil ґрунт-емаль — це акрилова емаль (рішення власника 30.08)
+  if (/пф-?266/.test(name)) return 'Для підлоги';           // ПФ-266 — емаль для підлоги
   if (/акрилов/.test(name) && /алкідн/i.test(p.product_type)) return 'Акрилова емаль';
   return null;
 }
@@ -138,6 +139,9 @@ async function main() {
       if (map.delete('Призначення')) stats.droppedPurpose++;
       map.delete('Область застосування');
     }
+
+    // 4b. Розчинники: «Основа» = тип розчинника (кислотна/нафтова) — не основа, прибираємо
+    if (p.category_slug === 'rozchynnyky') map.delete('Основа');
 
     // 5. Дефолти для порожніх фасетів
     for (const label of ['Основа', 'Розчинник', 'Ефект']) {
