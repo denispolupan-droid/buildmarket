@@ -260,3 +260,20 @@ describe('клеї (етап 6)', () => {
     expect(canonicalCharValue('Кількість компонентів', '1 (однокомпонентний)', c('Кількість компонентів'))).toBe('Однокомпонентний');
   });
 });
+
+describe('ґрунтовки та шпаклівки (етап 7)', () => {
+  const primerParent = new Map(parentOf); for (const c of ['gruntivky-gotovi', 'gruntivky-kontsentraty', 'betonokontakt', 'antygrybok', 'shpaklivky']) primerParent.set(c, 'gruntivky');
+  const c = (label: string, cat = 'gruntivky-gotovi'): ValueContext => ({ rules, category: cat, parentOf: primerParent });
+  it('Форма: готова/концентрат', () => {
+    expect(canonicalCharValue('Форма', 'Ґрунт-концентрат', c('Форма', 'gruntivky-kontsentraty'))).toBe('Концентрат');
+    expect(canonicalCharValue('Форма', 'готова до застосування', c('Форма'))).toBe('Готова до застосування');
+    expect(applicableValues('Форма', { rules, category: 'klei', parentOf: primerParent })).toEqual([]);
+  });
+  it('Призначення — закритий список родини: адгезія, цвіль, висоли, зміцнення', () => {
+    expect(canonicalCharValue('Призначення', 'Покращення адгезії основи', c('Призначення', 'betonokontakt'))).toBe('Покращення адгезії');
+    expect(canonicalCharValue('Призначення', 'Знищення цвілі та грибка', c('Призначення', 'antygrybok'))).toBe('Захист від цвілі та грибка');
+    expect(matchCanonicalValues('Призначення', 'Грунтовка Дивоцвіт Змивка висолів', c('Призначення'))).toEqual(['Видалення висолів']);
+    expect(matchCanonicalValues('Призначення', 'Шпатлівка для дерева', { rules, category: 'shpaklivky', parentOf: primerParent })).toEqual(["Ремонт дерев'яних поверхонь"]);
+    expect(canonicalCharValue('Призначення', 'Глибокопроникаюча ґрунтовка', c('Призначення'))).toBe('Ґрунтування та зміцнення поверхонь');
+  });
+});
