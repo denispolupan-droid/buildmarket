@@ -18,6 +18,7 @@ const GAP_LABELS: { key: keyof CategoryAuditGaps; label: string; tone: Tone; exp
   { key: 'guideNoBuy',    label: 'гайд без «купити»', tone: 'warn',  explain: 'У гайді немає розділу «Де купити» — ні «купити», ні «ціна». Сторінка комерційна, текст — порада' },
   { key: 'deadPriceSku',  label: 'ціна на знятий товар', tone: 'danger', explain: 'Токен {price:SKU} у гайді/FAQ посилається на артикул, якого немає серед активних товарів — речення з ним не показується. Замінити артикул' },
   { key: 'h1Mismatch',    label: 'H1 ≠ запит',       tone: 'warn',   explain: 'Слова найчастішого запиту сторінки не входять у назву категорії (uk або ru) — стандарт 1.2' },
+  { key: 'guideMissesChild', label: 'гайд не знає підкатегорію', tone: 'warn', explain: 'У родині зʼявилась підкатегорія з 5+ товарами, на яку гайд не посилається. Дописати абзац і посилання — стандарт 1.4' },
   { key: 'thinCategory',  label: 'тонка категорія',  tone: 'info',   explain: '1–4 товари: пополнити асортимент або не індексувати; гайд не пишемо' },
   { key: 'thinFaq',       label: 'мало FAQ',         tone: 'info',   explain: 'Менше 4 питань хоча б однією мовою; з гайдом — менше 7' },
   { key: 'ruBehind',      label: 'рос. відстає',     tone: 'info',   explain: 'Російська версія коротша за українську або відсутня' },
@@ -128,6 +129,12 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
                   {row.missingBrands
                     .map(b => `${b} (${row.actualBrands.find(a => a.brand === b)?.count ?? 0})`)
                     .join(', ')}
+                </div>
+              )}
+              {row.unlinkedChildren.length > 0 && (
+                <div style={line}>
+                  <b style={{ color: TONE.warn }}>Гайд не веде в підкатегорії:</b>{' '}
+                  {row.unlinkedChildren.map(s => <code key={s} style={{ marginRight: 8 }}>/shop/{s}</code>)}
                 </div>
               )}
               {row.actualBrands.length > 0 && (

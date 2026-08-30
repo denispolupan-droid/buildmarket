@@ -256,3 +256,57 @@ describe('deadPriceSku — токени живих цін', () => {
     expect(row.gaps.deadPriceSku).toBe(true);
   });
 });
+
+describe('guideMissesChild — гайд хаба і його підкатегорії', () => {
+  // Реальний випадок, з якого взялась перевірка: у «Сітки, стрічки, склополотно»
+  // дві підкатегорії стояли порожні, і коли туди заллють товар, гайд про них
+  // не дізнається — на СКЛАД гайда не дивиться жодна інша мітка.
+  const tree = [
+    cat('strichky', 'Стрічки'),
+    cat('malyarna-strichka', 'Малярна', 'strichky'),
+    cat('sklopolotno', 'Склополотно', 'strichky'),
+  ];
+  const fill = (slug: string, n: number) => Array.from({ length: n }, () => prod(slug, 'Сталь'));
+  const guide = (...links: string[]): CategoryMeta => ({
+    description: 'опис',
+    seoText: 'У каталозі FIXLINE можна купити стрічки Сталь.',
+    faq: Array.from({ length: 7 }, (_, i) => ({ q: `q${i}`, a: `a${i}` })),
+    guide: { title: 'Яку стрічку вибрати', sections: [{ h: 'Що для якої задачі', p: [links.map(l => `[текст](${l})`).join(' ')] }] },
+  });
+  const run = (meta: CategoryMeta, sklopolotnoCount: number) => auditCategories({
+    categories: tree,
+    products: [...fill('malyarna-strichka', 12), ...fill('sklopolotno', sklopolotnoCount)],
+    metaUa: { strichky: meta },
+    metaRu: { strichky: meta },
+    brands: BRANDS,
+  }).find(r => r.slug === 'strichky')!;
+
+  it('підкатегорія з 5+ товарами, якої немає в гайді, — мітка', () => {
+    const row = run(guide('/shop/malyarna-strichka'), 8);
+    expect(row.unlinkedChildren).toEqual(['sklopolotno']);
+    expect(row.gaps.guideMissesChild).toBe(true);
+  });
+
+  it('усі підкатегорії в гайді — мітки немає', () => {
+    const row = run(guide('/shop/malyarna-strichka', '/shop/sklopolotno'), 8);
+    expect(row.unlinkedChildren).toEqual([]);
+    expect(row.gaps.guideMissesChild).toBe(false);
+  });
+
+  it('посилання в «Дивіться також» рахується нарівні з прозою', () => {
+    const meta = { ...guide('/shop/malyarna-strichka'), related: [{ href: '/shop/sklopolotno', label: 'Склополотно' }] };
+    expect(run(meta, 8).gaps.guideMissesChild).toBe(false);
+  });
+
+  it('тонку підкатегорію не вимагаємо: стандарт 1.1 її й не радить розкривати', () => {
+    expect(run(guide('/shop/malyarna-strichka'), 4).gaps.guideMissesChild).toBe(false);
+    // а порожню — тим паче
+    expect(run(guide('/shop/malyarna-strichka'), 0).gaps.guideMissesChild).toBe(false);
+  });
+
+  it('без гайда перевірка не виконується — там працює мітка «немає гайда»', () => {
+    const row = run(meta('У каталозі FIXLINE можна купити стрічки Сталь.', 7), 8);
+    expect(row.gaps.guideMissesChild).toBe(false);
+    expect(row.unlinkedChildren).toEqual([]);
+  });
+});

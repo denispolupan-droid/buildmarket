@@ -42,6 +42,8 @@ export type CategoryAuditGaps = {
   guideNoBuy: boolean;
   /** український гайд є, російського немає або він помітно коротший */
   ruGuideBehind: boolean;
+  /** у родині є повноцінна підкатегорія, на яку гайд не посилається (стандарт 1.4) */
+  guideMissesChild: boolean;
   /** слова найчастішого запиту сторінки не входять у назву категорії (uk або ru) */
   h1Mismatch: boolean;
   /** токен ціни {price:SKU}/{range:…} посилається на артикул, якого немає серед активних товарів */
@@ -66,6 +68,8 @@ export type CategoryAuditRow = {
   guideWords: { ua: number; ru: number };
   /** покази за 28 днів (uk+ru) і найчастіший запит; null — даних GSC не було */
   demand: AuditDemand | null;
+  /** підкатегорії з 5+ товарами, на які гайд не посилається — їх і треба дописати */
+  unlinkedChildren: string[];
   gaps: CategoryAuditGaps;
 };
 
@@ -216,6 +220,19 @@ export function auditCategories(input: {
     const inDemand = !!d && d.impressions >= MIN_DEMAND;
     const names = [cat?.name ?? slug, namesRu?.[slug] ?? ''].filter(Boolean);
 
+    // Хаб із гайдом має вести в свої підкатегорії — «який підтип для якої
+    // задачі, з посиланнями на дітей» (стандарт 1.4). Коли в родину доливають
+    // нову підкатегорію, гайд про неї сам не дізнається: на СКЛАД гайда не
+    // дивиться жодна інша перевірка, а бренди ловляться лише від 3 товарів і
+    // 10 % родини — тобто менша поставка проходить мовчки. Тонких дітей
+    // (< 5 товарів) не рахуємо: стандарт 1.1 їх і не радить розкривати.
+    const guideLinks = hasGuide ? guideUa + JSON.stringify(ua?.related ?? []) : '';
+    const unlinkedChildren = hasGuide
+      ? (children.get(slug) ?? []).filter(kid =>
+          [...family(kid)].flatMap(s => bySlug.get(s) ?? []).length >= MIN_PRODUCTS_FOR_GUIDE
+          && !guideLinks.includes(`/shop/${kid}`))
+      : [];
+
     rows.push({
       slug,
       name: cat?.name ?? slug,
@@ -230,6 +247,7 @@ export function auditCategories(input: {
       deadPriceSkus,
       guideWords,
       demand: d,
+      unlinkedChildren,
       gaps: {
         noProducts: !!ua && productCount === 0,
         noMeta: !ua && productCount > 0,
@@ -243,6 +261,7 @@ export function auditCategories(input: {
         noGuide: !hasGuide && productCount >= MIN_PRODUCTS_FOR_GUIDE && inDemand,
         guideNoBuy: hasGuide && !/купит|ціна|цін[аи]|коштує/iu.test(guideUa),
         ruGuideBehind: hasGuide && guideWords.ru < guideWords.ua * (1 - RU_GUIDE_TOLERANCE),
+        guideMissesChild: unlinkedChildren.length > 0,
         h1Mismatch: inDemand && !!d.topQuery && !nameCoversQuery(names, d.topQuery),
         deadPriceSku: deadPriceSkus.length > 0,
       },
