@@ -37,10 +37,10 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPAB
 type Char = { id?: number; label: string; value: string; sort_order?: number };
 type Product = { sku: string; name: string; category_slug: string; product_type: string | null };
 
-async function fetchAll<T>(table: string, columns: string, filter?: (q: any) => any): Promise<T[]> {
+async function fetchAll<T>(table: string, columns: string, filter?: (q: any) => any, orderBy = 'id'): Promise<T[]> {
   const rows: T[] = [];
   for (let from = 0; ; from += 1000) {
-    let q = db.from(table).select(columns).range(from, from + 999);
+    let q = db.from(table).select(columns).order(orderBy).range(from, from + 999); // ORDER обов'язковий: сторінки без стабільного порядку гублять рядки
     if (filter) q = filter(q);
     const { data, error } = await q;
     if (error) throw new Error(`${table}: ${error.message}`);
@@ -80,7 +80,7 @@ async function main() {
 
   // дефолти категорій зі словника (single source of truth — category_characteristics)
   const defRows = await fetchAll<{ category_slug: string; default_value: string | null; characteristic_definitions: { label: string } | null }>(
-    'category_characteristics', 'category_slug, default_value, characteristic_definitions(label)', q => q.in('category_slug', [...family]));
+    'category_characteristics', 'category_slug, default_value, characteristic_definitions(label)', q => q.in('category_slug', [...family]), 'category_slug');
   const defaults = new Map<string, Map<string, string>>();
   for (const r of defRows) {
     if (!r.default_value || !r.characteristic_definitions) continue;

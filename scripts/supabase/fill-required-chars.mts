@@ -28,10 +28,10 @@ function log(line: string) {
   console.log(line);
 }
 
-async function fetchAll<T>(table: string, columns: string, filter?: (q: any) => any): Promise<T[]> {
+async function fetchAll<T>(table: string, columns: string, filter?: (q: any) => any, orderBy = 'id'): Promise<T[]> {
   const rows: T[] = [];
   for (let from = 0; ; from += 1000) {
-    let q = supabase.from(table).select(columns).range(from, from + 999);
+    let q = supabase.from(table).select(columns).order(orderBy).range(from, from + 999); // ORDER обов'язковий для стабільних сторінок
     if (filter) q = filter(q);
     const { data, error } = await q;
     if (error) throw new Error(`${table}: ${error.message}`);

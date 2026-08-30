@@ -29,10 +29,10 @@ const REQUIRED_COVERAGE = 0.6;  // автовивід: required, якщо лей
 const OPTIONAL_COVERAGE = 0.3;  // автовивід: optional, якщо у ≥30%
 const MIN_PRODUCTS = 3;         // автовивід required тільки для категорій від 3 товарів
 
-async function fetchAll(table, columns, filter) {
+async function fetchAll(table, columns, filter, orderBy = 'id') {
   const rows = [];
   for (let from = 0; ; from += 1000) {
-    let q = supabase.from(table).select(columns).range(from, from + 999);
+    let q = supabase.from(table).select(columns).order(orderBy).range(from, from + 999); // ORDER обов'язковий для стабільних сторінок
     if (filter) q = filter(q);
     const { data, error } = await q;
     if (error) throw new Error(`${table}: ${error.message}`);
@@ -100,7 +100,7 @@ async function main() {
   const diffs = [];
   if (DIFF) {
     const rows = await fetchAll('category_characteristics',
-      'category_slug, required, default_value, characteristic_definitions(label)');
+      'category_slug, required, default_value, characteristic_definitions(label)', undefined, 'category_slug');
     for (const r of rows) {
       const l = r.characteristic_definitions?.label;
       if (l) current.set(`${r.category_slug}|${l}`, `${r.required ? 'req' : 'opt'}|${r.default_value ?? ''}`);

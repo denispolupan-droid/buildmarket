@@ -14,3 +14,7 @@ console.log('поза довідником за лейблами:', byLabel);
 const byCat: Record<string, number> = {};
 for (const i of off) byCat[i.category] = (byCat[i.category] ?? 0) + 1;
 console.log('поза довідником за категоріями:', byCat);
+const missing: Record<string, number> = {};
+for (const i of items) for (const l of i.missingLabels) missing[`${i.category} / ${l}`] = (missing[`${i.category} / ${l}`] ?? 0) + 1;
+console.log('бракує обов\'язкових (категорія / лейбл):');
+for (const [k, v] of Object.entries(missing).sort((a, b) => b[1] - a[1])) console.log(`  ${v}  ${k}`);
