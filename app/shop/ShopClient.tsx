@@ -4,7 +4,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffe
 import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
-import { resolveFacets, facetTokens, hidesTypeFilter } from '../../lib/facets';
+import { resolveFacets, facetTokens, hidesTypeFilter, subtreeSlugs } from '../../lib/facets';
 import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ShoppingCart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
@@ -622,11 +622,12 @@ export default function ShopClient({ products, categories, reviewStats, initialS
     return map;
   }, [categories]);
 
+  // Усе піддерево, а не лише прямі діти: «Фарби → Емалі 3в1 → Молоткові» інакше
+  // випадали з листингу й фільтрів батьківської категорії
   const matchingSlugs = useMemo(() => {
     if (!selCat) return null;
-    const children = (childrenOf[selCat] ?? []).map(c => c.slug);
-    return new Set([selCat, ...children]);
-  }, [selCat, childrenOf]);
+    return new Set(subtreeSlugs(categories, selCat));
+  }, [selCat, categories]);
 
 
   const catProducts = useMemo(() =>
@@ -771,8 +772,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   // однаково. Див. коментар вище.
 
   const countFor = (slug: string) => {
-    const children = (childrenOf[slug] ?? []).map(c => c.slug);
-    const slugs = new Set([slug, ...children]);
+    const slugs = new Set(subtreeSlugs(categories, slug));
     return products.filter(p => slugs.has(p.category_slug ?? '')).length;
   };
 

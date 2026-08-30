@@ -31,6 +31,28 @@ export function hidesTypeFilter(categories: FacetCategoryTree, slug: string | nu
   return HIDE_TYPE_FILTER_FAMILIES.some(f => chain.includes(f));
 }
 
+/**
+ * Усе піддерево категорії: сама + діти + онуки… Листинг і лічильники мають
+ * брати ВСЕ піддерево — «Фарби → Емалі 3в1 → Молоткові» інакше випадали з
+ * /shop/farby (клієнт брав лише прямих дітей, сервер — усю родину).
+ */
+export function subtreeSlugs(categories: FacetCategoryTree, slug: string): string[] {
+  const byParent = new Map<string | null, string[]>();
+  for (const c of categories) {
+    if (!byParent.has(c.parent_slug)) byParent.set(c.parent_slug, []);
+    byParent.get(c.parent_slug)!.push(c.slug);
+  }
+  const out: string[] = [];
+  const stack = [slug];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    if (out.includes(cur)) continue;
+    out.push(cur);
+    stack.push(...(byParent.get(cur) ?? []));
+  }
+  return out;
+}
+
 /** Ланцюжок slug → батько → … (без зациклення). */
 export function categoryChainOf(categories: FacetCategoryTree, slug: string | null | undefined): string[] {
   const parentOf = new Map(categories.map(c => [c.slug, c.parent_slug]));

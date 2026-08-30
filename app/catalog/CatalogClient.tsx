@@ -18,7 +18,7 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
-import { resolveFacets, facetTokens, hidesTypeFilter } from '../../lib/facets';
+import { resolveFacets, facetTokens, hidesTypeFilter, subtreeSlugs } from '../../lib/facets';
 import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
 
 import { WHOLESALE_MIN } from '../../lib/site';
@@ -322,11 +322,11 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     return map;
   }, [categories]);
 
+  // Усе піддерево, а не лише прямі діти (див. ShopClient)
   const matchingSlugs = useMemo(() => {
     if (!selCat) return null;
-    const children = (childrenOf[selCat] ?? []).map(c => c.slug);
-    return new Set([selCat, ...children]);
-  }, [selCat, childrenOf]);
+    return new Set(subtreeSlugs(categories, selCat));
+  }, [selCat, categories]);
 
   const catProducts = useMemo(() =>
     matchingSlugs ? products.filter(p => matchingSlugs.has(p.category_slug ?? '')) : products,

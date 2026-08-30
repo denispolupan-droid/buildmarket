@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeCategoryFacets, resolveFacets, facetTokens, categoryChainOf } from '../lib/facets';
+import { computeCategoryFacets, resolveFacets, facetTokens, categoryChainOf, subtreeSlugs } from '../lib/facets';
 import type { Category } from '../types';
 
 const defs = [
@@ -87,5 +87,13 @@ describe('facetTokens / categoryChainOf', () => {
   it('ланцюжок категорій', () => {
     expect(categoryChainOf(tree, 'moltkovi-farby')).toEqual(['moltkovi-farby', 'farby-3v1', 'farby']);
     expect(categoryChainOf(tree, 'nope')).toEqual(['nope']);
+  });
+});
+
+describe('subtreeSlugs', () => {
+  it('сама категорія + діти + онуки, без зациклення', () => {
+    expect(subtreeSlugs(tree, 'farby').sort()).toEqual(['farby', 'farby-3v1', 'moltkovi-farby', 'vodoemiulsiyni-interierni'].sort());
+    expect(subtreeSlugs(tree, 'moltkovi-farby')).toEqual(['moltkovi-farby']);
+    expect(subtreeSlugs([{ slug: 'a', parent_slug: 'b' }, { slug: 'b', parent_slug: 'a' }], 'a').sort()).toEqual(['a', 'b']);
   });
 });
