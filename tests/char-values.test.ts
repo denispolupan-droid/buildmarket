@@ -249,7 +249,8 @@ describe('клеї (етап 6)', () => {
   });
   it('стан, клас водостійкості, індикатор, компоненти', () => {
     expect(canonicalCharValue('Стан', 'рідкий (гель)', c('Стан', 'super-klei'))).toBe('Гель');
-    expect(canonicalCharValue('Стан', 'Сухий концентрат (порошок)', c('Стан', 'klei-dlya-shpaler'))).toBe('Порошок');
+    expect(canonicalCharValue('Стан', 'Сухий концентрат (порошок)', c('Стан', 'klei-dlya-shpaler'))).toBe('Суха суміш');
+    expect(canonicalCharValue('Стан', 'Порошок', c('Стан', 'klei-dlya-plytky'))).toBe('Суха суміш');
     expect(canonicalCharValue('Стан', 'готовий до застосування', c('Стан'))).toBe('готовий до застосування'); // не стан — лишається, скрипт бере дефолт
     expect(canonicalCharValue('Клас водостійкості', 'D3 (EN 204)', c('Клас водостійкості', 'pva-ta-stolyarnyi'))).toBe('D3');
     expect(canonicalCharValue('Клас водостійкості', 'водостійкий (для внутрішніх робіт)', c('Клас водостійкості', 'pva-ta-stolyarnyi'))).toBe('Водостійкий');
