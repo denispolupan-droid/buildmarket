@@ -19,6 +19,7 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import { resolveFacets, facetTokens, hidesTypeFilter } from '../../lib/facets';
+import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
 
 import { WHOLESALE_MIN } from '../../lib/site';
 import type { CategoryMeta } from '../../lib/category-descriptions';
@@ -178,6 +179,10 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   const [expandedValues,   setExpandedValues]   = useState<Set<string>>(new Set());
   const [inStockOnly,      setInStockOnly]      = useState(false);
   const [saleOnly,      setSaleOnly]      = useState(initialSaleOnly);
+  const mainRef = useRef<HTMLDivElement>(null);
+  // Зміна фільтра: тримаємо висоту колонки й піднімаємо сторінку до початку —
+  // інакше короткий список «прижимав» вʼюпорт до підвалу (див. lib/useLiftOnFilterChange)
+  useLiftOnFilterChange(mainRef, JSON.stringify([filterValues, filterVolumes, filterVolumesKg, inStockOnly, saleOnly]), { duration: 620 });
   const [visibleCount,  setVisibleCount]  = useState(50);
   // Обидва стани стартують серверним значенням, а реальні (localStorage /
   // matchMedia) підставляються в useLayoutEffect — ПІСЛЯ гідрації, але ДО
@@ -840,7 +845,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
           </aside>
 
           {/* Main */}
-          <div className="catalog-main">
+          <div ref={mainRef} className="catalog-main">
 
             {/* Title row */}
             <div

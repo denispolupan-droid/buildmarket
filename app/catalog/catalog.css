@@ -140,7 +140,7 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 [data-theme="dark"] .filter-select.active { background: #1E3A5F44; border-color: #4880B8; color: #93C5FD; }
 
 /* ── Main content ── */
-.catalog-main { min-width: 0; }
+.catalog-main { min-width: 0; min-height: 100vh; } /* короткий список не піднімає підвал у вʼюпорт */
 /* Той самий легкий градієнт, що в магазині (.shop-topbar) */
 .catalog-title-row {
   position: relative;

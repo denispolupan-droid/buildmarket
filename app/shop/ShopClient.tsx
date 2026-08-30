@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import { resolveFacets, facetTokens, hidesTypeFilter } from '../../lib/facets';
+import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ShoppingCart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
@@ -433,6 +434,14 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sidebarRef = useRef<HTMLElement>(null);
   const filtersRef  = useRef<HTMLDivElement>(null);
+  const mainRef     = useRef<HTMLDivElement>(null);
+  // Зміна фільтра: тримаємо висоту колонки й піднімаємо сторінку до початку —
+  // інакше короткий список «прижимав» вʼюпорт до підвалу (див. lib/useLiftOnFilterChange)
+  useLiftOnFilterChange(
+    mainRef,
+    JSON.stringify([filterValues, filterVolumes, filterVolumesKg, filterPlasticGroup, inStockOnly, saleOnly]),
+    { beforeLift: suppressStickyCompact },
+  );
   const pillsRef = useRef<HTMLDivElement>(null);
   const stickyCompact = useStickyCompact();
 
@@ -1073,7 +1082,7 @@ export default function ShopClient({ products, categories, reviewStats, initialS
       </aside>
 
       {/* Main */}
-      <div style={{ minWidth: 0 }}>
+      <div ref={mainRef} className="shop-main">
         <div
           className="shop-topbar"
           style={(() => { const a = categoryAccent(selCat, catInfo?.parentSlug); return a ? ({ '--cat-accent': a } as React.CSSProperties) : undefined; })()}

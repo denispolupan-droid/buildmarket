@@ -5,6 +5,9 @@
    нема: контент, що змінюється, і так замінюється весь. */
 body:has(.shop-layout) { overflow-anchor: none; }
 
+/* min-height: короткий відфільтрований список не має піднімати підвал у вʼюпорт */
+.shop-main { min-width: 0; min-height: 100vh; }
+
 .shop-layout {
   display: grid;
   grid-template-columns: 310px 1fr;
