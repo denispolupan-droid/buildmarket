@@ -233,3 +233,29 @@ describe('монтажна піна (етап 5)', () => {
     expect(applicableValues('Тип', { rules, category: 'alkidni-farby', parentOf: foamParent })).toEqual([]);
   });
 });
+
+describe('клеї (етап 6)', () => {
+  const glueParent = new Map(parentOf); for (const c of ['montazhnyi-klei', 'kontaktnyi-klei', 'pva-ta-stolyarnyi', 'super-klei', 'klei-dlya-shpaler']) glueParent.set(c, 'klei');
+  const c = (label: string, cat = 'montazhnyi-klei'): ValueContext => ({ rules, category: cat, parentOf: glueParent, multiselect: label === 'Склеювані матеріали' });
+  it('склеювані матеріали з переліку поверхонь — у порядку довідника, без дублів', () => {
+    expect(matchCanonicalValues('Склеювані матеріали', 'Бетон, гіпсокартон, дерево, метал, пластик, камінь, кераміка', c('Склеювані матеріали')))
+      .toEqual(['Дерево', 'Метал', 'Пластик', 'Кераміка та камінь', 'Бетон та штукатурка', 'Гіпсокартон']);
+    expect(matchCanonicalValues('Склеювані матеріали', 'Ремонт взуття: шкіра, гума, текстиль', c('Склеювані матеріали', 'kontaktnyi-klei'))).toEqual(['Гума', 'Шкіра', 'Тканина']);
+    expect(matchCanonicalValues('Склеювані матеріали', 'Для флізелінових шпалер', c('Склеювані матеріали', 'klei-dlya-shpaler'))).toEqual(['Шпалери']);
+    // «акрилова основа» — не матеріал для склеювання
+    expect(matchCanonicalValues('Склеювані матеріали', 'Акрилова основа, без розчинників', c('Склеювані матеріали'))).toEqual([]);
+    // поза клеями правил немає
+    expect(matchCanonicalValues('Склеювані матеріали', 'дерево, метал', { rules, category: 'alkidni-farby', parentOf: glueParent, multiselect: true })).toEqual([]);
+  });
+  it('стан, клас водостійкості, індикатор, компоненти', () => {
+    expect(canonicalCharValue('Стан', 'рідкий (гель)', c('Стан', 'super-klei'))).toBe('Гель');
+    expect(canonicalCharValue('Стан', 'Сухий концентрат (порошок)', c('Стан', 'klei-dlya-shpaler'))).toBe('Порошок');
+    expect(canonicalCharValue('Стан', 'готовий до застосування', c('Стан'))).toBe('готовий до застосування'); // не стан — лишається, скрипт бере дефолт
+    expect(canonicalCharValue('Клас водостійкості', 'D3 (EN 204)', c('Клас водостійкості', 'pva-ta-stolyarnyi'))).toBe('D3');
+    expect(canonicalCharValue('Клас водостійкості', 'водостійкий (для внутрішніх робіт)', c('Клас водостійкості', 'pva-ta-stolyarnyi'))).toBe('Водостійкий');
+    expect(canonicalCharValue('Наявність індикатора', 'так (синій колір при нанесенні)', c('Наявність індикатора', 'klei-dlya-shpaler'))).toBe('Так');
+    expect(canonicalCharValue('Наявність індикатора', 'немає', c('Наявність індикатора', 'klei-dlya-shpaler'))).toBe('Ні');
+    expect(canonicalCharValue('Кількість компонентів', '2 (смола + затверджувач)', c('Кількість компонентів'))).toBe('Двокомпонентний');
+    expect(canonicalCharValue('Кількість компонентів', '1 (однокомпонентний)', c('Кількість компонентів'))).toBe('Однокомпонентний');
+  });
+});
