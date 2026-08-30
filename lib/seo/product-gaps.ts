@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../db-paginate';
 import { THIN_DESCRIPTION_CHARS } from './thresholds';
+import { buildValueRules, valueInDictionary } from '../char-values';
 
 /**
  * Черга SEO-контенту: у яких товарів чого бракує.
@@ -29,8 +30,11 @@ export type SeoStateRow = {
   chars_count: number;
 };
 
-export type CharRow = { product_sku: string; label: string };
-export type DictRow = { label: string; aliases: string[] | null };
+export type CharRow = { product_sku: string; label: string; value?: string };
+export type DictRow = { label: string; aliases: string[] | null; is_multiselect?: boolean };
+/** Канонічні значення фасетів (characteristic_values + label визначення) */
+export type ValueRow = { label: string; value: string; category_slugs: string[] | null; aliases?: string[] | null };
+export type CategoryTreeRow = { slug: string; parent_slug: string | null };
 export type CategoryCharRow = {
   category_slug: string;
   required: boolean;
@@ -53,6 +57,8 @@ export type ProductGaps = {
   noChars: boolean;
   missingRequired: boolean;
   dirtyChars: boolean;
+  /** значення фасета поза довідником (не канон і не синонім) — правиться нормалізацією або AI */
+  offDict: boolean;
   noImage: boolean;
 };
 
@@ -64,6 +70,8 @@ export type QueueItem = {
   category: string;
   /** незаповнені обовʼязкові характеристики категорії (зі словника) */
   missingLabels: string[];
+  /** лейбли, чиї значення поза довідником */
+  offDictLabels: string[];
   gaps: ProductGaps;
 };
 
@@ -76,6 +84,8 @@ export function computeProductGaps(input: {
   chars: CharRow[];
   dict: DictRow[];
   categoryChars: CategoryCharRow[];
+  values?: ValueRow[];
+  categories?: CategoryTreeRow[];
   thinDescriptionChars?: number;
 }): QueueItem[] {
   const thin = input.thinDescriptionChars ?? THIN_DESCRIPTION_CHARS;
@@ -94,14 +104,22 @@ export function computeProductGaps(input: {
     requiredByCat.get(r.category_slug)!.push(label);
   }
 
-  const charsBySku = new Map<string, { canon: Set<string>; dirty: boolean }>();
+  // Довідник значень: та сама семантика, що в normalizeChars/offDictionaryLabels
+  const rules = buildValueRules(input.values ?? []);
+  const parentOf = new Map((input.categories ?? []).map(c => [c.slug, c.parent_slug]));
+  const multi = new Set(input.dict.filter(d => d.is_multiselect).map(d => d.label));
+  const catOf = new Map(input.products.map(p => [p.sku, p.category_slug]));
+
+  const charsBySku = new Map<string, { canon: Set<string>; dirty: boolean; offDict: string[] }>();
   for (const c of input.chars) {
-    if (!charsBySku.has(c.product_sku)) charsBySku.set(c.product_sku, { canon: new Set(), dirty: false });
+    if (!charsBySku.has(c.product_sku)) charsBySku.set(c.product_sku, { canon: new Set(), dirty: false, offDict: [] });
     const entry = charsBySku.get(c.product_sku)!;
     const canon = aliasMap.get(normKey(c.label));
     if (canon) {
       entry.canon.add(canon);
       if (canon !== c.label) entry.dirty = true; // синонім/апостроф — треба нормалізувати
+      if (c.value != null && !valueInDictionary(canon, c.value, { rules, category: catOf.get(c.product_sku), parentOf, multiselect: multi.has(canon) })
+          && !entry.offDict.includes(canon)) entry.offDict.push(canon);
     } else if (normKey(c.label) === 'сфера застосування') {
       // legacy-лейбл, канонізується за значенням — покриває обидві цілі
       entry.canon.add('Тип використання');
@@ -123,6 +141,7 @@ export function computeProductGaps(input: {
       brand: p.brand,
       category: p.category_slug ?? '',
       missingLabels: hasChars ? missingLabels : [],
+      offDictLabels: chars?.offDict ?? [],
       gaps: {
         thinDesc: p.desc_len < thin,
         noFaq: p.faq_count === 0,
@@ -132,6 +151,7 @@ export function computeProductGaps(input: {
         noChars: !hasChars,
         missingRequired: hasChars && missingLabels.length > 0,
         dirtyChars: !!chars?.dirty,
+        offDict: (chars?.offDict.length ?? 0) > 0,
         noImage: p.no_image,
       },
     };
@@ -151,18 +171,29 @@ const db = () => createClient(
 export async function loadProductQueue(): Promise<{ items: QueueItem[]; total: number }> {
   const client = db();
 
-  const [products, chars, dict, categoryChars] = await Promise.all([
+  type RawValueRow = Omit<ValueRow, 'label'> & { characteristic_definitions: { label: string } | { label: string }[] | null };
+  const [products, chars, dict, categoryChars, rawValues, categories] = await Promise.all([
     fetchAllRows<SeoStateRow>((f, t) =>
       client.from('product_seo_state').select('*').order('category_slug').order('sku').range(f, t)),
     fetchAllRows<CharRow>((f, t) =>
-      client.from('product_characteristics').select('product_sku, label').range(f, t)),
+      client.from('product_characteristics').select('product_sku, label, value').range(f, t)),
     fetchAllRows<DictRow>((f, t) =>
-      client.from('characteristic_definitions').select('label, aliases').range(f, t)),
+      client.from('characteristic_definitions').select('label, aliases, is_multiselect').range(f, t)),
     fetchAllRows<CategoryCharRow>((f, t) =>
       client.from('category_characteristics')
         .select('category_slug, required, characteristic_definitions(label)').range(f, t)),
+    fetchAllRows<RawValueRow>((f, t) =>
+      client.from('characteristic_values')
+        .select('value, category_slugs, aliases, characteristic_definitions(label)').order('id').range(f, t)),
+    fetchAllRows<CategoryTreeRow>((f, t) =>
+      client.from('categories').select('slug, parent_slug').range(f, t)),
   ]);
+  const values: ValueRow[] = [];
+  for (const r of rawValues) {
+    const label = defLabel(r.characteristic_definitions);
+    if (label) values.push({ label, value: r.value, category_slugs: r.category_slugs, aliases: r.aliases });
+  }
 
-  const all = computeProductGaps({ products, chars, dict, categoryChars });
+  const all = computeProductGaps({ products, chars, dict, categoryChars, values, categories });
   return { items: all.filter(hasAnyGap), total: products.length };
 }

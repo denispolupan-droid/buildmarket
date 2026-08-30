@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildValueRules, canonicalCharValue, matchCanonicalValues, categoryChain, type ValueContext } from '../lib/char-values';
+import { buildValueRules, canonicalCharValue, matchCanonicalValues, categoryChain, applicableValues, valueInDictionary, type ValueContext } from '../lib/char-values';
 import { charValueRows } from '../scripts/supabase/char-dictionary.mjs';
 
 // Тести ганяються на РЕАЛЬНОМУ довіднику (CHAR_VALUES), який seed заливає в БД:
@@ -144,5 +144,38 @@ describe('buildValueRules', () => {
     const r = buildValueRules([{ label: 'X', value: 'A', match_patterns: ['(', 'a+'] }]);
     expect(r.get('X')![0].patterns).toHaveLength(1);
     expect(canonicalCharValue('X', 'aaa', { rules: r })).toBe('A');
+  });
+});
+
+describe('applicableValues / valueInDictionary', () => {
+  it('значення лейбла для категорії — лише ті, що діють у її родині', () => {
+    expect(applicableValues('Основа', ctx('Основа', 'moltkovi-farby'))).toEqual(['Алкідна', 'Латексна', 'Силіконова', 'Акрилова']);
+    expect(applicableValues('Основа', ctx('Основа', 'bitumni-mastyky'))).toEqual([]);
+    expect(applicableValues('Ступінь блиску', ctx('Ступінь блиску', null))).toHaveLength(4);
+  });
+  it('у довіднику — канон або точний синонім; регекс-збіг НЕ рахується', () => {
+    const c = ctx('Основа', 'alkidni-farby');
+    expect(valueInDictionary('Основа', 'Алкідна', c)).toBe(true);
+    expect(valueInDictionary('Основа', 'водоемульсійна', c)).toBe(true); // аліас Акрилової
+    expect(valueInDictionary('Основа', 'Акрилова дисперсія (водна база)', c)).toBe(false);
+    expect(valueInDictionary('Основа', 'Бітум', ctx('Основа', 'bitumni-mastyky'))).toBe(true); // без правил — вільний текст
+  });
+  it('multiselect — кожен шматок через «;» має бути в довіднику', () => {
+    const c = ctx('Поверхня', 'laky');
+    expect(valueInDictionary('Поверхня', 'Метал; Дерево', c)).toBe(true);
+    expect(valueInDictionary('Поверхня', 'Метал; Скло', c)).toBe(false);
+  });
+});
+
+describe('закритий список vs канонізатори (Призначення)', () => {
+  it('глобальні правила змішаного лейбла список не закривають: диски/шпалери — вільний текст', () => {
+    expect(applicableValues('Призначення', ctx('Призначення', 'vidrizni-dysky'))).toEqual([]);
+    expect(valueInDictionary('Призначення', 'Різання металу', ctx('Призначення', 'vidrizni-dysky'))).toBe(true);
+    // …але канонізація загальних формулювань і далі працює
+    expect(canon('Призначення', 'Захист деревини від гнилі та синяви', 'vidrizni-dysky')).toBe('Антисептичний захист деревини');
+  });
+  it('де є правила родини — список закритий', () => {
+    expect(applicableValues('Призначення', ctx('Призначення', 'plastyfikatory-dlya-betonu')).length).toBeGreaterThan(3);
+    expect(valueInDictionary('Призначення', 'Для теплої підлоги', ctx('Призначення', 'plastyfikatory-dlya-betonu'))).toBe(false);
   });
 });

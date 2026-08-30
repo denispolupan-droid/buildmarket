@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { buildValueRules, canonicalCharValue, type ValueRules, type ValueRuleRow } from './char-values';
+import { applicableValues, buildValueRules, canonicalCharValue, valueInDictionary, MULTI_SEP, type ValueRules, type ValueRuleRow } from './char-values';
 
 // Єдина точка нормалізації характеристик перед БУДЬ-ЯКИМ записом у
 // product_characteristics (адмін-форма, AI-генерація, Prom-заливка, імпорти).
@@ -150,6 +150,57 @@ export function normalizeChars(chars: CharInput[], dict: CharDictionary, categor
     return sa - sb || a.idx - b.idx;
   });
   return rows.map((r, i) => ({ label: r.label, value: r.value, sort_order: i + 1 }));
+}
+
+/** Фасет категорії для AI-схеми/адмін-форми: лейбл + дозволені значення. */
+export type FacetSpec = { label: string; values: string[]; multi: boolean };
+
+/**
+ * Фасети серед заданих лейблів для категорії: лише ті, у яких є канонічні
+ * значення, що діють у цій категорії (або її родині). Порядок — як у labels.
+ */
+export function facetSpecsFor(dict: CharDictionary, category: string | null | undefined, labels: string[]): FacetSpec[] {
+  const out: FacetSpec[] = [];
+  for (const raw of labels) {
+    const label = dict.aliasMap.get(normCharKey(raw)) ?? raw;
+    if (out.some(f => f.label === label)) continue;
+    const values = applicableValues(label, { rules: dict.values, category, parentOf: dict.parentOf });
+    if (values.length) out.push({ label, values, multi: dict.multiselect.has(label) });
+  }
+  return out;
+}
+
+/**
+ * Лейбли товару, чиї значення поза довідником (для категорії). Порожньо — усе
+ * канонічне або вільний текст.
+ */
+export function offDictionaryLabels(chars: CharInput[], dict: CharDictionary, category: string | null | undefined): string[] {
+  const out: string[] = [];
+  for (const c of chars) {
+    const label = dict.aliasMap.get(normCharKey(c.label)) ?? tidyLabel(c.label);
+    const ok = valueInDictionary(label, String(c.value ?? ''), { rules: dict.values, category, parentOf: dict.parentOf, multiselect: dict.multiselect.has(label) });
+    if (!ok && !out.includes(label)) out.push(label);
+  }
+  return out;
+}
+
+/** Значення «невідомо» в enum одиночного фасета (AI-схема); відкидається. */
+export const FACET_UNKNOWN = '—';
+
+/** Фасети з відповіді AI → рядки характеристик (порожні/«—»/чужі значення відкидаються). */
+export function facetsToChars(facets: Record<string, string | string[]> | undefined, specs: FacetSpec[]): CharInput[] {
+  const out: CharInput[] = [];
+  for (const spec of specs) {
+    const raw = facets?.[spec.label];
+    if (raw == null) continue;
+    if (Array.isArray(raw)) {
+      const vals = raw.filter(v => spec.values.includes(v));
+      if (vals.length) out.push({ label: spec.label, value: vals.join(MULTI_SEP) });
+    } else if (raw !== FACET_UNKNOWN && spec.values.includes(raw)) {
+      out.push({ label: spec.label, value: raw });
+    }
+  }
+  return out;
 }
 
 /** Зручний шорткат: словник + нормалізація одним викликом. */

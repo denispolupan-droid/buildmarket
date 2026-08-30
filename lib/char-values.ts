@@ -100,6 +100,38 @@ function matchAll(text: string, rules: ValueRule[]): string[] {
 }
 
 /**
+ * Правила, що роблять лейбл ЗАКРИТИМ списком у цій категорії. Глобальні правила
+ * «змішаного» лейбла (Призначення: кілька загальних канонізаторів + правила
+ * окремих категорій) самі по собі список не закривають — «Різання металу» у
+ * дисках легальне. Закрито, якщо діє хоч одне правило родини або всі правила
+ * лейбла глобальні (Ступінь блиску, Тип використання, Розчинник).
+ */
+function closedRules(label: string, ctx: ValueContext): ValueRule[] {
+  const all = ctx.rules.get(label) ?? [];
+  const app = applicableRules(label, ctx);
+  if (!app.length) return [];
+  return app.some(r => r.cats) || all.every(r => !r.cats) ? app : [];
+}
+
+/** Канонічні значення лейбла як закритого списку для категорії (порожньо — тут вільний текст). */
+export function applicableValues(label: string, ctx: ValueContext): string[] {
+  return closedRules(label, ctx).map(r => r.value);
+}
+
+/**
+ * Чи значення «у довіднику»: кожен атомарний шматок (multiselect — через «;»)
+ * дорівнює канону або його точному синоніму. Без правил для лейбла — завжди true
+ * (вільний текст легальний). Регекси тут НЕ рахуються: «Акрилова дисперсія»
+ * канонізується, але сама по собі — поза довідником, і це треба показати.
+ */
+export function valueInDictionary(label: string, value: string, ctx: ValueContext): boolean {
+  const rules = closedRules(label, ctx);
+  if (!rules.length) return true;
+  const parts = ctx.multiselect ? value.split(';') : [value];
+  return parts.map(tidy).filter(Boolean).every(p => rules.some(r => r.aliases.has(p)));
+}
+
+/**
  * Лише канони, що збіглися (без «залишку» вільного тексту). Для ВИВЕДЕННЯ
  * одного лейбла з іншого (напр., «Поверхня» з «Призначення» у фарбах).
  */

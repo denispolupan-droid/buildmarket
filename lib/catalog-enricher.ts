@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import {
-  generateUA, translateRU, applyContent, getCategoryLabels,
+  generateUA, translateRU, applyContent, getCategoryLabels, EMPTY_LABEL_SPEC,
   THIN_DESCRIPTION_CHARS, type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
-import { loadCharDictionary, normCharKey } from './characteristics';
+import { loadCharDictionary, normCharKey, offDictionaryLabels } from './characteristics';
 import { CostSink } from './ai-cost';
 
 // Розділ SEO (/admin/seo) — головний вхід у ЄДИНИЙ рушій генерації контенту
@@ -88,11 +88,16 @@ export async function* enrichCatalog(opts: {
       // обов'язкові (за словником категорії) заповнені
       const requiredLabels = labelsCache.get(product.category_slug)?.required ?? [];
       let missingRequired = false;
-      if (hasChars && requiredLabels.length) {
+      // …і коли значення фасетів поза довідником («Акрилова дисперсія (водна база)»):
+      // такі рядки з merge виключаємо, щоб enum-значення від AI їх перекрило
+      let offDict = new Set<string>();
+      if (hasChars) {
         const dict = await loadCharDictionary(supabase);
         const have = new Set((chars ?? []).map(c => dict.aliasMap.get(normCharKey(c.label)) ?? c.label));
         missingRequired = requiredLabels.some(l => !have.has(l));
+        offDict = new Set(offDictionaryLabels(chars ?? [], dict, product.category_slug).map(normCharKey));
       }
+      const regenChars = missingRequired || offDict.size > 0;
       const categoryName = catName.get(product.category_slug ?? '') ?? product.category_slug ?? '';
 
       const gp: GenProduct = {
@@ -103,7 +108,7 @@ export async function* enrichCatalog(opts: {
       // Лічильник на кожен товар окремо — щоб у прогресі було видно фактичну,
       // а не прикидочну вартість кожної картки
       const cost = new CostSink();
-      const ua = await generateUA(gp, categoryName, labelsCache.get(product.category_slug) ?? { required: [], optional: [] }, opts.targetQuery, cost);
+      const ua = await generateUA(gp, categoryName, labelsCache.get(product.category_slug) ?? EMPTY_LABEL_SPEC, opts.targetQuery, cost);
 
       // RU — обов'язкова, але не критична: якщо переклад упав, зберігаємо UA
       let ru: GeneratedRU | null = null;
@@ -112,9 +117,10 @@ export async function* enrichCatalog(opts: {
       const res = await applyContent(supabase, gp, ua, ru, {
         // Опис перегенеровуємо лише якщо тонкий (gap-aware); FAQ — якщо немає або без
         // перекладу; характеристики — якщо бракує обов'язкових зі словника
-        regen: { faq: !hasFaq || hasUntranslatedFaq, characteristics: missingRequired },
+        regen: { faq: !hasFaq || hasUntranslatedFaq, characteristics: regenChars },
         // Існуючі характеристики мають пріоритет — AI лише ДОДАЄ відсутні обов'язкові
-        mergeChars: missingRequired ? (chars ?? []) : undefined,
+        // (крім рядків зі значенням поза довідником — їх заміняє enum-значення)
+        mergeChars: regenChars ? (chars ?? []).filter(c => !offDict.has(normCharKey(c.label))) : undefined,
         targetQuery: opts.targetQuery,
         currentFull: product.description_full,
         currentKeywords: product.keywords,

@@ -122,3 +122,34 @@ describe('normKey', () => {
     expect(normKey('Тип  використання ')).toBe('тип використання');
   });
 });
+
+describe('offDict — значення фасета поза довідником', () => {
+  const base = {
+    products: [full],
+    dict: [{ label: 'Основа', aliases: [], is_multiselect: false }, { label: 'Поверхня', aliases: [], is_multiselect: true }],
+    categoryChars: [],
+    values: [
+      { label: 'Основа', value: 'Алкідна', category_slugs: ['farby'] },
+      { label: 'Основа', value: 'Акрилова', category_slugs: ['farby'], aliases: ['водна'] },
+      { label: 'Поверхня', value: 'Метал', category_slugs: ['farby'] },
+    ],
+    categories: [{ slug: 'farby', parent_slug: null }, { slug: 'grunty', parent_slug: 'farby' }, { slug: 'klei', parent_slug: null }],
+  };
+  it('канон/синонім — не пробіл; вільний текст у фасеті — пробіл із лейблом', () => {
+    const ok = computeProductGaps({ ...base, chars: [{ product_sku: full.sku, label: 'Основа', value: 'водна' }] })[0];
+    expect(ok.gaps.offDict).toBe(false);
+    const bad = computeProductGaps({ ...base, chars: [
+      { product_sku: full.sku, label: 'Основа', value: 'Акрилова дисперсія (водна база)' },
+      { product_sku: full.sku, label: 'Поверхня', value: 'Метал; Скло' },
+    ] })[0];
+    expect(bad.gaps.offDict).toBe(true);
+    expect(bad.offDictLabels).toEqual(['Основа', 'Поверхня']);
+  });
+  it('поза родиною правил немає — будь-який текст легальний; без value — не перевіряється', () => {
+    const p = { ...full, category_slug: 'klei' };
+    const item = computeProductGaps({ ...base, products: [p], chars: [{ product_sku: p.sku, label: 'Основа', value: 'Поліуретанова' }] })[0];
+    expect(item.gaps.offDict).toBe(false);
+    const noVal = computeProductGaps({ ...base, chars: [{ product_sku: full.sku, label: 'Основа' }] })[0];
+    expect(noVal.gaps.offDict).toBe(false);
+  });
+});

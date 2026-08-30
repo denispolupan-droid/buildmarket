@@ -27,12 +27,13 @@ const GAP_LABELS: { key: keyof ProductGaps; label: string; tone: Tone }[] = [
   { key: 'noChars',         label: 'немає характеристик', tone: 'danger' },
   { key: 'missingRequired', label: 'обовʼязкові хар-ки',  tone: 'danger' },
   { key: 'dirtyChars',      label: 'ненормовані лейбли',  tone: 'info' },
+  { key: 'offDict',         label: 'значення поза довідником', tone: 'info' },
   { key: 'noImage',         label: 'немає фото',          tone: 'danger' },
 ];
 
 /** Пробіли, які закриває генерація. Фото сюди не входить — його вантажать руками. */
 const ENRICHABLE: (keyof ProductGaps)[] =
-  ['thinDesc', 'noFaq', 'ruDesc', 'noRu', 'noKeywords', 'noChars', 'missingRequired'];
+  ['thinDesc', 'noFaq', 'ruDesc', 'noRu', 'noKeywords', 'noChars', 'missingRequired', 'offDict'];
 
 const canEnrich = (item: QueueItem) => ENRICHABLE.some(k => item.gaps[k]);
 
@@ -59,7 +60,8 @@ export default function ProductQueueClient({ items, total }: { items: QueueItem[
   const enrichable = useMemo(() => visible.filter(canEnrich), [visible]);
   const selectedEnrichable = enrichable.filter(i => selected.has(i.sku));
   const cost = (selectedEnrichable.length * COST_PER_PRODUCT_USD).toFixed(2);
-  const dirtyVisible = useMemo(() => visible.filter(i => i.gaps.dirtyChars), [visible]);
+  // нормалізація тепер канонізує і значення (довідник фасетів) — беремо й «поза довідником»
+  const dirtyVisible = useMemo(() => visible.filter(i => i.gaps.dirtyChars || i.gaps.offDict), [visible]);
 
   // Вибір скидається разом з фільтром: інакше відмічені в іншому фільтрі товари
   // лишаються в наборі невидимими, і кнопка запускає не те, що на екрані.
@@ -201,7 +203,7 @@ export default function ProductQueueClient({ items, total }: { items: QueueItem[
               title="Звести лейбли-синоніми до канонічних за словником (без AI, безкоштовно)"
               style={{ ...btnGhost, opacity: dirtyVisible.length ? 1 : 0.5 }}
             >
-              {normBusy ? '⏳ Нормалізуємо…' : `Нормалізувати лейбли (${dirtyVisible.length})`}
+              {normBusy ? '⏳ Нормалізуємо…' : `Нормалізувати лейбли й значення (${dirtyVisible.length})`}
             </button>
             <div style={{ flex: 1 }} />
             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -285,7 +287,7 @@ export default function ProductQueueClient({ items, total }: { items: QueueItem[
                         {GAP_LABELS.filter(g => item.gaps[g.key]).map(g => (
                           <span
                             key={g.key}
-                            title={g.key === 'missingRequired' ? item.missingLabels.join(', ') : undefined}
+                            title={g.key === 'missingRequired' ? item.missingLabels.join(', ') : g.key === 'offDict' ? item.offDictLabels.join(', ') : undefined}
                             style={badge(g.tone)}
                           >
                             {g.key === 'missingRequired' ? `обовʼязкові хар-ки: ${num(item.missingLabels.length)}` : g.label}

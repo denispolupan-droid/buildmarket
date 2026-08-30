@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { loadCharDictionary, facetSpecsFor } from '../../../../../lib/characteristics';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
     required?: string[];
     values?: string[];
     labels?: string[];
+    facets?: Record<string, { values: string[]; multi: boolean }>;
   } = {};
 
   if (brand) {
@@ -62,6 +64,11 @@ export async function GET(req: NextRequest) {
         ...result.required,
         ...dict.filter(r => !r.required).map(r => r.characteristic_definitions!.label),
       ];
+      // Фасети категорії (закриті списки значень) — у формі стають select-ами
+      const charDict = await loadCharDictionary(serviceClient);
+      result.facets = Object.fromEntries(
+        facetSpecsFor(charDict, category, result.characteristics).map(f => [f.label, { values: f.values, multi: f.multi }]),
+      );
     } else {
       // Fallback до заливки словника: статистика лейблів категорії
       const { data: categoryProducts } = await serviceClient

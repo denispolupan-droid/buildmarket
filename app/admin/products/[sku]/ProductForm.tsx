@@ -8,6 +8,7 @@ import type { ProductFull, Category, ProductCharacteristic } from '../../../../t
 import CharValueInput from './CharValueInput';
 import CharLabelInput from './CharLabelInput';
 import { normCharKey } from '../../../../lib/characteristics';
+import FacetValueInput from './FacetValueInput';
 
 type Props = {
   product: ProductFull | null;
@@ -217,6 +218,8 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [loadingChars, setLoadingChars] = useState(false);
   // Обов'язкові лейбли категорії зі словника (characteristic_definitions)
   const [requiredLabels, setRequiredLabels] = useState<string[]>([]);
+  // Фасети категорії (закриті списки значень зі словника) — ключ normCharKey(label)
+  const [facetSpecs, setFacetSpecs] = useState<Record<string, { values: string[]; multi: boolean }>>({});
 
   // Prom structured attributes
   const promCategoryId = categories.find(c => c.slug === categorySlug)?.prom_section_id ?? null;
@@ -253,6 +256,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
       if (res.ok) {
         const data = await res.json();
         setRequiredLabels(data.required ?? []);
+        setFacetSpecs(Object.fromEntries(Object.entries((data.facets ?? {}) as Record<string, { values: string[]; multi: boolean }>).map(([k, v]) => [normCharKey(k), v])));
         return data.characteristics ?? [];
       }
     } catch {}
@@ -261,7 +265,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
   // Обов'язкові лейбли підтягуємо одразу при виборі категорії (для позначок у формі)
   useEffect(() => {
-    if (!categorySlug) { setRequiredLabels([]); return; }
+    if (!categorySlug) { setRequiredLabels([]); setFacetSpecs({}); return; }
     fetchCategoryChars(categorySlug);
   }, [categorySlug, fetchCategoryChars]);
 
@@ -1127,12 +1131,22 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                   onChange={val => updateChar(i, 'label', val)}
                   style={inputStyle}
                 />
-                <CharValueInput
-                  label={char.label}
-                  value={char.value}
-                  onChange={val => updateChar(i, 'value', val)}
-                  style={inputStyle}
-                />
+                {facetSpecs[normCharKey(char.label)] ? (
+                  <FacetValueInput
+                    values={facetSpecs[normCharKey(char.label)].values}
+                    multi={facetSpecs[normCharKey(char.label)].multi}
+                    value={char.value}
+                    onChange={val => updateChar(i, 'value', val)}
+                    style={inputStyle}
+                  />
+                ) : (
+                  <CharValueInput
+                    label={char.label}
+                    value={char.value}
+                    onChange={val => updateChar(i, 'value', val)}
+                    style={inputStyle}
+                  />
+                )}
                 <button
                   onClick={() => removeChar(i)}
                   style={{

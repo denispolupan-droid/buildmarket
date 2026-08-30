@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
-import { normalizeCharsDb } from './characteristics';
+import { normalizeCharsDb, loadCharDictionary, facetSpecsFor, facetsToChars, normCharKey, FACET_UNKNOWN, type FacetSpec } from './characteristics';
 import { THIN_DESCRIPTION_CHARS } from './seo/thresholds';
 import type { CostSink } from './ai-cost';
 
@@ -42,6 +42,8 @@ export type GeneratedUA = {
   description_full: string;
   keywords: string;
   characteristics: { label: string; value: string }[];
+  /** фасети з жорсткого enum (лише у відповіді моделі; зливаються в characteristics) */
+  facets?: Record<string, string | string[]>;
   faq: FaqPair[];
 };
 
@@ -104,13 +106,40 @@ const RU_SCHEMA = {
 export type CategoryLabelSpec = {
   required: string[];  // обов'язкові (зі словника category_characteristics)
   optional: string[];  // типові додаткові
+  /** фасети з закритим списком значень — ідуть у JSON-схему як enum */
+  facets: FacetSpec[];
 };
+
+export const EMPTY_LABEL_SPEC: CategoryLabelSpec = { required: [], optional: [], facets: [] };
+
+/**
+ * Схема відповіді під категорію: до базової додається об'єкт facets, де кожен
+ * фасет — enum (одиночний: одне значення або «—» = невідомо; multiselect —
+ * масив значень). Модель фізично не може написати «Акрилова дисперсія (водна база)».
+ */
+function uaSchemaFor(facets: FacetSpec[]): Record<string, unknown> {
+  if (!facets.length) return UA_SCHEMA;
+  const props: Record<string, unknown> = {};
+  for (const f of facets) {
+    props[f.label] = f.multi
+      ? { type: 'array', items: { type: 'string', enum: f.values }, description: `${f.label}: усі доречні значення (може бути порожнім)` }
+      : { type: 'string', enum: [...f.values, FACET_UNKNOWN], description: `${f.label}: одне значення або «${FACET_UNKNOWN}», якщо невідомо` };
+  }
+  return {
+    ...UA_SCHEMA,
+    properties: {
+      ...UA_SCHEMA.properties,
+      facets: { type: 'object', properties: props, required: facets.map(f => f.label), additionalProperties: false },
+    },
+    required: [...UA_SCHEMA.required, 'facets'],
+  };
+}
 
 // Обов'язкові + типові лейбли категорії зі словника (міграція 082).
 // Якщо словник для категорії порожній (ще не засіяний) — fallback на статистику
 // найчастіших лейблів категорії, як раніше.
 export async function getCategoryLabels(supabase: Db, categorySlug: string | null): Promise<CategoryLabelSpec> {
-  if (!categorySlug) return { required: [], optional: [] };
+  if (!categorySlug) return EMPTY_LABEL_SPEC;
 
   const { data: dictRows } = await supabase
     .from('category_characteristics')
@@ -122,10 +151,10 @@ export async function getCategoryLabels(supabase: Db, categorySlug: string | nul
     const rows = (dictRows as unknown as Row[])
       .filter(r => r.characteristic_definitions)
       .sort((a, b) => (a.sort_order ?? a.characteristic_definitions!.sort_order) - (b.sort_order ?? b.characteristic_definitions!.sort_order));
-    return {
-      required: rows.filter(r => r.required).map(r => r.characteristic_definitions!.label),
-      optional: rows.filter(r => !r.required).map(r => r.characteristic_definitions!.label),
-    };
+    const required = rows.filter(r => r.required).map(r => r.characteristic_definitions!.label);
+    const optional = rows.filter(r => !r.required).map(r => r.characteristic_definitions!.label);
+    const dict = await loadCharDictionary(supabase);
+    return { required, optional, facets: facetSpecsFor(dict, categorySlug, [...required, ...optional]) };
   }
 
   // Fallback: статистика фактичних лейблів категорії (згорнута за апострофом)
@@ -134,7 +163,7 @@ export async function getCategoryLabels(supabase: Db, categorySlug: string | nul
     .select('label, products!inner(category_slug)')
     .eq('products.category_slug', categorySlug)
     .limit(200);
-  if (!data?.length) return { required: [], optional: [] };
+  if (!data?.length) return EMPTY_LABEL_SPEC;
   const canon = (s: string) => s.replace(/['`´ʼ']/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
   const counts: Record<string, { n: number; label: string }> = {};
   for (const row of data as { label: string }[]) {
@@ -142,7 +171,7 @@ export async function getCategoryLabels(supabase: Db, categorySlug: string | nul
     if (!counts[k]) counts[k] = { n: 0, label: row.label };
     counts[k].n += 1;
   }
-  return { required: [], optional: Object.values(counts).sort((a, b) => b.n - a.n).slice(0, 15).map(c => c.label) };
+  return { required: [], optional: Object.values(counts).sort((a, b) => b.n - a.n).slice(0, 15).map(c => c.label), facets: [] };
 }
 
 function buildUaPrompt(
@@ -156,6 +185,9 @@ function buildUaPrompt(
     : '';
   const optionalHint = categoryLabels.optional.length
     ? `   Додаткові доречні ярлики (вживай саме ці назви, якщо параметр відомий): ${categoryLabels.optional.join(', ')}.\n`
+    : '';
+  const facetsHint = categoryLabels.facets.length
+    ? `\n7. facets — для КОЖНОГО фасета обери значення ЛИШЕ зі списку (одиночний: одне значення або «${FACET_UNKNOWN}», якщо невідомо; перелік — масив, може бути порожнім). Ці ж параметри в characteristics НЕ дублюй:\n${categoryLabels.facets.map(f => `   - ${f.label}${f.multi ? ' (перелік)' : ''}: ${f.values.join(' | ')}`).join('\n')}\n`
     : '';
   const labelsHint = requiredHint + optionalHint;
   const boost = targetQuery
@@ -176,7 +208,7 @@ ${boost}Згенеруй ПОВНИЙ контент картки товару (
    Не вигадуй точних числових значень, яких не можеш обґрунтувати з назви/категорії.
 4. keywords — 12-18 пошукових фраз через кому, малими літерами: бренд, тип товару, синоніми, "купити [назва]", "[назва] ціна", "[назва] оптом", "[назва] Київ".
 5. characteristics — рядки label/value з реальних даних назви (6-16 рядків).${labelsHint}   БЕЗ ДУБЛІВ: кожен параметр рівно один рядок; не вигадуй власних синонімічних ярликів поза списками вище. АЛЕ якщо ярлик є в ОБОВ'ЯЗКОВОМУ списку — заповнюй його завжди, навіть якщо він схожий на інший (напр., «Основа» І «Матеріал» разом, коли обидва обов'язкові). Апостроф скрізь звичайний (Об'єм). Порядок: спочатку специфічні, останніми — Бренд і Країна виробника.
-6. faq — 3-4 пари питання/відповідь під реальні пошукові запити (витрата, як застосовувати, чим відрізняється, скільки сохне). Відповіді 2-3 речення, тільки з наданих/загальновідомих даних.
+6. faq — 3-4 пари питання/відповідь під реальні пошукові запити (витрата, як застосовувати, чим відрізняється, скільки сохне). Відповіді 2-3 речення, тільки з наданих/загальновідомих даних.${facetsHint}
 
 Товар:
 Назва: ${product.name}
@@ -207,13 +239,19 @@ export async function generateUA(
     {
       model: 'claude-opus-4-8',
       max_tokens: 8000,
-      output_config: { format: { type: 'json_schema', schema: UA_SCHEMA } },
+      output_config: { format: { type: 'json_schema', schema: uaSchemaFor(categoryLabels.facets) } },
       messages: [{ role: 'user', content: buildUaPrompt(product, categoryName, categoryLabels, targetQuery) }],
     },
     { timeout: ITEM_TIMEOUT_MS },
   );
   cost?.add(msg.model, msg.usage);
   const gen = parseStructured<GeneratedUA>(msg);
+  // Фасети з enum — попереду characteristics (normalizeChars лишає перше входження),
+  // дублі тих самих лейблів у вільному списку відкидаємо
+  const facetChars = facetsToChars(gen.facets, categoryLabels.facets);
+  const facetKeys = new Set(categoryLabels.facets.map(f => normCharKey(f.label)));
+  gen.characteristics = [...facetChars, ...(gen.characteristics ?? []).filter(c => !facetKeys.has(normCharKey(c.label)))];
+  delete gen.facets;
   const words = gen.description_full.split(/\s+/).filter(Boolean).length;
   if (words < 120) throw new Error(`description too short: ${words} words`);
   return gen;

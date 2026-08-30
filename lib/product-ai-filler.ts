@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateMpUA, translateMpRU } from './marketplace-description-gen';
 import { isMpDescriptionClean } from './marketplace-description';
 import {
-  generateUA, translateRU, applyContent, getCategoryLabels,
+  generateUA, translateRU, applyContent, getCategoryLabels, EMPTY_LABEL_SPEC,
   type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
 import { CostSink } from './ai-cost';
@@ -193,7 +193,7 @@ export async function* fillProducts(
         // Свій лічильник на кожен товар: воркери йдуть паралельно, спільний
         // накопичувач змішав би витрати різних карток.
         const cost = new CostSink();
-        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? { required: [], optional: [] }, f, force, targetQuery, cost);
+        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? EMPTY_LABEL_SPEC, f, force, targetQuery, cost);
         done++;
         push({ type: 'result', sku: product.sku, name: product.name, costUsd: cost.usd });
       } catch (err) {

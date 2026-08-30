@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeChars, normCharKey, type CharDictionary } from '../lib/characteristics';
+import { normalizeChars, normCharKey, facetSpecsFor, offDictionaryLabels, facetsToChars, FACET_UNKNOWN, type CharDictionary } from '../lib/characteristics';
 import { buildValueRules } from '../lib/char-values';
 
 function dict(): CharDictionary {
@@ -104,5 +104,28 @@ describe('normalizeChars — канонізація, дедуп, порядок'
       { label: 'Область застосування', value: "Дерев'яні конструкції: стропила, балки, брус" },
     ], dict());
     expect(out[0].value).toBe("Дерев'яні конструкції: стропила, балки, брус");
+  });
+});
+
+describe('фасети для AI-схеми та форми', () => {
+  it('facetSpecsFor: лише лейбли зі значеннями для категорії, синоніми лейблів зводяться, дублі — ні', () => {
+    const specs = facetSpecsFor(dict(), 'laky', ['Блиск', 'Ступінь блиску', 'Тип', 'Бренд']);
+    expect(specs).toEqual([{ label: 'Ступінь блиску', values: ['Матовий', 'Глянцевий'], multi: false }]);
+    // поза родиною farby діє лише глобальне правило змішаного лейбла — список не закритий, фасета немає
+    expect(facetSpecsFor(dict(), 'klei', ['Ступінь блиску'])).toEqual([]);
+  });
+  it('offDictionaryLabels: значення поза довідником по канонічному лейблу', () => {
+    expect(offDictionaryLabels([{ label: 'Блиск', value: 'Матовий' }, { label: 'Тип', value: 'будь-що' }], dict(), 'laky')).toEqual([]);
+    expect(offDictionaryLabels([{ label: 'Блиск', value: 'Шовковисто-матова' }], dict(), 'laky')).toEqual(['Ступінь блиску']);
+  });
+  it('facetsToChars: «—» і чужі значення відкидаються, перелік — через «; »', () => {
+    const specs = [
+      { label: 'Основа', values: ['Алкідна', 'Акрилова'], multi: false },
+      { label: 'Поверхня', values: ['Метал', 'Дерево'], multi: true },
+    ];
+    expect(facetsToChars({ 'Основа': FACET_UNKNOWN, 'Поверхня': ['Дерево', 'Скло', 'Метал'] }, specs))
+      .toEqual([{ label: 'Поверхня', value: 'Дерево; Скло; Метал'.replace('Скло; ', '') }]);
+    expect(facetsToChars({ 'Основа': 'Акрилова', 'Поверхня': [] }, specs)).toEqual([{ label: 'Основа', value: 'Акрилова' }]);
+    expect(facetsToChars(undefined, specs)).toEqual([]);
   });
 });
