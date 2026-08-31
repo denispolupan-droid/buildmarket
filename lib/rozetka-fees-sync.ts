@@ -5,23 +5,32 @@
  * за передбаченням. Це залишало дірку: замовлення 26071055 (покупець відмовився
  * забирати) до відгрузки не дійшло, ТТН створювали в кабінеті, і Rozetka зняла
  * 30 ₴ 30.07 — а в обліку їх не було й не могло з'явитися. Тепер джерело —
- * логістичний баланс: там є operation_type 34 «Доставка відправлення» з order_id,
- * ттн і сумою, незалежно від того, хто створив накладну і чим скінчився заказ.
+ * логістичний баланс: там списання лежить із order_id, ттн і сумою, незалежно
+ * від того, хто створив накладну і чим скінчився заказ. Типи операцій — у
+ * ROZETKA_PICKUP_OP_TYPES; вони змінюються (34 → 106/107 у серпні 2026), тому
+ * про будь-який НЕВІДОМИЙ тип, що щось списує, синк одразу кричить алертом.
  *
- * Ключ ідемпотентності НАВМИСНО той самий, що в ship-route
- * (`rz-delivery-fee:rozetka:<order_id>`): якщо відгрузка вже провела збір, синк
- * нічого не дублює; якщо ні — проводить. Розбіжність суми не «виправляємо»
- * автоматично — про неї пишемо в лог, бо автосторно в обліку небезпечніше за
- * ручну правку.
+ * Ключ ідемпотентності первинного нарахування НАВМИСНО той самий, що в
+ * ship-route (`rz-delivery-fee:rozetka:<order_id>`): якщо відгрузка вже провела
+ * збір, синк не дублює.
+ *
+ * Розбіжність суми ДОВОДИМО до факту окремою проводкою-уточненням. Раніше її
+ * лише писали в лог — і облік місяць розходився з кабінетом на 5 ₴ із кожного
+ * відправлення, бо при відгрузці ставилась оцінка 30 ₴, а Rozetka з 07.08
+ * знімала 35. Автосторно тут безпечне: сума береться не з нашої формули, а з
+ * виписки площадки, і ключ уточнення прив'язаний до самої суми факту.
  *
  * Абонплата (operation_type 5) — щомісячна, знімається за умови хоча б одного
  * замовлення. До замовлення не прив'язана, тож іде як витрата площадки з ключем
  * по id операції.
  */
 import { createServiceClient } from './supabase';
-import { rozetkaFetch } from './rozetka-api';
+import { rozetkaFetch, getRozetkaLogisticOps } from './rozetka-api';
 import { recordMarketplaceServiceFee } from './accounting/money';
 import { recordTxn } from './accounting/money';
+import { alertAdmin } from './alert';
+import { isRozetkaPickupOp, isUnknownLogisticOp } from './rozetka-delivery-tariff';
+import { rozetkaFeeKind, rozetkaActualCommission } from './rozetka-fee-kind';
 
 /** Операція логістичного балансу. debit від'ємний — це списання. */
 type LogisticOp = {
@@ -57,45 +66,117 @@ const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n
 const dateOf = (ts: string) => String(ts).slice(0, 10);
 
 export async function syncRozetkaFees(perPage = 100): Promise<{
-  delivery: number; subscription: number; skipped: number; errors: number;
+  delivery: number; subscription: number; commission: number; skipped: number; errors: number;
 }> {
   const db = createServiceClient();
-  let delivery = 0, subscription = 0, skipped = 0, errors = 0;
+  let delivery = 0, subscription = 0, commission = 0, skipped = 0, errors = 0;
 
   // ── Збір за організацію видачі в точці ────────────────────────────────────
   try {
-    const c = await rozetkaFetch<{ logisticBalances: LogisticOp[] }>(
-      `/balance-logistic/search?per_page=${perPage}`);
-    const charges = (c.logisticBalances ?? []).filter(o => o.operation_type === OP_DELIVERY && num(o.debit) < 0);
+    // Через getRozetkaLogisticOps, а не одним запитом: Rozetka ІГНОРУЄ per_page
+    // на цьому ендпоінті й віддає по 20 рядків. Синк читав тільки першу сторінку
+    // і бачив 12 списань із 38 — дві третини збору не потрапляли в облік навіть
+    // по відомому типу 34 (виявлено звіркою 31.08.2026).
+    const all: LogisticOp[] = await getRozetkaLogisticOps(perPage);
+
+    // Новий тип операції, який щось списує, — привід дізнатись одразу. Саме на
+    // цьому й погоріли: 106/107 з'явились у серпні, синк їх не знав, і збір
+    // місяць не потрапляв в облік.
+    const unknown = all.filter(o => num(o.debit) < 0 && isUnknownLogisticOp(o.operation_type));
+    if (unknown.length) {
+      const kinds = [...new Set(unknown.map(o => `${o.operation_type} «${o.operation_type_title}»`))];
+      alertAdmin(
+        'Rozetka: невідомий тип списання на логістичному балансі',
+        `${kinds.join(', ')} — ${unknown.length} операцій на ${unknown.reduce((s, o) => s + Math.abs(num(o.debit)), 0)} ₴. `
+        + 'Якщо це збір за видачу — додайте тип у ROZETKA_PICKUP_OP_TYPES, інакше він не потрапить в облік.',
+      );
+    }
+
+    const charges = all.filter(o => isRozetkaPickupOp(o.operation_type) && num(o.debit) < 0);
 
     if (charges.length) {
-      const rzIds = [...new Set(charges.map(o => Number(o.order_id)).filter(Boolean))];
+      // Факт може прийти кількома операціями на одне замовлення — звіряємо СУМУ,
+      // а не окремий рядок.
+      const wantByRz = new Map<number, { amount: number; ts: string; ttn: string | null; ops: number[] }>();
+      for (const op of charges) {
+        const rz = Number(op.order_id);
+        if (!rz) { skipped++; continue; }
+        const cur = wantByRz.get(rz) ?? { amount: 0, ts: op.transaction_ts, ttn: op.ttn, ops: [] };
+        cur.amount += Math.abs(num(op.debit));
+        cur.ops.push(op.operation_id);
+        if (op.transaction_ts > cur.ts) cur.ts = op.transaction_ts;
+        wantByRz.set(rz, cur);
+      }
+
       const { data: ours } = await db.from('orders')
         .select('id, order_number, rozetka_order_id')
-        .in('rozetka_order_id', rzIds);
+        .in('rozetka_order_id', [...wantByRz.keys()]);
       const byRz = new Map((ours ?? []).map(o => [Number(o.rozetka_order_id), o]));
 
-      for (const op of charges) {
-        const order = byRz.get(Number(op.order_id));
+      // Скільки збору вже проведено по цих замовленнях — щоб доводити РІЗНИЦЮ,
+      // а не проводити вдруге. Ключ ідемпотентності первинного нарахування
+      // спільний із ship-route, тож саме нарахування не задвоїться, але сума
+      // там оцінкова: з 07.08 Rozetka бере 35 ₴, а оцінка давала 30.
+      const orderIds = (ours ?? []).map(o => o.id);
+      const posted = new Map<string, number>();
+      if (orderIds.length) {
+        const { data: rows } = await db.from('money_entries')
+          .select('order_id, amount, description')
+          .eq('account_type', 'marketplace_fee')
+          .eq('counterparty_id', 'rozetka')
+          .in('order_id', orderIds)
+          .limit(10000);
+        for (const r of rows ?? []) {
+          if (!r.order_id || !/організація видачі/i.test(String(r.description ?? ''))) continue;
+          posted.set(r.order_id, (posted.get(r.order_id) ?? 0) + Number(r.amount));
+        }
+      }
+
+      for (const [rz, want] of wantByRz) {
+        const order = byRz.get(rz);
         if (!order) { skipped++; continue; }   // замовлення не наше або ще не імпортоване
-        const amount = Math.abs(num(op.debit));
-        if (!(amount > 0)) { skipped++; continue; }
+        if (!(want.amount > 0)) { skipped++; continue; }
+        const have = Math.round((posted.get(order.id) ?? 0) * 100) / 100;
+        const delta = Math.round((want.amount - have) * 100) / 100;
+        if (Math.abs(delta) < 0.01) { skipped++; continue; }
+
         try {
-          await recordMarketplaceServiceFee({
-            orderId:        order.id,
-            amount,
-            marketplace:    'rozetka',
-            description:    `Rozetka Доставка — організація видачі відправлення (замовлення #${order.order_number})`,
-            // Той самий ключ, що й у ship-route: подвійного проведення не буде.
-            idempotencyKey: `rz-delivery-fee:rozetka:${order.id}`,
-            businessDate:   dateOf(op.transaction_ts),
-            createdBy:      'sync:rozetka-fees',
-            meta:           { kind: 'rz_delivery_fee', ttn: op.ttn, operation_id: op.operation_id },
-          });
+          if (have === 0) {
+            await recordMarketplaceServiceFee({
+              orderId:        order.id,
+              amount:         want.amount,
+              marketplace:    'rozetka',
+              description:    `Rozetka Доставка — організація видачі відправлення (замовлення #${order.order_number})`,
+              // Той самий ключ, що й у ship-route: подвійного проведення не буде.
+              idempotencyKey: `rz-delivery-fee:rozetka:${order.id}`,
+              businessDate:   dateOf(want.ts),
+              createdBy:      'sync:rozetka-fees',
+              meta:           { kind: 'rz_delivery_fee', ttn: want.ttn, operation_ids: want.ops },
+            });
+          } else {
+            // Доводимо оцінку до факту. Ключ прив'язаний до САМОЇ суми факту:
+            // якщо Rozetka донарахує ще раз, з'явиться новий ключ, а повторний
+            // прогін по тій самій сумі нічого не задвоїть.
+            await recordTxn({
+              debitAccount:   delta > 0 ? 'marketplace_fee' : 'marketplace_balance',
+              debitParty:     'rozetka',
+              creditAccount:  delta > 0 ? 'marketplace_balance' : 'marketplace_fee',
+              creditParty:    'rozetka',
+              amount:         Math.abs(delta),
+              docType:        'commission',
+              orderId:        order.id,
+              businessDate:   dateOf(want.ts),
+              description:    `Rozetka Доставка — організація видачі відправлення, уточнення до факту `
+                            + `(замовлення #${order.order_number}: було ${have} ₴, факт ${want.amount} ₴)`,
+              idempotencyKey: `rz-delivery-fee-adj:rozetka:${order.id}:${want.amount.toFixed(2)}`,
+              createdBy:      'sync:rozetka-fees',
+              meta:           { kind: 'rz_delivery_fee_adj', was: have, actual: want.amount, operation_ids: want.ops },
+            });
+          }
           delivery++;
         } catch (err) {
           errors++;
-          console.error('[rozetka-fees] delivery fee failed:', op.operation_id, err);
+          console.error('[rozetka-fees] delivery fee failed:', rz, err);
         }
       }
     }
@@ -149,5 +230,99 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
     console.error('[rozetka-fees] balance pull failed:', err);
   }
 
-  return { delivery, subscription, skipped, errors };
+  // ── Комісія: доводимо нараховане до фактично списаного ────────────────────
+  try {
+    commission = await trueUpCommission(db);
+  } catch (err) {
+    errors++;
+    console.error('[rozetka-fees] commission true-up failed:', err);
+  }
+
+  return { delivery, subscription, commission, skipped, errors };
+}
+
+/** Вікно звірки комісії: комісія списується при доставці, тож місяця з запасом досить. */
+const COMMISSION_WINDOW_DAYS = 45;
+
+/**
+ * Наша комісія — це ОЦІНКА за тарифом, і збігтися з площадкою вона може лише
+ * випадково. Звірка 31.08.2026: із 124 замовлень 118 зійшлися копійка в копійку,
+ * а 6 — ні, і причини різні й обидві непереборні розрахунком:
+ *
+ *   · Rozetka підняла ставки в середині серпня. Замовлення, зроблене до
+ *     підвищення, вона списує за СТАРОЮ ставкою, а ми проводимо його при
+ *     доставці — уже за новим тарифом (3 замовлення).
+ *   · Тариф заданий по великих вузлах: «Будівельні матеріали» 20 %, а
+ *     епоксидний клей усередині цього вузла Rozetka рахує по 18 % (3 замовлення).
+ *
+ * Наздогнати це формулою не вийде: єдине джерело правди — виписка площадки.
+ * Тому нараховуємо оцінку при доставці (щоб звіт не чекав виписки), а потім
+ * доводимо до факту окремою проводкою, у назві якої видно і оцінку, і факт.
+ *
+ * Правимо ЛИШЕ те, де комісія вже проведена: якщо замовлення ще не доставлене,
+ * нарахування зробить звичайний потік, а наступний прогін синку його уточнить.
+ * Інакше ми провели б комісію двічі — своїм ключем і ключем уточнення.
+ */
+async function trueUpCommission(db: ReturnType<typeof createServiceClient>): Promise<number> {
+  const from = new Date(Date.now() - COMMISSION_WINDOW_DAYS * 86400_000).toISOString().slice(0, 10);
+  const to   = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
+
+  const txns: BalanceOp[] = [];
+  let page = 1, pages = 1;
+  do {
+    const c = await rozetkaFetch<{ billingLogUserBalances: BalanceOp[]; _meta?: { pageCount?: number } }>(
+      `/balances/search?date_from=${from}&date_to=${to}&per_page=100&page=${page}`);
+    txns.push(...(c.billingLogUserBalances ?? []));
+    pages = Number(c._meta?.pageCount ?? 1);
+    page++;
+  } while (page <= pages && page <= MAX_PAGES);
+
+  const actual = rozetkaActualCommission(txns);
+  if (!actual.size) return 0;
+
+  const { data: ours } = await db.from('orders')
+    .select('id, order_number, rozetka_order_id')
+    .in('rozetka_order_id', [...actual.keys()]);
+  if (!ours?.length) return 0;
+
+  const { data: rows } = await db.from('money_entries')
+    .select('order_id, amount, description, doc_type, meta')
+    .eq('account_type', 'marketplace_fee')
+    .eq('counterparty_id', 'rozetka')
+    .in('order_id', ours.map(o => o.id))
+    .limit(10000);
+  const posted = new Map<string, number>();
+  for (const r of rows ?? []) {
+    if (!r.order_id || rozetkaFeeKind(r) !== 'commission') continue;
+    posted.set(r.order_id, Math.round(((posted.get(r.order_id) ?? 0) + Number(r.amount)) * 100) / 100);
+  }
+
+  let fixed = 0;
+  for (const o of ours) {
+    const want = actual.get(Number(o.rozetka_order_id));
+    const have = posted.get(o.id) ?? 0;
+    if (want == null || have === 0) continue;          // ще не проводили — не наша черга
+    const delta = Math.round((want - have) * 100) / 100;
+    if (Math.abs(delta) < 0.01) continue;
+    try {
+      await recordTxn({
+        debitAccount:   delta > 0 ? 'marketplace_fee' : 'marketplace_balance',
+        debitParty:     'rozetka',
+        creditAccount:  delta > 0 ? 'marketplace_balance' : 'marketplace_fee',
+        creditParty:    'rozetka',
+        amount:         Math.abs(delta),
+        docType:        'commission',
+        orderId:        o.id,
+        description:    `Rozetka — комісія, уточнення до виписки (замовлення #${o.order_number}: `
+                      + `нараховано ${have.toFixed(2)} ₴, площадка списала ${want.toFixed(2)} ₴)`,
+        idempotencyKey: `rz-commission-adj:rozetka:${o.id}:${want.toFixed(2)}`,
+        createdBy:      'sync:rozetka-fees',
+        meta:           { kind: 'rz_commission_adj', accrued: have, actual: want },
+      });
+      fixed++;
+    } catch (err) {
+      console.error('[rozetka-fees] commission true-up failed:', o.order_number, err);
+    }
+  }
+  return fixed;
 }

@@ -3,6 +3,8 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { getMarketplaceBalance } from '../../../../../../lib/accounting/money';
 import { getRozetkaBalanceTotal, getRozetkaBalanceTxns, getRozetkaLogisticOps } from '../../../../../../lib/rozetka-api';
+import { isRozetkaPickupOp } from '../../../../../../lib/rozetka-delivery-tariff';
+import { rozetkaFeeKind } from '../../../../../../lib/rozetka-fee-kind';
 
 // Побудкова звірка з кабінетом Rozetka: тягнемо живий леджер балансу продавця
 // (/balances/search) і зіставляємо їхні списання комісій по замовленнях із нашими
@@ -44,19 +46,6 @@ export type ReconcileRow = {
 const num = (v: string | number | null | undefined) => Number(String(v ?? '0').replace(',', '.')) || 0;
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
-/**
- * Що це за витрата площадки. Усі три статті лежать на одному рахунку
- * marketplace_fee, тож розрізняємо за описом і meta — інакше збір за видачу
- * і Smart потрапляють у звірку комісії й дають розбіжність там, де її немає.
- */
-type FeeKind = 'commission' | 'smart' | 'pickup' | 'subscription';
-function feeKind(f: { doc_type?: string | null; description?: string | null; meta?: unknown }): FeeKind {
-  const d = String(f.description ?? '');
-  if (f.doc_type === 'subscription_fee' || /абонплат/i.test(d)) return 'subscription';
-  if (/організація видачі/i.test(d)) return 'pickup';
-  if ((f.meta as Record<string, unknown> | null)?.smart || /Smart/i.test(d)) return 'smart';
-  return 'commission';
-}
 
 export async function GET(req: NextRequest) {
   const auth = await requireStaff('admin');
@@ -140,7 +129,7 @@ export async function GET(req: NextRequest) {
     const ourByOrderId = new Map<string, number>();
     for (const f of fees ?? []) {
       if (!f.order_id) continue;
-      if (feeKind(f) !== 'commission') continue;
+      if (rozetkaFeeKind(f) !== 'commission') continue;
       ourByOrderId.set(f.order_id, (ourByOrderId.get(f.order_id) ?? 0) + Number(f.amount));
     }
 
@@ -181,7 +170,7 @@ export async function GET(req: NextRequest) {
     // звірку комісії вони не входять, інакше дають фантомні «розбіжності».
     const smartFees = { count: 0, total: 0 };
     for (const f of periodFees ?? []) {
-      const kind = feeKind(f);
+      const kind = rozetkaFeeKind(f);
       if (kind === 'smart') {
         smartFees.count++;
         smartFees.total = r2(smartFees.total + Number(f.amount));
@@ -230,8 +219,12 @@ export async function GET(req: NextRequest) {
        додатні» ховає сторно і показує розбіжність там, де її вже виправили. */
     const inPeriod = (d: string) => d >= from && d <= to;
 
+    // Типи збору за видачу — спільний список (lib/rozetka-delivery-tariff). Раніше
+    // тут стояв літерал 34, і коли Rozetka перейшла на 106/107, стаття показувала
+    // 150 ₴ проти наших 1 230 ₴ — фантомна різниця на 1 080 ₴ у бік, зворотний
+    // реальному (звірка 31.08.2026).
     const theirPickup = r2(logisticOps
-      .filter(o => o.operation_type === 34 && inPeriod(String(o.transaction_ts).slice(0, 10)))
+      .filter(o => isRozetkaPickupOp(o.operation_type) && inPeriod(String(o.transaction_ts).slice(0, 10)))
       .reduce((s, o) => s + Math.abs(num(o.debit)), 0));
     const theirSubscription = r2(txns
       .filter(t => t.operationType === 5)
@@ -248,7 +241,7 @@ export async function GET(req: NextRequest) {
     // таблиці статей і сума рядків нижче не розходились.
     let oursPickup = 0, oursSubscription = 0;
     for (const f of allPeriodFees ?? []) {
-      const kind = feeKind(f);
+      const kind = rozetkaFeeKind(f);
       if (kind === 'subscription') oursSubscription += Number(f.amount);
       else if (kind === 'pickup')  oursPickup       += Number(f.amount);
     }

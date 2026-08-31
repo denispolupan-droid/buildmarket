@@ -74,7 +74,7 @@ describe('estimateMarketplaceDeliveryFee', () => {
       const fee = estimateMarketplaceDeliveryFee({
         channel_code: 'rozetka', delivery_type: 'rozetka_delivery', total_price: 900, rozetka_data: {},
       });
-      expect(fee?.amount).toBe(30);
+      expect(fee?.amount).toBe(35);   // тариф Rozetka з 07.08.2026; до того — 30
       expect(fee?.hint).toContain('попередня');
     });
 

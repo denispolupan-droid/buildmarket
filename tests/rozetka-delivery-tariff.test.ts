@@ -22,22 +22,22 @@ describe('resolveRozetkaDeliveryFee', () => {
   });
 
   it('без накладної падає на тариф', () => {
-    expect(resolveRozetkaDeliveryFee({ isSmart: false })).toBe(30);
-    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: null })).toBe(30);
-    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: NaN })).toBe(30);
+    expect(resolveRozetkaDeliveryFee({ isSmart: false })).toBe(35);
+    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: null })).toBe(35);
+    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: NaN })).toBe(35);
     expect(resolveRozetkaDeliveryFee({ isSmart: false, fromMeest: true })).toBe(49);
   });
 
   it('нуль чи відʼємне у полі накладної не приймаємо за суму — падаємо на тариф', () => {
-    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: 0 })).toBe(30);
-    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: -5 })).toBe(30);
+    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: 0 })).toBe(35);
+    expect(resolveRozetkaDeliveryFee({ isSmart: false, actualPrice: -5 })).toBe(35);
   });
 });
 
 describe('computeRozetkaDeliveryFee', () => {
-  it('організація видачі відправлення — 30 грн', () => {
-    expect(computeRozetkaDeliveryFee()).toBe(30);
-    expect(computeRozetkaDeliveryFee({})).toBe(30);
+  it('організація видачі відправлення — 35 грн (Rozetka підняла з 30 07.08.2026)', () => {
+    expect(computeRozetkaDeliveryFee()).toBe(35);
+    expect(computeRozetkaDeliveryFee({})).toBe(35);
   });
 
   it('відправлення з відділення Meest ПОШТА — 49 грн', () => {
@@ -46,7 +46,7 @@ describe('computeRozetkaDeliveryFee', () => {
 
   it('не залежить від суми замовлення — на відміну від Smart', () => {
     // збір фіксований, тож окремого аргументу суми в сигнатурі й немає
-    expect(computeRozetkaDeliveryFee({ fromMeest: false })).toBe(30);
+    expect(computeRozetkaDeliveryFee({ fromMeest: false })).toBe(35);
   });
 
   it('бере суми з переданого тарифу, а не з констант', () => {

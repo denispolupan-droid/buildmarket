@@ -48,7 +48,8 @@ export async function GET(req: NextRequest) {
       console.error('[rozetka-review-alert]', err);
     }
 
-    // Фактичні збори з балансів Rozetka (організація видачі, абонплата).
+    // Фактичні збори з балансів Rozetka (організація видачі, абонплата) і
+    // доведення нарахованої комісії до тієї, що площадка реально списала.
     // Проводимо саме факт, а не передбачення — див. lib/rozetka-fees-sync.
     let fees: unknown = null;
     try {
