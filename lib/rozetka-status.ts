@@ -93,6 +93,32 @@ export function isRozetkaBackwards(step: number, currentStatus: number | null | 
   return to <= from;
 }
 
+/**
+ * Rozetka не випустить замовлення з «в обробці» без номера накладної.
+ * Перевірено живими PUT по замовленню 904417517 (31.08.2026): 3 «Передано до
+ * служби доставки» відповідає `ttn: Необхідно заповнити Номер ТТН`, 5 «Очікує
+ * в пункті самовивозу» — «Перехід в цей статус неможливий», а 6 «Виконано»
+ * недосяжне напряму й іде драбиною через 61, якому ТТН теж потрібен.
+ *
+ * Наслідок: замовлення, відвантажене без накладної (самовивіз, передача з рук
+ * у руки), у кабінеті застрягає назавжди, а крон щоп'ять хвилин мовчки б'ється
+ * об ту саму відмову. Підставити номер за людину ми не можемо — його треба
+ * внести в замовлення, тож єдина корисна дія тут — сказати про це вголос.
+ *
+ * Коли перевізникові вже передали (стадія 2 і далі), номер у кабінеті вже є —
+ * тоді 6 доїжджає без нової накладної, і блокування не діє.
+ */
+const NEEDS_TTN = new Set([3, 6, 61]);
+
+export function rozetkaNeedsTtn(
+  desired: number,
+  currentStatus: number | null | undefined,
+  hasTtn: boolean,
+): boolean {
+  if (hasTtn || !NEEDS_TTN.has(desired)) return false;
+  return (currentStatus == null ? 0 : ROZETKA_STAGE[currentStatus] ?? 0) < 2;
+}
+
 export function isRozetkaAhead(rozetkaStatus: number | null | undefined, ourStatus: string): boolean {
   if (rozetkaStatus == null) return false;
   const rz = ROZETKA_STAGE[rozetkaStatus];

@@ -5,6 +5,7 @@ import { getRozetkaDeliveryTtns } from './rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 import { alertAdmin } from './alert';
 import { itemsDiffer, describeItemsDiff } from './rozetka-items-diff';
+import { rozetkaNeedsTtn, rozetkaStatusLabel } from './rozetka-status';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,7 +66,7 @@ export async function syncRozetkaOrders() {
   for (const rzOrder of [...orders, ...refreshOnly]) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, status, tracking_number, rozetka_data, payment_confirmed, total_price, items')
+      .select('id, order_number, status, tracking_number, rozetka_data, payment_confirmed, total_price, items')
       .eq('rozetka_order_id', rzOrder.id)
       .maybeSingle();
 
@@ -202,17 +203,53 @@ export async function syncRozetkaOrders() {
 
       const desired = refreshOnlyIds.has(rzOrder.id) ? null : ourStatusToRozetkaStatus(existing.status);
       const lagging = desired != null && (REPUSH_FROM[desired] ?? []).includes(rzOrder.status);
-      if (lagging && !(desired === 61 && !existing.tracking_number)) {
+
+      // Без накладної кабінет далі «в обробці» не піде — і жодна кількість
+      // спроб цього не змінить (див. rozetkaNeedsTtn). Раніше такий пуш просто
+      // падав у console.error щоп'ять хвилин, і замовлення висіло в кабінеті
+      // «обробляється», поки покупець не питав. Тепер кажемо про це один раз —
+      // мітка в rozetka_data, щоб не перетворити крон на щохвилинний спам.
+      if (lagging && rozetkaNeedsTtn(desired!, rzOrder.status, !!existing.tracking_number)) {
+        if (!storedData._no_ttn_alerted) {
+          alertAdmin(
+            `Rozetka: замовлення ${rzOrder.id} застрягло в кабінеті — немає ТТН`,
+            `Наше ${existing.order_number ?? existing.id}: у нас «${existing.status}», у кабінеті «${rozetkaStatusLabel(rzOrder.status)}». `
+            + 'Rozetka не переводить замовлення далі без номера накладної. Якщо посилка їхала — внесіть ТТН у замовлення, '
+            + 'і статус доїде сам протягом 5 хвилин. Якщо покупець забрав сам — закрийте замовлення вручну в кабінеті: API туди не пускає.',
+          );
+          await db.from('orders')
+            .update({ rozetka_data: { ...storedData, _no_ttn_alerted: new Date().toISOString() } })
+            .eq('id', existing.id);
+        }
+        skipped++;
+        continue;
+      }
+
+      if (lagging) {
         try {
-          // Chained: Rozetka не дає стрибнути через статус (напр. 1→61) — драбинка 26→61
+          // Chained: Rozetka не дає стрибнути через статус (напр. 1→61) — драбинка 26→61.
+          // ТТН потрібен не лише цільовому 61: драбина до 6 «Виконано» йде ЧЕРЕЗ
+          // 61, а без номера в opts вона цю сходинку навіть не будує (див.
+          // setRozetkaOrderStatusChained). Через це «Виконано» не доїжджало
+          // навіть тоді, коли накладна в замовленні була.
           await setRozetkaOrderStatusChained(
             rzOrder.id, desired,
-            desired === 61 ? { ttn: existing.tracking_number ?? undefined } : undefined,
+            existing.tracking_number ? { ttn: existing.tracking_number } : undefined,
           );
           repushed++;
           console.log(`[rozetka-sync] re-pushed status ${desired} for order ${rzOrder.id} (was ${rzOrder.status})`);
+          if (storedData._no_ttn_alerted) {
+            const { _no_ttn_alerted, ...rest } = storedData;
+            await db.from('orders').update({ rozetka_data: rest }).eq('id', existing.id);
+          }
         } catch (err) {
-          console.error('[rozetka-sync] status re-push failed:', rzOrder.id, err);
+          // Мовчазне падіння тут коштувало трьох діб «обробляється» в кабінеті
+          // (замовлення 904417517). Кричимо — тротлінг alertAdmin не дасть спамити.
+          alertAdmin(
+            `Rozetka: статус замовлення ${rzOrder.id} не доїхав до кабінету`,
+            `Хотіли ${desired} (${rozetkaStatusLabel(desired)}), у кабінеті «${rozetkaStatusLabel(rzOrder.status)}». `
+            + (err instanceof Error ? err.message : String(err)),
+          );
         }
       }
       skipped++;

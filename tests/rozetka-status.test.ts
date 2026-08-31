@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rozetkaStatusLabel, isRozetkaAhead, isRozetkaBackwards } from '../lib/rozetka-status';
+import { rozetkaStatusLabel, isRozetkaAhead, isRozetkaBackwards, rozetkaNeedsTtn } from '../lib/rozetka-status';
 
 describe('rozetkaStatusLabel', () => {
   it('знає статуси цього кабінету', () => {
@@ -108,5 +108,37 @@ describe('isRozetkaAhead', () => {
     expect(isRozetkaAhead(999, 'new')).toBe(false);
     expect(isRozetkaAhead(26, 'cancelled')).toBe(false);
     expect(isRozetkaAhead(null, 'new')).toBe(false);
+  });
+});
+
+describe('rozetkaNeedsTtn — кабінет не рухається без накладної', () => {
+  // Живий кейс 904417517 (31.08.2026): у нас delivered з 28.08, у кабінеті 26.
+  // Перевірено прямими PUT: 3 → «Необхідно заповнити Номер ТТН», 5 → «Перехід
+  // в цей статус неможливий», 6 → «Перехід в цей статус неможливий». Драбина до
+  // 6 йде через 61, якому ТТН теж потрібен, тож без номера шляху немає взагалі.
+  it('з «в обробці» без ТТН нікуди не вийти', () => {
+    for (const desired of [3, 6, 61]) {
+      expect(rozetkaNeedsTtn(desired, 26, false)).toBe(true);
+      expect(rozetkaNeedsTtn(desired, 1, false)).toBe(true);
+    }
+  });
+
+  it('з накладною блокування немає — це звичайний робочий шлях', () => {
+    for (const desired of [3, 6, 61]) expect(rozetkaNeedsTtn(desired, 26, true)).toBe(false);
+  });
+
+  it('коли перевізникові вже передали, номер у кабінеті вже є', () => {
+    // 61/3/4/80–82 — стадія 2: «Виконано» звідти доїжджає без нової накладної
+    for (const from of [61, 3, 4, 5, 80, 81, 82]) expect(rozetkaNeedsTtn(6, from, false)).toBe(false);
+  });
+
+  it('статуси, яким ТТН не потрібен, не блокуються ніколи', () => {
+    expect(rozetkaNeedsTtn(26, 1, false)).toBe(false);   // «Обробляється менеджером»
+    expect(rozetkaNeedsTtn(13, 26, false)).toBe(false);  // скасування
+  });
+
+  it('невідомий статус кабінету рахуємо як початок — краще попередити', () => {
+    expect(rozetkaNeedsTtn(6, 999, false)).toBe(true);
+    expect(rozetkaNeedsTtn(6, null, false)).toBe(true);
   });
 });

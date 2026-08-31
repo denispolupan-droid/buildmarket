@@ -1574,6 +1574,10 @@ export default function AdminOrders({
             : `📦 Частково відвантажено · ${data.sale_doc_number}`,
           'success', 6000,
         );
+        // Rozetka не пускає замовлення далі «в обробці» без номера накладної.
+        // Кажемо про це одразу після відгрузки: менеджер ще тут і може внести
+        // ТТН, інакше кабінет висітиме «обробляється», поки не спитає покупець.
+        if (data.rozetka_warning) showToast(data.rozetka_warning, 'error', 12000);
       } else {
         showToast(data.error ?? 'Помилка відвантаження', 'error');
       }

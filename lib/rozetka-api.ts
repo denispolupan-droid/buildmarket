@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 // Назви статусів кабінету й порівняння воронок винесені в чистий модуль без
 // мережі й ключів: тут живе сервісний ключ Supabase, а адмінка — клієнтський
 // компонент, і імпортувати цей файл у браузер не можна.
-export { ROZETKA_STATUS_LABEL, rozetkaStatusLabel, isRozetkaAhead } from './rozetka-status';
+export { ROZETKA_STATUS_LABEL, rozetkaStatusLabel, isRozetkaAhead, rozetkaNeedsTtn } from './rozetka-status';
 import { isRozetkaBackwards } from './rozetka-status';
 export * from './rozetka-delivery';
 import { isRozetkaDelivery, rozetkaPickupAddress, ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';

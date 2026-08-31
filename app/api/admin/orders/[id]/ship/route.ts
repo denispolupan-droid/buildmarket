@@ -11,7 +11,7 @@ import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
 import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
+import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
   req: NextRequest,
@@ -312,6 +312,7 @@ export async function POST(
 
   // Push status(+TTN) to Rozetka after successful shipment (fire-and-forget)
   const rozetkaOrderId = order.rozetka_order_id as number | null;
+  let rozetkaWarning: string | null = null;
   if (fullyShipped && rozetkaOrderId) {
     const rozStatus = ourStatusToRozetkaStatus(finalStatus);
     if (rozStatus) {
@@ -319,12 +320,24 @@ export async function POST(
       // створенні накладної, тож тут пуш часто повторний — без цієї підказки
       // драбина «полікувала» б відмову переходу кроком назад, на 26.
       const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
-      setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, {
-        ...(effectiveTtn ? { ttn: effectiveTtn } : {}),
-        currentStatus: typeof cabinet.status === 'number' ? cabinet.status : null,
-      }).catch(err => {
-        console.warn('[ship] setRozetkaOrderStatus failed:', err);
-      });
+      const cabinetStatus = typeof cabinet.status === 'number' ? cabinet.status : null;
+
+      // Відвантаження без накладної Rozetka не приймає: кабінет так і лишиться
+      // «Обробляється менеджером», скільки не пушити. Сказати про це треба саме
+      // зараз — менеджер стоїть над замовленням і може внести номер, а не через
+      // три доби, коли покупець спитає, чому замовлення «в обробці».
+      if (rozetkaNeedsTtn(rozStatus, cabinetStatus, !!effectiveTtn)) {
+        rozetkaWarning = 'Замовлення Rozetka відвантажено без ТТН — кабінет залишиться в статусі '
+          + '«Обробляється менеджером». Внесіть номер накладної в замовлення, і статус доїде сам '
+          + 'протягом 5 хвилин. Якщо покупець забрав сам — закрийте замовлення вручну в кабінеті Rozetka.';
+      } else {
+        setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, {
+          ...(effectiveTtn ? { ttn: effectiveTtn } : {}),
+          currentStatus: cabinetStatus,
+        }).catch(err => {
+          console.warn('[ship] setRozetkaOrderStatus failed:', err);
+        });
+      }
     }
   }
 
@@ -336,6 +349,7 @@ export async function POST(
     shipped_items:   itemsToShip.map(i => ({ sku: i.sku, qty: i.qty })),
     status:          finalStatus,
     ttn_pushed:      ttnPushed,
+    rozetka_warning: rozetkaWarning,
   });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message
