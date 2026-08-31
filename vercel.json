@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/demand-crawl",
       "schedule": "20 4 * * 1"
+    },
+    {
+      "path": "/api/cron/ads-spend",
+      "schedule": "40 4 * * *"
     }
   ]
 }

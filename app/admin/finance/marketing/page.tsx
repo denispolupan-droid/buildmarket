@@ -27,6 +27,7 @@ type OrderRow = {
   utm_campaign: string | null;
   utm_content: string | null;
   referrer_url: string | null;
+  gclid: string | null;
 };
 
 type Bucket = {
@@ -67,10 +68,10 @@ export default async function MarketingPage({
   // ── 1. Замовлення з міткою або реферером ─────────────────────────────────
   const { data: raw } = await db
     .from('orders')
-    .select('id, order_number, status, total_price, created_at, utm_source, utm_medium, utm_campaign, utm_content, referrer_url')
+    .select('id, order_number, status, total_price, created_at, utm_source, utm_medium, utm_campaign, utm_content, referrer_url, gclid')
     .gte('created_at', dateFrom)
     .lte('created_at', `${dateTo}T23:59:59`)
-    .or('utm_source.not.is.null,referrer_url.not.is.null')
+    .or('utm_source.not.is.null,referrer_url.not.is.null,gclid.not.is.null')
     .order('created_at', { ascending: false })
     .limit(1000);
 
@@ -107,8 +108,9 @@ export default async function MarketingPage({
   const buckets = new Map<string, Bucket>();
   for (const o of orders) {
     const tagged = !!o.utm_source;
-    const source = tagged ? o.utm_source! : refHost(o.referrer_url);
-    const medium = tagged ? (o.utm_medium ?? '—') : 'реферал';
+    // gclid без utm — автотегований клік Google Ads: показуємо рекламою, а не «рефералом google.com»
+    const source = tagged ? o.utm_source! : o.gclid ? 'google' : refHost(o.referrer_url);
+    const medium = tagged ? (o.utm_medium ?? '—') : o.gclid ? 'cpc (gclid)' : 'реферал';
     const campaign = tagged ? (o.utm_campaign ?? '—') : '—';
     const key = `${source}|${medium}|${campaign}`;
     const b = buckets.get(key) ?? { key, source, medium, campaign, orders: 0, cancelled: 0, revenue: 0, profit: 0, posted: 0 };
@@ -129,7 +131,40 @@ export default async function MarketingPage({
   }), { orders: 0, cancelled: 0, revenue: 0, profit: 0, posted: 0 });
   const live = totals.orders - totals.cancelled;
 
+  // ── 4. Витрати Google Ads за період (ads_spend, крон ads-spend) ────────────
+  const { data: spendRaw } = await db
+    .from('ads_spend')
+    .select('date, campaign_id, campaign_name, channel_type, cost_micros, clicks, conversions')
+    .gte('date', dateFrom).lte('date', dateTo);
+  type Camp = { name: string; channel: string | null; cost: number; clicks: number; conversions: number };
+  const camps = new Map<number, Camp>();
+  for (const r of (spendRaw ?? []) as { campaign_id: number; campaign_name: string; channel_type: string | null; cost_micros: number; clicks: number; conversions: number }[]) {
+    const c = camps.get(r.campaign_id) ?? { name: r.campaign_name, channel: r.channel_type, cost: 0, clicks: 0, conversions: 0 };
+    c.cost += Number(r.cost_micros) / 1e6; c.clicks += r.clicks; c.conversions += Number(r.conversions); c.name = r.campaign_name;
+    camps.set(r.campaign_id, c);
+  }
+  const adsCampaigns = [...camps.values()].filter(c => c.cost > 0 || c.clicks > 0).sort((a, b) => b.cost - a.cost);
+  const adsSpendTotal = adsCampaigns.reduce((t, c) => t + c.cost, 0);
+  // наш бік: усе, що прийшло з google-реклами (gclid або мітка google з платним medium)
+  const isGoogleAds = (o: OrderRow) => !!o.gclid || (o.utm_source?.toLowerCase() === 'google' && !!o.utm_medium && o.utm_medium !== 'organic');
+  const gAds = orders.filter(isGoogleAds);
+  const gLive = gAds.filter(o => o.status !== 'cancelled');
+  const gRevenue = gLive.reduce((t, o) => t + Number(o.total_price ?? 0), 0);
+  const gProfit = gLive.reduce((t, o) => t + (profitByOrder.get(o.id) ?? 0), 0);
+  const gPosted = gLive.filter(o => profitByOrder.has(o.id)).length;
+  // виручка/прибуток по кампанії — за збігом utm_campaign з назвою кампанії
+  const norm = (x: string) => x.toLowerCase().replace(/\s+/g, ' ').trim();
+  const byCampaign = new Map<string, { orders: number; revenue: number; profit: number }>();
+  for (const o of gLive) {
+    if (!o.utm_campaign) continue;
+    const k = norm(o.utm_campaign);
+    const v = byCampaign.get(k) ?? { orders: 0, revenue: 0, profit: 0 };
+    v.orders++; v.revenue += Number(o.total_price ?? 0); v.profit += profitByOrder.get(o.id) ?? 0;
+    byCampaign.set(k, v);
+  }
+
   const COL = 'minmax(140px, 1.4fr) minmax(90px, 0.8fr) minmax(120px, 1.2fr) 90px 110px 120px 110px';
+  const ADS_COL = 'minmax(180px, 1.6fr) minmax(90px, 0.8fr) 90px 70px 90px 110px 110px 110px';
 
   return (
     <div style={{ padding: '20px 24px 40px' }}>
@@ -223,10 +258,75 @@ export default async function MarketingPage({
         </div>
       )}
 
+      <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: '26px 0 4px' }}>Google Ads: витрати і окупність</h2>
+      <p style={{ margin: '0 0 12px', fontSize: '12.5px', color: 'var(--text-muted)', maxWidth: '760px', lineHeight: 1.5 }}>
+        Витрати тягне щоденний крон з Google Ads API (7 днів назад — Ads дописує конверсії заднім числом).
+        Наш бік — замовлення з <code>gclid</code> або міткою google/cpc; рядок кампанії заповнюється грошима,
+        коли <code>utm_campaign</code> в оголошенні збігається з назвою кампанії.
+      </p>
+      {adsCampaigns.length === 0 ? (
+        <div className="fin-card" style={{ padding: '20px 24px', color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6 }}>
+          За цей період витрат у Google Ads немає (або крон <code>ads-spend</code> ще не ходив — він щодня о 07:40 за Києвом).
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            <div className="fin-card" style={{ padding: '14px 18px' }}>
+              <div className="fin-kpi-label">Витрачено</div>
+              <div className="fin-money-val" style={{ color: '#B91C1C' }}>{fmt(adsSpendTotal)} ₴</div>
+            </div>
+            <div className="fin-card" style={{ padding: '14px 18px' }}>
+              <div className="fin-kpi-label">Замовлень з реклами</div>
+              <div className="fin-money-val">{gLive.length}{gAds.length > gLive.length && <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}> · {gAds.length - gLive.length} скас.</span>}</div>
+            </div>
+            <div className="fin-card" style={{ padding: '14px 18px' }}>
+              <div className="fin-kpi-label">Виручка з реклами</div>
+              <div className="fin-money-val">{fmt(gRevenue)} ₴</div>
+            </div>
+            <div className="fin-card" style={{ padding: '14px 18px' }}>
+              <div className="fin-kpi-label">Прибуток − витрати</div>
+              <div className="fin-money-val" style={{ color: gProfit - adsSpendTotal >= 0 ? '#15803D' : '#B91C1C' }}>{fmt(gProfit - adsSpendTotal)} ₴</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                валовий {fmt(gProfit)} ₴ з {gPosted} проведених{gLive.length > gPosted && ` · ${gLive.length - gPosted} ще в дорозі`}
+              </div>
+            </div>
+          </div>
+          <div className="fin-card" style={{ padding: 0, overflow: 'hidden', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: ADS_COL, padding: '8px 16px', borderBottom: '1px solid var(--border)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span>Кампанія</span><span>Тип</span>
+              <span style={{ textAlign: 'right' }}>Витрати</span>
+              <span style={{ textAlign: 'right' }}>Кліки</span>
+              <span style={{ textAlign: 'right' }}>Замовлень</span>
+              <span style={{ textAlign: 'right' }}>Виручка</span>
+              <span style={{ textAlign: 'right' }}>Прибуток</span>
+              <span style={{ textAlign: 'right' }}>Результат</span>
+            </div>
+            {adsCampaigns.map((c, idx) => {
+              const ours = byCampaign.get(norm(c.name));
+              const net = ours ? ours.profit - c.cost : null;
+              return (
+                <div key={c.name} style={{ display: 'grid', gridTemplateColumns: ADS_COL, padding: '10px 16px', alignItems: 'center', fontSize: '13px', borderBottom: idx < adsCampaigns.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.name}</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{c.channel ?? '—'}</span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(c.cost)} ₴</span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{c.clicks}</span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? ours.orders : '—'}</span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? `${fmt(ours.revenue)} ₴` : '—'}</span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? `${fmt(ours.profit)} ₴` : '—'}</span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? 'var(--text-muted)' : net >= 0 ? '#15803D' : '#B91C1C' }}>
+                    {net == null ? 'без мітки' : `${net >= 0 ? '+' : ''}${fmt(net)} ₴`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       {/* Порахувати окупність без витрат на рекламу не можна, а їх ми не знаємо:
           кабінети Google/Prom нам не доступні. Тому — підказка, а не вигадана цифра. */}
       <div className="fin-card" style={{ marginTop: '16px', padding: '14px 18px', fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-        <b style={{ color: 'var(--text-primary)' }}>Як рахувати окупність.</b> Тут видно, скільки принесла кампанія;
+        <b style={{ color: 'var(--text-primary)' }}>Як читати «Результат».</b> Це валовий прибуток кампанії мінус її витрати; він неповний, поки частина замовлень «ще в дорозі». Тут видно, скільки принесла кампанія;
         скільки вона коштувала — знає рекламний кабінет. Реклама виправдана, поки «Прибуток» більший за витрату
         на ту саму кампанію за той самий період. Витрати зручно вести у{' '}
         <a href="/admin/finance/expenses" style={{ color: 'var(--brand-blue)', fontWeight: 600 }}>Витратах</a> з категорією «Маркетинг».
