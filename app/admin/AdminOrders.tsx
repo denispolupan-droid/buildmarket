@@ -774,6 +774,7 @@ export default function AdminOrders({
   const [confirming, setConfirming] = useState<string | null>(null);
   const [confirmErrors, setConfirmErrors] = useState<Record<string, { error: string; insufficient?: { sku: string; requested: number; available: number }[] }>>({});
   const [copiedSku, setCopiedSku] = useState<string | null>(null);
+  const [copiedSupplierSku, setCopiedSupplierSku] = useState<string | null>(null);
   // ТТН із мобільного рядка картки: копіюємо, щоб одразу вставити в пошук перевізника.
   const [copiedTtn, setCopiedTtn] = useState<string | null>(null);
   function copyTtn(ttn: string) {
@@ -3633,12 +3634,47 @@ export default function AdminOrders({
                                         {/* Артикул — окремий стовпець */}
                                         <td className="oc-col-sku" style={{ padding: '10px 6px 10px 12px', verticalAlign: 'middle' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <span style={{ color: 'var(--text-secondary)', fontSize: '11.5px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{item.sku}</span>
+                                            <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{item.sku}</span>
                                             <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
                                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
                                               {copiedSku === item.sku ? <Check size={12} /> : <Copy size={12} />}
                                             </button>
                                           </div>
+                                          {(() => {
+                                            // Код постачальника — другим рядком і приглушено. Він потрібен
+                                            // рівно в один момент (замовити в постачальника), тож не має
+                                            // конкурувати з нашим артикулом за увагу: 9–9,5 px — найдрібніший
+                                            // текст у таблиці. Мітка «sup» обов'язкова: коди того самого
+                                            // формату (1509-023 проти 2105-023), без неї їх плутають. Малими
+                                            // й латиницею: великі літери читаються як наголос, а підпис має
+                                            // бути тихішим за сам код, який він підписує.
+                                            // Поки джерело вантажиться — тримаємо місце під рядок, інакше
+                                            // таблиця смикається на кожному відкритті картки.
+                                            if (fulfillmentLoading.has(order.id) && !fulfillmentData[order.id]) {
+                                              return (
+                                                <div style={{ marginTop: '2px', color: 'var(--text-muted)', fontSize: '9px', letterSpacing: '0.04em', opacity: 0.5 }}>sup …</div>
+                                              );
+                                            }
+                                            const supSku = fulfillmentData[order.id]?.by_supplier
+                                              ?.flatMap(g => g.items).find(i => i.sku === item.sku)?.supplier_sku;
+                                            if (!supSku || supSku === item.sku) return null;
+                                            const copied = copiedSupplierSku === `${order.id}:${item.sku}`;
+                                            return (
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '9px', letterSpacing: '0.02em' }}>sup</span>
+                                                <span title={`Код постачальника: ${supSku}`}
+                                                  style={{ color: 'var(--text-muted)', fontSize: '9.5px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{supSku}</span>
+                                                <button onClick={() => {
+                                                  navigator.clipboard.writeText(supSku);
+                                                  setCopiedSupplierSku(`${order.id}:${item.sku}`);
+                                                  setTimeout(() => setCopiedSupplierSku(null), 1500);
+                                                }} title="Копіювати код постачальника"
+                                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copied ? '#15803D' : 'var(--text-muted)', opacity: copied ? 1 : 0.6, lineHeight: 1, display: 'inline-flex' }}>
+                                                  {copied ? <Check size={10} /> : <Copy size={10} />}
+                                                </button>
+                                              </div>
+                                            );
+                                          })()}
                                         </td>
                                         <td className="oc-col-qty" style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>{item.qty}</td>
                                         <td className="oc-col-price" style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>
