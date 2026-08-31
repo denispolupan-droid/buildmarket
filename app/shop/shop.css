@@ -559,7 +559,7 @@ body:has(.shop-layout) { overflow-anchor: none; }
 /* Фірмовий заголовок списку — розміщення як в оптовому каталозі: назва
    категорії живе в колонці товарів, без окремої повноширинної смуги зверху */
 .shop-title {
-  font-size: clamp(20px, 2.2vw, 26px);
+  font-size: clamp(18px, 1.9vw, 22px);
   font-weight: 900;
   letter-spacing: -0.4px;
   line-height: 1.2;
