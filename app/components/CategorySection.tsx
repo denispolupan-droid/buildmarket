@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import CategoryPreview from './CategoryPreview';
 import { getCatIcon, getCatColor } from './CategoryCarousel';
+import { categoryAccent, categoryIcon } from '../../lib/category-icons';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
 import type { Category, ProductFull, ReviewStats } from '../../lib/supabase';
@@ -43,8 +44,7 @@ export default function CategorySection({ categories, products, reviewStats }: P
       gap: '0',
       background: 'var(--bg-card)',
       border: '1px solid var(--border)',
-      borderTop: '3px solid #4880B8',
-      borderRadius: '2px 2px 14px 14px',
+      borderRadius: '16px',
       overflow: 'hidden',
       boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
       height: '520px',
@@ -58,8 +58,8 @@ export default function CategorySection({ categories, products, reviewStats }: P
         height: '100%',
       }}>
         {parentCats.map((cat, i) => {
-          const Icon = getCatIcon(cat.slug, i);
-          const color = getCatColor(cat.slug, i);
+          const Icon = categoryIcon(cat.slug) ?? getCatIcon(cat.slug, i);
+          const color = categoryAccent(cat.slug) ?? getCatColor(cat.slug, i);
           const isActive = cat.slug === selectedSlug;
           return (
             <Link
@@ -70,18 +70,18 @@ export default function CategorySection({ categories, products, reviewStats }: P
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '12px 16px', cursor: 'pointer', textDecoration: 'none',
                 background: isActive ? 'var(--bg-card)' : 'transparent',
-                borderLeft: isActive ? '3px solid #4880B8' : '3px solid transparent',
+                borderLeft: isActive ? `3px solid ${color}` : '3px solid transparent',
                 borderBottom: '1px solid var(--border-light)',
                 transition: 'background 0.15s',
               }}
             >
               <div style={{
                 width: '34px', height: '34px', borderRadius: '8px', flexShrink: 0,
-                background: isActive ? color : 'rgba(0,0,0,0.06)',
+                background: isActive ? `color-mix(in srgb, ${color} 20%, transparent)` : 'rgba(0,0,0,0.05)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s',
               }}>
-                <Icon size={16} color={isActive ? '#fff' : '#64748B'} strokeWidth={1.75} />
+                <Icon size={16} color={isActive ? color : 'var(--text-secondary)'} strokeWidth={1.75} />
               </div>
               <span style={{
                 fontSize: '13px', fontWeight: isActive ? 700 : 500,

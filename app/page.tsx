@@ -198,65 +198,27 @@ export default async function Home() {
       {/* Brands auto-scroll carousel — right after hero */}
       <BrandsCarousel logos={brandLogos} brands={brandTiles} />
 
-      {/* Як ми працюємо */}
-      <section style={{ background: 'var(--bg-soft)', padding: '56px 0', borderTop: '1px solid var(--border)' }}>
-        <div className="page-container">
-          <Reveal>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '8px' }}>
-              Як ми працюємо
-            </h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
-              Прозора та проста схема від замовлення до доставки
-            </p>
-          </Reveal>
-          <div className="how-we-work-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '16px',
-          }}>
-            {[
-              { icon: Store,        title: 'Магазин або Опт',        text: 'Обирайте формат: роздріб від 1 шт або оптові умови для бізнесу', color: '#6366F1' },
-              { icon: ShoppingCart, title: 'Оформіть замовлення',     text: 'Додайте товари в кошик або надішліть запит менеджеру',          color: '#4880B8' },
-              { icon: Phone,        title: 'Підтвердження',           text: 'Менеджер підтвердить замовлення та узгодить деталі',             color: '#0891B2' },
-              { icon: Truck,        title: 'Доставка',                text: 'Нова Пошта або точка видачі ROZETKA — у будь-якому місті України', color: '#D97706' },
-            ].map(({ icon: Icon, title, text, color }, i) => (
-              <Reveal key={title} delay={i * 110}>
-                <div className="home-step-card" style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderTop: `3px solid ${color}`,
-                  borderRadius: '2px 2px 14px 14px',
-                  padding: '18px 20px 20px',
-                  display: 'flex', flexDirection: 'column', gap: '10px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '40px', height: '40px', borderRadius: '11px',
-                      background: `linear-gradient(135deg, ${color}22 0%, ${color}0e 100%)`,
-                      border: `1.5px solid ${color}30`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <Icon size={20} color={color} strokeWidth={1.75} />
-                    </div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25, flex: 1, minWidth: 0, overflowWrap: 'break-word', hyphens: 'auto', WebkitHyphens: 'auto' }}>
-                      {title}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                    {text}
-                  </div>
-                </div>
-              </Reveal>
-            ))}
+      {/* Categories carousel + interactive preview */}
+      {categories.length > 0 && (
+        <section className="home-category-section" style={{ background: 'var(--bg-soft)', padding: '20px 0 44px', borderTop: '1px solid var(--border)' }}>
+          <div className="page-container">
+            <Reveal>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '6px' }}>
+                Швидкий перегляд товарів
+              </h2>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
+                Оберіть категорію зліва — і подивіться товари з цінами, не залишаючи головну
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <CategorySection categories={categories} products={products} reviewStats={reviewStats} />
+            </Reveal>
           </div>
-        </div>
-      </section>
-
+        </section>
+      )}
 
       {/* Three paths */}
-      <section style={{ background: 'var(--bg-card)', padding: '48px 0' }}>
+      <section style={{ background: 'var(--bg-soft)', padding: '48px 0', borderTop: '1px solid var(--border)' }}>
         <div className="page-container">
           <Reveal>
             <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '8px' }}>
@@ -276,7 +238,7 @@ export default async function Home() {
                 href: '/shop', cta: 'Перейти до магазину',
               },
               {
-                icon: LayoutGrid, color: '#6366F1', title: 'Оптовий каталог',
+                icon: LayoutGrid, color: '#7B8CC8', title: 'Оптовий каталог',
                 text: 'Для дилерів, підрядників та магазинів. Оптові ціни та персональні умови для вашого бізнесу.',
                 items: ['Оптові ціни', 'Персональні тарифи', 'Табличний каталог', 'Рахунки-фактури'],
                 // Веде на /opt, а не одразу в /login?next=/catalog: людина, яка ще
@@ -286,52 +248,56 @@ export default async function Home() {
                 href: '/opt', cta: 'Дізнатись більше',
               },
               {
-                icon: PackageCheck, color: '#0891B2', title: 'Дропшипінг',
+                icon: PackageCheck, color: '#35809E', title: 'Дропшипінг',
                 text: 'Для онлайн-продавців. Продавайте наші товари без складу — ми відправляємо напряму Вашим клієнтам.',
                 items: ['Без власного складу', 'Актуальний XML/YML прайс', 'Проста передача замовлень', 'Персональні ціни'],
                 href: '/dropship', cta: 'Дізнатись більше',
               },
             ].map(({ icon: Icon, color, title, text, items, href, cta }, i) => (
-              <Reveal key={title} delay={i * 120}>
+              <Reveal key={title} delay={i * 120} style={{ height: '100%' }}>
                 <div className="home-path-card" style={{
+                  height: '100%',
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
-                  borderTop: `3px solid ${color}`,
-                  borderRadius: '2px 2px 14px 14px',
-                  padding: '20px 22px 22px',
-                  display: 'flex', flexDirection: 'column', gap: '12px',
+                  borderRadius: '16px', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
                   boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '40px', height: '40px', borderRadius: '11px',
-                      background: `linear-gradient(135deg, ${color}22 0%, ${color}0e 100%)`,
-                      border: `1.5px solid ${color}30`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
-                      <Icon size={20} color={color} strokeWidth={1.75} />
-                    </div>
-                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, minWidth: 0, overflowWrap: 'break-word' }}>{title}</h3>
-                  </div>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-                    {text}
-                  </p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    {items.map(item => (
-                      <li key={item} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--text-secondary)', flexShrink: 0, opacity: 0.4 }} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={href} style={{
-                    marginTop: 'auto', height: '40px', borderRadius: '10px',
-                    background: color, color: '#fff', fontSize: '13px', fontWeight: 700,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    textDecoration: 'none',
+                  <div style={{
+                    height: '96px', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: `color-mix(in srgb, ${color} 11%, var(--bg-soft))`,
                   }}>
-                    <Icon size={14} />{cta}
-                  </Link>
+                    <span style={{
+                      width: '54px', height: '54px', borderRadius: '15px',
+                      background: `color-mix(in srgb, ${color} 18%, transparent)`, color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }} aria-hidden>
+                      <Icon size={27} strokeWidth={1.75} />
+                    </span>
+                  </div>
+                  <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, minWidth: 0, overflowWrap: 'break-word' }}>{title}</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                      {text}
+                    </p>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {items.map(item => (
+                        <li key={item} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--text-secondary)', flexShrink: 0, opacity: 0.4 }} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href={href} style={{
+                      marginTop: 'auto', height: '40px', borderRadius: '10px',
+                      background: color, color: '#fff', fontSize: '13px', fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      textDecoration: 'none',
+                    }}>
+                      <Icon size={14} />{cta}
+                    </Link>
+                  </div>
                 </div>
               </Reveal>
             ))}
@@ -339,25 +305,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      {/* Categories carousel + interactive preview */}
-      {categories.length > 0 && (
-        <section className="home-category-section" style={{ background: 'var(--bg-soft)', padding: '20px 0 44px', borderTop: '1px solid var(--border)' }}>
-          <div className="page-container">
-            <Reveal>
-              <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '6px' }}>
-                Швидкий перегляд товарів
-              </h2>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
-                Оберіть категорію зліва — і подивіться товари з цінами, не залишаючи головну
-              </p>
-            </Reveal>
-            <Reveal delay={80}>
-              <CategorySection categories={categories} products={products} reviewStats={reviewStats} />
-            </Reveal>
-          </div>
-        </section>
-      )}
 
       {/* Warehouse + Map section */}
       <section style={{ background: 'var(--bg-card)', padding: '60px 0', borderTop: '1px solid var(--border)' }}>
@@ -380,7 +327,7 @@ export default async function Home() {
             <Reveal y={26} duration={1600} style={{ height: '100%' }}>
             <div className="home-warehouse-card" style={{
               position: 'relative', overflow: 'hidden',
-              borderRadius: '20px',
+              borderRadius: '16px',
               // Фірмовий градієнт hero — фото лягає поверх нього multiply-шаром
               background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
               height: '360px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
@@ -443,8 +390,115 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Як ми працюємо */}
+      <section style={{ background: 'var(--bg-soft)', padding: '56px 0', borderTop: '1px solid var(--border)' }}>
+        <div className="page-container">
+          <Reveal>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '8px' }}>
+              Як ми працюємо
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
+              Прозора та проста схема від замовлення до доставки
+            </p>
+          </Reveal>
+          <div className="how-we-work-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gap: '16px',
+          }}>
+            {[
+              { icon: ShoppingCart, title: 'Оформіть замовлення',    text: 'Додайте товари в кошик або надішліть запит менеджеру — як зручно', color: '#7B8CC8' },
+              { icon: Phone,        title: 'Підтвердження',          text: 'Менеджер зв’яжеться, узгодить оплату та деталі відправки',        color: '#4880B8' },
+              { icon: PackageCheck, title: 'Комплектація замовлення', text: 'Збираємо замовлення та передаємо перевізнику', color: '#35809E' },
+              { icon: Truck,        title: 'Отримання',              text: 'Нова Пошта або точка видачі ROZETKA — у будь-якому місті України', color: '#C06A45' },
+            ].map(({ icon: Icon, title, text, color }, i) => (
+              <Reveal key={title} delay={i * 110} style={{ height: '100%' }}>
+                <div className="home-step-card" style={{
+                  height: '100%',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '16px', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+                }}>
+                  <div style={{
+                    position: 'relative', overflow: 'hidden',
+                    height: '96px', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: `color-mix(in srgb, ${color} 11%, var(--bg-soft))`,
+                  }}>
+                    <span aria-hidden style={{
+                      position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-52%)',
+                      fontSize: '72px', fontWeight: 800, lineHeight: 1,
+                      color: `color-mix(in srgb, ${color} 24%, transparent)`,
+                      userSelect: 'none',
+                    }}>{i + 1}</span>
+                    <span style={{
+                      position: 'relative', width: '54px', height: '54px', borderRadius: '15px',
+                      background: `color-mix(in srgb, ${color} 18%, transparent)`, color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }} aria-hidden>
+                      <Icon size={27} strokeWidth={1.75} />
+                    </span>
+                  </div>
+                  <div style={{ padding: '16px 20px 18px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>{title}</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{text}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* CTA */}
+      <section className="home-cta-section" style={{ background: 'var(--bg-soft)', padding: '0 0 52px' }}>
+        <div className="page-container">
+          <Reveal>
+            <div style={{
+              background: 'color-mix(in srgb, var(--brand-teal) 8%, var(--bg-card))',
+              border: '1px solid color-mix(in srgb, var(--brand-teal) 28%, var(--border))',
+              borderRadius: '16px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+              padding: '28px 32px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: '20px', flexWrap: 'wrap',
+            }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+                  Готові зробити замовлення?
+                </h2>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
+                  Магазин — без реєстрації. Оптовий каталог — після входу в акаунт.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <Link href="/shop" className="btn-primary" style={{
+                  height: '44px', padding: '0 24px', borderRadius: '10px',
+                  background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700,
+                  display: 'inline-flex', alignItems: 'center', gap: '7px',
+                }}>
+                  <Store size={15} />До магазину
+                </Link>
+                <Link href="/login?next=/catalog" style={{
+                  height: '44px', padding: '0 24px', borderRadius: '10px',
+                  border: '1.5px solid var(--border)', color: 'var(--text-secondary)',
+                  fontSize: '14px', fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'var(--bg-card)',
+                  textDecoration: 'none',
+                }}>
+                  <LayoutGrid size={15} />Оптовий каталог
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* Blog with scroll arrows */}
-      <section style={{ background: 'var(--bg-soft)', padding: '48px 0', borderTop: '1px solid var(--border)' }}>
+      <section style={{ background: 'var(--bg-card)', padding: '48px 0', borderTop: '1px solid var(--border)' }}>
         <div className="page-container">
           <Reveal>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '28px' }}>
@@ -456,38 +510,6 @@ export default async function Home() {
               </Link>
             </div>
             <BlogCarousel articles={blogArticles} />
-          </Reveal>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="home-cta-section" style={{ background: 'radial-gradient(700px 320px at 82% -20%, rgba(94,234,212,0.13), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)', padding: '28px 0', textAlign: 'center' }}>
-        <div className="page-container">
-          <Reveal>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '10px' }}>
-              Готові зробити замовлення?
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '28px' }}>
-              Магазин — без реєстрації. Оптовий каталог — після входу в акаунт.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <Link href="/shop" className="btn-primary" style={{
-                height: '44px', padding: '0 24px', borderRadius: '10px',
-                background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700,
-                display: 'inline-flex', alignItems: 'center', gap: '7px',
-              }}>
-                <Store size={15} />До магазину
-              </Link>
-              <Link href="/login?next=/catalog" style={{
-                height: '44px', padding: '0 24px', borderRadius: '10px',
-                border: '1px solid rgba(255,255,255,0.12)', color: '#94A3B8',
-                fontSize: '14px', fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'transparent',
-                textDecoration: 'none',
-              }}>
-                <LayoutGrid size={15} />Оптовий каталог
-              </Link>
-            </div>
           </Reveal>
         </div>
       </section>

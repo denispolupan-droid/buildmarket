@@ -7,7 +7,8 @@ import { ChevronLeft, ChevronRight, Heart, Eye, ShoppingCart, Check } from 'luci
 import ProductImage from './ProductImage';
 import WholesaleNoticeModal from './WholesaleNoticeModal';
 import { RatingBadge } from './StarRating';
-import { getCatIcon, getCatColor, catDescription } from './CategoryCarousel';
+import { getCatIcon, getCatColor } from './CategoryCarousel';
+import { categoryAccent, categoryIcon } from '../../lib/category-icons';
 import { getCategoryNameRu } from '../../lib/ru';
 import { useCart } from '../../lib/cart';
 import { useWishlist } from '../../lib/wishlist';
@@ -128,7 +129,7 @@ const actionBtnStyle: React.CSSProperties = {
   width: '44px', height: '44px', borderRadius: '10px',
   border: '1px solid var(--border)', background: 'var(--bg-card)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  color: '#64748B', flexShrink: 0, cursor: 'pointer',
+  color: 'var(--text-secondary)', flexShrink: 0, cursor: 'pointer',
 };
 
 const PAGE_SIZE = 2;
@@ -186,7 +187,7 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <Link href={prodHref} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, textDecoration: 'none' }}>{displayName}</Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#94A3B8' }}>Арт. {product.sku}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Арт. {product.sku}</span>
             {rating && rating.count > 0 && <RatingBadge avg={rating.avg} count={rating.count} size={10} />}
           </div>
         </div>
@@ -195,12 +196,12 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
             {isSale && <span style={{ display: 'inline-block', background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '5px', marginBottom: '2px' }}>−{discount}%</span>}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', justifyContent: 'flex-end' }}>
               {isSale && priceOld && <span style={{ fontSize: '11px', color: '#EF4444', textDecoration: 'line-through', fontWeight: 600 }}>{priceOld}</span>}
-              {priceUnit > 0 ? <span style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '12px', color: '#94A3B8' }}>{lang === 'ru' ? 'По запросу' : 'За запитом'}</span>}
+              {priceUnit > 0 ? <span style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{priceUnit} грн</span> : <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{lang === 'ru' ? 'По запросу' : 'За запитом'}</span>}
             </div>
           </div>
           {inStock
             ? <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600 }}>{lang === 'ru' ? '● в наличии' : '● в наявності'}</div>
-            : <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600 }}>{lang === 'ru' ? '● нет в наличии' : '● немає в наявності'}</div>}
+            : <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>{lang === 'ru' ? '● нет в наличии' : '● немає в наявності'}</div>}
         </div>
       </div>
 
@@ -211,11 +212,11 @@ function ProductCard({ product, isRetail, bordered, lang, prefix, rating }: { pr
 
       {/* Фіксовані кнопки внизу */}
       <div style={{ padding: '12px 16px 20px', flexShrink: 0, display: 'flex', gap: '6px', alignItems: 'center' }}>
-        <button onClick={() => toggle(product.sku)} className="btn-icon" style={{ ...actionBtnStyle, width: '40px', height: '40px', color: isLiked(product.sku) ? '#EF4444' : '#64748B', background: isLiked(product.sku) ? '#FEF2F2' : 'var(--bg-card)', border: `1px solid ${isLiked(product.sku) ? '#FECACA' : 'var(--border)'}` }}>
+        <button onClick={() => toggle(product.sku)} className="btn-icon" style={{ ...actionBtnStyle, width: '40px', height: '40px', color: isLiked(product.sku) ? '#EF4444' : 'var(--text-secondary)', background: isLiked(product.sku) ? '#FEF2F2' : 'var(--bg-card)', border: `1px solid ${isLiked(product.sku) ? '#FECACA' : 'var(--border)'}` }}>
           <Heart size={15} strokeWidth={2} fill={isLiked(product.sku) ? '#EF4444' : 'none'} />
         </button>
         <input type="number" value={inputVal} min={curMinOrder} onChange={e => setInputVal(e.target.value)} onBlur={() => { const v = parseInt(inputVal, 10); const valid = !isNaN(v) && v >= curMinOrder ? v : curMinOrder; setQty(valid); setInputVal(String(valid)); }} style={{ width: '52px', height: '40px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'center', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', outline: 'none' }} />
-        <button onClick={handleAddToCart} disabled={!inStock} className={inStock && !cartAdded ? 'btn-primary' : undefined} style={{ flex: 1, height: '40px', borderRadius: '10px', background: cartAdded ? '#16A34A' : !inStock ? '#E2E8F0' : '#4880B8', color: !inStock ? '#94A3B8' : '#fff', border: 'none', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', cursor: !inStock ? 'default' : 'pointer', transition: 'background 0.2s' }}>
+        <button onClick={handleAddToCart} disabled={!inStock} className={inStock && !cartAdded ? 'btn-primary' : undefined} style={{ flex: 1, height: '40px', borderRadius: '10px', background: cartAdded ? '#16A34A' : !inStock ? '#E2E8F0' : '#4880B8', color: !inStock ? 'var(--text-muted)' : '#fff', border: 'none', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', cursor: !inStock ? 'default' : 'pointer', transition: 'background 0.2s' }}>
           {cartAdded ? <><Check size={14} strokeWidth={2.5} /> {lang === 'ru' ? 'Добавлено' : 'Додано'}</> : !inStock ? (lang === 'ru' ? 'Нет' : 'Немає') : <><ShoppingCart size={14} strokeWidth={2} /> {lang === 'ru' ? 'В корзину' : 'В кошик'}</>}
         </button>
         <Link href={prodHref} className="btn-icon" style={{ ...actionBtnStyle, width: '40px', height: '40px', textDecoration: 'none' }}>
@@ -239,8 +240,8 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
 
   const catIndex    = categories.findIndex(c => c.slug === selectedSlug);
   const category    = categories[catIndex] ?? categories[0];
-  const iconColor   = getCatColor(category?.slug ?? '', catIndex + 1);
-  const Icon        = getCatIcon(category?.slug ?? '', catIndex + 1);
+  const iconColor   = categoryAccent(category?.slug) ?? getCatColor(category?.slug ?? '', catIndex + 1);
+  const Icon        = categoryIcon(category?.slug ?? '') ?? getCatIcon(category?.slug ?? '', catIndex + 1);
   const bullets     = category ? getCatBullets(category.slug) : [];
   const categoryName = category ? (lang === 'ru' ? getCategoryNameRu(category.slug, category.name) : category.name) : '';
 
@@ -286,7 +287,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
       <div style={{
         borderRight: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column',
-        background: 'var(--bg-page)',
+        background: `color-mix(in srgb, ${iconColor} 6%, var(--bg-soft))`, transition: 'background 0.25s',
         overflow: 'hidden',
         height: '100%',
       }}>
@@ -294,11 +295,11 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
         <div style={{ padding: '32px 28px 20px', flexShrink: 0 }}>
           <Link href={catHref} className="cat-preview-header" style={{ display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none' }}>
             <div style={{
-              width: '52px', height: '52px', borderRadius: '14px', flexShrink: 0,
-              background: iconColor,
+              width: '52px', height: '52px', borderRadius: '15px', flexShrink: 0,
+              background: `color-mix(in srgb, ${iconColor} 18%, transparent)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Icon size={26} color="#fff" strokeWidth={1.75} />
+              <Icon size={26} color={iconColor} strokeWidth={1.75} />
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
               {categoryName}
@@ -354,17 +355,17 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
 
         {/* Фіксований заголовок — пагінація */}
         <div style={{ padding: '24px 24px 12px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             {lang === 'ru' ? 'Примеры товаров' : 'Приклади товарів'}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button onClick={prev} disabled={pageIdx === 0} style={{ ...navBtnStyle, color: pageIdx === 0 ? '#CBD5E1' : '#475569', cursor: pageIdx === 0 ? 'default' : 'pointer' }}>
+            <button onClick={prev} disabled={pageIdx === 0} style={{ ...navBtnStyle, color: pageIdx === 0 ? '#CBD5E1' : 'var(--text-secondary)', cursor: pageIdx === 0 ? 'default' : 'pointer' }}>
               <ChevronLeft size={15} strokeWidth={2} />
             </button>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569', minWidth: '52px', textAlign: 'center', background: 'var(--bg-soft)', borderRadius: '6px', padding: '3px 8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', minWidth: '52px', textAlign: 'center', background: 'var(--bg-soft)', borderRadius: '6px', padding: '3px 8px' }}>
               {total > 0 ? `${pageStart + 1}–${pageEnd} / ${total}` : '—'}
             </span>
-            <button onClick={next} disabled={pageEnd >= total} style={{ ...navBtnStyle, color: pageEnd >= total ? '#CBD5E1' : '#475569', cursor: pageEnd >= total ? 'default' : 'pointer' }}>
+            <button onClick={next} disabled={pageEnd >= total} style={{ ...navBtnStyle, color: pageEnd >= total ? '#CBD5E1' : 'var(--text-secondary)', cursor: pageEnd >= total ? 'default' : 'pointer' }}>
               <ChevronRight size={15} strokeWidth={2} />
             </button>
           </div>

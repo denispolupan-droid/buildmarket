@@ -100,7 +100,7 @@ export default function BlogCarousel({ articles }: { articles: Article[] }) {
             style={{
               flex: '0 0 calc(25% - 15px)',
               minWidth: '220px',
-              borderRadius: '14px',
+              borderRadius: '16px',
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
               overflow: 'hidden',

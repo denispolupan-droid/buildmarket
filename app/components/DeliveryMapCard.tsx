@@ -49,7 +49,7 @@ export default function DeliveryMapCard() {
         // Той самий фірмовий градієнт, що в hero головної та на /opt і /blog —
         // щоб картка не жила у «своєму» синьому
         background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
-        borderRadius: '20px', height: '360px',
+        borderRadius: '16px', height: '360px',
       }}>
       {/* Map — remounted (fresh key) every time it enters view, so the intro animation replays */}
       {visible && (
