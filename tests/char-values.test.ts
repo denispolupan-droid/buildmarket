@@ -277,3 +277,18 @@ describe('ґрунтовки та шпаклівки (етап 7)', () => {
     expect(canonicalCharValue('Призначення', 'Глибокопроникаюча ґрунтовка', c('Призначення'))).toBe('Ґрунтування та зміцнення поверхонь');
   });
 });
+
+describe('захист дерева (етап 8)', () => {
+  const woodParent = new Map(parentOf); for (const c of ['morylky', 'antyseptyki', 'zakhysni-pokryttya']) woodParent.set(c, 'zakhyst-derevyny');
+  const c = (label: string, cat = 'morylky'): ValueContext => ({ rules, category: cat, parentOf: woodParent });
+  it('Призначення — закритий список родини', () => {
+    expect(canonicalCharValue('Призначення', 'Декоративне тонування деревини', c('Призначення'))).toBe('Декоративне тонування деревини');
+    expect(canonicalCharValue('Призначення', 'Лазур для дерева', c('Призначення'))).toBe('Декоративне тонування деревини');
+    expect(canonicalCharValue('Призначення', 'Вогнебіозахисне просочення', c('Призначення', 'zakhysni-pokryttya'))).toBe('Вогнезахист деревини');
+    expect(canonicalCharValue('Призначення', 'Захисне просочення деревини', c('Призначення', 'zakhysni-pokryttya'))).toBe('Захисне просочення деревини');
+    expect(canonicalCharValue('Призначення', 'Захист деревини від гнилі та синяви', c('Призначення', 'antyseptyki'))).toBe('Антисептичний захист деревини');
+  });
+  it('Основа: водорозчинна → Акрилова у родині', () => {
+    expect(canonicalCharValue('Основа', 'Водорозчинна', c('Основа', 'antyseptyki'))).toBe('Акрилова');
+  });
+});
