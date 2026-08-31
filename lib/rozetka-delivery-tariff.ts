@@ -57,13 +57,38 @@ export function isRozetkaPickupOp(operationType: number): boolean {
 }
 
 /**
- * Типи, які ми свідомо НЕ проводимо. Усе, чого немає ні тут, ні в списку зборів,
- * — новий тип: про нього треба дізнатись одразу, а не через місяць розбіжності.
+ * Коригування логістичного рахунку — площадка перераховує вже списаний збір.
+ * 36 «Коригування рахунку -» додає, 35 «Коригування рахунку +» повертає.
+ *
+ * Живий випадок 06–07.08.2026: Rozetka зняла за два відправлення Meest по 49 ₴,
+ * наступного дня повернула обидва (35: +49, +49) і списала натомість по 30 ₴
+ * (36: −30, −30). Тобто реальна вартість була 30, а не 49 — і облік, який знав
+ * лише про перше списання, завис на 38 ₴ дорожче.
+ *
+ * order_id у цих рядках НЕМАЄ, рознести по замовленнях нічим — тому проводимо
+ * їх окремими операціями рівня рахунку, з ключем по operation_id.
  */
-const KNOWN_NON_FEE_OPS = [35, 36, 42, 43, 68, 73] as const;
+export const ROZETKA_LOGISTIC_ADJ_OPS = [35, 36] as const;
+
+export function isRozetkaLogisticAdj(operationType: number): boolean {
+  return (ROZETKA_LOGISTIC_ADJ_OPS as readonly number[]).includes(operationType);
+}
+
+/**
+ * Типи, які ми свідомо НЕ проводимо. Усе, чого немає ні тут, ні в списку зборів
+ * чи коригувань — новий тип: про нього треба дізнатись одразу, а не через
+ * місяць розбіжності.
+ *
+ * 42 доставка за рахунок отримувача і 43 зворотна доставка — завжди 0 ₴;
+ * 68 «Розподілення гарантійного платежу» і 73 «Повернення гарантійного платежу»
+ * грошей нам не коштують: це Rozetka переливає між своїм гарантійним депозитом
+ * і логістичним рахунком, щоб покрити вже пораховані вище збори.
+ */
+const KNOWN_NON_FEE_OPS = [42, 43, 68, 73] as const;
 
 export function isUnknownLogisticOp(operationType: number): boolean {
   return !isRozetkaPickupOp(operationType)
+    && !isRozetkaLogisticAdj(operationType)
     && !(KNOWN_NON_FEE_OPS as readonly number[]).includes(operationType);
 }
 

@@ -29,7 +29,7 @@ import { rozetkaFetch, getRozetkaLogisticOps } from './rozetka-api';
 import { recordMarketplaceServiceFee } from './accounting/money';
 import { recordTxn } from './accounting/money';
 import { alertAdmin } from './alert';
-import { isRozetkaPickupOp, isUnknownLogisticOp } from './rozetka-delivery-tariff';
+import { isRozetkaPickupOp, isUnknownLogisticOp, isRozetkaLogisticAdj } from './rozetka-delivery-tariff';
 import { rozetkaFeeKind, rozetkaActualCommission } from './rozetka-fee-kind';
 
 /** Операція логістичного балансу. debit від'ємний — це списання. */
@@ -90,6 +90,37 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
         `${kinds.join(', ')} — ${unknown.length} операцій на ${unknown.reduce((s, o) => s + Math.abs(num(o.debit)), 0)} ₴. `
         + 'Якщо це збір за видачу — додайте тип у ROZETKA_PICKUP_OP_TYPES, інакше він не потрапить в облік.',
       );
+    }
+
+    // Коригування логістичного рахунку. Rozetka перераховує вже списаний збір
+    // (06–07.08.2026: зняла за два Meest по 49 ₴, повернула обидва і списала по
+    // 30 ₴). order_id у цих рядках немає, рознести по замовленнях нічим — тому
+    // проводимо рівнем рахунку, кожну операцію окремо й за її id.
+    for (const op of all.filter(o => isRozetkaLogisticAdj(o.operation_type))) {
+      const charge = Math.abs(num(op.debit));
+      const refund = Math.abs(num(op.credit));
+      const amount = charge || refund;
+      if (!(amount > 0)) continue;
+      try {
+        await recordTxn({
+          debitAccount:   charge ? 'marketplace_fee' : 'marketplace_balance',
+          debitParty:     'rozetka',
+          creditAccount:  charge ? 'marketplace_balance' : 'marketplace_fee',
+          creditParty:    'rozetka',
+          amount,
+          docType:        'commission',
+          businessDate:   dateOf(op.transaction_ts),
+          description:    `Rozetka Доставка — організація видачі, ${op.operation_type_title.toLowerCase()} `
+                        + `(операція ${op.operation_id})`,
+          idempotencyKey: `rz-logistic-adj:rozetka:${op.operation_id}`,
+          createdBy:      'sync:rozetka-fees',
+          meta:           { kind: 'rz_logistic_adj', operation_id: op.operation_id, operation_type: op.operation_type },
+        });
+        delivery++;
+      } catch (err) {
+        errors++;
+        console.error('[rozetka-fees] logistic adjustment failed:', op.operation_id, err);
+      }
     }
 
     const charges = all.filter(o => isRozetkaPickupOp(o.operation_type) && num(o.debit) < 0);

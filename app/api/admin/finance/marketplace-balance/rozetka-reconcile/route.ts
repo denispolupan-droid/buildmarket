@@ -3,7 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { getMarketplaceBalance } from '../../../../../../lib/accounting/money';
 import { getRozetkaBalanceTotal, getRozetkaBalanceTxns, getRozetkaLogisticOps } from '../../../../../../lib/rozetka-api';
-import { isRozetkaPickupOp } from '../../../../../../lib/rozetka-delivery-tariff';
+import { isRozetkaPickupOp, isRozetkaLogisticAdj } from '../../../../../../lib/rozetka-delivery-tariff';
 import { rozetkaFeeKind } from '../../../../../../lib/rozetka-fee-kind';
 
 // Побудкова звірка з кабінетом Rozetka: тягнемо живий леджер балансу продавця
@@ -223,9 +223,14 @@ export async function GET(req: NextRequest) {
     // тут стояв літерал 34, і коли Rozetka перейшла на 106/107, стаття показувала
     // 150 ₴ проти наших 1 230 ₴ — фантомна різниця на 1 080 ₴ у бік, зворотний
     // реальному (звірка 31.08.2026).
+    // Збір ПЛЮС коригування рахунку: Rozetka перераховує вже списане (06–07.08.2026
+    // зняла за два відправлення Meest по 49 ₴, назавтра повернула обидва і списала
+    // по 30). Без коригувань стаття завищувала їхню суму на 38 ₴.
     const theirPickup = r2(logisticOps
-      .filter(o => isRozetkaPickupOp(o.operation_type) && inPeriod(String(o.transaction_ts).slice(0, 10)))
-      .reduce((s, o) => s + Math.abs(num(o.debit)), 0));
+      .filter(o => inPeriod(String(o.transaction_ts).slice(0, 10)))
+      .reduce((s, o) => (isRozetkaPickupOp(o.operation_type) || isRozetkaLogisticAdj(o.operation_type))
+        ? s + Math.abs(num(o.debit)) - Math.abs(num(o.credit))
+        : s, 0));
     const theirSubscription = r2(txns
       .filter(t => t.operationType === 5)
       .reduce((s, t) => s + num(t.debit), 0));
