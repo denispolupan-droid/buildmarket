@@ -440,7 +440,9 @@ const paint = (extraReq, def, filters = PAINT_FILTERS) => ({
   req: [...PAINT_CORE, ...extraReq, 'Країна виробника'], def, filters,
 });
 const PAINT_STANDARDS = {
-  'vodoemiulsiyni-interierni': paint(['Клас зносостійкості', ...Object.keys(TEMPS)],
+  // «Клас зносостійкості» — фільтр, але НЕ обов'язковий: у немиючих фарб класу нема,
+  // і AI не має його вигадувати (кейс «Сніжинка», рішення власника 31.08)
+  'vodoemiulsiyni-interierni': paint([...Object.keys(TEMPS)],
     { 'Основа': 'Акрилова', 'Розчинник': 'Вода', 'Тип використання': 'Внутрішні роботи', 'Поверхня': 'Стіни та стелі', 'Час висихання': '2 год', ...TEMPS },
     ['Основа', 'Ступінь блиску', 'Клас зносостійкості', 'Поверхня']),
   'vodoemiulsiyni-fasadni': paint(Object.keys(TEMPS),
