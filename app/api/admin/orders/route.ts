@@ -125,12 +125,32 @@ export async function POST(req: NextRequest) {
     deliveryType, deliverySubtype, deliveryAddress,
     deliveryCityRef, deliveryCityName, deliveryWarehouseRef,
     paymentType, comment, items, totalPrice,
-    channelCode,
+    channelCode, createdAt,
   } = body;
 
   if (!contact?.trim()) return NextResponse.json({ error: 'Вкажіть контактну особу' }, { status: 400 });
   if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: 'Додайте товари' }, { status: 400 });
   if (!['cod', 'invoice', 'cash'].includes(paymentType)) return NextResponse.json({ error: 'Невірний тип оплати' }, { status: 400 });
+
+  // Дата замовлення. Потрібна для оформлення заднім числом (телефонне записали
+  // наступного дня); від неї ж рахується дата в рахунку на оплату.
+  //
+  // Майбутню не приймаємо: замовлення, якого ще не було, ламає і сортування
+  // журналу, і будь-який звіт за період. Час беремо поточний — так у списку
+  // замовлення того самого дня стають у природному порядку.
+  let createdAtIso: string | null = null;
+  if (typeof createdAt === 'string' && createdAt.trim()) {
+    const picked = new Date(`${createdAt}T${new Date().toISOString().slice(11)}`);
+    if (Number.isNaN(picked.getTime())) {
+      return NextResponse.json({ error: 'Некоректна дата замовлення' }, { status: 400 });
+    }
+    // Доба запасу — годинник браузера й сервера можуть розходитись на години,
+    // і сьогоднішня дата з Києва не має відхилятись як «майбутня».
+    if (picked.getTime() > Date.now() + 86_400_000) {
+      return NextResponse.json({ error: 'Дата замовлення не може бути в майбутньому' }, { status: 400 });
+    }
+    createdAtIso = picked.toISOString();
+  }
 
   const db = createServiceClient();
   const orderTotal = totalPrice ?? items.reduce((s: number, i: { qty: number; price: number }) => s + i.qty * i.price, 0);
@@ -164,6 +184,8 @@ export async function POST(req: NextRequest) {
       items,
       total_price:           orderTotal,
       channel_code:          channelCode ?? 'retail',
+      // Без дати — лишаємо DEFAULT now() бази, а не час браузера
+      ...(createdAtIso ? { created_at: createdAtIso } : {}),
     })
     .select('id, order_number')
     .single();

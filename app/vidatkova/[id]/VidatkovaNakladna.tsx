@@ -2,7 +2,7 @@
 
 import { hryvniaInWords } from "../../../lib/number-to-words";
 import { useState, useRef } from 'react';
-import { Printer, Mail, FileDown, Copy, Check } from 'lucide-react';
+import { Printer, Mail, FileDown, Copy, Check, Pencil } from 'lucide-react';
 import InvoiceMessengerButtons, { copyText } from '../../components/InvoiceMessengerButtons';
 
 function formatIban(raw: string) {
@@ -16,7 +16,7 @@ export default function VidatkovaNakladna({
   docId, docNumber, docDate, lines, total,
   sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
   buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName,
-  defaultEmail, isStaff = false,
+  defaultEmail, isStaff = false, canEdit = false, docStatus,
 }: {
   docId: string;
   docNumber: string;
@@ -37,6 +37,8 @@ export default function VidatkovaNakladna({
   signatoryName?: string;
   defaultEmail?: string | null;
   isStaff?: boolean;
+  canEdit?: boolean;
+  docStatus?: string;
 }) {
   const [emailInput, setEmailInput]       = useState(defaultEmail ?? '');
   const [sending, setSending]             = useState(false);
@@ -233,6 +235,22 @@ export default function VidatkovaNakladna({
           >
             <FileDown size={15} /> Завантажити PDF
           </a>
+
+          {/* Правка — не тут, а на сторінці документа: ця форма відкрита і в
+              покупця за посиланням, тож редагування живе за адмінським входом.
+              Підпис різний навмисно: чернетку правимо напряму, проведену
+              спершу сторнуємо, і менеджер має бачити це ДО кліку. */}
+          {canEdit && (
+            <a
+              href={`/admin/accounting/documents/${docId}`}
+              title={docStatus === 'draft'
+                ? 'Змінити склад, кількість, ціни або дату'
+                : 'Накладна проведена: правки — через «Виправити» (сторно + нова чернетка)'}
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 18px', borderRadius: '10px', background: 'var(--bg-card, #fff)', color: '#1E3A5F', fontSize: '13px', fontWeight: 700, textDecoration: 'none', border: '1.5px solid #C7D7F5' }}
+            >
+              <Pencil size={15} /> {docStatus === 'draft' ? 'Редагувати' : 'Виправити'}
+            </a>
+          )}
 
           {isStaff && (
             <button

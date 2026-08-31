@@ -5,6 +5,7 @@ import { SELLER } from '../../../lib/company';
 import { loadInvoiceView } from '../../../lib/invoice-buyer';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import InvoicePrint from './InvoicePrint';
+import LinesEditor from '../../components/admin/LinesEditor';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -34,10 +35,32 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const { data: { user } } = await supabase.auth.getUser();
   const isStaff = ['admin', 'manager'].includes(user?.app_metadata?.role ?? '');
 
+  // Правка позицій — рівно тим самим редактором, що й у видатковій, і тим
+  // самим PATCH замовлення: він уже синхронізує рядки РН-чернетки й перераховує
+  // комісію маркетплейсу. Тому рахунок і накладна не розходяться самі собою.
+  const isAdmin = user?.app_metadata?.role === 'admin';
+  const editableItems = ((order.items ?? []) as { sku: string; name?: string; brand?: string | null; qty: number; price: number }[])
+    .filter(i => i?.sku)
+    .map(i => ({
+      sku: i.sku,
+      name: [i.brand, i.name].filter(Boolean).join(' ').trim() || i.sku,
+      qty: Number(i.qty),
+      price: Number(i.price ?? 0),
+    }));
+
   // UUID is unguessable — anyone with the link can view the invoice
   return (
     <InvoicePrint
       isStaff={isStaff}
+      editor={isAdmin && editableItems.length > 0 ? (
+        <LinesEditor
+          target={{ kind: 'order', orderId: order.id }}
+          docDate={order.created_at}
+          initial={editableItems}
+          title="Редагування рахунку"
+          hint="Правки йдуть у замовлення — і рахунок, і видаткова візьмуть їх звідти."
+        />
+      ) : null}
       order={order}
       buyer={buyer}
       showDelivery={showDelivery}

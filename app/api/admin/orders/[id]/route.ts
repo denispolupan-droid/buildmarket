@@ -16,6 +16,8 @@ import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission'
 import { completeOrderDelivery, syncDraftShipmentTracking } from '../../../../../lib/accounting/completion';
 import { notifyCustomer } from '../../../../../lib/notify/send';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
+import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';
+import { checkSaleEdit, recordSaleEdit } from '../../../../../lib/accounting/edit-journal';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -44,6 +46,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Причина скасування для Rozetka (id статусу групи 3) — обирає менеджер
     // при скасуванні rozetka-замовлення; без неї скасування в кабінет не пушиться
     rozetka_cancel_reason,
+    // Дата замовлення — з неї ж рахується дата в рахунку на оплату
+    createdAt,
   } = body;
 
   const db = createServiceClient();
@@ -119,6 +123,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (supplier_confirmed !== undefined) update.supplier_confirmed = supplier_confirmed;
   if (bodyItems !== undefined)          update.items              = bodyItems;
   if (bodyTotalPrice !== undefined)     update.total_price         = bodyTotalPrice;
+
+  // Позиції прийшли без підсумку — рахуємо його з рядків самі. Так робить
+  // редактор рахунку: сума в документі не може розійтися з його ж рядками,
+  // навіть якщо клієнтський код колись помилиться в арифметиці.
+  if (bodyItems !== undefined && bodyTotalPrice === undefined) {
+    const parsed = parseSaleLines(bodyItems);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    update.total_price = parsed.total;
+  }
+
+  if (createdAt !== undefined) {
+    const picked = new Date(`${String(createdAt).slice(0, 10)}T${new Date().toISOString().slice(11)}`);
+    if (Number.isNaN(picked.getTime())) {
+      return NextResponse.json({ error: 'Некоректна дата замовлення' }, { status: 400 });
+    }
+    if (picked.getTime() > Date.now() + 86_400_000) {
+      return NextResponse.json({ error: 'Дата замовлення не може бути в майбутньому' }, { status: 400 });
+    }
+    update.created_at = picked.toISOString();
+  }
   if (delivery_type !== undefined)      update.delivery_type       = delivery_type;
   if (delivery_subtype !== undefined)   update.delivery_subtype    = delivery_subtype;
   if (delivery_city_name !== undefined) update.delivery_city_name  = delivery_city_name;
@@ -161,8 +185,50 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .eq('status', 'draft');
   }
 
+  // ── Страж ручної правки продажу ──────────────────────────────────────────
+  // Позиції й дату замовлення правлять із трьох екранів (картка, рахунок,
+  // видаткова), і всі три впливають на виручку, COGS і комісію маркетплейсу.
+  // Поки що страж лише СПОСТЕРІГАЄ (див. EDIT_GUARD_ENFORCE у sale-edit-guard):
+  // правку пропускає, але лишає слід у журналі й повертає менеджерові
+  // зауваження — до того, як документ надрукують і віддадуть клієнту.
+  let editCtx: Awaited<ReturnType<typeof checkSaleEdit>> | null = null;
+  let itemsBefore: unknown = null;
+  let editWarnings: string[] = [];
+  if (bodyItems !== undefined || createdAt !== undefined) {
+    const { data: before } = await db.from('orders').select('items').eq('id', id).maybeSingle();
+    itemsBefore = before?.items ?? null;
+    editCtx = await checkSaleEdit({
+      orderId: id,
+      source: body.edit_source === 'invoice' ? 'invoice' : 'order-card',
+      totalAfter: update.total_price !== undefined ? Number(update.total_price) : undefined,
+      dateAfter: (update.created_at as string | undefined) ?? null,
+    });
+    editWarnings = editCtx.verdict.warnings.map(w => w.message);
+    if (!editCtx.verdict.allowed) {
+      await recordSaleEdit(editCtx, {
+        by: user.email ?? 'admin',
+        totalAfter: Number(update.total_price ?? editCtx.totalBefore),
+        dateAfter: (update.created_at as string | undefined) ?? null,
+        itemsBefore, itemsAfter: bodyItems ?? null, blocked: true,
+      });
+      return NextResponse.json({
+        error: editCtx.verdict.blockers[0].message,
+        blockers: editCtx.verdict.blockers.map(b => b.message),
+      }, { status: 409 });
+    }
+  }
+
   const { error } = await db.from('orders').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (editCtx) {
+    await recordSaleEdit(editCtx, {
+      by: user.email ?? 'admin',
+      totalAfter: Number(update.total_price ?? editCtx.totalBefore),
+      dateAfter: (update.created_at as string | undefined) ?? null,
+      itemsBefore, itemsAfter: bodyItems ?? null, blocked: false,
+    });
+  }
 
   // ── Редагування позицій → синхронізуємо рядки РН-чернетки ────────────────
   // Комісія маркетплейсу/виручка/COGS рахуються при доставці по рядках РН, а не
@@ -174,15 +240,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const lineItems = bodyItems
         .filter((i: { sku?: string }) => i?.sku)
         .map((i: { sku: string; qty: number; price: number }) => ({ sku: i.sku, qty: Number(i.qty), price: Number(i.price) }));
-      const res = await syncSaleDraftLines(id, lineItems, user.email ?? 'admin');
-      if (res.needsManual) {
-        alertAdmin(
-          `Правку позицій замовлення не проведено автоматично в обліку (order ${id}, причина: ${res.reason})`,
-          res.reason === 'confirmed_sale_doc'
-            ? 'РН вже проведена (доставлено) — перевірте виручку/комісію та за потреби оформіть коригування вручну.'
-            : 'Кілька РН-чернеток по замовленню (мультипосилка) — оновіть потрібну РН вручну.',
-        );
-      }
+      // Про needsManual тут більше не алертимо: ті самі два випадки (проведена
+      // РН, кілька чернеток) страж ловить ДО збереження — з текстом для
+      // менеджера і слідом у журналі. Два листи про одну подію лише привчають
+      // їх не читати.
+      await syncSaleDraftLines(id, lineItems, user.email ?? 'admin');
     } catch (err) {
       alertAdmin(`Синхронізація рядків РН після правки позицій не пройшла (order ${id})`, err);
     }
@@ -548,6 +610,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({
     ok: true,
+    // Зауваження стража — не помилка: правку збережено, але менеджер має їх
+    // побачити (оплачено більше, ніж лишилось у сумі; чужий місяць; МП тощо).
+    ...(editWarnings.length ? { warnings: editWarnings } : {}),
     ...(computedDueDate ? { payment_due_date: computedDueDate } : {}),
     // Щоб журнал одразу показав нового отримувача, не перезавантажуючи список
     ...(customer_id !== undefined

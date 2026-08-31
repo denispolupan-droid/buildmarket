@@ -34,6 +34,7 @@ type Order = {
 
 export default function InvoicePrint({
   order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '', isStaff = false, buyer, showDelivery = true, showTerms = true,
+  editor = null,
 }: {
   order: Order;
   bankRecipient: string;
@@ -43,6 +44,8 @@ export default function InvoicePrint({
   bankAddress?: string;
   signatoryName?: string;
   isStaff?: boolean;
+  /** Редактор позицій; передається зі сторінки тільки адміну */
+  editor?: React.ReactNode;
   buyer?: InvoiceBuyer;
   showDelivery?: boolean;
   showTerms?: boolean;
@@ -320,6 +323,13 @@ export default function InvoicePrint({
               <strong>Дякуємо! Оплату отримано.</strong> Банк підтверджує платіж — статус замовлення
               оновиться протягом кількох хвилин, менеджер отримає сповіщення автоматично.
             </div>
+          </div>
+        )}
+        {/* Редактор позицій — тільки для адміна і тільки на екрані. Стоїть над
+            самим бланком: спершу правиш, потім бачиш результат у документі. */}
+        {editor && (
+          <div className="no-print" style={{ maxWidth: '210mm', margin: '0 auto 16px' }}>
+            {editor}
           </div>
         )}
         <div className="doc-wrap" style={{

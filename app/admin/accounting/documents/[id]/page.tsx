@@ -2,11 +2,13 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, X, Printer } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import ReturnButton from '../../../procurement/[id]/ReturnButton';
 import CorrectButton from '../CorrectButton';
 import DocChain from '../../../procurement/[id]/DocChain';
 import PrintButton from '../../../components/PrintButton';
+import LinesEditor from '../../../../components/admin/LinesEditor';
+import PrintDocMenu from '../PrintDocMenu';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +104,24 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
   const isSale = doc.doc_type === 'sale';
 
+  // Рахунок на оплату будується із ЗАМОВЛЕННЯ, видаткова — з цього документа.
+  // Це різні папери за природою (рахунок до оплати, накладна при відвантаженні),
+  // і після ручної правки рядків вони легко розходяться. Мовчати про це не
+  // можна: менеджер віддасть клієнту два документи з різними сумами й дізнається
+  // про це вже від клієнта.
+  const { data: srcOrder } = isSale && doc.order_id
+    ? await db.from('orders').select('id, order_number, items, total_price').eq('id', doc.order_id).maybeSingle()
+    : { data: null };
+
+  const fingerprint = (rows: { sku: string; qty: number; price: number }[]) =>
+    rows.map(r => `${r.sku}:${Number(r.qty)}:${Number(r.price)}`).sort().join('|');
+
+  const printDiverged = Boolean(
+    srcOrder
+    && fingerprint((lines ?? []) as { sku: string; qty: number; price: number }[])
+       !== fingerprint(((srcOrder.items ?? []) as { sku: string; qty: number; price: number }[])),
+  );
+
   // totalCost — сума рядків БЕЗ landed cost (оригінальні ціни з PO або з рядків якщо немає LC)
   const totalCost = (lines ?? []).reduce((s: number, l: { sku: string; qty: number; cost_price: number }) => {
     const origPrice = hasLandedCost ? (originalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0)) : Number(l.cost_price ?? 0);
@@ -168,14 +188,12 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           <DocChain poId={doc.doc_type === 'purchase_order' ? id : doc.parent_doc_id!} />
         )}
         {isSale ? (
-          <a
-            href={`/vidatkova/${id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}
-          >
-            <Printer size={14} /> Друк
-          </a>
+          <PrintDocMenu
+            docId={id}
+            orderId={srcOrder?.id ?? null}
+            orderNumber={srcOrder?.order_number ?? null}
+            diverged={printDiverged}
+          />
         ) : (
           <PrintButton />
         )}
@@ -266,8 +284,23 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         );
       })()}
 
+      {/* Чернетку видаткової редагуємо прямо тут; проведену — тільки через
+          «Виправити», інакше друкована форма розійшлася б з обліком. */}
+      {isSale && doc.status === 'draft' && (
+        <LinesEditor
+          target={{ kind: 'sale-doc', docId: id }}
+          docDate={doc.doc_date}
+          initial={(lines ?? []).map((l: { sku: string; qty: number; price: number }) => ({
+            sku: l.sku,
+            name: nameMap.get(l.sku) || l.sku,
+            qty: Number(l.qty),
+            price: Number(l.price ?? 0),
+          }))}
+        />
+      )}
+
       {/* Lines table — standard docs only */}
-      {doc.doc_type !== 'price_change' && (
+      {!(isSale && doc.status === 'draft') && doc.doc_type !== 'price_change' && (
       <div className="adm-scroll-x" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Товари</span>

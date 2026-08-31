@@ -36,7 +36,15 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     ".next-build/types/**/*.ts",
-    ".next-build/dev/types/**/*.ts"
+    ".next-build/dev/types/**/*.ts",
+    ".next-verify/types/**/*.ts",
+    ".next-verify/dev/types/**/*.ts",
+    ".next-check/types/**/*.ts",
+    ".next-check/dev/types/**/*.ts",
+    ".next-devcheck/types/**/*.ts",
+    ".next-devcheck/dev/types/**/*.ts",
+    ".next-gate/types/**/*.ts",
+    ".next-gate/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

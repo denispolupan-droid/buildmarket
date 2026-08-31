@@ -44,6 +44,19 @@ const sinp: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+/**
+ * Сьогодні за Києвом у форматі поля `type="date"`.
+ *
+ * Не `toISOString().slice(0,10)`: той віддає UTC, і після 21:00 (взимку 22:00)
+ * форма пропонувала б завтрашній день — а майбутню дату ми не приймаємо.
+ */
+function todayKyiv(): string {
+  const [d, m, y] = new Intl.DateTimeFormat('uk-UA', {
+    timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(new Date()).split('.');
+  return `${y}-${m}-${d}`;
+}
+
 const CHANNEL_OPTIONS = [
   { value: 'retail', label: 'Магазин / самовивіз' },
   { value: 'phone',  label: 'Телефон' },
@@ -194,6 +207,7 @@ export default function NewOrderModal({
   const [email,            setEmail]            = useState(initialData.email);
   const [company,          setCompany]          = useState(initialData.company);
   const [channelCode,      setChannelCode]      = useState(initialData.channelCode || 'retail');
+  const [orderDate,        setOrderDate]        = useState(todayKyiv());
   const [delivery,         setDelivery]         = useState(initialData.delivery || 'pickup');
   const [novaSubtype,      setNovaSubtype]      = useState<'warehouse' | 'courier' | 'postomat' | ''>(
     (initialData.novaSubtype as 'warehouse' | 'courier' | 'postomat' | '') || ''
@@ -598,6 +612,9 @@ export default function NewOrderModal({
       })),
       totalPrice: total,
       channelCode,
+      // Порожнє поле не шлемо взагалі: сервер тоді лишає now() з БД, і
+      // «сьогоднішнє» замовлення не залежить від годинника браузера.
+      ...(orderDate && orderDate !== todayKyiv() ? { createdAt: orderDate } : {}),
     };
   }
 
@@ -808,21 +825,48 @@ export default function NewOrderModal({
           {/* Scrollable body */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* Channel */}
-            <div>
-              <label style={lbl}>Канал</label>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {CHANNEL_OPTIONS.map(ch => (
-                  <button key={ch.value} onClick={() => setChannelCode(ch.value)}
-                    style={{
-                      padding: '5px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                      border: `1.5px solid ${channelCode === ch.value ? '#1E3A5F' : 'var(--border)'}`,
-                      background: channelCode === ch.value ? '#1E3A5F' : 'var(--bg-soft)',
-                      color: channelCode === ch.value ? '#fff' : 'var(--text-secondary)',
-                    }}>
-                    {ch.label}
-                  </button>
-                ))}
+            {/* Channel + дата замовлення */}
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <label style={lbl}>Канал</label>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {CHANNEL_OPTIONS.map(ch => (
+                    <button key={ch.value} onClick={() => setChannelCode(ch.value)}
+                      style={{
+                        padding: '5px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        border: `1.5px solid ${channelCode === ch.value ? '#1E3A5F' : 'var(--border)'}`,
+                        background: channelCode === ch.value ? '#1E3A5F' : 'var(--bg-soft)',
+                        color: channelCode === ch.value ? '#fff' : 'var(--text-secondary)',
+                      }}>
+                      {ch.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Дата замовлення. Потрібна, коли замовлення оформлюють заднім
+                  числом — телефонне записали наступного дня, самовивіз провели
+                  через два. Від неї ж рахується дата в рахунку на оплату. */}
+              <div style={{ flexShrink: 0 }}>
+                <label style={lbl}>Дата замовлення</label>
+                <input
+                  type="date"
+                  value={orderDate}
+                  max={todayKyiv()}
+                  onChange={e => setOrderDate(e.target.value)}
+                  title="За замовчуванням сьогодні. Майбутню дату поставити не можна."
+                  style={{
+                    height: '30px', padding: '0 10px', borderRadius: '7px', fontSize: '12px',
+                    border: `1.5px solid ${orderDate !== todayKyiv() ? '#B45309' : 'var(--border)'}`,
+                    background: orderDate !== todayKyiv() ? '#FFFBEB' : 'var(--bg-soft)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                {orderDate !== todayKyiv() && (
+                  <div style={{ fontSize: '10.5px', color: '#B45309', marginTop: '3px', maxWidth: '190px', lineHeight: 1.35 }}>
+                    Заднім числом. Номер усе одно видається наступний по порядку.
+                  </div>
+                )}
               </div>
             </div>
 
