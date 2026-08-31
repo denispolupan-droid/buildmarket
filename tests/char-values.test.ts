@@ -70,8 +70,8 @@ describe('Основа — лише у фарбах', () => {
   it('правило родини діє через ланцюжок предків (moltkovi → farby-3v1 → farby)', () => {
     expect(canon('Основа', 'алкідна (гліфталева смола)', 'moltkovi-farby')).toBe('Алкідна');
   });
-  it('поза фарбами «Основа» не чіпається: бітум у мастиках; колоранти — акрилові', () => {
-    expect(canon('Основа', 'Бітумна емульсія на водній основі', 'bitumni-mastyky')).toBe('Бітумна емульсія на водній основі');
+  it('«Основа»: мастики тепер канонізуються (етап 9); колоранти — акрилові', () => {
+    expect(canon('Основа', 'Бітумна емульсія на водній основі', 'bitumni-mastyky')).toBe('Бітумна');
     expect(canon('Основа', 'Водна', 'koloranty')).toBe('Акрилова');
     expect(canon('Основа', 'Акрилатна', 'koloranty')).toBe('Акрилова');
     expect(canon('Основа', 'Акрилова дисперсія', null)).toBe('Акрилова дисперсія');
@@ -151,7 +151,7 @@ describe('buildValueRules', () => {
 describe('applicableValues / valueInDictionary', () => {
   it('значення лейбла для категорії — лише ті, що діють у її родині', () => {
     expect(applicableValues('Основа', ctx('Основа', 'moltkovi-farby'))).toEqual(['Алкідна', 'Латексна', 'Силіконова', 'Акрилова']);
-    expect(applicableValues('Основа', ctx('Основа', 'bitumni-mastyky'))).toEqual([]);
+    expect(applicableValues('Основа', ctx('Основа', 'bitumni-mastyky'))).toEqual(['Бітумно-каучукова', 'Бітумна', 'Акрилова', 'Полімерна', 'Цементна']);
     expect(applicableValues('Ступінь блиску', ctx('Ступінь блиску', null))).toHaveLength(4);
   });
   it('у довіднику — канон або точний синонім; регекс-збіг НЕ рахується', () => {
@@ -159,7 +159,8 @@ describe('applicableValues / valueInDictionary', () => {
     expect(valueInDictionary('Основа', 'Алкідна', c)).toBe(true);
     expect(valueInDictionary('Основа', 'водоемульсійна', c)).toBe(true); // аліас Акрилової
     expect(valueInDictionary('Основа', 'Акрилова дисперсія (водна база)', c)).toBe(false);
-    expect(valueInDictionary('Основа', 'Бітум', ctx('Основа', 'bitumni-mastyky'))).toBe(true); // без правил — вільний текст
+    expect(valueInDictionary('Основа', 'Бітумна', ctx('Основа', 'bitumni-mastyky'))).toBe(true);
+    expect(valueInDictionary('Основа', 'Бутилкаучук', ctx('Основа', 'hermetyzuyucha-strichka'))).toBe(true); // без правил — вільний текст
   });
   it('multiselect — кожен шматок через «;» має бути в довіднику', () => {
     const c = ctx('Поверхня', 'laky');
@@ -290,5 +291,20 @@ describe('захист дерева (етап 8)', () => {
   });
   it('Основа: водорозчинна → Акрилова у родині', () => {
     expect(canonicalCharValue('Основа', 'Водорозчинна', c('Основа', 'antyseptyki'))).toBe('Акрилова');
+  });
+});
+
+describe('гідроізоляція (етап 9)', () => {
+  const hydroParent = new Map(parentOf); for (const c of ['bitumni-mastyky', 'hidroizolyatsiyni-mastyky', 'praimery', 'izolyatsiyni-strichky']) hydroParent.set(c, 'hidroizolyatsiya');
+  const c = (label: string, cat = 'bitumni-mastyky'): ValueContext => ({ rules, category: cat, parentOf: hydroParent });
+  it('Основа мастик: каучук перед бітумом, стрічки не чіпаються', () => {
+    expect(canonicalCharValue('Основа', 'Модифікований бітум з каучуковими полімерами', c('Основа'))).toBe('Бітумно-каучукова');
+    expect(canonicalCharValue('Основа', 'Бітум', c('Основа'))).toBe('Бітумна');
+    expect(canonicalCharValue('Основа', 'Нетканий поліестер', c('Основа', 'izolyatsiyni-strichky'))).toBe('Нетканий поліестер');
+  });
+  it('Призначення родини', () => {
+    expect(canonicalCharValue('Призначення', 'Бітумно-каучуковий праймер (ґрунтовка)', c('Призначення', 'praimery'))).toBe('Ґрунтування перед гідроізоляцією');
+    expect(canonicalCharValue('Призначення', 'Герметизація швів, примикань', c('Призначення', 'izolyatsiyni-strichky'))).toBe('Герметизація швів і стиків');
+    expect(canonicalCharValue('Призначення', 'Захист від вологи', c('Призначення', 'hidroizolyatsiyni-mastyky'))).toBe('Гідроізоляція');
   });
 });
