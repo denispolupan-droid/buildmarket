@@ -305,6 +305,6 @@ describe('гідроізоляція (етап 9)', () => {
   it('Призначення родини', () => {
     expect(canonicalCharValue('Призначення', 'Бітумно-каучуковий праймер (ґрунтовка)', c('Призначення', 'praimery'))).toBe('Ґрунтування перед гідроізоляцією');
     expect(canonicalCharValue('Призначення', 'Герметизація швів, примикань', c('Призначення', 'izolyatsiyni-strichky'))).toBe('Герметизація швів і стиків');
-    expect(canonicalCharValue('Призначення', 'Захист від вологи', c('Призначення', 'hidroizolyatsiyni-mastyky'))).toBe('Гідроізоляція');
+    expect(canonicalCharValue('Призначення', 'Захист від вологи', c('Призначення', 'hidroizolyatsiyni-mastyky'))).toBe('Гідроізоляція вологих приміщень');
   });
 });
