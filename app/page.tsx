@@ -289,7 +289,7 @@ export default async function Home() {
                         </li>
                       ))}
                     </ul>
-                    <Link href={href} style={{
+                    <Link href={href} className="btn-lift" style={{
                       marginTop: 'auto', height: '40px', borderRadius: '10px',
                       background: color, color: '#fff', fontSize: '13px', fontWeight: 700,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -482,7 +482,7 @@ export default async function Home() {
                 }}>
                   <Store size={15} />До магазину
                 </Link>
-                <Link href="/login?next=/catalog" style={{
+                <Link href="/login?next=/catalog" className="btn-lift" style={{
                   height: '44px', padding: '0 24px', borderRadius: '10px',
                   border: '1.5px solid var(--border)', color: 'var(--text-secondary)',
                   fontSize: '14px', fontWeight: 600,

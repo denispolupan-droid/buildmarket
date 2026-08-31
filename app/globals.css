@@ -2896,3 +2896,8 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
   .apl-cols { columns: 1; }
 }
 
+
+/* Кнопки з власним кольором (формати, «Оптом», світлий CTA): підйом на ховер
+   без зміни фону — btn-primary тут не підходить, бо його hover фарбує фон у синій */
+.btn-lift { transition: transform 0.15s, box-shadow 0.15s, filter 0.2s; }
+.btn-lift:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22); filter: brightness(1.04); }

@@ -338,7 +338,7 @@ export default function CategoryPreview({ categories, products, selectedSlug, ro
           }}>
             {lang === 'ru' ? 'В магазин →' : 'До магазину →'}
           </Link>
-          <Link href={wholesaleHref} style={{
+          <Link href={wholesaleHref} className="btn-lift" style={{
             flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             height: '44px', padding: '0 12px', borderRadius: '10px',
             border: '1.5px solid var(--border)', background: 'var(--bg-card)',
