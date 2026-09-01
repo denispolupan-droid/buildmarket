@@ -705,6 +705,10 @@ export default function AdminOrders({
   const [registryAdding, setRegistryAdding] = useState<string | null>(null);
   const [registryAdded,  setRegistryAdded]  = useState<Set<string>>(new Set());
   const [registryBulkLoading, setRegistryBulkLoading] = useState(false);
+  // Реєстр НП, у який востаннє додавали в цій сесії — кнопка «Друк реєстру» відкриє
+  // саме його; якщо не додавали — візьме найсвіжіший сьогоднішній зі списку НП
+  const [npSheetRef, setNpSheetRef] = useState<string | null>(null);
+  const [npSheetPrinting, setNpSheetPrinting] = useState(false);
   // Модалка вибору реєстру: якщо за сьогодні вже є відкриті реєстри — питаємо,
   // додати в один із них чи створити новий (живий випадок: друге додавання
   // за день мовчки плодило другий реєстр)
@@ -1932,10 +1936,34 @@ export default function AdminOrders({
       } catch { errors.push(`#${it.orderNumber}: мережа`); }
     }
     if (added.length) setRegistryAdded(prev => new Set([...prev, ...added]));
+    if (added.length && ref) setNpSheetRef(ref);
     setRegistryAdding(null);
     setRegistryBulkLoading(false);
     if (errors.length) alert(`Додано в реєстр: ${added.length}. Не вдалося: ${errors.length}\n${errors.join('\n')}`);
     else if (added.length) showToast(`Додано в реєстр: ${added.length}`);
+  }
+
+  /** Друк реєстру НП офіційною формою (як з кабінету). Після друку НП закриває
+   *  реєстр для нових ЕН — тому спершу «Додати в реєстр», потім друк. */
+  async function printNpRegistry() {
+    setNpSheetPrinting(true);
+    try {
+      let ref = npSheetRef;
+      if (!ref) {
+        const res = await fetch('/api/admin/registers');
+        const data = await res.json().catch(() => ({}));
+        const now = new Date();
+        const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const today = ((data.sheets ?? []) as { Ref: string; DateTime?: string }[])
+          .filter(s => String(s.DateTime ?? '').startsWith(ymd))
+          .sort((a, b) => String(b.DateTime).localeCompare(String(a.DateTime)));
+        ref = today[0]?.Ref ?? null;
+      }
+      if (!ref) { showToast('За сьогодні реєстру НП ще немає — спершу додайте ЕН у реєстр', 'error'); return; }
+      window.open(`/api/admin/registers/${ref}/pdf`, '_blank');
+    } finally {
+      setNpSheetPrinting(false);
+    }
   }
 
   async function addToRegistry(orderId: string, ttn: string) {
@@ -2243,6 +2271,18 @@ export default function AdminOrders({
                 </button>
               );
             })()}
+            {orders.some(o => selectedIds.has(o.id) && ['nova', 'nova_poshta'].includes(o.delivery_type ?? '')) && (
+              <button onClick={printNpRegistry} disabled={npSheetPrinting}
+                title="Офіційна форма реєстру з кабінету НП. Після друку НП закриває реєстр для нових ЕН — спершу додайте ЕН, потім друкуйте"
+                style={{
+                  height: '34px', padding: '0 16px', borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
+                  color: '#fff', fontSize: '13px', fontWeight: 600, cursor: npSheetPrinting ? 'wait' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '6px', opacity: npSheetPrinting ? 0.6 : 1,
+                }}>
+                <Printer size={14} /> Друк реєстру НП
+              </button>
+            )}
             {/* Скасувати — в кінці, виділено червоним */}
             <button onClick={() => setSelectedIds(new Set())} style={{
               height: '34px', padding: '0 16px', borderRadius: '8px',

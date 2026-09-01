@@ -77,3 +77,21 @@ export function sanitizeNpNote(raw: string): string {
     .trim()
     .slice(0, 200);
 }
+
+/**
+ * Офіційна друкована форма реєстру (та сама, що друкує кабінет НП): my.novaposhta.ua
+ * віддає PDF по Ref реєстру. Перевірено живим викликом 01.09.2026 (200, %PDF, ~200 КБ).
+ * Увага: після друку НП позначає реєстр Printed=1 і нові ЕН у нього вже не приймає —
+ * так само, як при друку з кабінету.
+ */
+export async function npScanSheetPdf(apiKey: string, refs: string[]): Promise<Buffer> {
+  if (!apiKey) throw new Error('API ключ НП не налаштовано');
+  if (!refs.length) throw new Error('Не вказано реєстр');
+  const segs = refs.map(r => `refs[]/${encodeURIComponent(r)}`).join('/');
+  const res = await fetch(`https://my.novaposhta.ua/scanSheet/printScanSheet/${segs}/type/pdf/apiKey/${apiKey}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!res.ok || buf.subarray(0, 4).toString() !== '%PDF') {
+    throw new Error('НП не віддала друковану форму реєстру — перевірте, що реєстр створений під ключем із Налаштувань');
+  }
+  return buf;
+}

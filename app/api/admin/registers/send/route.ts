@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { npScanSheetPdf } from '../../../../../lib/np-api';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 
@@ -157,8 +158,14 @@ export async function POST(req: NextRequest) {
 
   if (!ttns.length) return NextResponse.json({ error: 'Немає ТТН для відправки' }, { status: 400 });
 
-  // Generate PDF
-  const pdfBuffer = await generatePdf(registerNumber, sheetDate, ttns);
+  // У вкладення — офіційна форма реєстру НП (як з кабінету); власна pdfkit-верстка
+  // лишається запасним варіантом, якщо Ref невідомий або НП не відповіла.
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = registerRef ? await npScanSheetPdf(apiKey, [registerRef]) : await generatePdf(registerNumber, sheetDate, ttns);
+  } catch {
+    pdfBuffer = await generatePdf(registerNumber, sheetDate, ttns);
+  }
 
   const totalCod = ttns.reduce((s, t) => s + (t.amount || 0), 0);
   const html = `
