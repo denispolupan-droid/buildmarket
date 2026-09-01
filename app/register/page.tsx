@@ -115,9 +115,20 @@ function RegisterForm() {
       },
     });
     if (error) {
-      setError(error.message === 'User already registered'
-        ? 'Цей email вже зареєстровано. Спробуйте увійти.'
-        : 'Помилка реєстрації. Спробуйте пізніше.');
+      // Кажемо людині, ЩО саме не так: інцидент 01.09.2026 — клієнт 8 разів
+      // ловив відмову «слабкий пароль» від Supabase, а бачив «спробуйте пізніше».
+      const code = (error as { code?: string }).code ?? '';
+      if (code === 'weak_password' || /weak|easy to guess/i.test(error.message)) {
+        setError('Цей пароль надто простий або зустрічається в базах витоків. Придумайте складніший — довший, з літерами та цифрами.');
+      } else if (error.message === 'User already registered' || code === 'user_already_exists') {
+        setError('Цей email вже зареєстровано. Спробуйте увійти.');
+      } else if (code === 'over_email_send_rate_limit' || /rate limit/i.test(error.message)) {
+        setError('Забагато спроб поспіль. Зачекайте хвилину і спробуйте ще раз.');
+      } else if (/invalid.*email|email.*invalid/i.test(error.message)) {
+        setError('Перевірте email — адреса виглядає некоректною.');
+      } else {
+        setError('Помилка реєстрації. Спробуйте пізніше або напишіть нам — допоможемо.');
+      }
       setLoading(false);
     } else {
       setDone(true);
