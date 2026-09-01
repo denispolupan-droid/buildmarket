@@ -511,6 +511,24 @@ input, select { font-family: inherit; }
 }
 .home-hit-chips__label svg { color: #F59E0B; }
 .home-hit-chips__label:hover { color: var(--brand-blue); }
+/* Секція «Формат співпраці»: фірмова підкладка + eyebrow, щоб блок умов
+   не зливався з сусідами на --bg-soft */
+.home-paths-section {
+  padding: 48px 0 52px;
+  background: color-mix(in srgb, var(--brand-blue) 6%, var(--bg-soft));
+  border-top: 1px solid color-mix(in srgb, var(--brand-blue) 18%, var(--border));
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-blue) 18%, var(--border));
+}
+.home-paths-eyebrow {
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-blue);
+}
+
 /* Картка хіта: фото зверху, ціна під ним, без рамок */
 .home-hit-card {
   display: flex;

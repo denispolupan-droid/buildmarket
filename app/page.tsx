@@ -21,6 +21,7 @@ import { Truck, Store, LayoutGrid, CheckCircle, PackageCheck, ShoppingCart, Phon
 import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached, getProductsCached, getBrandsCached } from '../lib/supabase';
 import { getShowcaseSkusCached } from '../lib/showcase-server';
 import { mergeVisibleBrands } from '../lib/brands';
+import { WHOLESALE_MIN } from '../lib/site';
 import Footer from './components/Footer';
 import HomeSearch from './components/HomeSearch';
 import HeroHitChips from './components/HeroHitChips';
@@ -217,15 +218,17 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Three paths */}
-      <section style={{ background: 'var(--bg-soft)', padding: '48px 0', borderTop: '1px solid var(--border)' }}>
+      {/* Three paths — умови співпраці. Секція на фірмовій підкладці (tint
+          бренду), щоб виділятись серед сусідніх блоків на --bg-soft. */}
+      <section className="home-paths-section">
         <div className="page-container">
           <Reveal>
+            <p className="home-paths-eyebrow">Умови співпраці</p>
             <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '8px' }}>
               Оберіть зручний формат співпраці
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
-              Роздріб, опт або дропшипінг — знайдемо умови для кожного
+              Роздріб від 1 штуки, опт від {WHOLESALE_MIN.toLocaleString('uk-UA')} ₴, дропшипінг без складу
             </p>
           </Reveal>
           <div className="home-paths-grid">
@@ -258,22 +261,26 @@ export default async function Home() {
                 <div className="home-path-card" style={{
                   height: '100%',
                   background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
+                  border: `1px solid color-mix(in srgb, ${color} 28%, var(--border))`,
                   borderRadius: '16px', overflow: 'hidden',
                   display: 'flex', flexDirection: 'column',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+                  boxShadow: '0 4px 16px rgba(15,23,42,0.08)',
                 }}>
+                  {/* Шапка насиченіша (18% на білому), бо секція сама на синій підкладці —
+                      інакше шапка зливається з фоном секції */}
                   <div style={{
                     height: '96px', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: `color-mix(in srgb, ${color} 11%, var(--bg-soft))`,
+                    background: `color-mix(in srgb, ${color} 16%, var(--bg-card))`,
+                    borderBottom: `1px solid color-mix(in srgb, ${color} 16%, transparent)`,
                   }}>
                     <span style={{
                       width: '54px', height: '54px', borderRadius: '15px',
-                      background: `color-mix(in srgb, ${color} 18%, transparent)`, color,
+                      background: color, color: '#fff',
+                      boxShadow: `0 6px 16px color-mix(in srgb, ${color} 35%, transparent)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }} aria-hidden>
-                      <Icon size={27} strokeWidth={1.75} />
+                      <Icon size={26} strokeWidth={1.75} />
                     </span>
                   </div>
                   <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
@@ -425,7 +432,7 @@ export default async function Home() {
                     position: 'relative', overflow: 'hidden',
                     height: '96px', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: `color-mix(in srgb, ${color} 11%, var(--bg-soft))`,
+                    background: `color-mix(in srgb, ${color} 16%, var(--bg-card))`,
                   }}>
                     <span aria-hidden style={{
                       position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-52%)',

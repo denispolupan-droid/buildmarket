@@ -51,7 +51,7 @@ export default async function HomeCategoryCards({ categories, lang, max = HOME_C
             <div style={{
               height: '118px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: `color-mix(in srgb, ${accent} 11%, var(--bg-soft))`,
+              background: `color-mix(in srgb, ${accent} 16%, var(--bg-card))`,
             }}>
               <span style={{
                 width: '64px', height: '64px', borderRadius: '18px',
@@ -89,7 +89,7 @@ export default async function HomeCategoryCards({ categories, lang, max = HOME_C
               <Link key={c.slug} href={`${prefix}/shop?category=${c.slug}`} className="home-cat-pill"
                 style={{
                   // Заливка й межа — у кольорі родини, як у шапках карток вище
-                  background: `color-mix(in srgb, ${accent} 11%, var(--bg-card))`,
+                  background: `color-mix(in srgb, ${accent} 16%, var(--bg-card))`,
                   borderColor: `color-mix(in srgb, ${accent} 30%, transparent)`,
                 }}>
                 {icon && (

@@ -24,6 +24,7 @@ import { getPublishedPostsCached } from '../../lib/blog-db';
 import { getCategoriesCached, getPreviewProductsCached, getBrandLogosCached, getVisibleBrandLogosCached, getReviewStatsCached, getProductsCached } from '../../lib/supabase';
 import { getShowcaseSkusCached } from '../../lib/showcase-server';
 import { mergeVisibleBrands } from '../../lib/brands';
+import { WHOLESALE_MIN } from '../../lib/site';
 import Footer from '../components/Footer';
 import HomeSearch from '../components/HomeSearch';
 import HeroHitChips from '../components/HeroHitChips';
@@ -259,15 +260,16 @@ export default async function HomeRu() {
       </section>
 
 
-      {/* Три формата */}
-      <section style={{ background: 'var(--bg-card)', padding: '48px 0' }}>
+      {/* Три формата — условия сотрудничества, рецепт как в app/page.tsx (дизайн 2.0) */}
+      <section className="home-paths-section">
         <div className="page-container">
           <Reveal>
+            <p className="home-paths-eyebrow">Условия сотрудничества</p>
             <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '8px' }}>
               Выберите удобный формат сотрудничества
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
-              Розница, опт или дропшиппинг — найдём условия для каждого
+              Розница от 1 штуки, опт от {WHOLESALE_MIN.toLocaleString('uk-UA')} ₴, дропшиппинг без склада
             </p>
           </Reveal>
           <div className="home-paths-grid">
@@ -280,59 +282,65 @@ export default async function HomeRu() {
                 href: '/ru/shop', cta: 'Перейти в магазин',
               },
               {
-                icon: LayoutGrid, color: '#6366F1', title: 'Оптовый каталог',
+                icon: LayoutGrid, color: '#7B8CC8', title: 'Оптовый каталог',
                 text: 'Для дилеров, подрядчиков и магазинов. Оптовые цены и персональные условия для вашего бизнеса.',
                 items: ['Оптовые цены', 'Персональные тарифы', 'Табличный каталог', 'Счета-фактуры'],
                 // Ведёт на /ru/opt, а не сразу в /login?next=/catalog — см. app/page.tsx
                 href: '/ru/opt', cta: 'Узнать больше',
               },
               {
-                icon: PackageCheck, color: '#0891B2', title: 'Дропшиппинг',
+                icon: PackageCheck, color: '#35809E', title: 'Дропшиппинг',
                 text: 'Для онлайн-продавцов. Продавайте наши товары без склада — мы отправляем напрямую вашим клиентам.',
                 items: ['Без собственного склада', 'Актуальный XML/YML прайс', 'Простая передача заказов', 'Персональные цены'],
                 href: '/ru/dropship', cta: 'Узнать больше',
               },
             ].map(({ icon: Icon, color, title, text, items, href, cta }, i) => (
-              <Reveal key={title} delay={i * 120}>
+              <Reveal key={title} delay={i * 120} style={{ height: '100%' }}>
                 <div className="home-path-card" style={{
+                  height: '100%',
                   background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderTop: `3px solid ${color}`,
-                  borderRadius: '2px 2px 14px 14px',
-                  padding: '20px 22px 22px',
-                  display: 'flex', flexDirection: 'column', gap: '12px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+                  border: `1px solid color-mix(in srgb, ${color} 28%, var(--border))`,
+                  borderRadius: '16px', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
+                  boxShadow: '0 4px 16px rgba(15,23,42,0.08)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '40px', height: '40px', borderRadius: '11px',
-                      background: `linear-gradient(135deg, ${color}22 0%, ${color}0e 100%)`,
-                      border: `1.5px solid ${color}30`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
-                      <Icon size={20} color={color} strokeWidth={1.75} />
-                    </div>
-                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, minWidth: 0, overflowWrap: 'break-word' }}>{title}</h3>
-                  </div>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-                    {text}
-                  </p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    {items.map(item => (
-                      <li key={item} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--text-secondary)', flexShrink: 0, opacity: 0.4 }} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={href} style={{
-                    marginTop: 'auto', height: '40px', borderRadius: '10px',
-                    background: color, color: '#fff', fontSize: '13px', fontWeight: 700,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    textDecoration: 'none',
+                  <div style={{
+                    height: '96px', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: `color-mix(in srgb, ${color} 16%, var(--bg-card))`,
+                    borderBottom: `1px solid color-mix(in srgb, ${color} 16%, transparent)`,
                   }}>
-                    <Icon size={14} />{cta}
-                  </Link>
+                    <span style={{
+                      width: '54px', height: '54px', borderRadius: '15px',
+                      background: color, color: '#fff',
+                      boxShadow: `0 6px 16px color-mix(in srgb, ${color} 35%, transparent)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }} aria-hidden>
+                      <Icon size={26} strokeWidth={1.75} />
+                    </span>
+                  </div>
+                  <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, minWidth: 0, overflowWrap: 'break-word' }}>{title}</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                      {text}
+                    </p>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {items.map(item => (
+                        <li key={item} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--text-secondary)', flexShrink: 0, opacity: 0.4 }} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href={href} className="btn-lift" style={{
+                      marginTop: 'auto', height: '40px', borderRadius: '10px',
+                      background: color, color: '#fff', fontSize: '13px', fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      textDecoration: 'none',
+                    }}>
+                      <Icon size={14} />{cta}
+                    </Link>
+                  </div>
                 </div>
               </Reveal>
             ))}
