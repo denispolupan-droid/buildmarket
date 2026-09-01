@@ -108,12 +108,16 @@ export async function POST(
 
   // Скільки кожного SKU вже включено в не-скасовані РН цього замовлення (щоб не задвоїти
   // при частковій відгрузці та ретраях).
+  // Сторно-РН (reversal_of) не рахуємо: їхні рядки від'ємні, і після скасування
+  // помилкового відвантаження «вже відвантажено» ставало −1, а діалог пропонував
+  // відвантажити 2 шт замість 1 (кейс #26091002, 01.09.2026).
   const { data: existingDocs } = await db
     .from('acc_documents')
     .select('id')
     .eq('order_id', id)
     .eq('doc_type', 'sale')
-    .neq('status', 'cancelled');
+    .neq('status', 'cancelled')
+    .is('reversal_of', null);
   const existingDocIds = (existingDocs ?? []).map(d => d.id);
   const draftedBySku: Record<string, number> = {};
   if (existingDocIds.length) {

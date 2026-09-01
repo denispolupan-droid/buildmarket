@@ -229,7 +229,7 @@ export default async function AdminPage({
 
   // Відвантажені кількості — ЛИШЕ з проведених РН (чернетки сюди не входять,
   // щоб не міняти семантику кнопки «Відвантажити»)
-  const saleDocIds = (saleDocsRaw ?? []).filter(d => d.status === 'confirmed').map(d => d.id);
+  const saleDocIds = (saleDocsRaw ?? []).filter(d => d.status === 'confirmed' && !d.reversal_of).map(d => d.id); // сторно-РН (від'ємні рядки) не рахуємо — кейс #26091002, 01.09.2026
   const { data: saleLines } = saleDocIds.length
     ? await serviceClient
         .from('acc_document_lines')
