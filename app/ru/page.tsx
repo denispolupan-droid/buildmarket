@@ -203,64 +203,27 @@ export default async function HomeRu() {
       {/* Brands auto-scroll carousel — right after hero */}
       <BrandsCarousel logos={brandLogos} brands={brandTiles} />
 
-      {/* Как мы работаем */}
-      <section style={{ background: 'var(--bg-soft)', padding: '56px 0', borderTop: '1px solid var(--border)' }}>
-        <div className="page-container">
-          <Reveal>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '8px' }}>
-              Как мы работаем
-            </h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
-              Прозрачная и простая схема от заказа до доставки
-            </p>
-          </Reveal>
-          <div className="how-we-work-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '16px',
-          }}>
-            {[
-              { icon: Store,        title: 'Магазин или Опт',        text: 'Выбирайте формат: розница от 1 шт или оптовые условия для бизнеса', color: '#6366F1' },
-              { icon: ShoppingCart, title: 'Оформите заказ',          text: 'Добавьте товары в корзину или отправьте запрос менеджеру',            color: '#4880B8' },
-              { icon: Phone,        title: 'Подтверждение',           text: 'Менеджер подтвердит заказ и согласует детали',                        color: '#0891B2' },
-              { icon: Truck,        title: 'Доставка',                text: 'Новая Почта или точка выдачи ROZETKA — в любом городе Украины',       color: '#D97706' },
-            ].map(({ icon: Icon, title, text, color }, i) => (
-              <Reveal key={title} delay={i * 110}>
-                <div className="home-step-card" style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderTop: `3px solid ${color}`,
-                  borderRadius: '2px 2px 14px 14px',
-                  padding: '18px 20px 20px',
-                  display: 'flex', flexDirection: 'column', gap: '10px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '40px', height: '40px', borderRadius: '11px',
-                      background: `linear-gradient(135deg, ${color}22 0%, ${color}0e 100%)`,
-                      border: `1.5px solid ${color}30`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <Icon size={20} color={color} strokeWidth={1.75} />
-                    </div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25, flex: 1, minWidth: 0, overflowWrap: 'break-word', hyphens: 'auto', WebkitHyphens: 'auto' }}>
-                      {title}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                    {text}
-                  </div>
-                </div>
-              </Reveal>
-            ))}
+      {/* Categories carousel + interactive preview */}
+      {categories.length > 0 && (
+        <section className="home-category-section" style={{ background: 'var(--bg-soft)', padding: '20px 0 44px', borderTop: '1px solid var(--border)' }}>
+          <div className="page-container">
+            <Reveal>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '6px' }}>
+                Быстрый просмотр товаров
+              </h2>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
+                Выберите категорию слева — и посмотрите товары с ценами, не покидая главную
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <CategorySection categories={categories} products={products} reviewStats={reviewStats} />
+            </Reveal>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-
-      {/* Три формата — условия сотрудничества, рецепт как в app/page.tsx (дизайн 2.0) */}
+      {/* Three paths — умови співпраці. Секція на фірмовій підкладці (tint
+          бренду), щоб виділятись серед сусідніх блоків на --bg-soft. */}
       <section className="home-paths-section">
         <div className="page-container">
           <Reveal>
@@ -285,7 +248,10 @@ export default async function HomeRu() {
                 icon: LayoutGrid, color: '#7B8CC8', title: 'Оптовый каталог',
                 text: 'Для дилеров, подрядчиков и магазинов. Оптовые цены и персональные условия для вашего бизнеса.',
                 items: ['Оптовые цены', 'Персональные тарифы', 'Табличный каталог', 'Счета-фактуры'],
-                // Ведёт на /ru/opt, а не сразу в /login?next=/catalog — см. app/page.tsx
+                // Веде на /opt, а не одразу в /login?next=/catalog: людина, яка ще
+                // не знає умов, потрапляла прямо на форму входу. Тепер спершу
+                // сторінка з умовами, а вхід і реєстрація — кнопками на ній
+                // (як у картці дропшипінгу, рішення власника).
                 href: '/ru/opt', cta: 'Узнать больше',
               },
               {
@@ -304,6 +270,8 @@ export default async function HomeRu() {
                   display: 'flex', flexDirection: 'column',
                   boxShadow: '0 4px 16px rgba(15,23,42,0.08)',
                 }}>
+                  {/* Шапка насиченіша (18% на білому), бо секція сама на синій підкладці —
+                      інакше шапка зливається з фоном секції */}
                   <div style={{
                     height: '96px', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -349,25 +317,6 @@ export default async function HomeRu() {
         </div>
       </section>
 
-      {/* Categories carousel + interactive preview */}
-      {categories.length > 0 && (
-        <section className="home-category-section" style={{ background: 'var(--bg-soft)', padding: '20px 0 44px', borderTop: '1px solid var(--border)' }}>
-          <div className="page-container">
-            <Reveal>
-              <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '6px' }}>
-                Быстрый просмотр товаров
-              </h2>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '32px' }}>
-                Выберите категорию слева — и посмотрите товары с ценами, не покидая главную
-              </p>
-            </Reveal>
-            <Reveal delay={80}>
-              <CategorySection categories={categories} products={products} reviewStats={reviewStats} />
-            </Reveal>
-          </div>
-        </section>
-      )}
-
       {/* Warehouse + Map section */}
       <section style={{ background: 'var(--bg-card)', padding: '60px 0', borderTop: '1px solid var(--border)' }}>
         <div className="page-container">
@@ -385,15 +334,21 @@ export default async function HomeRu() {
             gap: '32px',
             alignItems: 'stretch',
           }}>
+            {/* Left: Warehouse photo card — brand top stripe (same recipe as the "Оберіть формат" / "Категорії" cards) so it reads as its own card instead of blurring into the map card next to it */}
             <Reveal y={26} duration={1600} style={{ height: '100%' }}>
             <div className="home-warehouse-card" style={{
               position: 'relative', overflow: 'hidden',
-              borderRadius: '20px',
-              // Фирменный градиент hero — фото ложится поверх multiply-слоем
+              borderRadius: '16px',
+              // Фірмовий градієнт hero — фото лягає поверх нього multiply-шаром
               background: 'radial-gradient(560px 300px at 85% -10%, rgba(94,234,212,0.14), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)',
               height: '360px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              // Isolates the stacked filter/blend-mode layers below into their own composited
+              // layer, pre-flattened before the Reveal wrapper's opacity/translateY transition
+              // runs — otherwise the browser has to re-blend all 4 layers on every animation
+              // frame, which is what made the entrance look jerky.
               isolation: 'isolate', willChange: 'opacity',
             }}>
+              {/* Photo — grayscale поверх фірмового градієнта, тонування в гамі hero */}
               <BgFadeImage src="/images/warehouse-quality.webp" style={{
                 position: 'absolute', inset: 0,
                 backgroundPosition: '22% center', backgroundSize: 'cover', backgroundRepeat: 'no-repeat',
@@ -407,16 +362,18 @@ export default async function HomeRu() {
                 background: 'linear-gradient(to top, rgba(8,15,30,0.92) 0%, rgba(8,15,30,0.15) 65%)',
               }} />
               <div className="home-warehouse-content" style={{ position: 'relative', padding: '32px 28px' }}>
-                {/* Больший отступ под заголовком поднимает строку выше — логотип
-                    FIXLINE на куртке остаётся полностью видимым */}
+                {/* Більший відступ під заголовком: він піднімає рядок вище, і логотип
+                    FIXLINE на куртці лишається повністю видимим */}
                 <h2 className="home-warehouse-title" style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '30px', lineHeight: 1.2 }}>
                   Собственный склад и контроль качества
                 </h2>
                 <ul className="home-warehouse-list" style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {[
-                    // Цифра из базы (тот же список, что кормит ленту хитов) —
-                    // раньше здесь висело «более 700», которое никто не обновлял.
-                    `${allProducts.length} товаров постоянно в наличии`,
+                    // Цифра з бази (той самий список, що годує стрічку хітів) —
+                    // раніше тут висіло «більше 700», яке ніхто не оновлював.
+                    // Без «постійно»: число живе від залишків постачальника і
+                    // змінюється щодня, тож обіцянка сталості була б неправдою.
+                    `${allProducts.length} товаров в наличии`,
                     'Ответственное хранение и соблюдение условий производителя',
                     'Контроль качества на каждом этапе',
                     'Быстрая комплектация заказов',
@@ -436,6 +393,7 @@ export default async function HomeRu() {
             </div>
             </Reveal>
 
+            {/* Right: Map card — animation starts once it scrolls into view */}
             <Reveal delay={150} y={26} duration={1600} style={{ height: '100%' }}>
               <DeliveryMapCard />
             </Reveal>
@@ -443,8 +401,115 @@ export default async function HomeRu() {
         </div>
       </section>
 
+      {/* Як ми працюємо */}
+      <section style={{ background: 'var(--bg-soft)', padding: '56px 0', borderTop: '1px solid var(--border)' }}>
+        <div className="page-container">
+          <Reveal>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: '8px' }}>
+              Как мы работаем
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '40px' }}>
+              Прозрачная и простая схема от заказа до доставки
+            </p>
+          </Reveal>
+          <div className="how-we-work-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gap: '16px',
+          }}>
+            {[
+              { icon: ShoppingCart, title: 'Оформите заказ',         text: 'Добавьте товары в корзину или отправьте запрос менеджеру — как удобно', color: '#7B8CC8' },
+              { icon: Phone,        title: 'Подтверждение',          text: 'Менеджер свяжется, согласует оплату и детали отправки',        color: '#4880B8' },
+              { icon: PackageCheck, title: 'Комплектация заказа',    text: 'Собираем заказ и передаём перевозчику', color: '#35809E' },
+              { icon: Truck,        title: 'Получение',              text: 'Новая Почта или точка выдачи ROZETKA — в любом городе Украины', color: '#C06A45' },
+            ].map(({ icon: Icon, title, text, color }, i) => (
+              <Reveal key={title} delay={i * 110} style={{ height: '100%' }}>
+                <div className="home-step-card" style={{
+                  height: '100%',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '16px', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+                }}>
+                  <div style={{
+                    position: 'relative', overflow: 'hidden',
+                    height: '96px', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: `color-mix(in srgb, ${color} 16%, var(--bg-card))`,
+                  }}>
+                    <span aria-hidden style={{
+                      position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-52%)',
+                      fontSize: '72px', fontWeight: 800, lineHeight: 1,
+                      color: `color-mix(in srgb, ${color} 24%, transparent)`,
+                      userSelect: 'none',
+                    }}>{i + 1}</span>
+                    <span style={{
+                      position: 'relative', width: '54px', height: '54px', borderRadius: '15px',
+                      background: `color-mix(in srgb, ${color} 18%, transparent)`, color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }} aria-hidden>
+                      <Icon size={27} strokeWidth={1.75} />
+                    </span>
+                  </div>
+                  <div style={{ padding: '16px 20px 18px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>{title}</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{text}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* CTA */}
+      <section className="home-cta-section" style={{ background: 'var(--bg-soft)', padding: '0 0 52px' }}>
+        <div className="page-container">
+          <Reveal>
+            <div style={{
+              background: 'color-mix(in srgb, var(--brand-teal) 8%, var(--bg-card))',
+              border: '1px solid color-mix(in srgb, var(--brand-teal) 28%, var(--border))',
+              borderRadius: '16px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+              padding: '28px 32px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: '20px', flexWrap: 'wrap',
+            }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+                  Готовы сделать заказ?
+                </h2>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
+                  Магазин — без регистрации. Оптовый каталог — после входа в аккаунт.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <Link href="/ru/shop" className="btn-primary" style={{
+                  height: '44px', padding: '0 24px', borderRadius: '10px',
+                  background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700,
+                  display: 'inline-flex', alignItems: 'center', gap: '7px',
+                }}>
+                  <Store size={15} />В магазин
+                </Link>
+                <Link href="/ru/login?next=/catalog" className="btn-lift" style={{
+                  height: '44px', padding: '0 24px', borderRadius: '10px',
+                  border: '1.5px solid var(--border)', color: 'var(--text-secondary)',
+                  fontSize: '14px', fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'var(--bg-card)',
+                  textDecoration: 'none',
+                }}>
+                  <LayoutGrid size={15} />Оптовый каталог
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* Blog with scroll arrows */}
-      <section style={{ background: 'var(--bg-soft)', padding: '48px 0', borderTop: '1px solid var(--border)' }}>
+      <section style={{ background: 'var(--bg-card)', padding: '48px 0', borderTop: '1px solid var(--border)' }}>
         <div className="page-container">
           <Reveal>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '28px' }}>
@@ -456,38 +521,6 @@ export default async function HomeRu() {
               </Link>
             </div>
             <BlogCarousel articles={blogArticles} />
-          </Reveal>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="home-cta-section" style={{ background: 'radial-gradient(700px 320px at 82% -20%, rgba(94,234,212,0.13), transparent 60%), linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #123B54 100%)', padding: '28px 0', textAlign: 'center' }}>
-        <div className="page-container">
-          <Reveal>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '10px' }}>
-              Готовы сделать заказ?
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '28px' }}>
-              Магазин — без регистрации. Оптовый каталог — после входа в аккаунт.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <Link href="/ru/shop" className="btn-primary" style={{
-                height: '44px', padding: '0 24px', borderRadius: '10px',
-                background: '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700,
-                display: 'inline-flex', alignItems: 'center', gap: '7px',
-              }}>
-                <Store size={15} />В магазин
-              </Link>
-              <Link href="/ru/login?next=/catalog" style={{
-                height: '44px', padding: '0 24px', borderRadius: '10px',
-                border: '1px solid rgba(255,255,255,0.12)', color: '#94A3B8',
-                fontSize: '14px', fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'transparent',
-                textDecoration: 'none',
-              }}>
-                <LayoutGrid size={15} />Оптовый каталог
-              </Link>
-            </div>
           </Reveal>
         </div>
       </section>
