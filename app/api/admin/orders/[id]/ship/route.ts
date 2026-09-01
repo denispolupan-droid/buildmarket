@@ -11,6 +11,7 @@ import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
 import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
+import { pickupWithTtnError } from '../../../../../../lib/orders/ship-guards';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
@@ -61,7 +62,7 @@ export async function POST(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, shipping_supplier_id, total_price, rozetka_data, fulfillment_mode')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, tracking_ref, shipping_supplier_id, total_price, rozetka_data, fulfillment_mode')
     .eq('id', id)
     .single();
 
@@ -74,6 +75,14 @@ export async function POST(
       { error: `Неможливо відвантажити із статусу "${order.status}"` },
       { status: 409 },
     );
+  }
+
+  // Самовивіз + накладна перевізника = майже напевно не той тип доставки: відвантаження
+  // самовивозу одразу проводить продаж і ставить «Доставлено» (кейс #26091002, 01.09.2026).
+  // Перевіряємо ДО будь-яких записів — нижче вже зберігається ТТН і створюється РН.
+  const pickupConflict = pickupWithTtnError(order, bodyTtn);
+  if (pickupConflict) {
+    return NextResponse.json({ error: pickupConflict }, { status: 409 });
   }
 
   // Determine which items to ship (full or partial)
