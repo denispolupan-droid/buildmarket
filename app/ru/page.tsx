@@ -190,7 +190,7 @@ export default async function HomeRu() {
           {/* zIndex: transform от Reveal создаёт stacking context — без него
               выпадашка поиска оказалась бы ПОД карточками категорий */}
           <Reveal style={{ position: 'relative', zIndex: 50 }}>
-            <div className="home-search-row">
+            <div className="home-search-bar">
               <HomeSearch lang="ru" />
               <HeroHitChips products={heroHits} lang="ru" />
             </div>
