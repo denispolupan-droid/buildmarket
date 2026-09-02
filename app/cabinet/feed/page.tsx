@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
-import { Rss, Copy } from 'lucide-react';
+import { Rss } from 'lucide-react';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,19 +52,18 @@ export default async function FeedPage() {
             ⚠️ Не передавайте це посилання третім особам — воно містить ваш особистий токен і показує ваші ціни.
           </p>
 
+          {/* Одне посилання, а не два. Раніше тут були кнопки «YML» і «XML»,
+              і друга додавала &format=xml, якого роут не читає — обидві
+              віддавали один і той самий файл. YML і є XML, підходить і
+              Prom.ua, і Horoshop, і OpenCart. */}
           <div style={{ display: 'flex', gap: '10px' }}>
-            {[
-              { format: 'yml', label: 'YML (для Prom.ua)' },
-              { format: 'xml', label: 'XML (для OpenCart)' },
-            ].map(({ format, label }) => (
-              <a key={format} href={`${feedUrl}&format=${format}`} target="_blank" rel="noopener" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                height: '36px', padding: '0 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-primary)', textDecoration: 'none',
-              }}>
-                {label}
-              </a>
-            ))}
+            <a href={feedUrl} target="_blank" rel="noopener" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              height: '36px', padding: '0 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+              border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-primary)', textDecoration: 'none',
+            }}>
+              Відкрити фід (XML/YML)
+            </a>
           </div>
         </div>
       )}
@@ -77,7 +76,7 @@ export default async function FeedPage() {
         {[
           { title: 'Prom.ua', steps: ['Магазин → Товари → Імпорт → XML/YML', 'Вставте URL фіду', 'Оберіть автооновлення: кожні 4 години'] },
           { title: 'Horoshop',  steps: ['Налаштування → Імпорт → YML', 'Вставте URL фіду', 'Увімкніть автосинхронізацію'] },
-          { title: 'OpenCart', steps: ['Модуль XML Feed Import', 'Вставте URL з параметром ?format=xml', 'Налаштуйте розклад оновлення'] },
+          { title: 'OpenCart', steps: ['Модуль XML Feed Import', 'Вставте URL фіду', 'Налаштуйте розклад оновлення'] },
         ].map(({ title, steps }) => (
           <div key={title} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--border-light)' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>{title}</div>

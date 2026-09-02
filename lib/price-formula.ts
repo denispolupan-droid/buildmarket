@@ -49,7 +49,31 @@ export function markupFromPrice(cost: number | null | undefined, price: number |
   return Math.ceil((p / c - 1) * 10000 - 1e-6) / 100;
 }
 
-/** Роздріб ніколи не нижчий за опт — інакше опт вигідніше купувати вроздріб. */
-export function retailNotBelowWholesale(retail: number, wholesale: number): number {
-  return Math.max(retail, wholesale);
+/** Округлення ВГОРУ за правилом свого тарифу: роздріб — до гривні, опт і дроп — до 0.5. */
+export function roundUpFor(kind: PriceKind, v: number): number {
+  return kind === 'retail' ? Math.ceil(v) : Math.ceil(v * 2) / 2;
+}
+
+export type PriceLadder = { retail: number; wholesale: number; drop: number };
+
+/**
+ * Сходинка цін: собівартість ≤ опт і дроп ≤ роздріб.
+ *
+ * На дешевих позиціях наценку зжирало саме округлення, і сходинка ламалась.
+ * Дюбель Masterplast 1701-010 (вхід 1.20 ₴): роздріб = floor(1.2 × 1.2) = 1.00,
+ * а дроп = round₀.₅(1.2 × 1.25) = 1.50 — тобто дропшипер купував у нас ДОРОЖЧЕ
+ * за роздрібний цінник на сайті, а опт (1.00) ішов нижче собівартості. У серпні
+ * 2026 таких позицій було сім, усі — копійчана дрібнота, і всі сім лежали в
+ * дропшип-фіді, який партнер вантажить до себе в магазин.
+ *
+ * Тому кожну ціну продажу піднімаємо щонайменше до собівартості (кроком 0.5,
+ * спільним для опту й дропу), а роздріб — не нижче за них обидві. На дешевому
+ * товарі роздріб тоді може вийти з половиною гривні замість цілої: краще цінник
+ * 1.50, ніж продаж у мінус.
+ */
+export function enforcePriceLadder(cost: number, p: PriceLadder): PriceLadder {
+  const floorAt   = roundUpFor('drop', Math.max(Number(cost) || 0, 0));
+  const wholesale = Math.max(p.wholesale, floorAt);
+  const drop      = Math.max(p.drop,      floorAt);
+  return { wholesale, drop, retail: Math.max(p.retail, wholesale, drop) };
 }

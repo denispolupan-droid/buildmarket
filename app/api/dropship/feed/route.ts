@@ -11,6 +11,11 @@ const serviceClient = createClient(
 const BASE_URL  = 'https://fixline.com.ua';
 const SHOP_NAME = 'FIXLINE';
 
+// Куди відносити товар без категорії. YML не дозволяє offer без categoryId, а
+// одна така позиція в каталозі є завжди — краще окрема «Інше», ніж товар, що
+// випав з фіда. Номер завідомо вищий за будь-який id з таблиці категорій.
+const OTHER_CATEGORY_ID = 999999;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const token = searchParams.get('token');
@@ -38,10 +43,16 @@ export async function GET(request: NextRequest) {
     // paginate past the 1000-row cap so a growing catalog isn't truncated
     fetchAllRows((f, t) => serviceClient.from('products').select('sku, name, brand, category_slug, volume, color, product_type, description, image').eq('is_active', true).order('sort_order').range(f, t)),
     fetchAllRows((f, t) => serviceClient.from('product_stock').select('sku, price_drop, stock_status').range(f, t)),
-    serviceClient.from('categories').select('slug, name, parent_slug').order('sort_order'),
+    serviceClient.from('categories').select('id, slug, name, parent_slug, prom_section_url').order('sort_order'),
   ]);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
+
+  // id категорій — ЧИСЛОВІ. Prom.ua, основний майданчик наших дропшиперів, не
+  // приймає імпорт, де category id — рядок. Наш власний робочий фід для Prom
+  // віддає саме числа; тримаємо однаково, інакше партнер спіткнеться на
+  // першому ж імпорті, а виглядати це буде як «у вас поганий фід».
+  const catIdBySlug = new Map((categories ?? []).map(c => [c.slug, c.id]));
 
   const offers = (products ?? [])
     .filter(p => {
@@ -52,11 +63,12 @@ export async function GET(request: NextRequest) {
       const price = stockMap.get(p.sku)!.price_drop;
       const desc  = p.description ?? `${p.brand} ${p.name}`;
       const img   = p.image ?? `${BASE_URL}/product/${p.sku}/opengraph-image`;
+      const catId = catIdBySlug.get(p.category_slug ?? '') ?? OTHER_CATEGORY_ID;
       return `    <offer id="${p.sku}" available="true">
       <url>${BASE_URL}/product/${p.sku}</url>
       <price>${price}</price>
       <currencyId>UAH</currencyId>
-      <categoryId>${p.category_slug ?? 'other'}</categoryId>
+      <categoryId>${catId}</categoryId>
       <picture>${img}</picture>
       <name>${x(p.name)}${p.volume ? ` ${x(p.volume)}` : ''}</name>
       <vendor>${x(p.brand)}</vendor>
@@ -66,9 +78,16 @@ export async function GET(request: NextRequest) {
     })
     .join('\n');
 
-  const cats = (categories ?? [])
-    .map(c => `    <category id="${c.slug}"${c.parent_slug ? ` parentId="${c.parent_slug}"` : ''}>${x(c.name)}</category>`)
-    .join('\n');
+  const cats = [
+    ...(categories ?? []).map(c => {
+      const parentId = c.parent_slug ? catIdBySlug.get(c.parent_slug) : undefined;
+      // portal_url прив'язує нашу категорію до дерева Prom — з ним товари
+      // розкладаються по розділах магазину партнера самі, без ручного мапінгу.
+      const portal = c.prom_section_url ? ` portal_url="${x(c.prom_section_url)}"` : '';
+      return `    <category id="${c.id}"${parentId ? ` parentId="${parentId}"` : ''}${portal}>${x(c.name)}</category>`;
+    }),
+    `    <category id="${OTHER_CATEGORY_ID}">Інше</category>`,
+  ].join('\n');
 
   const yml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE yml_catalog SYSTEM "shops.dtd">

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  roundRetail, roundHalf, priceFromMarkup, markupFromPrice, retailNotBelowWholesale,
+  roundRetail, roundHalf, priceFromMarkup, markupFromPrice, roundUpFor, enforcePriceLadder,
 } from '../lib/price-formula';
 
 describe('округлення', () => {
@@ -56,9 +56,42 @@ describe('markupFromPrice', () => {
   });
 });
 
-describe('retailNotBelowWholesale', () => {
+describe('roundUpFor', () => {
+  it('роздріб — угору до цілого, опт і дроп — угору до 0.5', () => {
+    expect(roundUpFor('retail', 1.2)).toBe(2);
+    expect(roundUpFor('retail', 3)).toBe(3);
+    expect(roundUpFor('wholesale', 1.2)).toBe(1.5);
+    expect(roundUpFor('drop', 1.2)).toBe(1.5);
+    expect(roundUpFor('drop', 1.5)).toBe(1.5);
+  });
+});
+
+describe('enforcePriceLadder', () => {
   it('роздріб піднімається до опту, якщо опустився нижче', () => {
-    expect(retailNotBelowWholesale(90, 97.5)).toBe(97.5);
-    expect(retailNotBelowWholesale(120, 97.5)).toBe(120);
+    expect(enforcePriceLadder(70, { retail: 90, wholesale: 97.5, drop: 85 }).retail).toBe(97.5);
+    expect(enforcePriceLadder(70, { retail: 120, wholesale: 97.5, drop: 85 }).retail).toBe(120);
+  });
+
+  it('роздріб піднімається до дропу — випадок дюбеля 1701-010', () => {
+    // вхід 1.20: floor(1.2 × 1.2) = 1 роздріб, round₀.₅(1.2 × 1.25) = 1.5 дроп
+    expect(enforcePriceLadder(1.2, { retail: 1, wholesale: 1, drop: 1.5 }))
+      .toEqual({ retail: 1.5, wholesale: 1.5, drop: 1.5 });
+  });
+
+  it('жодна ціна продажу не лишається нижче собівартості', () => {
+    const l = enforcePriceLadder(1.2, { retail: 1, wholesale: 1, drop: 1 });
+    expect(l.wholesale).toBe(1.5);
+    expect(l.drop).toBe(1.5);
+    expect(l.retail).toBe(1.5);
+  });
+
+  it('нормальний товар лишається недоторканим', () => {
+    const p = { retail: 106, wholesale: 89, drop: 93.5 };
+    expect(enforcePriceLadder(87.3, p)).toEqual(p);
+  });
+
+  it('без собівартості сходинка все одно тримає порядок цін', () => {
+    expect(enforcePriceLadder(0, { retail: 100, wholesale: 105, drop: 102 }))
+      .toEqual({ retail: 105, wholesale: 105, drop: 102 });
   });
 });

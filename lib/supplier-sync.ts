@@ -6,7 +6,7 @@
  */
 
 import { XMLParser } from 'fast-xml-parser';
-import { priceFromMarkup, retailNotBelowWholesale, roundRetail, roundHalf } from './price-formula';
+import { priceFromMarkup, enforcePriceLadder, roundRetail, roundHalf } from './price-formula';
 import { fetchAllRows } from './db-paginate';
 import { assertPublicUrl } from './safe-fetch-url';
 import * as XLSX from 'xlsx';
@@ -449,19 +449,31 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       ? findPromo(ourSku, brand)
       : null; // якщо є фіксована ціна — акція не застосовується
 
-    let priceRetail = retailNotBelowWholesale(baseRetail, baseUnit), priceRetailOld: number | null = null;
-    let priceUnit   = baseUnit,                       priceOld: number | null = null;
-    let priceDrop   = baseDrop;
+    // Сходинка собівартість ≤ опт/дроп ≤ роздріб. Ціни рахуються трьома
+    // незалежними наценками з різним округленням, і на копійчаному товарі це
+    // давало дроп вище за роздріб — див. enforcePriceLadder.
+    const ladder = enforcePriceLadder(priceCost, { retail: baseRetail, wholesale: baseUnit, drop: baseDrop });
+
+    // Фіксована ціна сильніша за сходинку: якщо менеджер свідомо поставив дроп
+    // нижче собівартості (розпродаж залишку, домовленість з партнером) — це
+    // рішення людини, і автоматика не має його мовчки переписувати.
+    if (override?.fixed_retail    != null) ladder.retail    = baseRetail;
+    if (override?.fixed_wholesale != null) ladder.wholesale = baseUnit;
+    if (override?.fixed_drop      != null) ladder.drop      = baseDrop;
+
+    let priceRetail = ladder.retail, priceRetailOld: number | null = null;
+    let priceUnit   = ladder.wholesale, priceOld: number | null = null;
+    let priceDrop   = ladder.drop;
 
     if (promo) {
       if (promo.apply_retail) {
         [priceRetail, priceRetailOld] = applyPromo(priceRetail, promo, roundRetail);
       }
       if (promo.apply_wholesale) {
-        [priceUnit, priceOld] = applyPromo(baseUnit, promo, roundHalf);
+        [priceUnit, priceOld] = applyPromo(ladder.wholesale, promo, roundHalf);
       }
       if (promo.apply_drop) {
-        [priceDrop] = applyPromo(baseDrop, promo, roundHalf);
+        [priceDrop] = applyPromo(ladder.drop, promo, roundHalf);
       }
     }
 
