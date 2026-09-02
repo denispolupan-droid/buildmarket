@@ -45,6 +45,9 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
       .select('id, order_id, doc_number')
       .eq('doc_type', 'sale')
       .eq('status', 'confirmed')
+      // Сторно дзеркалить свій скасований оригінал (рядки з мінусом) — порівнювати
+      // його з позиціями замовлення безглуздо: хибний алерт по №26071005, 02.09.2026
+      .is('reversal_of', null)
       .gte('doc_date', since)
       .range(from, to),
   );
