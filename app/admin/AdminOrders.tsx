@@ -4762,7 +4762,17 @@ export default function AdminOrders({
                             <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
                             <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
                               placeholder="59000000000000"
-                              style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                              style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: order.tracking_number ? '28px' : '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                            {/* Швидке копіювання збереженої ТТН — щоб не виділяти номер мишкою (прохання власника 02.09) */}
+                            {order.tracking_number && (
+                              <button onClick={() => copyTtn(order.tracking_number!)} title="Копіювати ТТН"
+                                style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
+                                  width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                                  color: copiedTtn === order.tracking_number ? '#15803D' : 'var(--text-muted)' }}>
+                                {copiedTtn === order.tracking_number ? <Check size={13} /> : <Copy size={13} />}
+                              </button>
+                            )}
                           </div>
                           {(() => {
                             // Кнопка одна, робіт дві: поки ТТН немає — «Зберегти»,
