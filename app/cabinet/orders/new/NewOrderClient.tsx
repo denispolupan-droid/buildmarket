@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Trash2, ChevronLeft, Send, AlertCircle, CheckCircle, Minus, Plus } from 'lucide-react';
 import NovaPoshtaSelect from '../../../components/NovaPoshtaSelect';
+import { DROPSHIP_MIN } from '../../../../lib/site';
 
 // ── Phone formatting (same as cart) ─────────────────────────────────────────
 function getLocalDigits(str: string): string {
@@ -144,11 +145,19 @@ export default function NewOrderClient({
   const balanceAfter = balanceAvail - totalCost;
   const hasBalance   = balanceAfter >= 0;
   const hasPriceError = items.some(i => i.selling_price < i.cost_price);
+  const belowMin      = items.length > 0 && totalCost < DROPSHIP_MIN;
+  // Одна умова на кнопку, на її колір і на курсор — раніше той самий вираз
+  // жив у трьох місцях, і четверта причина блокування розійшлася б із ними.
+  const blocked       = saving || !items.length || hasPriceError || !hasBalance || belowMin;
 
   async function submit() {
     setError('');
     if (!items.length)          { setError('Додайте хоча б один товар'); return; }
     if (hasPriceError)          { setError('Ваша ціна не може бути меншою за закупочну'); return; }
+    if (belowMin) {
+      setError(`Мінімальна сума замовлення — ${DROPSHIP_MIN} ₴ за закупочними цінами. Не вистачає ${(DROPSHIP_MIN - totalCost).toFixed(2)} ₴.`);
+      return;
+    }
     if (items.length > 0 && !hasBalance) {
       setError(`Недостатньо балансу. Потрібно ${totalCost.toFixed(2)} ₴, доступно ${balanceAvail.toFixed(2)} ₴`);
       return;
@@ -216,7 +225,7 @@ export default function NewOrderClient({
       </div>
 
       {/* Balance bar */}
-      <div style={{ background: !items.length || hasBalance ? 'var(--bg-soft)' : '#FEF2F2', border: `1px solid ${!items.length || hasBalance ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: !items.length || hasBalance ? 'var(--bg-soft)' : '#FEF2F2', border: `1px solid ${!items.length || hasBalance ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '10px', padding: '12px 16px', marginBottom: belowMin ? '10px' : '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
           Доступний баланс: <strong style={{ color: !items.length || hasBalance ? '#15803D' : '#DC2626' }}>{balanceAvail.toFixed(2)} ₴</strong>
         </span>
@@ -227,6 +236,13 @@ export default function NewOrderClient({
           </span>
         )}
       </div>
+
+      {/* Кнопка сіріє від мінімальної суми — без цього рядка партнер не зрозуміє, чому. */}
+      {belowMin && (
+        <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px', padding: '10px 16px', marginBottom: '20px', fontSize: '13px', color: '#92400E' }}>
+          Мінімальна сума замовлення — <strong>{DROPSHIP_MIN} ₴</strong> за закупочними цінами. Додайте товару ще на {(DROPSHIP_MIN - totalCost).toFixed(2)} ₴.
+        </div>
+      )}
 
       {error && (
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
@@ -494,12 +510,12 @@ export default function NewOrderClient({
       {/* Submit */}
       <button
         onClick={submit}
-        disabled={saving || !items.length || hasPriceError || (items.length > 0 && !hasBalance)}
+        disabled={blocked}
         style={{
           width: '100%', height: '48px', borderRadius: '12px', border: 'none',
-          background: saving || !items.length || hasPriceError || (items.length > 0 && !hasBalance) ? '#94A3B8' : '#1E3A5F',
+          background: blocked ? '#94A3B8' : '#1E3A5F',
           color: '#fff', fontSize: '15px', fontWeight: 700,
-          cursor: saving || !items.length || hasPriceError || (items.length > 0 && !hasBalance) ? 'not-allowed' : 'pointer',
+          cursor: blocked ? 'not-allowed' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
         }}
       >

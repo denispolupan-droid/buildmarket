@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { getRole } from '../../../../../lib/user-role';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { DROPSHIP_MIN } from '../../../../../lib/site';
 
 // xlsx (SheetJS 0.18.x) має відомі CVE при парсингу недовірених файлів; обмежуємо розмір,
 // щоб зняти вектор zip-bomb / OOM від завантажень партнерів.
@@ -172,6 +173,13 @@ export async function POST(req: NextRequest) {
     else if (stock?.stock_status === 'out_of_stock') errors.push(`"${sku}" немає в наявності`);
 
     const costPrice = stock?.price_drop ?? 0;
+
+    // Мінімум — на рядок, бо кожен рядок стане окремою посилкою. Ловимо його
+    // тут, у прев'ю, а не на підтвердженні: інакше партнер бачить «10 рядків
+    // готово», тисне кнопку й отримує помилки по половині файлу.
+    if (costPrice > 0 && costPrice * qty < DROPSHIP_MIN) {
+      errors.push(`Мінімальна сума замовлення — ${DROPSHIP_MIN} ₴, у рядку ${(costPrice * qty).toFixed(2)} ₴`);
+    }
 
     // НП: місто
     let cityRef       = '';

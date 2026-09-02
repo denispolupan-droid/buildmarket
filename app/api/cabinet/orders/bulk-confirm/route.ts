@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { getRole } from '../../../../../lib/user-role';
+import { DROPSHIP_MIN } from '../../../../../lib/site';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -53,9 +54,27 @@ export async function POST(req: NextRequest) {
 
   const results: { row_num: number; status: 'ok' | 'error'; order_number?: number; ttn?: string; error?: string }[] = [];
 
+  // Закупочна ціна — ТІЛЬКИ з БД. Досі вона бралася з тіла запиту (row.cost_price),
+  // тобто списання з балансу рахувалося за цифрою, яку прислав сам партнер, —
+  // у формі кабінету так не було ніколи, а тут лишилось з першої версії.
+  const skus = [...new Set(rows.map(r => String(r.sku ?? '')).filter(Boolean))];
+  const { data: priceRows } = await serviceClient
+    .from('product_stock')
+    .select('sku, price_drop')
+    .in('sku', skus.length ? skus : ['']);
+  const priceMap = new Map((priceRows ?? []).map(p => [p.sku, Number(p.price_drop ?? 0)]));
+
   for (const row of rows) {
-    const rowCost = row.cost_price * row.qty;
+    const costPrice = priceMap.get(String(row.sku ?? '')) ?? 0;
+    const rowCost   = costPrice * row.qty;
     try {
+      if (costPrice <= 0) {
+        throw new Error(`Товар ${row.sku} не знайдений або без дропшип-ціни`);
+      }
+      // Кожен рядок файлу — окрема посилка зі своєю ТТН, тож і мінімум свій.
+      if (rowCost < DROPSHIP_MIN) {
+        throw new Error(`Мінімальна сума замовлення — ${DROPSHIP_MIN} ₴, у рядку ${rowCost.toFixed(2)} ₴`);
+      }
       // Крок 1: Атомарне списання балансу (race condition safe)
       const { data: chargeRes, error: chargeErr } = await serviceClient
         .rpc('charge_partner_balance', {
@@ -145,7 +164,7 @@ export async function POST(req: NextRequest) {
           tracking_number:  ttn,
           items: [{
             sku: row.sku, name: row.product_name, brand: '',
-            qty: row.qty, price: row.selling_price,
+            qty: row.qty, price: row.selling_price, cost_price: costPrice,
           }],
           total_price: codAmount,
         })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { DROPSHIP_MIN } from '../../../../lib/site';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,6 +65,15 @@ export async function POST(req: NextRequest) {
   }));
   const totalCost = itemsWithCost.reduce((s, i) => s + i.cost_price * i.qty, 0);
   const totalSell = parseFloat(cod_amount) || totalCost;
+
+  // Мінімум рахуємо на сервері й від цін з БД — кнопка в кабінеті теж його
+  // знає, але вона на боці клієнта, а тут гроші.
+  if (totalCost < DROPSHIP_MIN) {
+    return NextResponse.json(
+      { error: `Мінімальна сума замовлення — ${DROPSHIP_MIN} ₴ за закупочними цінами. Зараз ${totalCost.toFixed(2)} ₴.` },
+      { status: 400 },
+    );
+  }
 
   // ── Списуємо закупочну вартість з балансу ───────────────────────────────────
   if (totalCost > 0) {
