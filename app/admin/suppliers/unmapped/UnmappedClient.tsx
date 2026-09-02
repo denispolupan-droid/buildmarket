@@ -267,6 +267,8 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [ignoring, setIgnoring] = useState<Set<string>>(new Set());
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  // Пошук по черзі: 600+ рядків без фільтра не проглянути (прохання власника 02.09)
+  const [query, setQuery] = useState('');
 
   const rowKey = (r: UnmappedRow) => `${r.supplier_id}:${r.supplier_sku}`;
 
@@ -340,7 +342,12 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
     );
   }
 
-  const grouped = rows.reduce<Record<string, { name: string; rows: UnmappedRow[] }>>((acc, r) => {
+  const q = query.trim().toLowerCase();
+  const visible = q
+    ? rows.filter(r => r.supplier_sku.toLowerCase().includes(q) || (r.sample_name ?? '').toLowerCase().includes(q))
+    : rows;
+
+  const grouped = visible.reduce<Record<string, { name: string; rows: UnmappedRow[] }>>((acc, r) => {
     const key = String(r.supplier_id);
     if (!acc[key]) acc[key] = { name: r.supplier_name, rows: [] };
     acc[key].rows.push(r);
@@ -384,11 +391,28 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
       )}
 
       {/* Top toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button style={btn('#1E3A5F')} onClick={() => exportXlsx(rows, 'unmapped-all.xlsx')}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+        <input
+          type="search" value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Пошук: артикул або назва…"
+          style={{ flex: '1 1 260px', maxWidth: '380px', height: '36px', padding: '0 12px',
+            border: '1px solid var(--border)', borderRadius: '8px', fontSize: '13px',
+            outline: 'none', background: 'var(--bg-card)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+        />
+        {q && (
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+            знайдено: {visible.length}
+          </span>
+        )}
+        <button style={{ ...btn('#1E3A5F'), marginLeft: 'auto' }} onClick={() => exportXlsx(rows, 'unmapped-all.xlsx')}>
           ↓ Скачати все XLSX ({rows.length})
         </button>
       </div>
+      {q && visible.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: '14px' }}>
+          Нічого не знайдено за «{query}»
+        </div>
+      )}
 
       {Object.entries(grouped).map(([supplierId, group]) => {
         const allGroupSelected = group.rows.every(r => selected.has(rowKey(r)));
