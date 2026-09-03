@@ -13,6 +13,7 @@ interface Props {
   enabledProducts:    number;
   catsWithCommission: number;
   totalCats:          number;
+  readyToShip:        boolean;   // «Готово до відправки» (in_stock) увімкнено
 }
 
 export default function PromDashboardClient({
@@ -24,6 +25,7 @@ export default function PromDashboardClient({
   enabledProducts,
   catsWithCommission,
   totalCats,
+  readyToShip: initialReadyToShip,
 }: Props) {
   const [copied,      setCopied]      = useState(false);
   const [checking,    setChecking]    = useState(false);
@@ -83,11 +85,37 @@ export default function PromDashboardClient({
       const data = await res.json();
       if (data.error) setSyncMsg(`Помилка пушу залишків: ${data.error}`);
       else if (data.skipped) setSyncMsg(`Пуш залишків пропущено: ${data.skipped}`);
-      else setSyncMsg(`Залишки: у кабінеті ${data.prom_total}, зіставлено ${data.matched}, оновлено ${data.pushed}`);
+      else if (data.errors > 0) setSyncMsg(`Помилка пушу: Prom відхилив ${data.errors} з ${data.pushed + data.errors} (${data.error_sample ?? ''}); оновлено ${data.pushed}`);
+      else setSyncMsg(`Наявність: у кабінеті ${data.prom_total}, зіставлено ${data.matched}, оновлено ${data.pushed}`);
     } catch {
       setSyncMsg('Помилка запиту');
     } finally {
       setPushingStock(false);
+    }
+  }
+
+  // «Готово до відправки»: перемикач пише app_settings.prom_ready_to_ship і одразу
+  // проштовхує наявність через API, щоб не чекати перечитування фіда Prom.
+  const [readyToShip,  setReadyToShip]  = useState(initialReadyToShip);
+  const [savingRts,    setSavingRts]    = useState(false);
+  async function toggleReadyToShip() {
+    const next = !readyToShip;
+    if (!next && !confirm('Зняти «Готово до відправки» з усіх товарів на Prom?')) return;
+    setSavingRts(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prom_ready_to_ship: next ? 'on' : 'off' }),
+      });
+      if (!res.ok) { setSyncMsg('Помилка збереження налаштування'); return; }
+      setReadyToShip(next);
+      if (hasToken) await doPushStock();
+    } catch {
+      setSyncMsg('Помилка запиту');
+    } finally {
+      setSavingRts(false);
     }
   }
 
@@ -314,6 +342,29 @@ export default function PromDashboardClient({
 
         <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, border: '1px solid #FED7AA', fontSize: 12, color: '#92400E', lineHeight: 1.6 }}>
           Вкажи цю URL в кабінеті Prom.ua: <b>Товари → Імпорт товарів → Завантажити за посиланням</b>.
+        </div>
+
+        {/* «Готово до відправки» */}
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8 }}>
+          <button
+            onClick={toggleReadyToShip}
+            disabled={savingRts}
+            role="switch"
+            aria-checked={readyToShip}
+            title={readyToShip ? 'Вимкнути «Готово до відправки»' : 'Увімкнути «Готово до відправки»'}
+            style={{ position: 'relative', width: 40, height: 22, borderRadius: 11, border: 'none', padding: 0, flexShrink: 0, background: readyToShip ? '#059669' : '#CBD5E1', cursor: savingRts ? 'wait' : 'pointer', transition: 'background .15s' }}
+          >
+            <span style={{ position: 'absolute', top: 2, left: readyToShip ? 20 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
+              «Готово до відправки» — {readyToShip ? 'увімкнено' : 'вимкнено'}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>
+              Товари в наявності йдуть у фід з <code>in_stock=&quot;true&quot;</code> і в API як <code>in_stock: true</code>: пріоритет у видачі Prom і Bigl.
+              Prom забирає статус, якщо успішних замовлень таких товарів стане менше 90&nbsp;% — тоді вимкни тут.
+            </div>
+          </div>
         </div>
       </div>
 

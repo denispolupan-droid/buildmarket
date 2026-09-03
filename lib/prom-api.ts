@@ -42,11 +42,16 @@ export interface PromProduct {
   external_id: string | null;
   name: string;
   sku: string | null;
-  quantity: number;
+  quantity: number;                 // у замовленні — кількість позиції
   price: string;
   total_price: string;
   measure_unit: string;
   image?: string;
+  // Поля картки товару з /products/list (у позиції замовлення відсутні)
+  presence?: 'available' | 'not_available' | 'order' | 'service';
+  in_stock?: boolean;               // «Готово до відправки»
+  quantity_in_stock?: number;       // залишок на складі
+  status?: 'on_display' | 'draft' | 'deleted' | 'not_on_display';
 }
 
 export interface PromOrder {
@@ -221,16 +226,30 @@ export async function getPromProducts(opts: { limit?: number; lastId?: number } 
 
 /* ── Product stock/price update ─────────────────────────────────────────── */
 
+// Поля — за схемою PostProductRequestBody (public-api.docs.prom.ua): залишок
+// зветься quantity_in_stock (поле quantity API мовчки ігнорує), «Готово до
+// відправки» — булеве in_stock.
 export async function updatePromProducts(products: {
   id: number;
   price?: number;
   presence?: 'available' | 'not_available' | 'order';
-  quantity?: number;
-}[]): Promise<void> {
-  await promFetch('/products/edit', {
+  in_stock?: boolean;
+  quantity_in_stock?: number;
+}[]): Promise<{ processed_ids: number[]; errors: Record<string, unknown> }> {
+  // Тіло запиту — ГОЛИЙ масив товарів. На обгортку {products: [...]} Prom
+  // відповідає HTTP 200 {"errors": {"error": "Ожидается список товаров"}}
+  // (перевірено 2026-09-04) — саме так старий пуш роками був мовчазним no-op.
+  const data = await promFetch<{ processed_ids?: number[]; errors?: Record<string, unknown>; error?: string }>('/products/edit', {
     method: 'POST',
-    body: JSON.stringify({ products }),
+    body: JSON.stringify(products),
   });
+  // Помилка всього запиту (не по конкретному id) приходить у data.error або
+  // errors.error — це збій формату, а не окремої картки: кидаємо.
+  const requestError = data.error ?? (data.errors && 'error' in data.errors ? String(data.errors.error) : null);
+  if (requestError) throw new Error(`Prom products/edit: ${requestError}`);
+  // Помилки по окремих картках (наприклад, різновид успадковує наявність) —
+  // повертаємо викликачу, він вирішує: решта пачки вже оброблена.
+  return { processed_ids: data.processed_ids ?? [], errors: data.errors ?? {} };
 }
 
 /* ── Mapping helpers ────────────────────────────────────────────────────── */

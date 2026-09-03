@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import PromDashboardClient from './PromDashboardClient';
+import { PROM_READY_TO_SHIP_KEY, readyToShipEnabled } from '../../../lib/prom-ready-to-ship';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,13 +19,15 @@ export default async function PromPage() {
   const siteUrl  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
   const feedKey  = process.env.FEED_SECRET_KEY ?? '';
 
-  const [{ count: totalOrders }, { count: totalProducts }, { count: enabledProducts }, { data: catStats }, { data: tokenSetting }] = await Promise.all([
+  const [{ count: totalOrders }, { count: totalProducts }, { count: enabledProducts }, { data: catStats }, { data: tokenSetting }, { data: rtsSetting }] = await Promise.all([
     db.from('orders').select('*', { count: 'exact', head: true }).eq('channel_code', 'prom'),
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('on_prom', true),
     db.from('categories').select('prom_commission_pct, prom_markup_pct'),
     db.from('app_settings').select('value').eq('key', 'prom_api_token').maybeSingle(),
+    db.from('app_settings').select('value').eq('key', PROM_READY_TO_SHIP_KEY).maybeSingle(),
   ]);
+  const readyToShip = readyToShipEnabled(rtsSetting?.value);
 
   const rawToken    = tokenSetting?.value || process.env.PROM_API_TOKEN || '';
   const hasToken    = !!rawToken;
@@ -43,6 +46,7 @@ export default async function PromPage() {
       enabledProducts={enabledProducts ?? 0}
       catsWithCommission={catsWithCommission}
       totalCats={totalCats}
+      readyToShip={readyToShip}
     />
   );
 }

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/db-paginate';
 import { promPrice, promPriceFromBase, resolveMarkup, promCommissionOf, type PromPlan } from '@/lib/marketplace-pricing';
 import { mpDescription, mpDescriptionRu } from '@/lib/marketplace-description';
+import { PROM_READY_TO_SHIP_KEY, promAvailability, readyToShipEnabled } from '@/lib/prom-ready-to-ship';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -289,7 +290,7 @@ export async function GET(request: NextRequest) {
   // Fetch product_characteristics in 20 parallel pages of 1000 rows each
   // (Supabase PostgREST caps any single response at max_rows=1000 regardless of Range header)
   const CHAR_PAGE = 1000;
-  const [products, stock, categories, charPages, { data: planRow }] = await Promise.all([
+  const [products, stock, categories, charPages, { data: planRow }, { data: rtsRow }] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
     fetchAllRows<any>((f, t) => serviceClient
       .from('products')
@@ -320,10 +321,13 @@ export async function GET(request: NextRequest) {
         .range(i * CHAR_PAGE, (i + 1) * CHAR_PAGE - 1)
     )),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+    serviceClient.from('app_settings').select('value').eq('key', PROM_READY_TO_SHIP_KEY).maybeSingle(),
   ]);
 
   // Активний тарифний план Prom — визначає, яка колонка комісії діє
   const promPlan = ((planRow as { value?: string } | null)?.value ?? 'single') as PromPlan;
+  // «Готово до відправки» (in_stock) — глобальний перемикач з дашборда Prom
+  const readyToShip = readyToShipEnabled((rtsRow as { value?: string } | null)?.value);
 
   const characteristics = charPages.flatMap(r => (r.data ?? []) as { product_sku: string; label: string; value: string }[]);
 
@@ -406,9 +410,12 @@ export async function GET(request: NextRequest) {
       const hasDiscount = promPriceOld != null && promPriceOld > price;
 
       // Вимкнений для Prom товар = «недоступний», незалежно від фактичного залишку.
+      // Правило спільне з API-пушем (lib/prom-ready-to-ship), щоб фід і пуш не сперечались.
       const enabled   = (p as { on_prom?: boolean | null }).on_prom === true;
-      const available = enabled && s.stock_status === 'in_stock' ? 'true' : 'false';
-      const qty       = enabled ? (s.stock_qty ?? 0) : 0;
+      const avail     = promAvailability({ enabled, stockStatus: s.stock_status, stockQty: s.stock_qty, readyToShip });
+      const available = avail.presence === 'available' ? 'true' : 'false';
+      const inStock   = avail.in_stock ? 'true' : 'false';
+      const qty       = avail.quantity_in_stock;
       const productPortalUrl = (p as { prom_portal_url?: string | null }).prom_portal_url;
       const groupId = productPortalUrl && virtualCatMap.has(productPortalUrl)
         ? virtualCatMap.get(productPortalUrl)!
@@ -664,7 +671,7 @@ export async function GET(request: NextRequest) {
 
       const minQty = (p as { min_order?: number | null }).min_order;
 
-      return `      <offer id="${x(p.sku)}" available="${available}">
+      return `      <offer id="${x(p.sku)}" available="${available}" in_stock="${inStock}">
         <url>${BASE_URL}/product/${x(p.sku)}</url>
         ${hasDiscount ? `<price>${promPriceOld!.toFixed(2)}</price>\n        <price_promo>${price.toFixed(2)}</price_promo>` : `<price>${price.toFixed(2)}</price>`}
         <currencyId>UAH</currencyId>
