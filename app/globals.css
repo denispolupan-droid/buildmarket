@@ -1565,7 +1565,11 @@ input, select { font-family: inherit; }
   /* Hide desktop-heavy sections on mobile */
   .home-category-section { display: none; }
   .home-trust-section { display: none; }
-  .home-cta-section { display: none; }
+  /* CTA-картка «Готові зробити замовлення?» на мобілі показується (рішення
+     власника 03.09): текст і кнопки в колонку, кнопки на всю ширину */
+  .home-cta-card { flex-direction: column; align-items: stretch; padding: 22px 20px !important; }
+  .home-cta-card > div:last-child { flex-direction: column; }
+  .home-cta-card a { justify-content: center; }
 
   /* How we work + warehouse grid — minmax(0, 1fr), not the bare 1fr default
      (minmax(auto,1fr)): a bare 1fr won't shrink a track below its item's own

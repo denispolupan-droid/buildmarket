@@ -468,7 +468,7 @@ export default async function HomeRu() {
       <section className="home-cta-section" style={{ background: 'var(--bg-soft)', padding: '0 0 52px' }}>
         <div className="page-container">
           <Reveal>
-            <div style={{
+            <div className="home-cta-card" style={{
               background: 'color-mix(in srgb, var(--brand-teal) 8%, var(--bg-card))',
               border: '1px solid color-mix(in srgb, var(--brand-teal) 28%, var(--border))',
               borderRadius: '16px',
