@@ -654,13 +654,15 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
               </div>
             )}
 
-            {/* Вартість + опис */}
+            {/* Вартість + опис. Колонки — flex до низу: на вузькому екрані лейбл
+                «Оголошена вартість» переноситься на два рядки, і без вирівнювання
+                поля стояли на різній висоті */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                 <label style={lbl}>Оголошена вартість, грн</label>
                 <input style={inp} type="number" min="0" value={cost} onChange={e => setCost(e.target.value)} />
               </div>
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                 <label style={lbl}>Опис вантажу</label>
                 <input style={inp} value={description} onChange={e => setDescription(e.target.value)} />
               </div>
