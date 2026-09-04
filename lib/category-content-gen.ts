@@ -270,9 +270,15 @@ export function validateContent(content: CategoryContentInput, ctx: GenContext, 
   const meta: CategoryMeta = { description: content.description, seoText: content.seoText ?? undefined, faq: content.faq, guide: content.guide ?? undefined, related: content.related };
   if (content.description.length > 160) w.push(`description ${content.description.length} симв. (≤160) — meta description обріжеться`);
   if (!/FIXLINE/.test(content.seoText ?? '')) w.push('у seoText немає речення «У каталозі FIXLINE — …» — аудит не побачить переліку асортименту');
+  const seoWords = (content.seoText ?? '').split(/\s+/).filter(Boolean).length;
+  if (content.seoText && (seoWords < 50 || seoWords > 120)) w.push(`seoText ${seoWords} слів (норма 60–100)`);
   const dead = tokenSkus(meta).filter(s => !ctx.skuPrices[s]);
   if (dead.length) w.push(`токени на невідомі/безцінні артикули (речення з ними випадуть): ${dead.join(', ')}`);
   if (/\{price:[^}]*\}\s*грн/.test(JSON.stringify(meta))) w.push('«{price:…} грн» — токен сам додає «грн», буде «72 грн грн»');
+  // Гола ціна цифрою («299 грн» без токена) — застаріває при першому перерахунку
+  // прайсу (стандарт 1.4): токени підставляють живі ціни, цифра лишається мертвою
+  const bare = [...JSON.stringify(meta).matchAll(/\d[\d\s]*\s*(?:грн|₴)/gu)].map(m => m[0].trim());
+  if (bare.length) w.push(`ціна цифрою замість токена: ${[...new Set(bare)].slice(0, 4).join('; ')}`);
   const text = JSON.stringify(meta);
   const links = [...text.matchAll(/\]\(([^)\s]+)\)/g)].map(m => m[1]);
   const badLinks = [...new Set(links.filter(l => !ctx.allowedLinks.has(l.replace(/^\/ru(?=\/)/, ''))))];
@@ -294,7 +300,7 @@ export function validateContent(content: CategoryContentInput, ctx: GenContext, 
   if (lang === 'ru' && /[їєґ]/i.test(JSON.stringify(meta))) w.push('українські літери (ї/є/ґ) у російському тексті — мова зіскочила');
   if ((content.faq?.length ?? 0) < 7) w.push(`FAQ ${content.faq?.length ?? 0} питань (норма ≥ 7 з гайдом)`);
   if (!content.faq?.some(f => /кошту|ціна|цін[аи]|стоит|цена/iu.test(f.q))) w.push('у FAQ немає питання про ціну');
-  if ((content.related?.length ?? 0) < 4) w.push(`«Дивіться також» ${content.related?.length ?? 0} чипів (норма 4–6)`);
+  if ((content.related?.length ?? 0) < 4 || (content.related?.length ?? 0) > 6) w.push(`«Дивіться також» ${content.related?.length ?? 0} чипів (норма 4–6)`);
   if (content.blogSlug && !ctx.allowedLinks.has(`/blog/${content.blogSlug}`)) w.push(`blogSlug ${content.blogSlug} — такої статті немає`);
   void lang;
   return w;
