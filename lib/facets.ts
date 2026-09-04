@@ -138,3 +138,45 @@ export function resolveFacets(categories: Category[], selCat: string | null | un
 export function facetTokens(value: string | null | undefined): string[] {
   return String(value ?? '').split(';').map(t => t.trim()).filter(Boolean);
 }
+
+/**
+ * Числове значення фасета для сортування: «48 мм» → 48, «1,5 м» → 1500,
+ * «P150» → 150. Одиниця приводиться до мм, щоб «1 м» не ставав між «19 мм»
+ * і «25 мм» у змішаних родинах (сітки шириною в метрах поруч зі стрічками в мм).
+ */
+export function facetNum(s: string): number {
+  const m = String(s).replace(/,/g, '.').match(/\d+(?:\.\d+)?/);
+  if (!m) return NaN;
+  const n = parseFloat(m[0]);
+  const t = ` ${String(s).toLowerCase()} `;
+  if (/[\s\d]мм/.test(t)) return n;
+  if (/[\s\d]см/.test(t)) return n * 10;
+  if (/[\s\d]м[\s.]/.test(t)) return n * 1000; // «3 м», «3 м.п.»
+  return n;
+}
+
+/**
+ * Кошики числових фасетів: значення-діапазони («Ширина шва: 2–15 мм») у фільтрі
+ * збираються в кілька інтервалів за МАКСИМУМОМ діапазону — сама характеристика
+ * на картці лишається точною специфікацією виробника.
+ */
+export const NUMERIC_BUCKETS: Record<string, { value: string; min: number; max: number }[]> = {
+  'Ширина шва': [
+    { value: 'До 6 мм', min: 0, max: 6 },
+    { value: '7–15 мм', min: 6.001, max: 15 },
+    { value: 'Понад 15 мм', min: 15.001, max: Infinity },
+  ],
+};
+
+/**
+ * Токени значення характеристики для фільтра: для кошикових лейблів — назви
+ * кошиків, куди потрапляє значення; для решти — facetTokens (розріз по «;»).
+ */
+export function facetProductTokens(label: string, value: string | null | undefined): string[] {
+  const buckets = NUMERIC_BUCKETS[label];
+  if (!buckets) return facetTokens(value);
+  const nums = [...String(value ?? '').replace(/,/g, '.').matchAll(/\d+(?:\.\d+)?/g)].map(m => parseFloat(m[0]));
+  if (!nums.length) return [];
+  const top = Math.max(...nums);
+  return buckets.filter(b => top >= b.min && top <= b.max).map(b => b.value);
+}

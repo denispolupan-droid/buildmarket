@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeCategoryFacets, resolveFacets, facetTokens, categoryChainOf, subtreeSlugs } from '../lib/facets';
+import { computeCategoryFacets, resolveFacets, facetTokens, facetNum, facetProductTokens, categoryChainOf, subtreeSlugs } from '../lib/facets';
 import type { Category } from '../types';
 
 const defs = [
@@ -95,5 +95,35 @@ describe('subtreeSlugs', () => {
     expect(subtreeSlugs(tree, 'farby').sort()).toEqual(['farby', 'farby-3v1', 'moltkovi-farby', 'vodoemiulsiyni-interierni'].sort());
     expect(subtreeSlugs(tree, 'moltkovi-farby')).toEqual(['moltkovi-farby']);
     expect(subtreeSlugs([{ slug: 'a', parent_slug: 'b' }, { slug: 'b', parent_slug: 'a' }], 'a').sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('facetNum — числове сортування значень', () => {
+  it('парсить число з одиницею, приводячи до мм', () => {
+    expect(facetNum('48 мм')).toBe(48);
+    expect(facetNum('22,23 мм')).toBeCloseTo(22.23);
+    expect(facetNum('1,5 м')).toBe(1500);
+    expect(facetNum('3 м.п.')).toBe(3000);
+    expect(facetNum('1 м')).toBe(1000);   // «1 м» стає ПІСЛЯ «150 мм», а не між 1 і 19
+    expect(facetNum('P150')).toBe(150);
+    expect(Number.isNaN(facetNum('Метал'))).toBe(true);
+  });
+  it('діапазон бере перше число', () => {
+    expect(facetNum('2–6 мм')).toBe(2);
+    expect(facetNum('2,2–2,6 мм')).toBeCloseTo(2.2);
+  });
+});
+
+describe('facetProductTokens — кошики числових фасетів', () => {
+  it('«Ширина шва» падає в кошик за максимумом діапазону', () => {
+    expect(facetProductTokens('Ширина шва', '2–6 мм')).toEqual(['До 6 мм']);
+    expect(facetProductTokens('Ширина шва', 'до 5 мм')).toEqual(['До 6 мм']);
+    expect(facetProductTokens('Ширина шва', '2–15 мм')).toEqual(['7–15 мм']);
+    expect(facetProductTokens('Ширина шва', '2–22 мм')).toEqual(['Понад 15 мм']);
+    expect(facetProductTokens('Ширина шва', 'широкий')).toEqual([]);
+  });
+  it('решта лейблів — звичайний розріз по «;»', () => {
+    expect(facetProductTokens('Поверхня', 'Метал; Дерево')).toEqual(['Метал', 'Дерево']);
+    expect(facetProductTokens('Ширина', '48 мм')).toEqual(['48 мм']);
   });
 });

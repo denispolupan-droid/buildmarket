@@ -18,7 +18,7 @@ import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
-import { resolveFacets, facetTokens, hidesTypeFilter, subtreeSlugs } from '../../lib/facets';
+import { resolveFacets, facetProductTokens, facetNum, hidesTypeFilter, subtreeSlugs } from '../../lib/facets';
 import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
 
 import { WHOLESALE_MIN } from '../../lib/site';
@@ -334,7 +334,6 @@ export default function CatalogClient({ products, categories, reviewStats, initi
 
   const parseVol = (v: string) => parseFloat(v.replace(',', '.').replace(/[^\d.]/g, '') || '0');
   const toGrams  = (v: string) => { const n = parseVol(v); return /кг/.test(v) ? n * 1000 : n; };
-  const toNum    = (s: string) => parseFloat(s.replace(',', '.').replace(/[^\d.]/g, '') || 'NaN');
 
   const volumesL  = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter((v): v is string => !!v && /л$|мл/.test(v)))].sort((a,b) => parseVol(a)-parseVol(b)), [catProducts]);
   const volumesKg = useMemo(() => [...new Set(catProducts.map(p => p.volume).filter((v): v is string => !!v && /кг|г$/.test(v)))].sort((a,b) => toGrams(a)-toGrams(b)), [catProducts]);
@@ -353,7 +352,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
       if (!v || v === 'Не вказано') return;
       if (!map.has(label)) map.set(label, new Map());
       if (!countsMap.has(label)) countsMap.set(label, new Map());
-      const tokens = split ? facetTokens(v) : [v];
+      const tokens = split ? facetProductTokens(label, v) : [v];
       for (const tok of tokens) {
         const key = tok.toLowerCase();
         const cap = tok.charAt(0).toUpperCase() + tok.slice(1);
@@ -391,10 +390,10 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         return {
           label,
           values: [...vals.values()].sort((a, b) => {
-            // спершу порядок довідника, решта — числа, потім за абеткою
+            // спершу порядок довідника, решта — числа (з одиницею: 1 м після 150 мм), потім за абеткою
             const pa = pos(a), pb = pos(b);
             if (pa !== pb) return pa - pb;
-            const na = toNum(a), nb = toNum(b);
+            const na = facetNum(a), nb = facetNum(b);
             if (!isNaN(na) && !isNaN(nb)) return na - nb;
             return a.localeCompare(b, 'uk');
           }),
@@ -427,7 +426,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         if (label === 'Бренд')      { if (!fvs.has(p.brand.trim().toLowerCase())) return false; }
         else if (label === 'Тип')   { if (!fvs.has((p.product_type ?? '').trim().toLowerCase())) return false; }
         else if (label === 'Колір') { if (!fvs.has((p.color ?? p.characteristics.find(c => /^колір/i.test(c.label))?.value ?? '').toLowerCase())) return false; }
-        else { if (!p.characteristics.some(c => c.label === label && facetTokens(c.value).map(t => t.toLowerCase()).some(tok => fvs.has(tok)))) return false; }
+        else { if (!p.characteristics.some(c => c.label === label && facetProductTokens(label, c.value).map(t => t.toLowerCase()).some(tok => fvs.has(tok)))) return false; }
       }
       return true;
     });
