@@ -3,7 +3,24 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { RZ_DELIVERY_TYPE, RZ_TRACK_TYPE_DEPT, rzPhone, rzSplitName } from '../../../../../../lib/rz-delivery';
-import { getRzSender, getRzBox, rzCreateTrack, rzLabel, rzDeleteTrack, RzError } from '../../../../../../lib/rz-delivery-api';
+import { getRzSender, getRzBox, rzCreateTrack, rzLabel, rzDeleteTrack, rzSearchCities, rzDepartments, RzError } from '../../../../../../lib/rz-delivery-api';
+
+/**
+ * Знайти city_ref за назвою міста і UUID точки видачі. Потрібно для замовлень
+ * Prom «Магазини Rozetka»: Prom шле warehouse_id з довідника ROZETKA Доставки,
+ * а city_id — ні. Назви від Prom мають вигляд «м. Миколаїв (Миколаївська обл.)» —
+ * дужки прибираємо, кандидатів перебираємо до першого, де точка справді є.
+ */
+async function resolveCityByWarehouse(cityName: string | null, warehouseId: string): Promise<string | null> {
+  const query = (cityName ?? '').replace(/\(.*?\)/g, '').replace(/^(м|с|смт|с-ще)\.?\s*/i, '').trim();
+  if (!query) return null;
+  const cities = await rzSearchCities(query).catch(() => []);
+  for (const c of cities.slice(0, 5)) {
+    const deps = await rzDepartments((c as { id: string }).id).catch(() => []);
+    if (deps.some(d => String((d as { id: string }).id) === warehouseId)) return (c as { id: string }).id;
+  }
+  return null;
+}
 
 /**
  * Експрес-накладна «ROZETKA Доставки» для замовлення сайту.
@@ -89,7 +106,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .from('orders')
     // Один рядок навмисно: supabase-js виводить типи колонок із ЛІТЕРАЛУ select,
     // і склеєний з шматків рядок перетворює order на GenericStringError.
-    .select('id, order_number, delivery_type, tracking_number, contact, phone, delivery_city_ref, delivery_warehouse_ref, delivery_address, total_price, payment_type, payment_confirmed, items')
+    .select('id, order_number, delivery_type, tracking_number, contact, phone, delivery_city_ref, delivery_city_name, delivery_warehouse_ref, delivery_address, total_price, payment_type, payment_confirmed, items')
     .eq('id', id)
     .single();
 
@@ -100,8 +117,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (order.tracking_number) {
     return NextResponse.json({ error: `Накладна вже створена: ${order.tracking_number}` }, { status: 409 });
   }
-  if (!order.delivery_city_ref || !order.delivery_warehouse_ref) {
+  if (!order.delivery_warehouse_ref) {
     return NextResponse.json({ error: 'У замовленні немає точки видачі ROZETKA' }, { status: 400 });
+  }
+  // Пром-замовлення в «Магазини Rozetka» приходять із warehouse_id того ж
+  // довідника, але БЕЗ city_id — знаходимо місто перебором кандидатів за назвою
+  // і закріплюємо в замовленні, щоб наступного разу не шукати.
+  let cityRef = order.delivery_city_ref as string | null;
+  if (!cityRef) {
+    cityRef = await resolveCityByWarehouse(order.delivery_city_name as string | null, order.delivery_warehouse_ref as string);
+    if (!cityRef) {
+      return NextResponse.json({ error: `Точку видачі ${order.delivery_warehouse_ref} не знайдено в довіднику ROZETKA Доставки (місто «${order.delivery_city_name ?? '—'}»)` }, { status: 400 });
+    }
+    await db.from('orders').update({ delivery_city_ref: cityRef }).eq('id', id);
   }
 
   const sender = await getRzSender();
@@ -152,7 +180,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         phone:       sender.phone,
       },
       recipient: {
-        city:        order.delivery_city_ref as string,
+        city:        cityRef,
         department:  order.delivery_warehouse_ref as string,
         first_name:  name.first_name,
         last_name:   name.last_name,

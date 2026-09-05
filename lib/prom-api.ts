@@ -204,12 +204,17 @@ export async function setPromOrderStatus(
 }
 
 export async function setPromTTN(promOrderId: number, ttn: string, deliveryType = 'nova_poshta'): Promise<void> {
+  // Наші внутрішні типи → значення, які знає Prom: 'rz_delivery' — це їхній
+  // provider 'rozetka_delivery' (доставка в «Магазини Rozetka»), 'nova' — синонім НП.
+  const promType = deliveryType === 'rz_delivery' ? 'rozetka_delivery'
+    : deliveryType === 'nova' ? 'nova_poshta'
+    : deliveryType;
   await promFetch('/delivery/save_declaration_id', {
     method: 'POST',
     body: JSON.stringify({
       order_id:       promOrderId,
       declaration_id: ttn,
-      delivery_type:  deliveryType,
+      delivery_type:  promType,
     }),
   });
 }
@@ -295,16 +300,29 @@ export function promOrderToOurFormat(order: PromOrder) {
   let deliveryType         = 'nova_poshta';
   if (prov?.provider === 'ukrposhta')    deliveryType = 'ukrposhta';
   else if (prov?.provider === 'nova_poshta') deliveryType = 'nova_poshta';
+  else if (prov?.provider === 'rozetka_delivery') deliveryType = 'rz_delivery';
   else if (order.delivery_option?.delivery_type) deliveryType = order.delivery_option.delivery_type;
 
-  const deliveryCityRef: string | null      = null;   // навмисно null: Prom-ref не резолвиться в НП
-  const deliveryWarehouseRef: string | null = null;
-  let deliveryCityName: string | null       = null;
-  let deliverySubtype: string | null        = null;
+  let deliveryCityRef: string | null      = null;   // для НП навмисно null: Prom-ref не резолвиться в НП
+  let deliveryWarehouseRef: string | null = null;
+  let deliveryCityName: string | null     = null;
+  let deliverySubtype: string | null      = null;
   if (prov?.provider === 'nova_poshta' && ra) {
     deliveryCityName = ra.city_name ?? null;
     // building_number заповнений тільки для адресної доставки (двері), інакше склад
     deliverySubtype  = ra.building_number ? 'address' : 'warehouse';
+  }
+  // «Магазини Rozetka» на Prom (з 09.2026): warehouse_id — з ТОГО Ж довідника, що
+  // наш договір «ROZETKA Доставка» (перевірено живцем: точка №26091055 знайдена в
+  // rzDepartments під тим самим UUID). Рішення власника 05.09: ЕН виписуємо самі
+  // своїм договором, тому зберігаємо ref точки; city_id Prom не шле — його
+  // резолвить роут створення ЕН за назвою міста.
+  if (prov?.provider === 'rozetka_delivery' && ra) {
+    const raRz = ra as { warehouse_id?: string | null; city_id?: string | null; city_name?: string | null };
+    deliveryWarehouseRef = raRz.warehouse_id ?? null;
+    deliveryCityRef      = raRz.city_id ?? null;
+    deliveryCityName     = raRz.city_name ?? null;
+    deliverySubtype      = 'warehouse';
   }
 
   const del = order.delivery_option;
