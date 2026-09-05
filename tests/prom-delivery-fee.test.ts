@@ -55,3 +55,15 @@ describe('parsePromDeliveryTariff — розбір налаштування з �
     expect(parsePromDeliveryTariff(JSON.stringify({ brackets: [{ from: 200, fee: -5 }] }))).toEqual(DEFAULT_PROM_DELIVERY_TARIFF);
   });
 });
+
+describe('isPromCheapDelivery — «Бесплатная доставка Rozetka» (09.2026)', () => {
+  it('впізнає по умовах, навіть коли в назві немає «дешев»', () => {
+    expect(isPromCheapDelivery({ ps_promotion: {
+      name: 'Бесплатная доставка Rozetka', extra: null,
+      conditions: ['10 грн — продавец, при заказах от 200 грн;', '30 грн — продавец, при заказах от 700 грн;'],
+    } })).toBe(true);
+  });
+  it('акція без платних для продавця умов — не збір', () => {
+    expect(isPromCheapDelivery({ ps_promotion: { name: 'Акція −10%', conditions: ['знижка діє до 30.09'] } })).toBe(false);
+  });
+});

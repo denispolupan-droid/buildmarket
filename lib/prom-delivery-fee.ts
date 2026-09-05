@@ -41,10 +41,19 @@ export function computePromDeliveryFee(orderTotal: number, brackets: PromDeliver
   return fee;
 }
 
-/** Чи оформлене замовлення за акцією «Дешева доставка» (з raw payload Prom). */
+/**
+ * Чи оформлене замовлення за акцією з платною для продавця доставкою.
+ * Назва акції у Prom плаває: «Дешевая доставка», з 09.2026 — «Бесплатная
+ * доставка Rozetka» (доставка в магазини Rozetka, той самий тариф 10/30 грн,
+ * живий кейс №26091055). Тому головна ознака — УМОВИ акції, де прямо написано,
+ * що платить продавець; назва з «дешев» лишається запасним розпізнаванням.
+ */
 export function isPromCheapDelivery(promData: Record<string, unknown> | null | undefined): boolean {
-  const promo = promData?.ps_promotion as { name?: unknown } | null | undefined;
-  return typeof promo?.name === 'string' && /дешев/i.test(promo.name);
+  const promo = promData?.ps_promotion as { name?: unknown; conditions?: unknown } | null | undefined;
+  if (!promo) return false;
+  if (Array.isArray(promo.conditions) &&
+      promo.conditions.some(c => typeof c === 'string' && /продав/i.test(c) && /грн|₴/i.test(c))) return true;
+  return typeof promo.name === 'string' && /дешев/i.test(promo.name);
 }
 
 /** Розбір значення з app_settings; на будь-якій невалідності — дефолтний тариф. */
