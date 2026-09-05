@@ -20,12 +20,17 @@ const SEP = '; ';
 export default function FacetValueInput({ values, multi, value, onChange, style }: Props) {
   if (!multi) {
     const known = values.some(v => v.toLowerCase() === value.trim().toLowerCase());
+    // Обгортка з flex:2 — та сама геометрія ряду, що в CharValueInput. Голий
+    // select у flex-ряду не стискається нижче найдовшого option і видавлював
+    // поле назви характеристики в нуль.
     return (
-      <select value={value} onChange={e => onChange(e.target.value)} style={style}>
-        <option value="">— не вказано —</option>
-        {!known && value.trim() && <option value={value}>{value} (поза довідником)</option>}
-        {values.map(v => <option key={v} value={v}>{v}</option>)}
-      </select>
+      <div style={{ flex: 2, minWidth: 0 }}>
+        <select value={value} onChange={e => onChange(e.target.value)} style={{ ...style, width: '100%', minWidth: 0 }}>
+          <option value="">— не вказано —</option>
+          {!known && value.trim() && <option value={value}>{value} (поза довідником)</option>}
+          {values.map(v => <option key={v} value={v}>{v}</option>)}
+        </select>
+      </div>
     );
   }
 
@@ -40,7 +45,7 @@ export default function FacetValueInput({ values, multi, value, onChange, style 
     onChange([...values.filter(x => next.some(n => n.toLowerCase() === x.toLowerCase())), ...unknown.filter(u => next.includes(u))].join(SEP));
   };
   return (
-    <div style={{ ...style, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', height: 'auto', minHeight: 44, padding: '6px 10px' }}>
+    <div style={{ ...style, flex: 2, minWidth: 0, width: 'auto', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', height: 'auto', minHeight: 44, padding: '6px 10px' }}>
       {values.map(v => {
         const on = chosenLower.has(v.toLowerCase());
         return (
