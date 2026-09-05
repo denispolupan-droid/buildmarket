@@ -99,7 +99,10 @@ for (const [oid, list] of byOrder) {
   const residual = new Map<string, number>();
   let firstDate = '9999-12-31';
   for (const e of list) {
-    if (e.description?.startsWith(COD_COLLECT_PREFIX)) continue;       // крок C
+    // Пари збору НоваПей і їх сторно (крок C, «Сторно «COD зібрано НоваПей»…») —
+    // не залишок дебітора, а рух грошей; інакше після кроку C сторно на np:cod
+    // виглядало б як борг і переносилось би на mp:rozetka вдруге (спіймано 06.09).
+    if (e.description?.includes(COD_COLLECT_PREFIX) || e.idempotency_key?.startsWith('cod-collect')) continue;
     // Попередні переноси НЕ пропускаємо: обидві їх ноги входять у залишок, тож
     // після ремонту стара сторона = 0, нова = повна сума → повторний прогін нічого
     // не робить; а якщо спосіб оплати змінили після ремонту — перенесе ще раз на
