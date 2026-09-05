@@ -1,5 +1,6 @@
 import { createServiceClient } from './supabase';
-import { classifyMonoTxn, isAcquiringSettlement, extractAcquiringGross, type MonoStatementItem } from './mono-statement';
+import { classifyMonoTxn, type MonoStatementItem } from './mono-statement';
+import { parseRzPayPayout, postRzPayPayout } from './rozetkapay-payout';
 import { applyOrderPayment } from './accounting/order-payment';
 import { alertAdmin } from './alert';
 
@@ -11,6 +12,8 @@ import { alertAdmin } from './alert';
 export type IngestResult =
   | { status: 'skipped'; reason: string }
   | { status: 'matched'; orderNumber: number; amount: number }
+  | { status: 'acquiring'; amount: number; orderNumber?: number }
+  | { status: 'payout'; amount: number; gross: number; fee: number }
   | { status: 'unmatched'; amount: number; orderNumber?: number };
 
 export async function ingestMonoTxn(
@@ -41,6 +44,26 @@ export async function ingestMonoTxn(
     .select('id');
   if (claimErr) { console.error('[mono-ingest] claim failed:', claimErr.message); return { status: 'skipped', reason: 'claim-error' }; }
   if (!claimed || claimed.length === 0) return { status: 'skipped', reason: 'duplicate' };
+
+  // Виплата RozetkaPay (усі гроші площадок одним переказом за день): банк + винагорода
+  // в розхід, брутто — на кліринговий дебітор mp:rozetkapay. Розбивка по замовленнях —
+  // окремо з реєстру Reports API (lib/rozetkapay-api), коли є ключі.
+  const rz = parseRzPayPayout(item);
+  if (rz) {
+    const bizDate = new Date(item.time * 1000).toISOString().slice(0, 10);
+    try {
+      await postRzPayPayout(item.id, rz, bizDate, 'monobank');
+      await db.from('mono_bank_txns').update({ status: 'matched' }).eq('id', item.id);
+      alertAdmin(
+        `🟢 Виплата RozetkaPay ${rz.net.toFixed(2)} ₴ проведена`,
+        `За операції ${rz.periodFrom}${rz.periodTo !== rz.periodFrom ? '…' + rz.periodTo : ''}: брутто ${rz.gross.toFixed(2)}, винагорода ${rz.fee.toFixed(2)}. Лежить на «RozetkaPay — отримано, не рознесено» до рознесення по замовленнях.`,
+      );
+      return { status: 'payout', amount: rz.net, gross: rz.gross, fee: rz.fee };
+    } catch (err) {
+      alertAdmin(`⚠ Виплата RozetkaPay ${rz.net.toFixed(2)} ₴ не проведена`, String(err instanceof Error ? err.message : err));
+      return { status: 'unmatched', amount: m.amount };
+    }
+  }
 
   // Є номер замовлення в призначенні → пробуємо зарахувати оплату
   if (m.kind === 'order') {
@@ -77,26 +100,40 @@ export async function ingestMonoTxn(
     return { status: 'unmatched', amount: m.amount, orderNumber: m.orderNumber };
   }
 
-  // Покриття еквайрингу: номера замовлення в ньому немає, але воно доводить, що
-  // на сайті пройшла карткова оплата. Якщо жодне карткове замовлення на цю суму
-  // не з'явилося — гроші взяли, а замовлення загубилось. Саме так 04.08.2026
-  // непомітно зникло замовлення на 104 ₴; дізналися лише зі скарги покупця.
-  if (isAcquiringSettlement(item)) {
-    const gross = extractAcquiringGross(item.comment) ?? m.amount;
-    const since = new Date((item.time - 3 * 24 * 60 * 60) * 1000).toISOString();
-    const { data: cardOrders } = await db
-      .from('orders')
-      .select('order_number, total_price')
-      .not('payment_reference', 'is', null)
-      .gte('created_at', since)
-      .limit(200);
-    const hit = (cardOrders ?? []).find(o => Math.abs(Number(o.total_price) - gross) < 0.01);
-    if (!hit) {
+  // Покриття еквайрингу: карткова оплата вже записана вебхуком у момент платежу,
+  // тому цей рядок НІКОЛИ не зараховуємо як оплату (навіть з номером замовлення в
+  // призначенні — інакше задвоєння). Він лише доводить, що на сайті пройшла
+  // карткова оплата: якщо жодне карткове замовлення на цю суму не з'явилося —
+  // гроші взяли, а замовлення загубилось (04.08.2026 так зникло замовлення на 104 ₴).
+  if (m.kind === 'acquiring') {
+    const gross = m.gross;
+    let covered = false;
+    if (m.orderNumber) {
+      const { data: order } = await db
+        .from('orders')
+        .select('order_number, total_price, payment_confirmed')
+        .eq('order_number', m.orderNumber)
+        .maybeSingle();
+      covered = !!order && Math.abs(Number(order.total_price) - gross) < 0.01 && order.payment_confirmed === true;
+    }
+    if (!covered) {
+      const since = new Date((item.time - 3 * 24 * 60 * 60) * 1000).toISOString();
+      const { data: cardOrders } = await db
+        .from('orders')
+        .select('order_number, total_price')
+        .not('payment_reference', 'is', null)
+        .gte('created_at', since)
+        .limit(200);
+      covered = (cardOrders ?? []).some(o => Math.abs(Number(o.total_price) - gross) < 0.01);
+    }
+    if (!covered) {
       alertAdmin(
         `🚨 Еквайринг ${gross.toFixed(2)} ₴ — карткового замовлення на цю суму НЕМАЄ`,
         `Покупець оплатив на сайті, а замовлення не створилось. Подивіться pending_card_orders за цей день і оформіть вручну. ${item.comment ?? ''}`.trim(),
       );
     }
+    await db.from('mono_bank_txns').update({ status: 'acquiring' }).eq('id', item.id);
+    return { status: 'acquiring', amount: m.amount, orderNumber: m.orderNumber };
   }
 
   // Немає номера (виплата маркетплейсу, поповнення) — лишаємо для ручної сверки

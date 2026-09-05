@@ -577,9 +577,13 @@ export default function SettlementsClient({
                         <span style={{
                           fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: 600,
                           background: 'var(--bg-soft)',
-                          color: d.contract_status === 'active' ? '#15803D' : '#DC2626',
+                          color: d.contract_status === 'active' ? '#15803D' : d.contract_status === 'special' || d.contract_status === 'none' ? 'var(--text-muted)' : '#DC2626',
                         }}>
-                          {d.contract_status === 'active' ? 'Активний' : d.contract_status === 'suspended' ? 'Призупинено' : 'Закрито'}
+                          {d.contract_status === 'active' ? 'Активний'
+                            : d.contract_status === 'suspended' ? 'Призупинено'
+                            : d.contract_status === 'special' ? 'Транзит'
+                            : d.contract_status === 'none' ? 'Без договору'
+                            : 'Закрито'}
                         </span>
                       </div>
 

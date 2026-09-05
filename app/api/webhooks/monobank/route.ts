@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { recordCustomerPayment } from '../../../../lib/accounting/money';
+import { resolveSaleDebitParty } from '../../../../lib/accounting/documents';
 import { verifyMonoSignature } from '../../../../lib/mono-signature';
 import { alertAdmin } from '../../../../lib/alert';
 import { getMonoAcquiringToken } from '../../../../lib/mono-config';
@@ -245,29 +246,12 @@ export async function POST(req: NextRequest) {
     const newPaymentType = order.payment_type === 'cod' ? 'card' : order.payment_type;
 
     // Дебітор: якщо виручка вже проведена (РН) — та сама сторона, що в леджері;
-    // інакше — та, на яку вона ляже при відгрузці (після зміни payment_type).
-    let party: string | null = null;
-    const { data: shipEntry } = await serviceClient
-      .from('money_entries')
-      .select('counterparty_id')
-      .eq('order_id', orderId)
-      .eq('account_type', 'customer')
-      .eq('doc_type', 'sale')
-      .gt('amount', 0)
-      .limit(1)
-      .maybeSingle();
-    party = shipEntry?.counterparty_id ?? null;
-    if (!party) {
-      party = order.customer_id
-        ?? (newPaymentType === 'cod' ? 'np:cod' : null);
-      if (!party) {
-        const { data: o2 } = await serviceClient
-          .from('orders').select('channel_code').eq('id', orderId).single();
-        party = o2?.channel_code === 'prom' ? 'mp:prom'
-          : o2?.channel_code === 'rozetka' ? 'mp:rozetka'
-          : 'guest';
-      }
-    }
+    // інакше — та, на яку вона ляже при відгрузці (уже після зміни payment_type).
+    const party = await resolveSaleDebitParty(
+      serviceClient,
+      { order_id: orderId, customer_id: order.customer_id },
+      { payment_type: newPaymentType },
+    );
 
     try {
       await recordCustomerPayment({

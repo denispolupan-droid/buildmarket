@@ -3,7 +3,8 @@ import { Resend } from 'resend';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { reverseDropshipLedgerExtras, syncSaleDraftLines } from '../../../../../lib/accounting/dropship';
-import { cancelDocument } from '../../../../../lib/accounting/documents';
+import { cancelDocument, resolveSaleDebitParty } from '../../../../../lib/accounting/documents';
+import { isSpecialDebtor } from '../../../../../lib/accounting/sale-party';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyCustomerStatus } from '../../../../../lib/telegram';
 import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
@@ -313,7 +314,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (!existing) {
           // Замовлення відвантажили анонімно, тепер прив'язано до клієнта → фіксуємо дебіторку
           await recordShipment({
-            customerId:     ord.customer_id,
+            customerId:     await resolveSaleDebitParty(db, { order_id: id, customer_id: ord.customer_id }, { payment_type }),
             orderId:        id,
             amount:         Number(ord.total_price),
             businessDate:   ord.shipped_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
@@ -384,12 +385,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       const payMethod = PAYMENT_METHOD_MAP[ord?.payment_type ?? ''] ?? 'bank';
 
-      if (ord && ord.customer_id) {
-        // Шукаємо активний договір клієнта (якщо є)
-        const { data: ctr } = await db
+      if (ord) {
+        // Сторона оплати = сторона продажу (Варіант B): гість/np:cod/mp:* — теж
+        // дебітори, інакше оплата губиться, а борг висить.
+        const party = await resolveSaleDebitParty(db, { order_id: id, customer_id: ord.customer_id });
+        // Договір — лише для справжнього клієнта
+        const { data: ctr } = isSpecialDebtor(party) ? { data: null } : await db
           .from('customer_contracts')
           .select('id')
-          .eq('customer_id', ord.customer_id)
+          .eq('customer_id', party)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(1)
@@ -398,7 +402,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         const methodLabel = payMethod === 'cash' ? 'Готівка' : payMethod === 'acquiring' ? 'Еквайринг' : 'Безготівковий';
         await recordCustomerPayment({
-          customerId:     ord.customer_id,
+          customerId:     party,
           contractId:     payContractId,
           amount:         Number(ord.total_price),
           paymentMethod:  payMethod,

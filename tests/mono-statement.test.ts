@@ -97,3 +97,37 @@ describe('еквайринг у виписці', () => {
     expect(extractOrderNumber(acquiring.comment, acquiring.description)).toBeNull();
   });
 });
+
+// Покриття еквайрингу З номером замовлення в призначенні. Реальний рядок
+// 02.09.2026 (259,58 ₴ за замовлення #26091002 на 263 ₴): до фіксу класифікатор
+// віддавав перевагу номеру й зараховував рядок ДРУГОЮ оплатою поверх вебхука.
+describe('classifyMonoTxn — еквайринг з номером замовлення не є оплатою', () => {
+  const row = {
+    id: 'gDsXAYEfzs5yo6T58Q',
+    time: 1788321248,
+    amount: 25958,
+    description: 'Від: АТ "УНІВЕРСАЛ БАНК"',
+    comment: 'Оплата замовлення №26091002 — FIXLINE.Покриття за проведені трансакції згідно договору еквайринга MI048034, Загалом 263 грн. Комісія банку 3.42 грн.',
+  };
+
+  it('класифікується як acquiring, а не order', () => {
+    const r = classifyMonoTxn(row);
+    expect(r?.kind).toBe('acquiring');
+    if (r?.kind === 'acquiring') {
+      expect(r.orderNumber).toBe(26091002);
+      expect(r.amount).toBe(259.58);
+      expect(r.gross).toBe(263);
+    }
+  });
+
+  it('без «Загалом» gross = зарахована сума', () => {
+    const r = classifyMonoTxn({ ...row, comment: 'Покриття за проведені трансакції згідно договору еквайринга' });
+    expect(r?.kind).toBe('acquiring');
+    if (r?.kind === 'acquiring') expect(r.gross).toBe(259.58);
+  });
+
+  it('звичайна оплата з номером лишається order', () => {
+    const r = classifyMonoTxn({ ...row, comment: 'Оплата за замовлення №26091002' });
+    expect(r?.kind).toBe('order');
+  });
+});

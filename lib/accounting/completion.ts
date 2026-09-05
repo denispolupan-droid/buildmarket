@@ -16,7 +16,7 @@
 import { createServiceClient } from '../supabase';
 import { postSaleDoc } from './dropship';
 import { recordMarketplaceCommission, recordMarketplaceServiceFee, recordCustomerPayment } from './money';
-import { SALE_DEBTOR } from './documents';
+import { SALE_DEBTOR, resolveSaleDebitParty } from './documents';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
 import { computeSmartFee, getSmartTariff } from '../rozetka-smart';
@@ -215,9 +215,14 @@ export async function settleOwnCod(orderId: string, createdBy = 'system'): Promi
   if (order.payment_type !== 'cod' || order.channel_code === 'dropship') return;
   const amount = Number(order.total_price);
   if (!(amount > 0)) return;
+  // Гасимо ТУ САМУ сторону, на яку ліг продаж (Варіант B). НоваПей збирає гроші
+  // лише коли дебітор — np:cod; наложку через Rozetka Доставка збирає Rozetka і
+  // повертає пакетною виплатою на mp:rozetka — тут нічого не проводимо.
+  const party = await resolveSaleDebitParty(db, { order_id: orderId });
+  if (party !== SALE_DEBTOR.npCod) return;
   try {
     await recordCustomerPayment({
-      customerId:     SALE_DEBTOR.npCod,      // борг на np:cod, який гасимо
+      customerId:     party,
       amount,
       paymentMethod:  'novapay',
       orderId,

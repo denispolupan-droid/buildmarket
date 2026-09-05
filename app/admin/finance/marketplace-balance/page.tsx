@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
 import MarketplaceBalanceClient from './MarketplaceBalanceClient';
 import { loadInTransitCommission } from '../../../../lib/accounting/marketplace-transit';
+import { getRzPayCreds } from '../../../../lib/rozetkapay-api';
+import RozetkaPayKeysCard from './RozetkaPayKeysCard';
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -44,10 +46,12 @@ export default async function MarketplaceBalancePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  const [prom, rozetka] = await Promise.all([
+  const [prom, rozetka, rzCreds] = await Promise.all([
     Promise.all([loadMarketplace('prom'), loadInTransitCommission('prom')]).then(([m, t]) => ({ ...m, inTransit: t })),
     Promise.all([loadMarketplace('rozetka'), loadInTransitCommission('rozetka')]).then(([m, t]) => ({ ...m, inTransit: t })),
+    getRzPayCreds(),
   ]);
+  const rzLogin = rzCreds ? (rzCreds.login.length > 4 ? `••••••${rzCreds.login.slice(-4)}` : '••••') : null;
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1300px' }}>
@@ -67,6 +71,9 @@ export default async function MarketplaceBalancePage() {
           prom={prom}
           rozetka={rozetka}
         />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <RozetkaPayKeysCard hasKeys={!!rzCreds} login={rzLogin} />
       </div>
     </div>
   );

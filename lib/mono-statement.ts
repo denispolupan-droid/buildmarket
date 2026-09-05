@@ -62,6 +62,7 @@ export function extractAcquiringGross(comment?: string | null): number | null {
 
 export type MonoMatch =
   | { kind: 'order'; orderNumber: number; amount: number }   // знайдено №заказу → авто
+  | { kind: 'acquiring'; amount: number; orderNumber?: number; gross: number }  // покриття еквайрингу — НЕ оплата
   | { kind: 'unmatched'; amount: number };                   // на ручну сверку
 
 // Класифікація вхідної транзакції. Лише надходження (amount>0) розглядаються.
@@ -69,6 +70,14 @@ export function classifyMonoTxn(item: MonoStatementItem): MonoMatch | null {
   if (!(item.amount > 0)) return null;                 // списання/нуль — ігноруємо
   const amount = Math.round(item.amount) / 100;        // грн
   const orderNumber = extractOrderNumber(item.comment, item.description);
+  // Покриття еквайрингу — це НЕ оплата покупця, а переказ банком грошей за вже
+  // проведену карткову оплату (вона записана вебхуком у момент платежу). Банк
+  // інколи вписує в призначення номер замовлення («Оплата замовлення №26091002 —
+  // FIXLINE. Покриття за проведені трансакції…») — до 09.2026 такий рядок
+  // зараховувався ДРУГОЮ оплатою (4 задвоєння на 3 240 ₴).
+  if (isAcquiringSettlement(item)) {
+    return { kind: 'acquiring', amount, orderNumber: orderNumber ?? undefined, gross: extractAcquiringGross(item.comment) ?? amount };
+  }
   if (orderNumber) return { kind: 'order', orderNumber, amount };
   return { kind: 'unmatched', amount };
 }

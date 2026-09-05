@@ -241,12 +241,35 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                         </div>
                       ))}
                     </div>
-                    {/* Транзитні гроші — помаранчеві, як усе «в дорозі» в розділі */}
-                    {ov.codTransit > 0 && (
-                      <div title="Накладені платежі по відправлених, ще не вручених посилках — надійдуть у НоваПей після вручення. У суму рахунків не входять."
-                        style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px', marginTop: '3px', paddingTop: '5px', borderTop: '1px dashed var(--border)' }}>
-                        <span style={{ color: '#B45309', fontWeight: 600 }}>Наложка в дорозі</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#B45309' }}>+{fmt(ov.codTransit)} ₴</span>
+                    {/* Гроші в дорозі — помаранчеві, як усе «в дорозі» в розділі.
+                        Дві стадії: товар уже в покупця, але гроші тримає посередник
+                        (НоваПей / Prom / Rozetka до виплати), і товар ще їде. У суму
+                        рахунків не входять. */}
+                    {ov.moneyTransit.total > 0 && (
+                      <div style={{ marginTop: '3px', paddingTop: '5px', borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div title="Товар вручено, гроші вже зібрані, але ще не на наших рахунках: наложка в НоваПей до виплати, Пром-оплата й Rozetka Pay до виплати площадки (за обліком)"
+                          style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                          <span style={{ color: '#B45309', fontWeight: 700 }}>Вручено, гроші в дорозі</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#B45309' }}>+{fmt(ov.moneyTransit.delivered)} ₴</span>
+                        </div>
+                        {[
+                          { label: 'НоваПей тримає', v: ov.moneyTransit.heldNovapay, title: 'Зібраний накладений платіж, який НоваПей ще не виплатила на рахунок' },
+                          { label: 'Prom до виплати', v: ov.moneyTransit.heldProm, title: 'Вручені замовлення з Пром-оплатою, виплату ще не отримано' },
+                          { label: 'Rozetka до виплати', v: ov.moneyTransit.heldRozetka, title: 'Вручені замовлення з Rozetka Pay і наложкою Rozetka Доставка, виплату ще не отримано' },
+                          { label: 'RozetkaPay вже виплатив', v: -ov.moneyTransit.receivedUnallocated, title: 'Виплати «РОЗЕТКА ПЕЙ», що вже прийшли в банк, але ще не рознесені по замовленнях Prom/Rozetka (потрібен реєстр Reports API)' },
+                        ].filter(a => a.v !== 0).map(a => (
+                          <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px', paddingLeft: '10px' }}>
+                            <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{a.label}</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>{a.v < 0 ? '−' : ''}{fmt(Math.abs(a.v))} ₴</span>
+                          </div>
+                        ))}
+                        {ov.moneyTransit.shipped > 0 && (
+                          <div title={`Посилки ще їдуть до покупця: наложка ${fmt(ov.moneyTransit.shippedCod)} ₴ + передоплата площадок ${fmt(ov.moneyTransit.shippedPrepaid)} ₴`}
+                            style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                            <span style={{ color: '#B45309', fontWeight: 600 }}>Ще їде до покупця</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#B45309' }}>+{fmt(ov.moneyTransit.shipped)} ₴</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>

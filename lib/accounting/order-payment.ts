@@ -1,6 +1,7 @@
 import { createServiceClient } from '../supabase';
 import { recordTxn } from './money';
-import { createPaymentVoucher } from './documents';
+import { createPaymentVoucher, resolveSaleDebitParty } from './documents';
+import { isSpecialDebtor } from './sale-party';
 
 // Єдина точка проведення оплати замовлення: рядок order_payments + оновлення
 // amount_paid/payment_confirmed + грошовий леджер (ваучер + DR метод / CR клієнт).
@@ -77,37 +78,39 @@ export async function applyOrderPayment(
     payment_confirmed: isFullyPaid,
   }).eq('id', orderId);
 
-  // Грошовий леджер — лише якщо є customer_id (спец-дебітор тут не застосовуємо:
-  // оплата за конкретним замовленням завжди має контрагента-клієнта).
-  if (order.customer_id) {
+  // Грошовий леджер: сторона оплати = сторона продажу (Варіант B). Для гостя /
+  // np:cod / mp:* — теж проводимо, інакше оплата губиться, а борг висить.
+  {
+    const party = await resolveSaleDebitParty(db, { order_id: orderId, customer_id: order.customer_id });
+    const realCustomer = isSpecialDebtor(party) ? null : party;
     const ledgerMethod = PAYMENT_METHOD_MAP[paymentMode] ?? 'bank';
-    const { data: ctr } = await db
+    const { data: ctr } = realCustomer ? await db
       .from('customer_contracts')
       .select('id')
-      .eq('customer_id', order.customer_id)
+      .eq('customer_id', realCustomer)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle() : { data: null };
     const contractId = ctr?.id ?? undefined;
 
     try {
       const voucher = await createPaymentVoucher({
         doc_type:      'customer_payment',
-        customer_id:   order.customer_id,
+        customer_id:   realCustomer ?? undefined,
         order_id:      orderId,
         contract_id:   contractId,
         amount,
         business_date: bizDate,
         created_by:    createdBy,
-        meta:          { payment_mode: paymentMode, order_payment_id: payment.id },
+        meta:          { payment_mode: paymentMode, order_payment_id: payment.id, party },
       });
 
       await recordTxn({
         debitAccount:   ledgerMethod,
         debitParty:     null,
         creditAccount:  'customer',
-        creditParty:    order.customer_id,
+        creditParty:    party,
         amount,
         businessDate:   bizDate,
         docId:          voucher.id,

@@ -4,6 +4,7 @@ import {
   recordReturn, recordSupplierReturn, recordTxn,
 } from './money';
 import { releaseReservation } from './reservations';
+import { SALE_DEBTOR, saleDebitPartyFor, type SalePartyOrder } from './sale-party';
 import type {
   AccDocument,
   AccDocumentLine,
@@ -406,32 +407,70 @@ export async function confirmDocument(
   }
 }
 
-// Спеціальні контрагенти дебіторки для продажів без customer_id.
-// Кошти за такі продажі нам винен не «ніхто», а конкретна сторона:
-// НП (наложений платіж у дорозі), маркетплейс (виплата з кабінету) або гість.
-export const SALE_DEBTOR = {
-  npCod:   'np:cod',
-  prom:    'mp:prom',
-  rozetka: 'mp:rozetka',
-  guest:   'guest',
-} as const;
+// Дебітор продажу — сторона, якій «належить» борг за замовлення. Правило винесене
+// в чисту функцію lib/accounting/sale-party (Варіант B: за каналом грошей, а не
+// за наявністю картки клієнта). Тут — лише робота з БД.
+export { SALE_DEBTOR };
 
+/**
+ * Сторона дебіторки для документа/оплати по замовленню.
+ *
+ * 1. Якщо по замовленню вже є проводка продажу — та сама сторона («оплата йде за
+ *    продажем»): так зміна способу оплати після відгрузки, повернення чи сторно
+ *    не розривають пару продаж/погашення.
+ * 2. Інакше — чисте правило за полями замовлення (payment_type / channel /
+ *    delivery_type / customer_id). `overrides` дозволяє порахувати сторону для
+ *    ще не збереженого стану (вебхук Monobank міняє cod → card).
+ * 3. Документ без замовлення (ручний продаж клієнту) → customer_id документа.
+ */
 export async function resolveSaleDebitParty(
   db: ReturnType<typeof createServiceClient>,
   doc: { customer_id?: string | null; order_id?: string | null },
+  overrides?: Partial<SalePartyOrder>,
 ): Promise<string> {
-  if (doc.customer_id) return doc.customer_id;
   if (doc.order_id) {
+    // Ремонт 05.09.2026 переніс борг зі старої сторони на нову проводкою
+    // 'correction' з ключем party-repair:* і meta.to — вона важливіша за первісну
+    // проводку продажу, яка так і лишилась на клієнті.
+    const { data: repair } = await db
+      .from('money_entries')
+      .select('meta')
+      .eq('order_id', doc.order_id)
+      .eq('account_type', 'customer')
+      .like('idempotency_key', 'party-repair:%')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const repairedTo = (repair?.meta as { to?: string } | null)?.to;
+    if (repairedTo) return repairedTo;
+
+    const { data: saleEntry } = await db
+      .from('money_entries')
+      .select('counterparty_id')
+      .eq('order_id', doc.order_id)
+      .eq('account_type', 'customer')
+      .eq('doc_type', 'sale')
+      .gt('amount', 0)
+      .not('counterparty_id', 'is', null)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (saleEntry?.counterparty_id) return saleEntry.counterparty_id;
+
     const { data: order } = await db
       .from('orders')
-      .select('payment_type, channel_code')
+      .select('customer_id, channel_code, payment_type, delivery_type')
       .eq('id', doc.order_id)
       .maybeSingle();
-    if (order?.payment_type === 'cod')      return SALE_DEBTOR.npCod;
-    if (order?.channel_code === 'prom')     return SALE_DEBTOR.prom;
-    if (order?.channel_code === 'rozetka')  return SALE_DEBTOR.rozetka;
+    return saleDebitPartyFor({
+      customer_id:   order?.customer_id ?? doc.customer_id ?? null,
+      channel_code:  order?.channel_code ?? null,
+      payment_type:  order?.payment_type ?? null,
+      delivery_type: order?.delivery_type ?? null,
+      ...(overrides ?? {}),
+    });
   }
-  return SALE_DEBTOR.guest;
+  return doc.customer_id || SALE_DEBTOR.guest;
 }
 
 // ── Перевірка залежностей перед скасуванням ───────────────────────────────────

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
+import { isSpecialDebtor, SPECIAL_DEBTOR_LABEL } from '../../../../../lib/accounting/sale-party';
 
 const db = createServiceClient();
 
@@ -11,7 +12,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // ar_balances — агрегований вид: SUM(money_entries) де account_type='customer', згрупований по contract_id
+  // ar_balances — агрегований вид: SUM(money_entries) де account_type='customer' по
+  // counterparty_id (міграція 110); договір — атрибут. Службові дебітори теж тут.
   const { data, error } = await db
     .from('ar_balances')
     .select('customer_id, customer_name, contract_id, contract_number, balance, credit_limit, credit_days, contract_status, currency')
@@ -46,6 +48,17 @@ export async function GET() {
     balance: number; credit_limit: number; credit_days: number;
     contract_status: string; currency: string;
   }) => {
+    // Службові дебітори (np:cod, mp:*) — транзит НП і площадок: у них немає
+    // «прострочення», лише сума до виплати/сверки з випискою.
+    if (isSpecialDebtor(r.customer_id)) {
+      return {
+        ...r,
+        customer_name:   SPECIAL_DEBTOR_LABEL[r.customer_id],
+        contract_status: 'special',
+        last_ship_date:  lastOpMap[r.customer_id] ?? null,
+        days_overdue:    0,
+      };
+    }
     const lastShipDate = lastOpMap[r.customer_id] ?? null;
     const daysOverdue = lastShipDate
       ? Math.max(0, Math.floor((new Date(today).getTime() - new Date(lastShipDate).getTime()) / 86400000) - (r.credit_days ?? 0))

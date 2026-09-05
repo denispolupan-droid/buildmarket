@@ -40,15 +40,17 @@ export async function GET(req: NextRequest) {
   try { items = JSON.parse(text); } catch { return NextResponse.json({ error: 'parse' }, { status: 200 }); }
   if (!Array.isArray(items)) return NextResponse.json({ ok: true, matched: 0, unmatched: 0, skipped: 0 });
 
-  let matched = 0, unmatched = 0, skipped = 0;
+  let matched = 0, unmatched = 0, acquiring = 0, payouts = 0, skipped = 0;
   for (const item of items) {
     const r = await ingestMonoTxn(db, item, account);
     if (r.status === 'matched') matched++;
     else if (r.status === 'unmatched') unmatched++;
+    else if (r.status === 'acquiring') acquiring++;
+    else if (r.status === 'payout') payouts++;
     else skipped++;
   }
 
-  return NextResponse.json({ ok: true, total: items.length, matched, unmatched, skipped });
+  return NextResponse.json({ ok: true, total: items.length, matched, unmatched, acquiring, payouts, skipped });
 }
 
 // pg_cron дзвонить через net.http_post (POST) — потрібен той самий метод.

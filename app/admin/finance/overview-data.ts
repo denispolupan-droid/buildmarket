@@ -68,6 +68,17 @@ export type OverviewData = {
   /* Наложка в дорозі: COD по відправлених, ще не вручених посилках —
      надійде в НоваПей після вручення */
   codTransit: number;
+  /* Гроші в дорозі — товар уже в покупця (або їде), а гроші ще не на наших рахунках.
+     held* — вручено, тримає посередник (за обліком, Варіант B: novapay = зібрана
+     наложка НП, mp:* = передоплата/наложка площадки до виплати);
+     shipped* — ще їде до покупця. */
+  moneyTransit: {
+    heldNovapay: number; heldProm: number; heldRozetka: number;
+    /* виплати RozetkaPay, що вже в банку, але ще не рознесені по замовленнях (mp:rozetkapay) */
+    receivedUnallocated: number;
+    shippedCod: number; shippedPrepaid: number;
+    delivered: number; shipped: number; total: number;
+  };
   mp: { prom: number; rozetka: number };
   /* Комісії «в дорозі» по каналах МП (спишуться при доставці): прогноз
      балансу = поточний − ця сума. Та сама логіка, що екран «Маркетплейси» */
@@ -319,14 +330,29 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const pTransitStuck = pTransit.filter(o => (o.shipped_at ?? '') < d7ago);
   // Наложка в дорозі: COD по посилках, що їдуть (Prom/Rozetka COD теж їде через НП)
   const codTransit = sum(pTransit.filter(o => o.payment_type === 'cod'));
+  // Передоплата площадок у дорозі: покупець уже заплатив Prom/Rozetka, товар їде;
+  // після вручення борг ляже на mp:* до пакетної виплати
+  const mpPrepaidTransit = sum(pTransit.filter(o => o.payment_type === 'prepaid' && (o.channel_code === 'prom' || o.channel_code === 'rozetka')));
   // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
   // живий залишок Mono — паралельно (кешований client-info)
-  const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw] = await Promise.all([
+  const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw, heldRows] = await Promise.all([
     loadInTransitCommission('prom'),
     loadInTransitCommission('rozetka'),
     getMonoLiveBalance(),
     getNovapayLiveBalance(),
+    // Вручено, гроші тримає площадка (службові дебітори Варіанту B). mp:rozetkapay —
+    // виплати RozetkaPay, що вже прийшли в банк, але ще не рознесені по замовленнях
+    // (баланс від'ємний) — зменшує «до виплати».
+    db.from('counterparty_balances').select('counterparty_id, balance')
+      .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:rozetkapay'])
+      .then(r => r.data ?? []),
   ]);
+  const heldMp = { prom: 0, rozetka: 0, receivedUnallocated: 0 };
+  for (const r of heldRows as { counterparty_id: string; balance: number }[]) {
+    if (r.counterparty_id === 'mp:prom')       heldMp.prom    = Math.max(0, Number(r.balance));
+    if (r.counterparty_id === 'mp:rozetka')    heldMp.rozetka = Math.max(0, Number(r.balance));
+    if (r.counterparty_id === 'mp:rozetkapay') heldMp.receivedUnallocated = Math.max(0, -Number(r.balance));
+  }
   const mpTransit = { prom: promTransit.total, rozetka: rozetkaTransit.total };
   // Кеш вважаємо живим, поки він свіжий. Крон ходить кожні 10 хв, тож усе
   // старше двох годин означає зламану інтеграцію — а показана як «жива»
@@ -406,6 +432,16 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else if (r.account_type === 'cash') accounts.cash += v;
   }
   accounts.total = accounts.monobank + accounts.novapay + accounts.cash;
+
+  // Гроші в дорозі: вручено (тримає посередник) + ще їде до покупця
+  const heldNovapay = Math.max(0, accounts.novapay);
+  const delivered   = Math.max(0, heldNovapay + heldMp.prom + heldMp.rozetka - heldMp.receivedUnallocated);
+  const shipped     = codTransit + mpPrepaidTransit;
+  const moneyTransit = {
+    heldNovapay, heldProm: heldMp.prom, heldRozetka: heldMp.rozetka, receivedUnallocated: heldMp.receivedUnallocated,
+    shippedCod: codTransit, shippedPrepaid: mpPrepaidTransit,
+    delivered, shipped, total: delivered + shipped,
+  };
 
   const arTotal = (arRows as { balance: number }[]).reduce((s, r) => s + Math.max(0, Number(r.balance)), 0);
   const overdue = agingRows as { balance: number; days_overdue: number }[];
@@ -638,6 +674,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     novapayLive,
     liveStale,
     codTransit,
+    moneyTransit,
     mp: { prom: promBal, rozetka: rozetkaBal },
     mpTransit,
     ar: {

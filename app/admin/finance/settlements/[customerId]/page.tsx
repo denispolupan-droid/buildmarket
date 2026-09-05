@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import ActClient, { type ActRow } from '../../_act/ActClient';
+import { isSpecialDebtor, SPECIAL_DEBTOR_LABEL } from '../../../../../lib/accounting/sale-party';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,8 +39,13 @@ export default async function CustomerActPage({
   const dateFrom   = sp.from ?? monthStart;
   const dateTo     = sp.to   ?? today;
 
+  // Службові дебітори (np:cod, mp:prom, …) — не рядки customers: акт по них теж
+  // потрібен (сверка транзиту з виписками), але без реквізитів.
+  const special = isSpecialDebtor(customerId);
   const [customerRes, settingsRes] = await Promise.all([
-    db.from('customers').select('id, name, company, legal_name, tax_number, city, address').eq('id', customerId).single(),
+    special
+      ? Promise.resolve({ data: { id: customerId, name: SPECIAL_DEBTOR_LABEL[customerId], company: null, legal_name: null, tax_number: null, city: null, address: null } })
+      : db.from('customers').select('id, name, company, legal_name, tax_number, city, address').eq('id', customerId).single(),
     db.from('app_settings').select('key, value').in('key', ['orders_from_name']),
   ]);
 
