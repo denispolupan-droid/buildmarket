@@ -37,7 +37,9 @@ export type AccountType =
   | 'marketplace_balance' | 'marketplace_fee'
   // Витратні рахунки (CHECK у БД — міграція 046)
   | 'logistics' | 'loading' | 'customs' | 'packaging' | 'acquiring_fee'
-  | 'rent' | 'salary' | 'marketing' | 'opex';
+  | 'rent' | 'salary' | 'marketing' | 'opex' | 'taxes'
+  // Вилучення власника (міграція 114) — не витрата, не в P&L
+  | 'owner';
 
 export type MoneyEntry = {
   id:              string;

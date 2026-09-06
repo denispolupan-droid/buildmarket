@@ -5,6 +5,7 @@ import { loadInTransitCommission } from '../../../lib/accounting/marketplace-tra
 import { getMonoLiveBalance } from '../../../lib/mono-balance';
 import { getNovapayLiveBalance, getNovapayRegistersCache } from '../../../lib/novapay-api';
 import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
+import { PL_ACCOUNTS, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -30,7 +31,8 @@ export type OverviewData = {
   dayLabels: string[];    // підписи днів періоду ('1', '5'…)
   kpi: {
     revenue: KpiSeries;   // факт з леджера
-    profit: KpiSeries;    // валовий факт: revenue - cogs - fee - delivery (для графіка динаміки)
+    profit: KpiSeries;    // валовий факт (єдине визначення lib/accounting/profit-rules): revenue − cogs − витрати угод
+    netProfit: { value: number; prev: number; opex: number; taxes: number };   // чистий факт = валовий − опер. витрати − податки
     /* Очікуваний валовий прибуток по ВСІХ замовленнях періоду (та сама база,
        що «Замовлення · сума»): доставлені — факт з леджера, решта — оцінка */
     profitEst: { value: number; prev: number };
@@ -200,7 +202,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => {
       let q = db.from('money_entries')
         .select('business_date, account_type, doc_type, amount')
-        .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
+        .in('account_type', PL_ACCOUNTS)
         .gte('business_date', prevStr);
       if (periodTo) q = q.lt('business_date', endStr);
       return q.range(f, t);
@@ -238,7 +240,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => db
       .from('money_entries')
       .select('business_date, account_type, doc_type, amount')
-      .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
+      .in('account_type', PL_ACCOUNTS)
       .gte('business_date', monthlyFromStr)
       .range(f, t)),
     // items/channel потрібні для очікуваного прибутку по місяцях (profitEst)
@@ -280,33 +282,30 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const profDaily = new Array(days.length).fill(0);
   const prevRevDaily = new Array(prevDays.length).fill(0);
   const prevProfDaily = new Array(prevDays.length).fill(0);
-  let curRev = 0, curCogs = 0, curFee = 0, curDeliv = 0;
-  let prevRev = 0, prevCogs = 0, prevFee = 0, prevDeliv = 0;
+  // Єдине визначення прибутку (lib/accounting/profit-rules): графік і KPI «факт» —
+  // валовий (виручка − COGS − витрати угод); чистий — мінус опер. витрати й податки.
+  let curRev = 0, prevRev = 0;
+  const curRows: typeof ledgerRows = [], prevRows: typeof ledgerRows = [];
   for (const r of ledgerRows) {
-    const amt = Number(r.amount);
+    const { bucket, delta } = plContribution(r.account_type, r.doc_type, Number(r.amount));
     const isCur = r.business_date >= fromStr;
-    const isDeliveryCost = r.account_type === 'logistics' && r.doc_type === 'delivery_cost';
-    if (r.account_type === 'logistics' && !isDeliveryCost) continue; // landed-cost логістика — не з продажів
-    const rev  = r.account_type === 'revenue' ? -amt : 0;
-    const cost = r.account_type === 'cogs' ? amt : r.account_type === 'marketplace_fee' ? amt : isDeliveryCost ? amt : 0;
+    (isCur ? curRows : prevRows).push(r);
+    const rev = bucket === 'revenue' ? delta : 0;
+    const grossDelta = bucket === 'revenue' || bucket === 'cogs' || bucket === 'deal' ? delta : 0;
     if (isCur) {
       curRev += rev;
-      if (r.account_type === 'cogs') curCogs += amt;
-      else if (r.account_type === 'marketplace_fee') curFee += amt;
-      else if (isDeliveryCost) curDeliv += amt;
       const i = dayIdx.get(r.business_date);
-      if (i !== undefined) { revDaily[i] += rev; profDaily[i] += rev - cost; }
+      if (i !== undefined) { revDaily[i] += rev; profDaily[i] += grossDelta; }
     } else {
       prevRev += rev;
-      if (r.account_type === 'cogs') prevCogs += amt;
-      else if (r.account_type === 'marketplace_fee') prevFee += amt;
-      else if (isDeliveryCost) prevDeliv += amt;
       const i = prevDayIdx.get(r.business_date);
-      if (i !== undefined) { prevRevDaily[i] += rev; prevProfDaily[i] += rev - cost; }
+      if (i !== undefined) { prevRevDaily[i] += rev; prevProfDaily[i] += grossDelta; }
     }
   }
-  const curProfit  = curRev - curCogs - curFee - curDeliv;
-  const prevProfit = prevRev - prevCogs - prevFee - prevDeliv;
+  const curPL = summarizePL(curRows), prevPL = summarizePL(prevRows);
+  const curProfit  = curPL.grossProfit;
+  const prevProfit = prevPL.grossProfit;
+
 
   // ── Замовлення: воронка, канали, топи, середній чек ────────────────────────
   const fromIso = periodFrom.toISOString();
@@ -585,10 +584,11 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     const i = mIdx.get(r.business_date.slice(0, 7));
     if (i === undefined) continue;
     const amt = Number(r.amount);
-    if (r.account_type === 'revenue') mRev[i] += -amt;
-    else if (r.account_type === 'cogs') mCogs[i] += amt;
-    else if (r.account_type === 'marketplace_fee') mFee[i] += amt;
-    else if (r.account_type === 'logistics' && r.doc_type === 'delivery_cost') mDeliv[i] += amt;
+    const { bucket } = plContribution(r.account_type, r.doc_type, amt);
+    if (bucket === 'revenue') mRev[i] += -amt;
+    else if (bucket === 'cogs') mCogs[i] += amt;
+    else if (bucket === 'deal' && r.account_type === 'marketplace_fee') mFee[i] += amt;
+    else if (bucket === 'deal') mDeliv[i] += amt;
   }
   const mProfit = mRev.map((v, i) => v - mCogs[i] - mFee[i] - mDeliv[i]);
   const mOrd = new Array(6).fill(0), mOrdSum = new Array(6).fill(0), mProfitEst = new Array(6).fill(0);
@@ -709,6 +709,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     kpi: {
       revenue:  { value: curRev, prev: prevRev, daily: revDaily, prevDaily: prevRevDaily },
       profit:   { value: curProfit, prev: prevProfit, daily: profDaily, prevDaily: prevProfDaily },
+      netProfit: { value: curPL.netProfit, prev: prevPL.netProfit, opex: curPL.opex.total, taxes: curPL.taxes },
       profitEst: { value: curProfitEst, prev: prevProfitEst },
       margin:   { value: pct(curProfitEst, curOrdSum), prev: pct(prevProfitEst, prevOrdSum) },
       orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },

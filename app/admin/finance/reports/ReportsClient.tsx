@@ -6,13 +6,14 @@ import { useState } from 'react';
 export type PLData = {
   revenue:        number;
   cogs:           number;
-  gross_profit:   number;
-  landed_costs:   number;
-  gross_after_lc: number;
-  op_expenses:    number;
   marketplace_commission: number;
-  np_delivery:    number;
-  op_profit:      number;
+  np_delivery:    number;   // доставка й комісії НП (delivery_cost, np_fee)
+  acquiring_fee:  number;
+  gross_profit:   number;   // валовий = виручка − COGS − витрати угод (єдине визначення, lib/accounting/profit)
+  op_expenses:    number;
+  taxes:          number;
+  net_profit:     number;   // чистий = валовий − опер. витрати − податки
+  corrections:    number;   // довідково, не в прибутку
   by_channel:     { channel: string; revenue: number; cogs: number; commission: number }[];
   by_expense:     { type: string; amount: number }[];
 };
@@ -46,7 +47,7 @@ const EXPENSE_LABELS: Record<string, string> = {
   packaging: 'Пакування', acquiring_fee: 'Комісія еквайрингу',
   marketplace_fee: 'Комісія маркетплейсу', np_delivery: 'Доставка НП (наш рахунок)', rent: 'Оренда',
   salary: 'Зарплата', marketing: 'Маркетинг', opex: 'Інші витрати',
-  other: 'Інше (каса)',
+  other: 'Інше (каса)', taxes: 'Податки / ЄСВ',
 };
 
 const ACCOUNT_LABELS: Record<string, string> = {
@@ -117,15 +118,16 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
 
   // ── P&L rows ────────────────────────────────────────────────────────────────
   const plRows = [
-    { label: 'Виручка',                     value: pl.revenue,        bold: true,  color: 'var(--text-primary)', pctOf: null },
-    { label: 'Собівартість (FIFO)',          value: -pl.cogs,          bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Валовий прибуток',            value: pl.gross_profit,   bold: true,  color: pl.gross_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
-    { label: 'Landed Costs (доп. витрати)', value: -pl.landed_costs,  bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Прибуток після LC',           value: pl.gross_after_lc, bold: true,  color: pl.gross_after_lc >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
-    { label: 'Операційні витрати',          value: -pl.op_expenses,   bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Комісія маркетплейсів',       value: -pl.marketplace_commission, bold: false, color: '#DC2626',    pctOf: pl.revenue },
-    { label: 'Доставка НП (за наш рахунок)', value: -pl.np_delivery,  bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Операційний прибуток',        value: pl.op_profit,      bold: true,  color: pl.op_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true, big: true },
+    { label: 'Виручка',                          value: pl.revenue,        bold: true,  color: 'var(--text-primary)', pctOf: null },
+    { label: 'Собівартість (FIFO)',               value: -pl.cogs,          bold: false, color: '#DC2626',             pctOf: pl.revenue },
+    { label: 'Комісії маркетплейсів',             value: -pl.marketplace_commission, bold: false, color: '#DC2626',    pctOf: pl.revenue },
+    { label: 'Доставка й комісії НП',             value: -pl.np_delivery,   bold: false, color: '#DC2626',             pctOf: pl.revenue },
+    { label: 'Комісія еквайрингу',                value: -pl.acquiring_fee, bold: false, color: '#DC2626',             pctOf: pl.revenue },
+    { label: 'Валовий прибуток',                 value: pl.gross_profit,   bold: true,  color: pl.gross_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
+    { label: 'Операційні витрати',               value: -pl.op_expenses,   bold: false, color: '#DC2626',             pctOf: pl.revenue },
+    { label: 'Податки',                          value: -pl.taxes,         bold: false, color: '#DC2626',             pctOf: pl.revenue },
+    { label: 'Чистий прибуток',                  value: pl.net_profit,     bold: true,  color: pl.net_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true, big: true },
+    ...(pl.corrections !== 0 ? [{ label: 'Коригування (поза прибутком)', value: pl.corrections, bold: false, color: 'var(--text-muted)', pctOf: null }] : []),
   ];
 
   return (
