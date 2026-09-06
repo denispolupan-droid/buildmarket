@@ -11,10 +11,25 @@ const serviceClient = createClient(
 
 type Props = {
   params: Promise<{ sku: string }>;
+  searchParams: Promise<{ back?: string }>;
 };
 
-export default async function EditProductPage({ params }: Props) {
+/** Хвіст ?back=… зі списку: пересобираємо лише відомі фільтри — нічого чужого в href. */
+function backHref(back: string | undefined): string {
+  if (!back) return '/admin/products';
+  const src = new URLSearchParams(back.replace(/^\?/, ''));
+  const out = new URLSearchParams();
+  for (const k of ['q', 'cat', 'brand', 'status']) {
+    const v = src.get(k);
+    if (v) out.set(k, v);
+  }
+  const s = out.toString();
+  return s ? `/admin/products?${s}` : '/admin/products';
+}
+
+export default async function EditProductPage({ params, searchParams }: Props) {
   const { sku } = await params;
+  const { back } = await searchParams;
 
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -51,7 +66,7 @@ export default async function EditProductPage({ params }: Props) {
     <div style={{ background: 'var(--bg-soft)', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>
         <div style={{ marginBottom: '24px' }}>
-          <Link href="/admin/products" style={{ color: 'var(--text-secondary)', fontSize: '14px', textDecoration: 'none' }}>
+          <Link href={backHref(back)} style={{ color: 'var(--text-secondary)', fontSize: '14px', textDecoration: 'none' }}>
             ← Назад до списку товарів
           </Link>
         </div>
