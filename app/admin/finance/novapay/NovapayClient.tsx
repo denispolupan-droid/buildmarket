@@ -36,9 +36,9 @@ const IN_CATEGORIES: { value: string; label: string }[] = [
 
 const KIND_LABEL: Record<NovapayRow['kind'], string> = { cod_payout: 'Виплата наложки', other_in: 'Зарахування', debit: 'Списання' };
 
-export default function NovapayClient({ rows, ledger, live, npCod, lastRegister, pending, aggregate }: {
+export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, receivedUnbooked, lastRegister, pending, aggregate }: {
   rows: NovapayRow[]; ledger: number; live: { available: number; fetchedAt: string } | null;
-  npCod: number; lastRegister: string | null; pending: Pending[]; aggregate: Aggregate[];
+  npCod: number; stmtBalance: number; receivedUnbooked: number; lastRegister: string | null; pending: Pending[]; aggregate: Aggregate[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -51,7 +51,10 @@ export default function NovapayClient({ rows, ledger, live, npCod, lastRegister,
   const shown = filter === 'unmatched' ? unmatched : rows;
   const unmatchedSum = unmatched.reduce((s, r) => s + Number(r.amount), 0);
   const pendingSum = pending.reduce((s, p) => s + p.total, 0);
+  // Розбіжність обліку з живим: нерознесені документи виписки + те, що прийшло після виписки
   const diff = live ? Math.round((ledger - live.available) * 100) / 100 : null;
+  const npCodRaw = Math.round((npCod - receivedUnbooked / 0.995) * 100) / 100;
+  const npCodShown = npCodRaw < 1 ? 0 : npCodRaw;   // копійчаний хвіст округлення — не борг
 
   async function refresh() {
     setBusy('refresh'); setMsg(null);
@@ -87,19 +90,22 @@ export default function NovapayClient({ rows, ledger, live, npCod, lastRegister,
           <div className="fin-kpi-label">Рахунок NovaPay</div>
           <div className="fin-money-val">{live ? fmt(live.available) : fmt(ledger)} ₴</div>
           <div className="fin-money-sub">
-            {live ? `живий залишок · за обліком ${fmt(ledger)} ₴` : 'за обліком (живий недоступний)'}
+            {live ? `живий залишок · за обліком ${fmt(ledger)} ₴ · за випискою ${fmt(stmtBalance)} ₴` : 'за обліком (живий недоступний)'}
+            {receivedUnbooked > 0 && (
+              <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>+{fmt(receivedUnbooked)} ₴ прийшло після останньої виписки (документ буде після закриття дня)</div>
+            )}
             {diff !== null && Math.abs(diff) > 0.01 && (
               <div style={{ color: '#B45309', fontWeight: 600, marginTop: '2px' }}>
-                <AlertTriangle size={11} style={{ verticalAlign: '-1px' }} /> різниця {fmt(diff)} ₴ — {unmatched.length ? `нерознесені списання ${fmt(unmatchedSum)} ₴` : 'перевірте виписку'}
+                <AlertTriangle size={11} style={{ verticalAlign: '-1px' }} /> облік ≠ живий на {fmt(diff)} ₴ — {unmatched.length ? `нерознесені документи ${fmt(unmatchedSum)} ₴` : ''}{receivedUnbooked > 0 ? `${unmatched.length ? ' + ' : ''}ще не у виписці ${fmt(receivedUnbooked)} ₴` : ''}
               </div>
             )}
           </div>
         </div>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
           <div className="fin-kpi-label">Наложка: НоваПей ще не виплатила</div>
-          <div className="fin-money-val" style={{ color: '#B45309' }}>{fmt(Math.max(0, npCod))} ₴</div>
-          <div className="fin-money-sub" title="np:cod = брутто вручених наложок без виплати по ЕН − реєстри, чий склад не підібрано (проведені сумою)">
-            за обліком (np:cod){lastRegister ? ` · останній реєстр ${dmy(lastRegister)}` : ''}
+          <div className="fin-money-val" style={{ color: '#B45309' }}>{fmt(npCodShown)} ₴</div>
+          <div className="fin-money-sub" title="np:cod = брутто вручених наложок без виплати по ЕН − реєстри, чий склад не підібрано; мінус те, що вже прийшло на рахунок без документа виписки">
+            за обліком {fmt(Math.max(0, npCod))} ₴{receivedUnbooked > 0 ? ` − уже на рахунку ${fmt(receivedUnbooked)} ₴` : ''}{lastRegister ? ` · останній реєстр ${dmy(lastRegister)}` : ''}
             {pending.length > 0 && <> · без виплати по ЕН: {pending.length} ({fmt(pendingSum)} ₴)</>}
             {aggregate.length > 0 && <> · реєстрів сумою: {aggregate.length} ({fmt(aggregate.reduce((s, a) => s + a.net, 0))} ₴)</>}
           </div>

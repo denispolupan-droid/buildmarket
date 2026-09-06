@@ -253,9 +253,12 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                           <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#B45309' }}>+{fmt(ov.moneyTransit.delivered)} ₴</span>
                         </div>
                         {[
-                          { label: 'НоваПей', v: ov.moneyTransit.heldNovapay, title: ov.moneyTransit.novapayPending.lastRegisterDate
-                            ? `Наложка, вручена, але ще не виплачена (за обліком np:cod). Останній реєстр виплат НП ${ov.moneyTransit.novapayPending.lastRegisterDate.slice(8, 10)}.${ov.moneyTransit.novapayPending.lastRegisterDate.slice(5, 7)}; після нього вручено ${ov.moneyTransit.novapayPending.orders} посилок. Склад реєстрів API не віддає — утримання НП рахуються за правилом дат.`
-                            : 'Наложка, вручена, але ще не виплачена (за обліком np:cod)' },
+                          { label: 'НоваПей', v: ov.moneyTransit.heldNovapay, title:
+                            `Наложка, вручена, але ще не на рахунку. За обліком не виплачено ${fmt(ov.moneyTransit.novapayPending.npCod)} ₴`
+                            + (ov.moneyTransit.novapayPending.receivedUnbooked > 0
+                              ? `, з них ${fmt(ov.moneyTransit.novapayPending.receivedUnbooked)} ₴ уже на рахунку NovaPay (документ у виписці з'явиться після закриття дня) — вони вже в живому залишку, тому тут не рахуються`
+                              : '')
+                            + (ov.moneyTransit.novapayPending.lastRegisterDate ? `. Останній реєстр виплат НП ${ov.moneyTransit.novapayPending.lastRegisterDate.slice(8, 10)}.${ov.moneyTransit.novapayPending.lastRegisterDate.slice(5, 7)}.` : '.') },
                           { label: 'RozetkaPay', v: ov.moneyTransit.heldRozetkaPay, title: `Вручено з оплатою через площадки, виплату ще не отримано: Prom ${fmt(ov.moneyTransit.heldProm)} + Rozetka ${fmt(ov.moneyTransit.heldRozetka)} − уже виплачено ${fmt(ov.moneyTransit.receivedUnallocated)}` },
                         ].filter(a => a.v > 0).map(a => (
                           <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px', paddingLeft: '10px' }}>

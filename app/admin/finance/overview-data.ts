@@ -77,7 +77,11 @@ export type OverviewData = {
     heldNovapay: number;
     /* як пораховано heldNovapay: дата останнього реєстру виплат НП і кількість
        вручених після нього наложок; fromLedger — кешу реєстрів немає, взято облік */
-    novapayPending: { lastRegisterDate: string | null; orders: number; fromLedger: boolean };
+    novapayPending: {
+      lastRegisterDate: string | null; orders: number; fromLedger: boolean;
+      /* сальдо np:cod за обліком і те, що вже прийшло на рахунок без документа виписки */
+      npCod: number; receivedUnbooked: number;
+    };
     heldProm: number; heldRozetka: number;
     /* виплати RozetkaPay, що вже в банку, але ще не рознесені по замовленнях (mp:rozetkapay) */
     receivedUnallocated: number;
@@ -342,7 +346,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const mpPrepaidTransit = sum(pTransit.filter(o => o.payment_type === 'prepaid' && (o.channel_code === 'prom' || o.channel_code === 'rozetka')));
   // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
   // живий залишок Mono — паралельно (кешований client-info)
-  const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw, npRegisters, npCodDelivered, heldRows] = await Promise.all([
+  const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw, npRegisters, npCodDelivered, heldRows, npStmtRows, npFeeSetting] = await Promise.all([
     loadInTransitCommission('prom'),
     loadInTransitCommission('rozetka'),
     getMonoLiveBalance(),
@@ -361,6 +365,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     db.from('counterparty_balances').select('counterparty_id, balance')
       .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:rozetkapay', 'np:cod'])
       .then(r => r.data ?? []),
+    // Залишок NovaPay «за випискою» = Σ усіх документів виписки (рахунок відкрито
+    // 16.07.2026 з нуля). Виписка віддає день лише після його закриття, а живий
+    // залишок оновлюється щогодини — різниця між ними = виплати, що вже прийшли
+    // на рахунок, але документа ще немає. На них зменшуємо «НоваПей не виплатила».
+    fetchAllRows<{ direction: string; amount: number }>((f, t) => db
+      .from('novapay_txns').select('direction, amount').range(f, t)),
+    db.from('app_settings').select('value').eq('key', 'novapay_cod_fee_pct').maybeSingle().then(r => r.data?.value ?? null),
   ]);
   const heldMp = { prom: 0, rozetka: 0, receivedUnallocated: 0, npCod: 0 };
   for (const r of heldRows as { counterparty_id: string; balance: number }[]) {
@@ -459,8 +470,16 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     ? (npCodDelivered as { order_number: number; total_price: number; delivered_at: string }[])
         .filter(o => String(o.delivered_at).slice(0, 10) >= lastReg)
     : [];
-  const heldNovapay = heldMp.npCod;
-  const novapayPending = { lastRegisterDate: lastReg, orders: npPendingOrders.length, fromLedger: true };
+  // Уже на рахунку, але ще без документа у виписці (виписка закриває день уранці):
+  // живий залишок − залишок за випискою. Ділимо на (1 − комісія), бо np:cod — брутто.
+  const npStmtBalance = Math.round(npStmtRows.reduce((s, r) => s + (r.direction === 'in' ? 1 : -1) * Number(r.amount), 0) * 100) / 100;
+  const npFeePct = Number.isFinite(parseFloat(String(npFeeSetting ?? ''))) ? parseFloat(String(npFeeSetting)) : 0.5;
+  const npReceivedUnbooked = novapayLiveRaw ? Math.max(0, Math.round((novapayLiveRaw.available - npStmtBalance) * 100) / 100) : 0;
+  const npReceivedGross = Math.round(npReceivedUnbooked / (1 - npFeePct / 100) * 100) / 100;
+  // копійчаний хвіст від округлення 0,5 % по кожній ЕН — не борг
+  const heldNovapayRaw = Math.round((heldMp.npCod - npReceivedGross) * 100) / 100;
+  const heldNovapay = heldNovapayRaw < 1 ? 0 : heldNovapayRaw;
+  const novapayPending = { lastRegisterDate: lastReg, orders: npPendingOrders.length, fromLedger: true, npCod: heldMp.npCod, receivedUnbooked: npReceivedUnbooked };
   // RozetkaPay платить за Prom і Rozetka одним переказом: «не виплачено» — лише нетто
   const heldRozetkaPay = Math.max(0, heldMp.prom + heldMp.rozetka - heldMp.receivedUnallocated);
   const delivered   = heldNovapay + heldRozetkaPay;

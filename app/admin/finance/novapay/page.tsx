@@ -27,6 +27,11 @@ export default async function NovapayPage() {
 
   const ledger = Math.round((ledgerRows ?? []).reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
   const lastRegister = (rows ?? []).find(r => r.kind === 'cod_payout')?.txn_date ?? null;
+  // Залишок за випискою (Σ усіх документів) і те, що живий залишок показує понад нього —
+  // виплати, що вже прийшли, але документа ще немає (виписка закриває день уранці)
+  const { data: allStmt } = await db.from('novapay_txns').select('direction, amount').limit(10000);
+  const stmtBalance = Math.round((allStmt ?? []).reduce((s, r) => s + (r.direction === 'in' ? 1 : -1) * Number(r.amount), 0) * 100) / 100;
+  const receivedUnbooked = live ? Math.max(0, Math.round((live.available - stmtBalance) * 100) / 100) : 0;
   const pending = unsettled.sort((a, b) => b.delivered.localeCompare(a.delivered));
   const aggregate = (rows ?? []).filter(r => r.category === 'cod_payout_aggregate');
 
@@ -45,6 +50,8 @@ export default async function NovapayPage() {
           ledger={ledger}
           live={live ? { available: live.available, fetchedAt: live.fetchedAt } : null}
           npCod={Number(npCod?.balance ?? 0)}
+          stmtBalance={stmtBalance}
+          receivedUnbooked={receivedUnbooked}
           lastRegister={lastRegister}
           pending={pending.map(o => ({ order_number: o.order_number, total: o.gross, delivered: o.delivered }))}
           aggregate={aggregate.map(r => ({ date: String(r.txn_date), net: Number(r.amount), register: (r.register_no as string | null) ?? null }))}
