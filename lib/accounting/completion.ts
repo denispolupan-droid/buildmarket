@@ -15,8 +15,7 @@
  */
 import { createServiceClient } from '../supabase';
 import { postSaleDoc } from './dropship';
-import { recordMarketplaceCommission, recordMarketplaceServiceFee, recordCustomerPayment } from './money';
-import { SALE_DEBTOR, resolveSaleDebitParty } from './documents';
+import { recordMarketplaceCommission, recordMarketplaceServiceFee } from './money';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
 import { computeSmartFee, getSmartTariff } from '../rozetka-smart';
@@ -204,35 +203,14 @@ export async function settleOrderCOD(orderId: string, createdBy = 'system'): Pro
  * зібрані НоваПей. Виплата НоваПей → банк (з комісією НП) — окремо (Фаза 2).
  * Ідемпотентно за ключем cod-collect:{orderId}. Дропшип-COD сюди не входить (credit_cod_to_partner).
  */
-export async function settleOwnCod(orderId: string, createdBy = 'system'): Promise<void> {
-  const db = createServiceClient();
-  const { data: order } = await db
-    .from('orders')
-    .select('order_number, channel_code, payment_type, total_price')
-    .eq('id', orderId)
-    .single();
-  if (!order) return;
-  if (order.payment_type !== 'cod' || order.channel_code === 'dropship') return;
-  const amount = Number(order.total_price);
-  if (!(amount > 0)) return;
-  // Гасимо ТУ САМУ сторону, на яку ліг продаж (Варіант B). НоваПей збирає гроші
-  // лише коли дебітор — np:cod; наложку через Rozetka Доставка збирає Rozetka і
-  // повертає пакетною виплатою на mp:rozetka — тут нічого не проводимо.
-  const party = await resolveSaleDebitParty(db, { order_id: orderId });
-  if (party !== SALE_DEBTOR.npCod) return;
-  try {
-    await recordCustomerPayment({
-      customerId:     party,
-      amount,
-      paymentMethod:  'novapay',
-      orderId,
-      idempotencyKey: `cod-collect:${orderId}`,
-      description:    `COD зібрано НоваПей (замовлення #${order.order_number})`,
-      createdBy,
-    });
-  } catch (err) {
-    alertAdmin(`COD не визнано на novapay (замовлення #${order.order_number})`, err);
-  }
+export async function settleOwnCod(_orderId: string, _createdBy = 'system'): Promise<void> {
+  // З 06.09.2026 НІЧОГО не проводимо: «COD зібрано НоваПей» при врученні було
+  // фікцією (рахунок novapay за обліком 58 тис. при живих 8 тис.). Наложка лишається
+  // боргом np:cod з моменту продажу (Варіант B) і закривається РЕАЛЬНИМ зарахуванням
+  // з виписки NovaPay (lib/novapay-ingest: DR novapay / CR np:cod за реєстром НП),
+  // а різниця брутто−нетто стає утриманням НП (settleNpDeductions). Функцію лишено,
+  // щоб не чіпати місця виклику; дропшип-COD партнеру — окремо (settleOrderCOD).
+  void _orderId; void _createdBy;
 }
 
 /**

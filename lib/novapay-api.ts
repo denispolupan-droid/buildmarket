@@ -1,5 +1,6 @@
 import { createServiceClient } from './supabase';
 import { jwtSecondsLeft } from './novapay-jwt';
+import { parseNovapayRegisterPayouts, type NovapayRegisterPayout } from './novapay-statement';
 
 // NovaPay Business Cabinet API v2.0 (SOAP, business.novapay.ua).
 // Автентифікація UserAuthenticationJWT з ОДНОРАЗОВОЮ РОТАЦІЄЮ: кожен виклик
@@ -229,6 +230,134 @@ function isExpiredJwt(xml: string): boolean {
     || t.includes('token')
     || t.includes('unauthorized')
     || t.includes('access denied');
+}
+
+/** id рахунків NovaPay (кеш novapay_account_ids; інакше — GetClientsList → GetAccountsList). */
+async function resolveAccountIds(db: Db, jwt: string): Promise<number[]> {
+  const cachedIds = await setting(db, 'novapay_account_ids');
+  if (cachedIds) {
+    try { const ids = JSON.parse(cachedIds) as number[]; if (ids.length) return ids; } catch { /* перечитаємо */ }
+  }
+  let clientId = await setting(db, 'novapay_client_id');
+  if (!clientId) {
+    const clientsXml = await soapCall('GetClientsList', { request_ref: crypto.randomUUID(), jwt });
+    clientId = tag(clientsXml, 'id');
+    if (clientId) await db.from('app_settings').upsert({ key: 'novapay_client_id', value: clientId });
+  }
+  if (!clientId) throw new Error('NovaPay: не знайдено підприємства в GetClientsList');
+  const listXml = await soapCall('GetAccountsList', { request_ref: crypto.randomUUID(), jwt, client_id: clientId });
+  const ids = tags(listXml, 'id').map(Number).filter(Number.isFinite);
+  if (ids.length) await db.from('app_settings').upsert({ key: 'novapay_account_ids', value: JSON.stringify(ids) });
+  return ids;
+}
+
+/** Виклик з одним повтором після перевидачі протухлого jwt. */
+async function callWithJwt(db: Db, method: string, fields: Record<string, string | number | null | undefined>): Promise<string> {
+  let jwt = await getJwt(db);
+  let xml = await soapCall(method, { request_ref: crypto.randomUUID(), jwt, ...fields });
+  if (tag(xml, 'result') === 'error' && isExpiredJwt(xml)) {
+    jwt = await getJwt(db, true);
+    xml = await soapCall(method, { request_ref: crypto.randomUUID(), jwt, ...fields });
+  }
+  if (tag(xml, 'result') === 'error') {
+    throw new Error(`NovaPay ${method}: ${[tag(xml, "title"), tag(xml, "error"), tag(xml, "error_description"), tag(xml, "message")].filter(Boolean).join(" / ") || xml.slice(0, 300)}`);
+  }
+  return xml;
+}
+
+export type NovapayExtract = { accountId: number; extract: string };
+
+/**
+ * Виписка по рахунках NovaPay за період (GetAccountExtract: account_id, date_from,
+ * date_to; відповідь — поле `extract` рядком). Саме тут видно виплати наложки
+ * (COD) на рахунок і списання — джерело правди для «НоваПей тримає».
+ * Дати — YYYY-MM-DD.
+ */
+export async function getNovapayAccountExtract(dateFrom: string, dateTo: string): Promise<NovapayExtract[]> {
+  const db = createServiceClient();
+  const jwt = await getJwt(db);
+  const ids = await resolveAccountIds(db, jwt);
+  const out: NovapayExtract[] = [];
+  for (const id of ids) {
+    // SOAP-операція GetAccountExtract (тип запиту в схемі — GetAccExtractRequest)
+    const xml = await callWithJwt(db, 'GetAccountExtract', { account_id: id, date_from: dateFrom, date_to: dateTo });
+    out.push({ accountId: id, extract: tag(xml, 'extract') ?? '' });
+  }
+  return out;
+}
+
+/** Список платежів за період (GetPaymentsList; date_type — за якою датою фільтр). Відповідь — рядок. */
+export async function getNovapayPaymentsList(dateFrom: string, dateTo: string, dateType = 'DOC_DATE'): Promise<NovapayExtract[]> {
+  const db = createServiceClient();
+  const jwt = await getJwt(db);
+  const ids = await resolveAccountIds(db, jwt);
+  const out: NovapayExtract[] = [];
+  for (const id of ids) {
+    const xml = await callWithJwt(db, 'GetPaymentsList', { account_id: id, date_from: dateFrom, date_to: dateTo, date_type: dateType });
+    out.push({ accountId: id, extract: tag(xml, 'payments') ?? '' });
+  }
+  return out;
+}
+
+/* ── Виплати наложки з виписки NovaPay ──────────────────────────────────────
+   Кожна виплата COD приходить на рахунок NovaPay одним переказом за реєстром НП:
+   «Переказ коштів по платежам, прийнятим від населення … згідно реєстру № N від
+   DD.MM.YYYY». Складу реєстру (які ЕН) API не віддає (GetRegister → APIError,
+   трекінг НП полів виплати для «Контролю оплати» не має), тож звідси беремо
+   лише дати й суми реєстрів — для правила «вручено після останнього реєстру =
+   ще не виплачено» на «Огляді». */
+
+export type NovapayRegistersCache = { fetchedAt: string; from: string; to: string; lastDate: string | null; payouts: NovapayRegisterPayout[] };
+
+const REGISTERS_CACHE_KEY = 'novapay_registers_cache';
+const ddmmyyyy = (d: Date) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+
+export async function getNovapayRegistersCache(): Promise<NovapayRegistersCache | null> {
+  const db = createServiceClient();
+  const { data } = await db.from('app_settings').select('value').eq('key', REGISTERS_CACHE_KEY).maybeSingle();
+  if (!data?.value) return null;
+  try { return JSON.parse(data.value) as NovapayRegistersCache; } catch { return null; }
+}
+
+/** Оновлення кешу реєстрів за останні `days` днів (кличе крон novapay-balance). */
+export async function refreshNovapayRegisters(days = 14): Promise<NovapayRegistersCache | null> {
+  const db = createServiceClient();
+  try {
+    const to = new Date(); const from = new Date(Date.now() - days * 86400000);
+    const extracts = await getNovapayAccountExtract(ddmmyyyy(from), ddmmyyyy(to));
+    const payouts = extracts.flatMap(e => parseNovapayRegisterPayouts(e.extract));
+    const cache: NovapayRegistersCache = {
+      fetchedAt: new Date().toISOString(),
+      from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10),
+      lastDate: payouts.length ? payouts[payouts.length - 1].date : null,
+      payouts,
+    };
+    await db.from('app_settings').upsert({ key: REGISTERS_CACHE_KEY, value: JSON.stringify(cache) });
+    return cache;
+  } catch (err) {
+    console.error('[novapay-registers]', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * Реєстри НП (GetRegister → statement_id, DownloadRegister → url файлу).
+ * Type — тип реєстру (перебір значень, документації на enum немає), дати —
+ * DD.MM.YYYY, FileExtension — xlsx/csv. Клієнт — novapay_client_id.
+ */
+export async function requestNovapayRegister(type: number, from: string, into: string, fileExtension = 'xlsx'): Promise<{ statementId: string | null; createdAt: string | null; raw: string }> {
+  const db = createServiceClient();
+  let clientId = await setting(db, 'novapay_client_id');
+  if (!clientId) { const jwt = await getJwt(db); await resolveAccountIds(db, jwt); clientId = await setting(db, 'novapay_client_id'); }
+  if (!clientId) throw new Error('NovaPay: novapay_client_id невідомий');
+  const xml = await callWithJwt(db, 'GetRegister', { Type: type, ClientId: Number(clientId), From: from, Into: into, FileExtension: fileExtension });
+  return { statementId: tag(xml, 'statement_id'), createdAt: tag(xml, 'created_datetime'), raw: xml };
+}
+
+export async function downloadNovapayRegister(type: number, id: number): Promise<{ status: string | null; url: string | null; fileType: string | null; fileName: string | null; raw: string }> {
+  const db = createServiceClient();
+  const xml = await callWithJwt(db, 'DownloadRegister', { Type: type, Id: id });
+  return { status: tag(xml, 'status'), url: tag(xml, 'url'), fileType: tag(xml, 'file_type'), fileName: tag(xml, 'file_name'), raw: xml };
 }
 
 /** Оновлення кешу балансу (кличе крон). */

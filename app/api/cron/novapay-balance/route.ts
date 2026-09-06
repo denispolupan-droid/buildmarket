@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { refreshNovapayBalance, getNovapayLiveBalance } from '../../../../lib/novapay-api';
+import { refreshNovapayBalance, getNovapayLiveBalance, refreshNovapayRegisters } from '../../../../lib/novapay-api';
+import { ingestNovapayStatement, postNpPayouts } from '../../../../lib/novapay-ingest';
+import { createServiceClient } from '../../../../lib/supabase';
 import { alertAdmin } from '../../../../lib/alert';
 
 // Оновлення кешу живого балансу NovaPay. Окремим кроном, бо їхній SOAP
@@ -22,6 +24,33 @@ export async function GET(req: NextRequest) {
   }
 
   const balance = await refreshNovapayBalance();
+  // Дати/суми реєстрів виплат наложки — кеш для «Огляду»
+  const registers = await refreshNovapayRegisters();
+
+  // Виписка → облік: виплати за реєстрами по ЕН (DR novapay + DR logistics[np] / CR np:cod).
+  // Окремі try: збій виписки не має ховати збій балансу і навпаки.
+  let ingest: unknown = null, payouts: unknown = null;
+  try {
+    ingest = await ingestNovapayStatement(10);
+    payouts = await postNpPayouts();
+  } catch (err) {
+    console.error('[novapay-statement]', err instanceof Error ? err.message : err);
+    ingest = { error: err instanceof Error ? err.message : String(err) };
+  }
+  // Тиша — не успіх: якщо два дні жодної виплати при вручених наложках, виписка
+  // або інтеграція зламались, а np:cod тихо росте.
+  try {
+    const db = createServiceClient();
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    const [{ count: payouts }, { count: delivered }] = await Promise.all([
+      db.from('novapay_txns').select('id', { count: 'exact', head: true }).eq('kind', 'cod_payout').gte('txn_date', twoDaysAgo),
+      db.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'delivered').eq('payment_type', 'cod')
+        .in('delivery_type', ['nova', 'nova_poshta']).gte('delivered_at', new Date(Date.now() - 4 * 86400000).toISOString()),
+    ]);
+    if ((payouts ?? 0) === 0 && (delivered ?? 0) > 0) {
+      alertAdmin('НоваПей: два дні без виплат наложки', `За 4 дні вручено ${delivered} наложок, а у виписці NovaPay з ${twoDaysAgo} жодної виплати за реєстром. Перевір виписку/інтеграцію — np:cod росте.`);
+    }
+  } catch { /* лише сигнал */ }
 
   if (balance === null) {
     const cached = await getNovapayLiveBalance();
@@ -32,7 +61,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: balance !== null, balance });
+  return NextResponse.json({ ok: balance !== null, balance, registers: registers ? { lastDate: registers.lastDate, count: registers.payouts.length } : null, ingest, payouts });
 }
 
 export const POST = GET;

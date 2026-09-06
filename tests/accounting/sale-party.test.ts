@@ -104,7 +104,7 @@ afterAll(async () => {
 });
 
 describe('Варіант B — дебітор продажу за каналом грошей', () => {
-  it('наложка через НП з карткою клієнта: продаж на np:cod, доставка закриває np:cod у нуль, клієнт не чіпається', async () => {
+  it('наложка через НП з карткою клієнта: продаж на np:cod, борг лишається до РЕАЛЬНОЇ виплати з виписки NovaPay', async () => {
     const ttn = '59SALEPARTY001';
     const order = await makeOrder({ channel_code: 'phone', delivery_type: 'nova', payment_type: 'cod', customer_id: customerId }, ttn);
     await shipAndDeliver(order, ttn);
@@ -114,11 +114,12 @@ describe('Варіант B — дебітор продажу за каналом
     expect(sale?.counterparty_id).toBe('np:cod');
     if (customerId) expect(entries.some(e => e.counterparty_id === customerId)).toBe(false);
 
-    // Збір НоваПей: DR novapay / CR np:cod → по замовленню np:cod = 0
-    expect(entries.some(e => e.account_type === 'novapay' && Number(e.amount) === 300)).toBe(true);
+    // Жодного фіктивного «COD зібрано НоваПей» при врученні: np:cod = брутто наложки,
+    // novapay не чіпається — закриє виписка (np-payout) і утримання (np-deduction)
+    expect(entries.some(e => e.account_type === 'novapay')).toBe(false);
     const npCodNet = entries.filter(e => e.account_type === 'customer' && e.counterparty_id === 'np:cod')
       .reduce((s, e) => s + Number(e.amount), 0);
-    expect(npCodNet).toBe(0);
+    expect(npCodNet).toBe(300);
 
     await assertInvariants();
   }, 30000);

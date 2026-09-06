@@ -19,6 +19,7 @@ const GROUPS: Group[] = [
     { href: '/admin/finance/cashflow',      label: 'Рух коштів', exact: true },
     { href: '/admin/finance/cashflow/cash', label: 'Каса' },
     { href: '/admin/finance/bank',          label: 'Банк' },
+    { href: '/admin/finance/novapay',       label: 'НоваПей' },
   ] },
   { label: 'Борги', children: [
     { href: '/admin/finance/settlements', label: 'Дебіторка' },

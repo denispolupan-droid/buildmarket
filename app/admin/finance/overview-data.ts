@@ -3,7 +3,8 @@ import { fetchAllRows } from '../../../lib/db-paginate';
 import { getMarketplaceBalance } from '../../../lib/accounting/money';
 import { loadInTransitCommission } from '../../../lib/accounting/marketplace-transit';
 import { getMonoLiveBalance } from '../../../lib/mono-balance';
-import { getNovapayLiveBalance } from '../../../lib/novapay-api';
+import { getNovapayLiveBalance, getNovapayRegistersCache } from '../../../lib/novapay-api';
+import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -73,9 +74,15 @@ export type OverviewData = {
      наложка НП, mp:* = передоплата/наложка площадки до виплати);
      shipped* — ще їде до покупця. */
   moneyTransit: {
-    heldNovapay: number; heldProm: number; heldRozetka: number;
+    heldNovapay: number;
+    /* як пораховано heldNovapay: дата останнього реєстру виплат НП і кількість
+       вручених після нього наложок; fromLedger — кешу реєстрів немає, взято облік */
+    novapayPending: { lastRegisterDate: string | null; orders: number; fromLedger: boolean };
+    heldProm: number; heldRozetka: number;
     /* виплати RozetkaPay, що вже в банку, але ще не рознесені по замовленнях (mp:rozetkapay) */
     receivedUnallocated: number;
+    /* вручено з оплатою через площадки, RozetkaPay ще не виплатив (нетто по Prom + Rozetka) */
+    heldRozetkaPay: number;
     shippedCod: number; shippedPrepaid: number;
     delivered: number; shipped: number; total: number;
   };
@@ -209,8 +216,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .from('money_entries').select('account_type, amount')
       .in('account_type', ['bank', 'acquiring', 'novapay', 'cash'])
       .range(f, t)),
-    // 4. Дебіторка
-    db.from('ar_balances').select('balance').then(r => r.data ?? []),
+    // 4. Дебіторка (customer_id потрібен, щоб відсіяти службових дебіторів)
+    db.from('ar_balances').select('customer_id, balance').then(r => r.data ?? []),
     // 5. Прострочена дебіторка
     db.from('ar_aging').select('balance, days_overdue').gt('days_overdue', 0).then(r => r.data ?? []),
     // 6. Кредиторка (кеш балансів; від'ємний баланс = ми винні)
@@ -335,23 +342,32 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const mpPrepaidTransit = sum(pTransit.filter(o => o.payment_type === 'prepaid' && (o.channel_code === 'prom' || o.channel_code === 'rozetka')));
   // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
   // живий залишок Mono — паралельно (кешований client-info)
-  const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw, heldRows] = await Promise.all([
+  const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw, npRegisters, npCodDelivered, heldRows] = await Promise.all([
     loadInTransitCommission('prom'),
     loadInTransitCommission('rozetka'),
     getMonoLiveBalance(),
     getNovapayLiveBalance(),
+    getNovapayRegistersCache(),
+    // Вручені наложки НП за останні 14 днів — для правила «вручено після
+    // останнього реєстру виплат = НоваПей ще не виплатила»
+    db.from('orders').select('order_number, total_price, delivered_at')
+      .eq('status', 'delivered').eq('payment_type', 'cod').in('delivery_type', ['nova', 'nova_poshta'])
+      .neq('channel_code', 'dropship')
+      .gte('delivered_at', new Date(Date.now() - 14 * 86400000).toISOString())
+      .then(r => r.data ?? []),
     // Вручено, гроші тримає площадка (службові дебітори Варіанту B). mp:rozetkapay —
     // виплати RozetkaPay, що вже прийшли в банк, але ще не рознесені по замовленнях
     // (баланс від'ємний) — зменшує «до виплати».
     db.from('counterparty_balances').select('counterparty_id, balance')
-      .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:rozetkapay'])
+      .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:rozetkapay', 'np:cod'])
       .then(r => r.data ?? []),
   ]);
-  const heldMp = { prom: 0, rozetka: 0, receivedUnallocated: 0 };
+  const heldMp = { prom: 0, rozetka: 0, receivedUnallocated: 0, npCod: 0 };
   for (const r of heldRows as { counterparty_id: string; balance: number }[]) {
     if (r.counterparty_id === 'mp:prom')       heldMp.prom    = Math.max(0, Number(r.balance));
     if (r.counterparty_id === 'mp:rozetka')    heldMp.rozetka = Math.max(0, Number(r.balance));
     if (r.counterparty_id === 'mp:rozetkapay') heldMp.receivedUnallocated = Math.max(0, -Number(r.balance));
+    if (r.counterparty_id === 'np:cod')        heldMp.npCod   = Math.max(0, Number(r.balance));
   }
   const mpTransit = { prom: promTransit.total, rozetka: rozetkaTransit.total };
   // Кеш вважаємо живим, поки він свіжий. Крон ходить кожні 10 хв, тож усе
@@ -434,16 +450,32 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   accounts.total = accounts.monobank + accounts.novapay + accounts.cash;
 
   // Гроші в дорозі: вручено (тримає посередник) + ще їде до покупця
-  const heldNovapay = Math.max(0, accounts.novapay);
-  const delivered   = Math.max(0, heldNovapay + heldMp.prom + heldMp.rozetka - heldMp.receivedUnallocated);
+  // НоваПей: «не виплачено» = сальдо np:cod за обліком — наложка лягає туди при
+  // врученні (Варіант B), реальні виплати з виписки NovaPay його гасять, а різниця
+  // брутто−нетто списується як утримання НП за правилом «реєстр за день закриває
+  // вручене до нього» (lib/novapay-ingest). Кеш реєстрів — лише для підказки.
+  const lastReg = npRegisters?.lastDate ?? null;
+  const npPendingOrders = lastReg
+    ? (npCodDelivered as { order_number: number; total_price: number; delivered_at: string }[])
+        .filter(o => String(o.delivered_at).slice(0, 10) >= lastReg)
+    : [];
+  const heldNovapay = heldMp.npCod;
+  const novapayPending = { lastRegisterDate: lastReg, orders: npPendingOrders.length, fromLedger: true };
+  // RozetkaPay платить за Prom і Rozetka одним переказом: «не виплачено» — лише нетто
+  const heldRozetkaPay = Math.max(0, heldMp.prom + heldMp.rozetka - heldMp.receivedUnallocated);
+  const delivered   = heldNovapay + heldRozetkaPay;
   const shipped     = codTransit + mpPrepaidTransit;
   const moneyTransit = {
-    heldNovapay, heldProm: heldMp.prom, heldRozetka: heldMp.rozetka, receivedUnallocated: heldMp.receivedUnallocated,
+    heldNovapay, novapayPending, heldProm: heldMp.prom, heldRozetka: heldMp.rozetka, receivedUnallocated: heldMp.receivedUnallocated, heldRozetkaPay,
     shippedCod: codTransit, shippedPrepaid: mpPrepaidTransit,
     delivered, shipped, total: delivered + shipped,
   };
 
-  const arTotal = (arRows as { balance: number }[]).reduce((s, r) => s + Math.max(0, Number(r.balance)), 0);
+  // «Нам винні» — лише справжні клієнти. Службові дебітори (np:cod, mp:*) — це
+  // транзит грошей НП і площадок, він показується окремо в «Гроші в дорозі».
+  const arTotal = (arRows as { customer_id?: string; balance: number }[])
+    .filter(r => !isSpecialDebtor(r.customer_id))
+    .reduce((s, r) => s + Math.max(0, Number(r.balance)), 0);
   const overdue = agingRows as { balance: number; days_overdue: number }[];
   const apTotal = (apRows as { balance: number }[]).reduce((s, r) => s + Math.max(0, -Number(r.balance)), 0);
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);

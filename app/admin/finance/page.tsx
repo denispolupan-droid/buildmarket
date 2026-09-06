@@ -253,14 +253,14 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                           <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#B45309' }}>+{fmt(ov.moneyTransit.delivered)} ₴</span>
                         </div>
                         {[
-                          { label: 'НоваПей тримає', v: ov.moneyTransit.heldNovapay, title: 'Зібраний накладений платіж, який НоваПей ще не виплатила на рахунок' },
-                          { label: 'Prom до виплати', v: ov.moneyTransit.heldProm, title: 'Вручені замовлення з Пром-оплатою, виплату ще не отримано' },
-                          { label: 'Rozetka до виплати', v: ov.moneyTransit.heldRozetka, title: 'Вручені замовлення з Rozetka Pay і наложкою Rozetka Доставка, виплату ще не отримано' },
-                          { label: 'RozetkaPay вже виплатив', v: -ov.moneyTransit.receivedUnallocated, title: 'Виплати «РОЗЕТКА ПЕЙ», що вже прийшли в банк, але ще не рознесені по замовленнях Prom/Rozetka (потрібен реєстр Reports API)' },
-                        ].filter(a => a.v !== 0).map(a => (
+                          { label: 'НоваПей', v: ov.moneyTransit.heldNovapay, title: ov.moneyTransit.novapayPending.lastRegisterDate
+                            ? `Наложка, вручена, але ще не виплачена (за обліком np:cod). Останній реєстр виплат НП ${ov.moneyTransit.novapayPending.lastRegisterDate.slice(8, 10)}.${ov.moneyTransit.novapayPending.lastRegisterDate.slice(5, 7)}; після нього вручено ${ov.moneyTransit.novapayPending.orders} посилок. Склад реєстрів API не віддає — утримання НП рахуються за правилом дат.`
+                            : 'Наложка, вручена, але ще не виплачена (за обліком np:cod)' },
+                          { label: 'RozetkaPay', v: ov.moneyTransit.heldRozetkaPay, title: `Вручено з оплатою через площадки, виплату ще не отримано: Prom ${fmt(ov.moneyTransit.heldProm)} + Rozetka ${fmt(ov.moneyTransit.heldRozetka)} − уже виплачено ${fmt(ov.moneyTransit.receivedUnallocated)}` },
+                        ].filter(a => a.v > 0).map(a => (
                           <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px', paddingLeft: '10px' }}>
                             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{a.label}</span>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>{a.v < 0 ? '−' : ''}{fmt(Math.abs(a.v))} ₴</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(a.v)} ₴</span>
                           </div>
                         ))}
                         {ov.moneyTransit.shipped > 0 && (
