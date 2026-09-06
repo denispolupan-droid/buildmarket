@@ -30,6 +30,7 @@ const OUT_CATEGORIES: { value: string; label: string }[] = [
   { value: 'ignore',           label: 'Ігнорувати (не наш рух)' },
 ];
 const IN_CATEGORIES: { value: string; label: string }[] = [
+  { value: 'transfer-in:owner',   label: '← Внесок власника (особисті гроші в бізнес)' },
   { value: 'transfer-in:novapay', label: '← Переказ з NovaPay' },
   { value: 'transfer-in:cash',    label: '← Внесення готівки' },
   { value: 'ignore',              label: 'Ігнорувати (не наш рух)' },

@@ -264,11 +264,11 @@ export async function reverseMarketplaceCommission(params: {
   });
 }
 
-/** Поповнення балансу на маркетплейсі: дебет marketplace_balance, кредит bank/cash */
+/** Поповнення балансу на маркетплейсі: дебет marketplace_balance, кредит bank/cash/novapay */
 export async function recordMarketplaceTopup(params: {
   marketplace:     string;
   amount:          number;
-  paymentMethod:   'bank' | 'cash';
+  paymentMethod:   'bank' | 'cash' | 'novapay';
   businessDate?:   string;
   createdBy?:      string;
   idempotencyKey?: string;
@@ -539,12 +539,12 @@ export async function recordPurchase(params: {
   });
 }
 
-/** Оплата постачальнику: дебет supplier, кредит bank/cash */
+/** Оплата постачальнику: дебет supplier, кредит bank/cash/novapay */
 export async function recordSupplierPayment(params: {
   supplierId:      string;
   contractId?:     string;
   amount:          number;
-  paymentMethod:   'bank' | 'cash';
+  paymentMethod:   'bank' | 'cash' | 'novapay';
   docId?:          string;
   businessDate?:   string;
   createdBy?:      string;

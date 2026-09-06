@@ -17,8 +17,13 @@ const fmt = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2,
 const dmy = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 
 const CATEGORIES: { value: string; label: string }[] = [
+  { value: 'supplier',      label: 'Оплата постачальнику' },
+  { value: 'topup:rozetka', label: 'Поповнення балансу Rozetka (гарантійний платіж)' },
+  { value: 'topup:prom',    label: 'Поповнення балансу Prom' },
   { value: 'transfer:bank', label: '→ Переказ на Mono' },
   { value: 'transfer:cash', label: '→ Зняття готівки в касу' },
+  { value: 'owner',         label: 'Вилучення власника (особисте, не витрата)' },
+  { value: 'taxes',         label: 'Податки / ЄСВ' },
   { value: 'logistics',     label: 'Витрата · логістика' },
   { value: 'packaging',     label: 'Витрата · пакування' },
   { value: 'marketing',     label: 'Витрата · маркетинг' },
@@ -27,8 +32,11 @@ const CATEGORIES: { value: string; label: string }[] = [
   { value: 'opex',          label: 'Витрата · інше (opex)' },
   { value: 'ignore',        label: 'Ігнорувати (не наш рух)' },
 ];
+const NO_DESC = new Set(['ignore', 'supplier', 'owner']);
+export type SupplierOpt = { id: string; name: string };
 
 const IN_CATEGORIES: { value: string; label: string }[] = [
+  { value: 'transfer-in:owner', label: '← Внесок власника (особисті гроші в бізнес)' },
   { value: 'transfer-in:bank', label: '← Переказ з Mono' },
   { value: 'transfer-in:cash', label: '← Внесення готівки з каси' },
   { value: 'ignore',           label: 'Ігнорувати (не наш рух)' },
@@ -36,15 +44,17 @@ const IN_CATEGORIES: { value: string; label: string }[] = [
 
 const KIND_LABEL: Record<NovapayRow['kind'], string> = { cod_payout: 'Виплата наложки', other_in: 'Зарахування', debit: 'Списання' };
 
-export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, receivedUnbooked, lastRegister, pending, aggregate }: {
+export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, receivedUnbooked, lastRegister, pending, aggregate, suppliers }: {
   rows: NovapayRow[]; ledger: number; live: { available: number; fetchedAt: string } | null;
   npCod: number; stmtBalance: number; receivedUnbooked: number; lastRegister: string | null; pending: Pending[]; aggregate: Aggregate[];
+  suppliers: SupplierOpt[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [choice, setChoice] = useState<Record<string, string>>({});
   const [desc, setDesc] = useState<Record<string, string>>({});
+  const [supplier, setSupplier] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'all' | 'unmatched'>('unmatched');
 
   const unmatched = useMemo(() => rows.filter(r => r.status === 'unmatched'), [rows]);
@@ -72,7 +82,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
     if (!category) return;
     setBusy(row.id); setMsg(null);
     try {
-      const res = await fetch('/api/admin/finance/novapay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, category, description: desc[row.id] }) });
+      const res = await fetch('/api/admin/finance/novapay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, category, description: desc[row.id], supplierId: supplier[row.id] ?? suppliers[0]?.id }) });
       const d = await res.json();
       if (!res.ok) { setMsg(`Помилка: ${d.error}`); return; }
       router.refresh();
@@ -191,8 +201,13 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
                           <option value="">{r.direction === 'in' ? 'Звідки гроші…' : 'Куди віднести…'}</option>
                           {(r.direction === 'in' ? IN_CATEGORIES : CATEGORIES).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                         </select>
-                        {choice[r.id] && !choice[r.id].startsWith('transfer') && choice[r.id] !== 'ignore' && (
-                          <input value={desc[r.id] ?? ''} onChange={e => setDesc(d => ({ ...d, [r.id]: e.target.value }))} placeholder="Опис витрати (необов'язково)" style={inp} />
+                        {choice[r.id] === 'supplier' && (
+                          <select value={supplier[r.id] ?? suppliers[0]?.id ?? ''} onChange={e => setSupplier(s => ({ ...s, [r.id]: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        )}
+                        {choice[r.id] && !choice[r.id].startsWith('transfer') && !NO_DESC.has(choice[r.id]) && (
+                          <input value={desc[r.id] ?? ''} onChange={e => setDesc(d => ({ ...d, [r.id]: e.target.value }))} placeholder="Опис (необов'язково)" style={inp} />
                         )}
                         <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id}
                           style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? '#1D4ED8' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>

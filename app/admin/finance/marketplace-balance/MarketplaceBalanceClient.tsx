@@ -134,7 +134,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
   const [error, setError]                 = useState('');
 
   const [topupAmount, setTopupAmount]   = useState('');
-  const [topupMethod, setTopupMethod]   = useState<'bank' | 'cash'>('bank');
+  const [topupMethod, setTopupMethod]   = useState<'bank' | 'cash' | 'novapay'>('novapay');
   const [topupDate, setTopupDate]       = useState(new Date().toISOString().slice(0, 10));
 
 
@@ -351,8 +351,9 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
           </div>
           <div style={{ width: '150px' }}>
             <label style={lbl}>Спосіб оплати</label>
-            <select style={inp} value={topupMethod} onChange={e => setTopupMethod(e.target.value as 'bank' | 'cash')}>
-              <option value="bank">Банк</option>
+            <select style={inp} value={topupMethod} onChange={e => setTopupMethod(e.target.value as 'bank' | 'cash' | 'novapay')}>
+              <option value="novapay">Рахунок NovaPay</option>
+              <option value="bank">Банк (Mono)</option>
               <option value="cash">Готівка</option>
             </select>
           </div>

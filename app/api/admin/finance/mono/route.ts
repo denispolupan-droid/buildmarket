@@ -60,10 +60,10 @@ export async function POST(req: NextRequest) {
   try {
     if (row.direction === 'in') {
       // Надходження не за замовленням: переказ з NovaPay / внесення готівки / інше
-      const src = category === 'transfer-in:novapay' ? 'novapay' : category === 'transfer-in:cash' ? 'cash' : null;
-      if (!src) return NextResponse.json({ error: 'Для надходження доступні лише переказ з NovaPay або внесення готівки' }, { status: 400 });
-      txnId = await recordTxn({ debitAccount: 'bank', creditAccount: src, amount, businessDate: date, docType: 'transfer', description: descr,
-        idempotencyKey: `mono-txn:${row.id}`, createdBy: by, meta: { mono_txn_id: row.id, manual: true, transfer: true } });
+      const src = category === 'transfer-in:novapay' ? 'novapay' : category === 'transfer-in:cash' ? 'cash' : category === 'transfer-in:owner' ? 'owner' : null;
+      if (!src) return NextResponse.json({ error: 'Для надходження доступні лише переказ з NovaPay, внесення готівки або внесок власника' }, { status: 400 });
+      txnId = await recordTxn({ debitAccount: 'bank', creditAccount: src, amount, businessDate: date, docType: src === 'owner' ? 'owner_contribution' : 'transfer', description: descr || (src === 'owner' ? 'Внесок власника' : descr),
+        idempotencyKey: `mono-txn:${row.id}`, createdBy: by, meta: { mono_txn_id: row.id, manual: true, ...(src === 'owner' ? {} : { transfer: true }) } });
     } else if (category in TRANSFER_TARGETS) {
       txnId = await recordTxn({ debitAccount: TRANSFER_TARGETS[category as keyof typeof TRANSFER_TARGETS], creditAccount: 'bank', amount, businessDate: date, docType: 'transfer', description: descr,
         idempotencyKey: `mono-txn:${row.id}`, createdBy: by, meta: { mono_txn_id: row.id, manual: true, transfer: true } });

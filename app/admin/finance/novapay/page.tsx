@@ -15,7 +15,7 @@ export default async function NovapayPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  const [{ data: rows }, { data: ledgerRows }, { data: npCod }, live, unsettled] = await Promise.all([
+  const [{ data: rows }, { data: ledgerRows }, { data: npCod }, live, unsettled, { data: suppliers }] = await Promise.all([
     db.from('novapay_txns')
       .select('id, txn_date, amount, direction, counterparty, purpose, register_no, kind, status, category, note, posted_at')
       .order('txn_date', { ascending: false }).order('id', { ascending: false }).limit(500),
@@ -23,6 +23,7 @@ export default async function NovapayPage() {
     db.from('counterparty_balances').select('balance').eq('account_type', 'customer').eq('counterparty_id', 'np:cod').maybeSingle(),
     getNovapayLiveBalance(),
     unsettledNpCod(),
+    db.from('suppliers').select('id, name').order('id').limit(100),
   ]);
 
   const ledger = Math.round((ledgerRows ?? []).reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
@@ -55,6 +56,7 @@ export default async function NovapayPage() {
           lastRegister={lastRegister}
           pending={pending.map(o => ({ order_number: o.order_number, total: o.gross, delivered: o.delivered }))}
           aggregate={aggregate.map(r => ({ date: String(r.txn_date), net: Number(r.amount), register: (r.register_no as string | null) ?? null }))}
+          suppliers={(suppliers ?? []).map(s => ({ id: String(s.id), name: String(s.name) }))}
         />
       </div>
     </div>

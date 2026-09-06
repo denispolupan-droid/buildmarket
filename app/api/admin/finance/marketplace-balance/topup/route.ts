@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json() as {
-    marketplace?: string; amount?: number; paymentMethod?: 'bank' | 'cash'; businessDate?: string;
+    marketplace?: string; amount?: number; paymentMethod?: 'bank' | 'cash' | 'novapay'; businessDate?: string;
   };
   const { marketplace, amount, paymentMethod, businessDate } = body;
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!amount || amount <= 0) {
     return NextResponse.json({ error: 'Вкажіть суму поповнення' }, { status: 400 });
   }
-  if (paymentMethod !== 'bank' && paymentMethod !== 'cash') {
+  if (paymentMethod !== 'bank' && paymentMethod !== 'cash' && paymentMethod !== 'novapay') {
     return NextResponse.json({ error: 'Вкажіть спосіб оплати' }, { status: 400 });
   }
 
