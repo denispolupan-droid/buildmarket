@@ -237,7 +237,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                                 Коротко — рядок вузький, подробиці в підказці. */}
                             {a.stale && <AlertTriangle size={11} color="#B45309" style={{ verticalAlign: '-1px', marginLeft: 4 }} />}
                           </span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? '#DC2626' : 'var(--text-primary)' }}>{fmt(a.v)} ₴</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? '#DC2626' : 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>{fmt(a.v)} ₴</span>
                         </div>
                       ))}
                     </div>
@@ -249,8 +249,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                       <div style={{ marginTop: '3px', paddingTop: '5px', borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <div title="Товар вручено, гроші вже зібрані, але ще не на наших рахунках: наложка в НоваПей до виплати, Пром-оплата й Rozetka Pay до виплати площадки (за обліком)"
                           style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
-                          <span style={{ color: '#B45309', fontWeight: 700 }}>Вручено, гроші в дорозі</span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#B45309' }}>+{fmt(ov.moneyTransit.delivered)} ₴</span>
+                          <span style={{ color: '#B45309', fontWeight: 700, minWidth: 0 }}>Вручено, гроші в дорозі</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#B45309', whiteSpace: 'nowrap', flexShrink: 0 }}>+{fmt(ov.moneyTransit.delivered)} ₴</span>
                         </div>
                         {[
                           { label: 'НоваПей', v: ov.moneyTransit.heldNovapay, title:
@@ -263,14 +263,14 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                         ].filter(a => a.v > 0).map(a => (
                           <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px', paddingLeft: '10px' }}>
                             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{a.label}</span>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(a.v)} ₴</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>{fmt(a.v)} ₴</span>
                           </div>
                         ))}
                         {ov.moneyTransit.shipped > 0 && (
                           <div title={`Посилки ще їдуть до покупця: наложка ${fmt(ov.moneyTransit.shippedCod)} ₴ + передоплата площадок ${fmt(ov.moneyTransit.shippedPrepaid)} ₴`}
                             style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
-                            <span style={{ color: '#B45309', fontWeight: 600 }}>Ще їде до покупця</span>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#B45309' }}>+{fmt(ov.moneyTransit.shipped)} ₴</span>
+                            <span style={{ color: '#B45309', fontWeight: 600, minWidth: 0 }}>Ще їде до покупця</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#B45309', whiteSpace: 'nowrap', flexShrink: 0 }}>+{fmt(ov.moneyTransit.shipped)} ₴</span>
                           </div>
                         )}
                       </div>

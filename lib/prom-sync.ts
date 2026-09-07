@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { getPromOrders, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, type PromStatus } from './prom-api';
+import { getPromOrders, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus } from './prom-api';
 import { computePromCommission } from './prom-commission';
 
 const db = createClient(
@@ -26,7 +26,7 @@ export async function syncPromOrders() {
   const dateFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const orders   = await getPromOrders({ dateFrom, limit: 100 });
 
-  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0, paidUpdated: 0 };
+  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0, ttnRepushed: 0, paidUpdated: 0 };
 
   // Read plan setting once for all orders in this batch
   const { data: planRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
@@ -37,6 +37,7 @@ export async function syncPromOrders() {
   let created = 0;
   let skipped = 0;
   let repushed = 0;
+  let ttnRepushed = 0;
 
 
   let paidUpdated = 0;
@@ -44,7 +45,7 @@ export async function syncPromOrders() {
   for (const promOrder of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, status, payment_confirmed, total_price, comment, prom_data')
+      .select('id, status, payment_confirmed, total_price, comment, prom_data, tracking_number, delivery_type')
       .eq('prom_order_id', promOrder.id)
       .maybeSingle();
 
@@ -87,6 +88,24 @@ export async function syncPromOrders() {
           console.log(`[prom-sync] re-pushed status ${desired} for order ${promOrder.id} (was ${promOrder.status})`);
         } catch (err) {
           console.error('[prom-sync] status re-push failed:', promOrder.id, err);
+        }
+      }
+
+      // Допуш ЕН — дзеркало допушу статусів. Пуш при відвантаженні — fire-and-forget
+      // і без повтору, а з'єднання з my.prom.ua періодично рветься (ETIMEDOUT):
+      // 3 з 19 накладних за 1–7.09.2026 так і не дійшли до кабінету. Тут звіряємо
+      // наш номер із тим, що бачить Prom, і досилаємо. Лише для типів, які
+      // save_declaration_id приймає; «Магазини Rozetka» Prom веде сам (PRM-…).
+      const ourTtn = existing.tracking_number as string | null;
+      if (['shipped', 'delivered'].includes(existing.status) && ourTtn
+          && promAcceptsTtnFor(existing.delivery_type as string | null)
+          && needsPromTtnRepush(ourTtn, promOrder.delivery_provider_data?.declaration_number)) {
+        try {
+          await setPromTTN(promOrder.id, ourTtn, (existing.delivery_type as string | null) ?? 'nova_poshta');
+          ttnRepushed++;
+          console.log(`[prom-sync] re-pushed TTN ${ourTtn} for order ${promOrder.id}`);
+        } catch (err) {
+          console.error('[prom-sync] TTN re-push failed:', promOrder.id, err);
         }
       }
       skipped++;
@@ -166,5 +185,5 @@ export async function syncPromOrders() {
     }
   }
 
-  return { ok: true, created, skipped, repushed, paidUpdated, total: orders.length };
+  return { ok: true, created, skipped, repushed, ttnRepushed, paidUpdated, total: orders.length };
 }

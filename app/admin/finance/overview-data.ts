@@ -472,7 +472,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else if (r.account_type === 'novapay') accounts.novapay += v;
     else if (r.account_type === 'cash') accounts.cash += v;
   }
-  accounts.total = accounts.monobank + accounts.novapay + accounts.cash;
+  // до копійки — інакше залишок 0 після сторно виглядає як «−0 ₴» (хвіст float)
+  for (const k of ['monobank', 'novapay', 'cash'] as const) accounts[k] = Math.round(accounts[k] * 100) / 100;
+  accounts.total = Math.round((accounts.monobank + accounts.novapay + accounts.cash) * 100) / 100;
 
   // Гроші в дорозі: вручено (тримає посередник) + ще їде до покупця
   // НоваПей: «не виплачено» = сальдо np:cod за обліком — наложка лягає туди при

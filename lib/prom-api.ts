@@ -87,8 +87,10 @@ export interface PromOrder {
   } | null;
   // Саме тут лежать Ref-и Нової Пошти, потрібні для ТТН (delivery_option їх НЕ має)
   delivery_provider_data: {
-    provider: string | null;              // 'nova_poshta' | 'ukrposhta' | ...
+    provider: string | null;              // 'nova_poshta' | 'ukrposhta' | 'rozetka_delivery' | ...
     type: string | null;                  // 'W2W' (склад-склад) | 'W2D' (адресна) | ...
+    declaration_number?: string | null;   // номер ЕН, який бачить кабінет Prom
+    unified_status?: string | null;       // стан декларації ('on_the_way', …) — Prom його трекає сам
     recipient_address: {
       city_id: string | null;
       city_name: string | null;
@@ -203,12 +205,57 @@ export async function setPromOrderStatus(
   // Порожній processed_ids без помилки = замовлення вже в цьому/подальшому статусі — ок.
 }
 
-export async function setPromTTN(promOrderId: number, ttn: string, deliveryType = 'nova_poshta'): Promise<void> {
-  // Наші внутрішні типи → значення, які знає Prom: 'rz_delivery' — це їхній
-  // provider 'rozetka_delivery' (доставка в «Магазини Rozetka»), 'nova' — синонім НП.
-  const promType = deliveryType === 'rz_delivery' ? 'rozetka_delivery'
-    : deliveryType === 'nova' ? 'nova_poshta'
+/** Наші внутрішні типи доставки → значення delivery_type, які знає Prom. */
+export function promDeliveryTypeForTtn(deliveryType: string | null | undefined): string {
+  // 'rz_delivery' — це їхній provider 'rozetka_delivery' (доставка в «Магазини
+  // Rozetka»), 'nova' — синонім НП.
+  return deliveryType === 'rz_delivery' ? 'rozetka_delivery'
+    : deliveryType === 'nova' || !deliveryType ? 'nova_poshta'
     : deliveryType;
+}
+
+/**
+ * Чи прийме Prom номер ЕН для цього способу доставки через API. За специфікацією
+ * save_declaration_id підтримує лише nova_poshta / ukrposhta / meest; для
+ * «Магазинів Rozetka» декларацію створює сам кабінет Prom (PRM-…), а чужий
+ * номер він відхиляє («Неправильный номер декларации», 07.09.2026).
+ */
+export function promAcceptsTtnFor(deliveryType: string | null | undefined): boolean {
+  return ['nova_poshta', 'ukrposhta', 'meest'].includes(promDeliveryTypeForTtn(deliveryType));
+}
+
+/**
+ * Чи треба дослати ЕН у Prom: у нас номер є, а в кабінеті порожньо або інший.
+ * Порівнюємо лише цифри — Prom може віддати номер з пробілами/дефісами.
+ */
+export function needsPromTtnRepush(ourTtn: string | null | undefined, promDeclaration: string | null | undefined): boolean {
+  if (!ourTtn) return false;
+  const digits = (s: string) => s.replace(/\D/g, '');
+  return !promDeclaration || digits(String(promDeclaration)) !== digits(ourTtn);
+}
+
+const isNetworkError = (err: unknown) =>
+  err instanceof TypeError || /ETIMEDOUT|ECONNRESET|EAI_AGAIN|fetch failed|socket hang up/i.test(String((err as Error)?.message ?? err));
+
+export async function setPromTTN(promOrderId: number, ttn: string, deliveryType = 'nova_poshta'): Promise<void> {
+  const promType = promDeliveryTypeForTtn(deliveryType);
+  // Мережеві обриви до my.prom.ua («write ETIMEDOUT») трапляються регулярно —
+  // 3 із 19 ЕН за перший тиждень вересня не дійшли саме так. Повторюємо лише
+  // мережеві помилки; відмову Prom по суті (валідація) повторювати сенсу нема.
+  const delays = [1500, 3000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await postPromTTN(promOrderId, ttn, promType);
+      return;
+    } catch (err) {
+      if (attempt >= delays.length || !isNetworkError(err)) throw err;
+      console.warn(`[prom] setPromTTN #${promOrderId} network error, retry ${attempt + 1}:`, (err as Error).message);
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+  }
+}
+
+async function postPromTTN(promOrderId: number, ttn: string, promType: string): Promise<void> {
   // Відмова приходить з HTTP 200 у тілі — двома формами (перевірено 07.09.2026):
   //   {"status":"error","message":"Ошибка валидации","errors":{"declaration_id":["Неправильный номер декларации"]}}
   //   {"error":"В заказе указан другой способ доставки","errors":null}
