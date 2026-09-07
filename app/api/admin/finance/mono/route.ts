@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { recordTxn, recordSupplierPayment, type AccountType } from '../../../../../lib/accounting/money';
 import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '../../../../../lib/mono-ingest';
+import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';
 
 // Виписка Mono: документи (списання і незіставлені надходження) і категоризація людиною.
 // Списання = DR <витрата | novapay | cash | supplier | owner | taxes> / CR bank;
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
-  const body = await req.json().catch(() => ({})) as { action?: string; id?: string; category?: string; description?: string; note?: string; supplierId?: string };
+  const body = await req.json().catch(() => ({})) as { action?: string; id?: string; category?: string; description?: string; note?: string; supplierId?: string; orderNumber?: string };
   const by = auth.user.email ?? 'admin';
 
   if (body.action === 'refresh') {
@@ -55,6 +56,21 @@ export async function POST(req: NextRequest) {
 
   const amount = Number(row.amount);
   const date = String(row.txn_time).slice(0, 10);
+
+  // Надходження без №замовлення в призначенні → людина вказує номер; далі той самий
+  // шлях, що й автозарахування з виписки (order_payments + ваучер + леджер).
+  if (row.direction === 'in' && category === 'order') {
+    const orderNumber = parseInt(String(body.orderNumber ?? '').replace(/\D/g, ''), 10);
+    if (!orderNumber) return NextResponse.json({ error: 'Вкажіть номер замовлення' }, { status: 400 });
+    const { data: order } = await db.from('orders').select('id, order_number, status').eq('order_number', orderNumber).maybeSingle();
+    if (!order) return NextResponse.json({ error: `Замовлення #${orderNumber} не знайдено` }, { status: 404 });
+    if (order.status === 'cancelled') return NextResponse.json({ error: `Замовлення #${orderNumber} скасоване` }, { status: 400 });
+    const res = await applyOrderPayment(db, { orderId: order.id, amount, paymentMode: 'transfer', paymentDate: date,
+      note: `Monobank${row.counter_name ? ' від ' + row.counter_name : ''} (прив'язано вручну)`.slice(0, 180), createdBy: by });
+    if (!res.ok) return NextResponse.json({ error: res.error }, { status: 500 });
+    await db.from('mono_bank_txns').update({ status: 'matched', category: 'order', matched_order_id: order.id, order_payment_id: res.paymentId ?? null, note: body.note ?? null, posted_at: new Date().toISOString(), posted_by: by }).eq('id', row.id);
+    return NextResponse.json({ ok: true, orderNumber, amountPaid: res.amountPaid, isFullyPaid: res.isFullyPaid });
+  }
   const descr = (body.description ?? '').trim() || `${row.comment ?? row.description ?? ''} — ${row.counter_name ?? ''}`.replace(/ — $/, '').trim();
   let txnId: string;
   try {

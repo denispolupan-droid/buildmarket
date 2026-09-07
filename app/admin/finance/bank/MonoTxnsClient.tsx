@@ -30,6 +30,7 @@ const OUT_CATEGORIES: { value: string; label: string }[] = [
   { value: 'ignore',           label: 'Ігнорувати (не наш рух)' },
 ];
 const IN_CATEGORIES: { value: string; label: string }[] = [
+  { value: 'order',               label: 'Оплата замовлення №…' },
   { value: 'transfer-in:owner',   label: '← Внесок власника (особисті гроші в бізнес)' },
   { value: 'transfer-in:novapay', label: '← Переказ з NovaPay' },
   { value: 'transfer-in:cash',    label: '← Внесення готівки' },
@@ -44,6 +45,7 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
   const [choice, setChoice] = useState<Record<string, string>>({});
   const [desc, setDesc] = useState<Record<string, string>>({});
   const [supplier, setSupplier] = useState<Record<string, string>>({});
+  const [orderNo, setOrderNo] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'todo' | 'all'>('todo');
 
   const todo = useMemo(() => rows.filter(r => r.status === 'unmatched'), [rows]);
@@ -68,7 +70,7 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
     setBusy(row.id); setMsg(null);
     try {
       const res = await fetch('/api/admin/finance/mono', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: row.id, category, description: desc[row.id], supplierId: supplier[row.id] ?? suppliers[0]?.id }) });
+        body: JSON.stringify({ id: row.id, category, description: desc[row.id], supplierId: supplier[row.id] ?? suppliers[0]?.id, orderNumber: orderNo[row.id] }) });
       const d = await res.json();
       if (!res.ok) { setMsg(`Помилка: ${d.error}`); return; }
       router.refresh();
@@ -148,15 +150,18 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
                           <option value="">{r.direction === 'in' ? 'Звідки гроші…' : 'Куди віднести…'}</option>
                           {(r.direction === 'in' ? IN_CATEGORIES : OUT_CATEGORIES).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                         </select>
+                        {choice[r.id] === 'order' && (
+                          <input value={orderNo[r.id] ?? ''} onChange={e => setOrderNo(o => ({ ...o, [r.id]: e.target.value }))} placeholder="Номер замовлення, напр. 26091080" inputMode="numeric" style={inp} />
+                        )}
                         {choice[r.id] === 'supplier' && (
                           <select value={supplier[r.id] ?? suppliers[0]?.id ?? ''} onChange={e => setSupplier(s => ({ ...s, [r.id]: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
                             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         )}
-                        {choice[r.id] && !choice[r.id].startsWith('transfer') && choice[r.id] !== 'ignore' && choice[r.id] !== 'supplier' && (
+                        {choice[r.id] && !choice[r.id].startsWith('transfer') && choice[r.id] !== 'ignore' && choice[r.id] !== 'supplier' && choice[r.id] !== 'order' && (
                           <input value={desc[r.id] ?? ''} onChange={e => setDesc(d => ({ ...d, [r.id]: e.target.value }))} placeholder="Опис (необов'язково)" style={inp} />
                         )}
-                        <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id}
+                        <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id || (choice[r.id] === 'order' && !orderNo[r.id])}
                           style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? '#1D4ED8' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>
                           {busy === r.id ? 'Проводимо…' : 'Провести'}
                         </button>
