@@ -260,9 +260,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .in('business_date', [today.ymd, new Date(Date.parse(`${today.ymd}T12:00:00Z`) - 86400000).toISOString().slice(0, 10)])
       .then(r => r.data ?? []),
     // 10. Знімок живих стадій «де гроші зараз» (незалежно від періоду)
-    fetchAllRows<{ status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null; payment_type: string | null }>((f, t) => db
+    fetchAllRows<{ id: string; status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null; payment_type: string | null }>((f, t) => db
       .from('orders')
-      .select('status, total_price, shipped_at, carrier_accepted_at, created_at, channel_code, payment_type')
+      .select('id, status, total_price, shipped_at, carrier_accepted_at, created_at, channel_code, payment_type')
       .in('status', ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped'])
       .range(f, t)),
     // 11. Відмови для «викупу»: скасовані ПІСЛЯ відправки замовлення періоду
@@ -342,7 +342,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const codTransit = sum(pTransit.filter(o => o.payment_type === 'cod'));
   // Передоплата площадок у дорозі: покупець уже заплатив Prom/Rozetka, товар їде;
   // після вручення борг ляже на mp:* до пакетної виплати
-  const mpPrepaidTransit = sum(pTransit.filter(o => o.payment_type === 'prepaid' && (o.channel_code === 'prom' || o.channel_code === 'rozetka')));
+  const mpPrepaidTransitAll = pTransit.filter(o => o.payment_type === 'prepaid' && (o.channel_code === 'prom' || o.channel_code === 'rozetka'));
   // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
   // живий залишок Mono — паралельно (кешований client-info)
   const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw, npRegisters, npCodDelivered, heldRows, npStmtRows, npFeeSetting] = await Promise.all([
@@ -358,12 +358,14 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .neq('channel_code', 'dropship')
       .gte('delivered_at', new Date(Date.now() - 14 * 86400000).toISOString())
       .then(r => r.data ?? []),
-    // Вручено, гроші тримає площадка (службові дебітори Варіанту B). mp:rozetkapay —
-    // виплати RozetkaPay, що вже прийшли в банк, але ще не рознесені по замовленнях
-    // (баланс від'ємний) — зменшує «до виплати».
-    db.from('counterparty_balances').select('counterparty_id, balance')
+    // Вручено, гроші тримає площадка (службові дебітори Варіанту B) — по замовленнях,
+    // бо RozetkaPay платить за передоплату ДО вручення: такий аванс дає замовленню
+    // від'ємний баланс mp:*, який не має гасити борг інших замовлень. mp:rozetkapay —
+    // виплати, що вже прийшли в банк, але ще не підібрані до замовлень (баланс від'ємний).
+    fetchAllRows<{ counterparty_id: string; order_id: string | null; amount: number }>((f, t) => db
+      .from('money_entries').select('counterparty_id, order_id, amount')
       .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:rozetkapay', 'np:cod'])
-      .then(r => r.data ?? []),
+      .range(f, t)),
     // Залишок NovaPay «за випискою» = Σ усіх документів виписки (рахунок відкрито
     // 16.07.2026 з нуля). Виписка віддає день лише після його закриття, а живий
     // залишок оновлюється щогодини — різниця між ними = виплати, що вже прийшли
@@ -373,12 +375,25 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     db.from('app_settings').select('value').eq('key', 'novapay_cod_fee_pct').maybeSingle().then(r => r.data?.value ?? null),
   ]);
   const heldMp = { prom: 0, rozetka: 0, receivedUnallocated: 0, npCod: 0 };
-  for (const r of heldRows as { counterparty_id: string; balance: number }[]) {
-    if (r.counterparty_id === 'mp:prom')       heldMp.prom    = Math.max(0, Number(r.balance));
-    if (r.counterparty_id === 'mp:rozetka')    heldMp.rozetka = Math.max(0, Number(r.balance));
-    if (r.counterparty_id === 'mp:rozetkapay') heldMp.receivedUnallocated = Math.max(0, -Number(r.balance));
-    if (r.counterparty_id === 'np:cod')        heldMp.npCod   = Math.max(0, Number(r.balance));
+  const perOrder: Record<string, { party: string; bal: number }> = {};
+  let rzPayClearing = 0; let npCodBal = 0;
+  for (const r of heldRows) {
+    const v = Number(r.amount);
+    if (r.counterparty_id === 'mp:rozetkapay') { rzPayClearing += v; continue; }
+    if (r.counterparty_id === 'np:cod') { npCodBal += v; continue; }
+    const k = r.order_id ?? `_:${r.counterparty_id}`;
+    perOrder[k] = { party: r.counterparty_id, bal: Math.round(((perOrder[k]?.bal ?? 0) + v) * 100) / 100 };
   }
+  // Замовлення, за які RozetkaPay уже заплатила наперед (аванс до вручення): не «їдуть»
+  const mpPrepaidReceived = new Set(Object.keys(perOrder).filter(k => perOrder[k].bal < -0.005));
+  for (const { party, bal } of Object.values(perOrder)) {
+    if (bal <= 0) continue;
+    if (party === 'mp:prom') heldMp.prom += bal; else heldMp.rozetka += bal;
+  }
+  heldMp.prom = Math.round(heldMp.prom * 100) / 100;
+  heldMp.rozetka = Math.round(heldMp.rozetka * 100) / 100;
+  heldMp.receivedUnallocated = Math.max(0, -Math.round(rzPayClearing * 100) / 100);
+  heldMp.npCod = Math.max(0, Math.round(npCodBal * 100) / 100);
   const mpTransit = { prom: promTransit.total, rozetka: rozetkaTransit.total };
   // Кеш вважаємо живим, поки він свіжий. Крон ходить кожні 10 хв, тож усе
   // старше двох годин означає зламану інтеграцію — а показана як «жива»
@@ -481,6 +496,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const novapayPending = { lastRegisterDate: lastReg, orders: npPendingOrders.length, fromLedger: true, npCod: heldMp.npCod, receivedUnbooked: npReceivedUnbooked };
   // RozetkaPay платить за Prom і Rozetka одним переказом: «не виплачено» — лише нетто
   const heldRozetkaPay = Math.max(0, heldMp.prom + heldMp.rozetka - heldMp.receivedUnallocated);
+  // Передоплата площадок у дорозі — лише ті, за які RozetkaPay ще не заплатила
+  const mpPrepaidTransit = sum(mpPrepaidTransitAll.filter(o => !mpPrepaidReceived.has(o.id)));
   const delivered   = heldNovapay + heldRozetkaPay;
   const shipped     = codTransit + mpPrepaidTransit;
   const moneyTransit = {

@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../lib/supabase';
 import { recordTxn, recordSupplierPayment, type AccountType } from '../../../../../lib/accounting/money';
 import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '../../../../../lib/mono-ingest';
 import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';
+import { allocateRzPayPayouts } from '../../../../../lib/rozetkapay-allocate';
 
 // Виписка Mono: документи (списання і незіставлені надходження) і категоризація людиною.
 // Списання = DR <витрата | novapay | cash | supplier | owner | taxes> / CR bank;
@@ -37,7 +38,8 @@ export async function POST(req: NextRequest) {
     try {
       const r = await fetchAndIngestMonoStatement(db, 7);
       const acq = await postPendingAcquiringSettlements(db, by);
-      return NextResponse.json({ ok: true, ...r, acquiringPosted: acq });
+      const rzpay = await allocateRzPayPayouts(db, by);
+      return NextResponse.json({ ok: true, ...r, acquiringPosted: acq, rzpay });
     } catch (err) {
       return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }

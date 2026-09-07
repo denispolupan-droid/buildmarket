@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase';
 import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '../../../../lib/mono-ingest';
+import { allocateRzPayPayouts } from '../../../../lib/rozetkapay-allocate';
 import { alertAdmin } from '../../../../lib/alert';
 
 // Крон-реконсиляція виписки ФОП Monobank — страховка на випадок пропущеного/
@@ -19,7 +20,12 @@ export async function GET(req: NextRequest) {
   try {
     const summary = await fetchAndIngestMonoStatement(db, MONO_STATEMENT_DAYS);
     const acquiringPosted = await postPendingAcquiringSettlements(db);
-    return NextResponse.json({ ok: true, ...summary, acquiringPosted });
+    // Виплати RozetkaPay → по замовленнях за статусами оплати Prom/Rozetka (API RozetkaPay немає)
+    const rzpay = await allocateRzPayPayouts(db, 'cron:mono-statement').catch(err => {
+      alertAdmin('Cron: рознесення виплат RozetkaPay впало', String(err instanceof Error ? err.message : err).slice(0, 300));
+      return null;
+    });
+    return NextResponse.json({ ok: true, ...summary, acquiringPosted, rzpay });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     // 429 (rate limit) — не алертимо, наступний запуск добере
