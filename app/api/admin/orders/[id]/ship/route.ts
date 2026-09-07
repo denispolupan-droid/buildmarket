@@ -160,7 +160,11 @@ export async function POST(
     const rePromId = order.prom_order_id as number | null;
     if (rePromId && reTtn) {
       setPromTTN(rePromId, reTtn, (order.delivery_type as string | null) ?? 'nova_poshta')
-        .catch(err => console.warn('[ship] setPromTTN failed (re-ship):', err));
+        .catch(err => {
+          console.warn('[ship] setPromTTN failed (re-ship):', err);
+          alertAdmin(`⚠ ЕН ${reTtn} не передана в Prom для #${order.order_number}`,
+            err instanceof Error ? err.message : String(err));
+        });
     }
     const reRozId = order.rozetka_order_id as number | null;
     const reRozStatus = reRozId ? ourStatusToRozetkaStatus(reStatus) : null;
@@ -320,6 +324,9 @@ export async function POST(
       ttnPushed = true;
     }).catch(err => {
       console.warn('[ship] setPromTTN failed:', err);
+      // Відповідь уже пішла менеджеру — єдиний спосіб не загубити відмову
+      alertAdmin(`⚠ ЕН ${effectiveTtn} не передана в Prom для #${order.order_number}`,
+        err instanceof Error ? err.message : String(err));
     });
   }
 

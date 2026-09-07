@@ -209,7 +209,15 @@ export async function setPromTTN(promOrderId: number, ttn: string, deliveryType 
   const promType = deliveryType === 'rz_delivery' ? 'rozetka_delivery'
     : deliveryType === 'nova' ? 'nova_poshta'
     : deliveryType;
-  await promFetch('/delivery/save_declaration_id', {
+  // Відмова приходить з HTTP 200 у тілі — двома формами (перевірено 07.09.2026):
+  //   {"status":"error","message":"Ошибка валидации","errors":{"declaration_id":["Неправильный номер декларации"]}}
+  //   {"error":"В заказе указан другой способ доставки","errors":null}
+  // Без цієї перевірки пуш виглядав успішним, а в кабінеті Prom номера не було
+  // (кейс #26091055, ROZETKA Доставка).
+  const data = await promFetch<{
+    status?: string; message?: string; error?: string;
+    errors?: Record<string, string[] | string> | null;
+  }>('/delivery/save_declaration_id', {
     method: 'POST',
     body: JSON.stringify({
       order_id:       promOrderId,
@@ -217,6 +225,12 @@ export async function setPromTTN(promOrderId: number, ttn: string, deliveryType 
       delivery_type:  promType,
     }),
   });
+  if (data.status === 'error' || data.error) {
+    const details = data.errors && typeof data.errors === 'object'
+      ? Object.entries(data.errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ')
+      : '';
+    throw new Error(`Prom save_declaration_id #${promOrderId} (${promType} ${ttn}): ${data.error ?? data.message ?? 'error'}${details ? ' — ' + details : ''}`);
+  }
 }
 
 /* ── Product list ───────────────────────────────────────────────────────── */
