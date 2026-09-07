@@ -2885,12 +2885,27 @@ export default function AdminOrders({
              * ТТН, якої стосується. Зайвий екземпляр ховає CSS, а не умова в JS,
              * щоб розмітка лишалась однією і не розповзалася двома копіями.
              */
+            // Для доставлених у тому ж місці — коли саме покупець забрав посилку.
+            // Пріоритет — час перевізника (carrier_delivered_at, НП); якщо його
+            // немає (Rozetka, ручне «Виконано») — наш delivered_at із поясненням у title.
+            const deliveredAt = order.status === 'delivered' ? (order.carrier_delivered_at ?? order.delivered_at) : null;
             const carrierNote = order.status === 'shipped' && order.carrier_status_text ? (
               <span className="oc-cstat"
                 title={order.carrier_status_synced_at ? `${order.carrier_status_text} · оновлено ${new Date(order.carrier_status_synced_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : order.carrier_status_text}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', maxWidth: '100%', fontSize: '10px', fontWeight: 500, color: order.carrier_accepted_at ? '#15803D' : '#B45309', overflow: 'hidden', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
                 <Truck size={10} style={{ flexShrink: 0 }} />
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.carrier_status_text}</span>
+              </span>
+            ) : deliveredAt ? (
+              <span className="oc-cstat"
+                title={order.carrier_delivered_at
+                  ? `Вручено ${new Date(deliveredAt).toLocaleString('uk-UA')} — час видачі за даними перевізника`
+                  : `Доставку зафіксовано ${new Date(deliveredAt).toLocaleString('uk-UA')} — перевізник часу видачі не дав, це наш час`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', maxWidth: '100%', fontSize: '10px', fontWeight: 500, color: '#15803D', overflow: 'hidden', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                <Check size={10} strokeWidth={3} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {new Date(deliveredAt).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
               </span>
             ) : null;
 
