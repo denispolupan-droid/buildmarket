@@ -421,3 +421,10 @@ export async function refreshNovapayBalance(): Promise<NovapayLiveBalance | null
     return null;
   }
 }
+
+/** Сирий виклик операції з jwt (діагностика невідомих операцій: реєстри, обороти). Повертає XML відповіді. */
+export async function novapayRawCall(method: string, fields: Record<string, string | number | null | undefined>): Promise<string> {
+  const db = createServiceClient();
+  const jwt = await getJwt(db);
+  return soapCall(method, { request_ref: crypto.randomUUID(), jwt, ...fields });
+}
