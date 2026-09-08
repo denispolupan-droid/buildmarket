@@ -47,6 +47,7 @@ import {
 } from '../../lib/payment-method';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeTariffs } from '../../lib/marketplace-delivery-fee';
 import { isPromCheapDelivery, computePromDeliveryFee } from '../../lib/prom-delivery-fee';
+import type { OrderSettlement } from '../../lib/accounting/order-settlement';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
 import RzDeliveryTtnModal from '../components/admin/RzDeliveryTtnModal';
 
@@ -170,6 +171,8 @@ const DELIVERY_LABEL: Record<string, string> = {
 
 // Спільний вигляд міток рядка (SMART, ТОЧКА, ⛓, повернення…). Раніше кожна
 // несла власний копіпаст зі стилями, і нова мітка щоразу трохи з'їжджала.
+const fmtMoney = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const rowBadge: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', maxWidth: '100%',
   fontSize: '9.5px', fontWeight: 700, lineHeight: '14px', letterSpacing: '.02em',
@@ -526,6 +529,8 @@ interface AdminOrdersProps {
   initialSaleDocs?: Record<string, { id: string; number: string; status?: string }[]>;
   initialReturnDocs?: Record<string, { id: string; number: string }[]>;
   initialShippedQty?: Record<string, Record<string, number>>;
+  /** «Виплачено» з леджера: чи дійшли гроші за замовлення до наших рахунків (lib/accounting/order-settlement) */
+  initialSettlement?: Record<string, OrderSettlement>;
 }
 
 export default function AdminOrders({
@@ -540,6 +545,7 @@ export default function AdminOrders({
   rozetkaCommissionPct = 15,
   feeTariffs = {},
   initialSaleDocs = {}, initialReturnDocs = {}, initialShippedQty = {},
+  initialSettlement = {},
 }: AdminOrdersProps) {
   const isAdmin = userRole === 'admin';
   const router = useRouter();
@@ -2749,6 +2755,7 @@ export default function AdminOrders({
             // синк, і другої правди з prom_data.id тут заводити не треба.
             const mpNumber = order.prom_order_id ?? order.rozetka_order_id ?? null;
             const paymentConfirmed = order.payment_confirmed ?? false;
+            const settlement = initialSettlement[order.id];
             const noCallback = order.comment?.includes('Не передзвонювати') ?? false;
             const callbackDone = order.callback_done ?? false;
             const isDropship = order.channel_code === 'dropship';
@@ -3024,6 +3031,22 @@ export default function AdminOrders({
                       }}>
                       {isCod ? 'НАЛОЖКА' : paymentConfirmed ? 'ОПЛАЧЕНО' : 'НЕ ОПЛАЧЕНО'}
                     </span>
+                    {/* «Виплачено» — гроші вже на НАШОМУ рахунку (з леджера). Окремо від
+                        «Оплачено»: покупець міг заплатити площадці, а нам виплата ще не дійшла. */}
+                    {settlement && settlement.state !== 'none' && !isCancelled && (
+                      <span
+                        title={settlement.state === 'received'
+                          ? `Виплачено: гроші за замовлення дійшли до нас (${fmtMoney(settlement.received)} ₴ за обліком)`
+                          : `Чекаємо виплату: вручено, але ${fmtMoney(settlement.open)} ₴ ще не дійшли до нас (НоваПей / RozetkaPay / покупець)`}
+                        style={{
+                          ...rowBadge,
+                          color: settlement.state === 'received' ? '#166534' : '#B45309',
+                          background: settlement.state === 'received' ? '#BBF7D0' : '#FEF3C7',
+                          borderColor: settlement.state === 'received' ? '#4ADE80' : '#FCD34D',
+                        }}>
+                        {settlement.state === 'received' ? '₴ ВИПЛАЧЕНО' : '₴ ЧЕКАЄМО'}
+                      </span>
+                    )}
                   </span>
 
                   <ItemThumbs className="oc-hide-m" items={order.items} thumbs={productThumbs}
@@ -3264,9 +3287,16 @@ export default function AdminOrders({
                         : 'Рах.';
                       // Зелений = оплата підтверджена (передоплата/безнал/картка). НП платить при отриманні.
                       const paid = order.payment_confirmed && order.payment_type !== 'cod';
+                      // Насичено-зелений з «✓» = гроші вже на нашому рахунку; помаранчевий = вручено, виплата не дійшла
+                      const received = settlement?.state === 'received' && !isCancelled;
+                      const waiting = settlement?.state === 'pending' && !isCancelled;
                       return (
-                        <span title={paid ? 'Оплачено' : undefined} style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: paid ? '#DCFCE7' : 'var(--border-light)', color: paid ? '#15803D' : 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
-                          {label}
+                        <span title={received ? `Виплачено — гроші дійшли до нас (${fmtMoney(settlement!.received)} ₴)` : waiting ? `Чекаємо виплату: ${fmtMoney(settlement!.open)} ₴ ще не дійшли до нас` : paid ? 'Оплачено' : undefined}
+                          style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', whiteSpace: 'nowrap',
+                            background: received ? '#BBF7D0' : waiting ? '#FEF3C7' : paid ? '#DCFCE7' : 'var(--border-light)',
+                            color: received ? '#166534' : waiting ? '#B45309' : paid ? '#15803D' : 'var(--text-secondary)',
+                            fontWeight: received || waiting ? 700 : undefined, display: 'inline-flex', alignItems: 'center' }}>
+                          {received ? '✓' : waiting ? '…' : ''}{label}
                         </span>
                       );
                     })()}

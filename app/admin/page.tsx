@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import { fetchAllRows } from '../../lib/db-paginate';
 import AdminOrders from './AdminOrders';
+import { settlementMap, type SettlementEntry } from '../../lib/accounting/order-settlement';
 import Link from 'next/link';
 import NewOrderButton from './orders/NewOrderButton';
 import { SMART_TARIFF_KEY, parseSmartTariff } from '../../lib/rozetka-smart-tariff';
@@ -224,6 +225,18 @@ export default async function AdminPage({
         .in('status', ['confirmed', 'draft'])
     : { data: [] as { id: string; order_id: string; doc_number: string; doc_type: string; reversal_of: string | null; status: string }[] };
 
+  // «Виплачено»: чи дійшли гроші за замовлення до наших рахунків — з леджера
+  // (рахунок customer по order_id, lib/accounting/order-settlement)
+  const { data: settleRaw } = orderIds.length
+    ? await serviceClient
+        .from('money_entries')
+        .select('order_id, counterparty_id, amount, doc_type')
+        .eq('account_type', 'customer')
+        .in('order_id', orderIds)
+        .limit(5000)
+    : { data: [] as SettlementEntry[] };
+  const initialSettlement = settlementMap((settleRaw ?? []) as SettlementEntry[]);
+
   const saleDocsRaw = (allDocsRaw ?? []).filter(d => d.doc_type === 'sale');
   const returnDocsRaw = (allDocsRaw ?? []).filter(d => d.doc_type === 'return_in' && !d.reversal_of && d.status === 'confirmed');
 
@@ -429,7 +442,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} />
+      <AdminOrders key={curStatus} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
     </div>
   );
 }
