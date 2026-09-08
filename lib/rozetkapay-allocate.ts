@@ -39,22 +39,30 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
   const summary: RzPayAllocateSummary = { payouts: pending.length, allocated: 0, orders: 0, amount: 0, unmatched: [] };
   if (pending.length === 0) return summary;
 
-  // Уже рознесені замовлення: будь-який дебет mp:rozetkapay із прив'язкою до замовлення
-  // (rzpay-alloc:* і ручні перекласифікації)
+  // Уже рознесені замовлення: НЕТТО дебет mp:rozetkapay по замовленню > 0 (rzpay-alloc:*,
+  // ручні перекласифікації; сторно rzpay-alloc-undo знімає — замовлення знову кандидат)
   const allocRows = await fetchAllRows<{ order_id: string | null; amount: number }>((f, t) => db
     .from('money_entries').select('order_id, amount').eq('account_type', 'customer').eq('counterparty_id', SALE_DEBTOR.rozetkapay)
-    .gt('amount', 0).not('order_id', 'is', null).range(f, t));
-  const allocated = new Set(allocRows.map(r => r.order_id as string));
+    .not('order_id', 'is', null).range(f, t));
+  const netByOrder: Record<string, number> = {};
+  for (const r of allocRows) netByOrder[r.order_id as string] = Math.round(((netByOrder[r.order_id as string] ?? 0) + Number(r.amount)) * 100) / 100;
+  const allocated = new Set(Object.keys(netByOrder).filter(k => netByOrder[k] > 0.005));
   // Скільки з кожної виплати вже рознесено (у т.ч. сторно rzpay-alloc-undo) — добираємо залишок
   // (ключ ідемпотентності стоїть лише на дебетовому рядку проводки: alloc → дебет mp:rozetkapay,
   // undo → дебет mp:*; тому знак беремо з префікса ключа, а не з рахунку)
   const keyed = await fetchAllRows<{ idempotency_key: string; amount: number }>((f, t) => db
     .from('money_entries').select('idempotency_key, amount').like('idempotency_key', 'rzpay-alloc%').range(f, t));
+  // Ключ: {kind}:{txn}:{order}[:{seq}] — після сторно те саме замовлення може знову
+  // потрапити в ту саму виплату, тож повторна проводка отримує наступний seq
+  // (інакше вона мовчки впала б у дубль і склад виплати лишився б неповним — кейс 08.09).
   const doneByTxn: Record<string, number> = {};
+  const keyCount: Record<string, number> = {};
   for (const r of keyed) {
-    const [kind, txn] = r.idempotency_key.split(':');
+    const [kind, txn, order] = r.idempotency_key.split(':');
     const sign = kind === 'rzpay-alloc-undo' ? -1 : 1;
     doneByTxn[txn] = Math.round(((doneByTxn[txn] ?? 0) + sign * Math.abs(Number(r.amount))) * 100) / 100;
+    const pair = `${txn}:${order}`;
+    keyCount[pair] = (keyCount[pair] ?? 0) + 1;
   }
 
   const since = shiftDate(pending[0].txn_time.slice(0, 10), -60);
@@ -95,7 +103,7 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
           creditAccount: 'customer', creditParty: e.party,
           amount: e.amount, businessDate: row.txn_time.slice(0, 10), docType: 'payment', orderId: e.orderId,
           description: `Виплата RozetkaPay за операції ${period} — замовлення #${e.orderNumber}`,
-          idempotencyKey: `rzpay-alloc:${row.id}:${e.orderId}`, createdBy,
+          idempotencyKey: `rzpay-alloc:${row.id}:${e.orderId}${keyCount[`${row.id}:${e.orderId}`] ? ':' + (keyCount[`${row.id}:${e.orderId}`] + 1) : ''}`, createdBy,
           meta: { mono_txn_id: row.id, rzpay_period: [rz.periodFrom, rz.periodTo], event: e.kind, event_date: e.at, auto: true },
         });
       } catch (err) {

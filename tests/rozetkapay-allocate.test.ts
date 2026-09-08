@@ -4,13 +4,14 @@ import { rzPayEventFor, matchRzPayPayout, rzPayCandidatesFor, shiftDate, type Rz
 const base = { id: 'o1', order_number: 26091001, status: 'shipped', total_price: 500, delivered_at: null, customer_id: null };
 
 describe('rzPayEventFor — коли RozetkaPay має заплатити за замовлення', () => {
-  it('Prom-оплата: дата = status_modified (paid), ще до вручення', () => {
-    const e = rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: { status: 'paid', status_modified: '2026-09-05T20:17:43+00:00' } });
-    expect(e).toMatchObject({ party: 'mp:prom', at: '2026-09-05', kind: 'prom_paid', amount: 500 });
+  it('Prom-оплата: лише після вручення — дата = delivered_at за Києвом', () => {
+    const paid = { status: 'paid', status_modified: '2026-09-02T20:17:43+00:00' };
+    expect(rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: paid })).toBeNull();
+    const e = rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: paid, delivered_at: '2026-09-05T22:30:00+00:00' });
+    expect(e).toMatchObject({ party: 'mp:prom', at: '2026-09-06', kind: 'prom_delivered', amount: 500 });
   });
-  it('Prom-оплата з датою після опівночі за Києвом — наступний день', () => {
-    const e = rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: { status: 'paid', status_modified: '2026-09-05T22:30:00+00:00' } });
-    expect(e?.at).toBe('2026-09-06');
+  it('Prom-оплата без статусу paid — не кандидат навіть після вручення', () => {
+    expect(rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: { status: 'not_paid' }, delivered_at: '2026-09-05T10:00:00Z' })).toBeNull();
   });
   it('Rozetka передоплата: payment_status.created_at', () => {
     const e = rzPayEventFor({ ...base, channel_code: 'rozetka', payment_type: 'prepaid', delivery_type: 'rozetka_delivery', rz_payment: { payment_status: { name: 'paid', created_at: '2026-09-07 08:54:18' } } });
@@ -45,7 +46,7 @@ describe('matchRzPayPayout — склад виплати підмножиною'
 });
 
 describe('rzPayCandidatesFor — вікно з лагом, без уже рознесених', () => {
-  const ev = (orderId: string, at: string, amount = 100): RzPayEvent => ({ orderId, orderNumber: 1, party: 'mp:prom', at, kind: 'prom_paid', amount });
+  const ev = (orderId: string, at: string, amount = 100): RzPayEvent => ({ orderId, orderNumber: 1, party: 'mp:prom', at, kind: 'prom_delivered', amount });
   it('бере події від (from − LAG) до to включно, найстаріші першими', () => {
     const events = [ev('late', '2026-09-07'), ev('in', '2026-09-06'), ev('old', '2026-08-28'), ev('lag', '2026-08-29'), ev('done', '2026-09-05')];
     const c = rzPayCandidatesFor(events, '2026-09-04', '2026-09-06', new Set(['done']), 6);
