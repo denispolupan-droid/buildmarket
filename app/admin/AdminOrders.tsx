@@ -50,6 +50,7 @@ import { isPromCheapDelivery, computePromDeliveryFee } from '../../lib/prom-deli
 import type { OrderSettlement } from '../../lib/accounting/order-settlement';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
 import RzDeliveryTtnModal from '../components/admin/RzDeliveryTtnModal';
+import { planMergeTtn } from '../../lib/orders/merge-ttn';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -755,6 +756,9 @@ export default function AdminOrders({
   // Накладна власного договору «ROZETKA Доставки» (замовлення сайту) — окреме
   // вікно й окремий роут, щоб не плутати з маркетплейсним rzTtnModal вище
   const [rzOwnTtnModal,  setRzOwnTtnModal]  = useState<Order | null>(null);
+  // Об'єднана посилка для обох Rozetka-вікон: усі замовлення групи (перше —
+  // основне, з нього виписується накладна). null — звичайне одиночне вікно.
+  const [rzMergeGroup,   setRzMergeGroup]   = useState<Order[] | null>(null);
   const [rzLabelBusy,    setRzLabelBusy]    = useState<string | null>(null);
   const [bulkPrinting,   setBulkPrinting]   = useState(false);
   const [rzRegBusy,      setRzRegBusy]      = useState<string | null>(null);
@@ -1759,6 +1763,18 @@ export default function AdminOrders({
   function openMergeModal() {
     const sel = orders.filter(o => selectedIds.has(o.id));
     if (sel.length < 2) return;
+    // Яким перевізником і чи взагалі можна — чиста функція під тестами
+    // (lib/orders/merge-ttn): одна точка, один покупець, жодне ще без накладної.
+    const plan = planMergeTtn(sel);
+    if (!plan.ok) { showToast(plan.error, 'error'); return; }
+    if (plan.kind !== 'nova') {
+      // Обидва потоки Rozetka: те саме вікно, що для одиночного замовлення, але
+      // з сумарними позиціями (вага) і списком замовлень для роуту.
+      setRzMergeGroup(sel);
+      if (plan.kind === 'rozetka_delivery') setRzTtnModal(sel[0]);
+      else setRzOwnTtnModal(sel[0]);
+      return;
+    }
     const primary = sel[0];
     const mergedItems = sel.flatMap(o => o.items);
     const totalPrice = sel.reduce((s, o) => s + o.total_price, 0);
@@ -5805,37 +5821,56 @@ export default function AdminOrders({
         />
       )}
 
-      {rzOwnTtnModal && (
-        <RzDeliveryTtnModal
-          order={{ id: rzOwnTtnModal.id, order_number: rzOwnTtnModal.order_number, items: rzOwnTtnModal.items.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })) }}
-          onClose={() => setRzOwnTtnModal(null)}
-          onCreated={ttn => {
-            const orderId = rzOwnTtnModal.id;
-            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
-            setTtnValues(prev => ({ ...prev, [orderId]: ttn }));
-            setRzOwnTtnModal(null);
-            showToast(`ЕН ROZETKA створена: ${ttn}`, 'success', 5000);
-            void finishTtnFlow([orderId]);
-          }}
-        />
-      )}
+      {rzOwnTtnModal && (() => {
+        const group = rzMergeGroup ?? [rzOwnTtnModal];
+        const ids = group.map(o => o.id);
+        return (
+          <RzDeliveryTtnModal
+            order={{
+              id: rzOwnTtnModal.id, order_number: rzOwnTtnModal.order_number,
+              items: group.flatMap(o => o.items).map(i => ({ sku: i.sku, qty: i.qty, name: i.name })),
+              ...(ids.length > 1 ? { mergedIds: ids, mergedNumbers: group.map(o => o.order_number) } : {}),
+            }}
+            onClose={() => { setRzOwnTtnModal(null); setRzMergeGroup(null); }}
+            onCreated={ttn => {
+              setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, tracking_number: ttn } : o));
+              ids.forEach(id => setTtnValues(prev => ({ ...prev, [id]: ttn })));
+              setRzOwnTtnModal(null); setRzMergeGroup(null);
+              if (ids.length > 1) setSelectedIds(new Set());
+              showToast(`ЕН ROZETKA створена: ${ttn}${ids.length > 1 ? ` (${ids.length} замовлення)` : ''}`, 'success', 5000);
+              void finishTtnFlow(ids);
+            }}
+          />
+        );
+      })()}
 
-      {rzTtnModal && (
-        <RozetkaDeliveryTtnModal
-          order={{ id: rzTtnModal.id, order_number: rzTtnModal.order_number, items: rzTtnModal.items.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })) }}
-          onClose={() => setRzTtnModal(null)}
-          onCreated={ttn => {
-            const orderId = rzTtnModal.id;
-            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, tracking_number: ttn } : o));
-            setTtnValues(prev => ({ ...prev, [orderId]: ttn }));
-            setRzTtnModal(null);
-            showToast(`Накладна Rozetka створена: ${ttn}`, 'success', 5000);
-            // Далі — той самий хвіст, що й після накладної НП: у режимі
-            // «постачальник» замовлення відвантажується саме.
-            void finishTtnFlow([orderId]);
-          }}
-        />
-      )}
+      {rzTtnModal && (() => {
+        const group = rzMergeGroup ?? [rzTtnModal];
+        const ids = group.map(o => o.id);
+        return (
+          <RozetkaDeliveryTtnModal
+            order={{
+              id: rzTtnModal.id, order_number: rzTtnModal.order_number,
+              items: group.flatMap(o => o.items).map(i => ({ sku: i.sku, qty: i.qty, name: i.name })),
+              ...(ids.length > 1 ? { mergedIds: ids, mergedNumbers: group.map(o => o.order_number) } : {}),
+            }}
+            onClose={() => { setRzTtnModal(null); setRzMergeGroup(null); }}
+            onCreated={(ttn, warnings) => {
+              setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, tracking_number: ttn } : o));
+              ids.forEach(id => setTtnValues(prev => ({ ...prev, [id]: ttn })));
+              setRzTtnModal(null); setRzMergeGroup(null);
+              if (ids.length > 1) setSelectedIds(new Set());
+              showToast(`Накладна Rozetka створена: ${ttn}${ids.length > 1 ? ` (${ids.length} замовлення)` : ''}`, 'success', 5000);
+              // Об'єднана посилка: кабінет Rozetka знає номер лише по основному
+              // замовленню; якщо решті його донести не вдалося — сказати зараз.
+              if (warnings?.length) showToast(warnings.join('; '), 'error', 8000);
+              // Далі — той самий хвіст, що й після накладної НП: у режимі
+              // «постачальник» замовлення відвантажується саме.
+              void finishTtnFlow(ids);
+            }}
+          />
+        );
+      })()}
 
       {mergeModal && (
         <CreateTTNModal

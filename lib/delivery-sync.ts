@@ -375,6 +375,23 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       .eq('id', o.id);
     updated++;
     if (o.telegram_chat_id) notifyCustomerStatus(o.telegram_chat_id, o.order_number, 'delivered');
+
+    // Об'єднана посилка: решта замовлень з цим самим «RMP-…» їдуть у тій самій
+    // коробці, а їхні РН уже проведені completeShipmentByTtn вище. Кабінет
+    // Rozetka веде статус лише по замовленню, з якого виписана накладна, тож
+    // без цього кроку «сусіди» висіли б у «Відвантажено» назавжди.
+    const siblings = rzOrders.filter(s =>
+      s.id !== o.id && s.tracking_number === o.tracking_number && !['cancelled', 'delivered'].includes(s.status));
+    for (const s of siblings) {
+      if (!(await allOrderSalesPosted(s.id))) continue;
+      await serviceClient
+        .from('orders')
+        .update({ status: 'delivered', delivered_at: new Date().toISOString() })
+        .eq('id', s.id);
+      s.status = 'delivered';
+      updated++;
+      if (s.telegram_chat_id) notifyCustomerStatus(s.telegram_chat_id, s.order_number, 'delivered');
+    }
   }
 
   // ── «ROZETKA Доставка» власного договору (замовлення сайту) ──────────────

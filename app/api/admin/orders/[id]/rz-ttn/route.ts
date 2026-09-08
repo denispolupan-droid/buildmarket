@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { RZ_DELIVERY_TYPE, RZ_TRACK_TYPE_DEPT, rzPhone, rzSplitName } from '../../../../../../lib/rz-delivery';
 import { getRzSender, getRzBox, rzCreateTrack, rzLabel, rzDeleteTrack, rzSearchCities, rzDepartments, RzError } from '../../../../../../lib/rz-delivery-api';
+import { mergedDescription } from '../../../../../../lib/orders/merge-ttn';
 
 /**
  * Знайти city_ref за назвою міста і UUID точки видачі. Потрібно для замовлень
@@ -83,6 +84,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json().catch(() => ({})) as {
     weight?: number; length?: number; width?: number; height?: number;
     places?: number; description?: string; deliveryPayer?: string;
+    /** Об'єднана посилка: усі замовлення, що їдуть цією накладною (включно з id) */
+    mergedIds?: string[];
   };
 
   // Платник доставки. Значення звіряємо зі списком, а не передаємо як є:
@@ -101,24 +104,43 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Вкажіть вагу і всі три габарити' }, { status: 400 });
   }
 
+  // Об'єднана посилка: одна накладна на кілька замовлень одного покупця на одну
+  // точку. Отримувач і точка — з основного замовлення; післяплата й оголошена
+  // вартість — сумою по всіх.
+  const ids = [...new Set([id, ...(Array.isArray(body.mergedIds) ? body.mergedIds.map(String) : [])])];
+
   const db = createServiceClient();
-  const { data: order, error } = await db
+  const { data: orders, error } = await db
     .from('orders')
     // Один рядок навмисно: supabase-js виводить типи колонок із ЛІТЕРАЛУ select,
     // і склеєний з шматків рядок перетворює order на GenericStringError.
     .select('id, order_number, delivery_type, tracking_number, contact, phone, delivery_city_ref, delivery_city_name, delivery_warehouse_ref, delivery_address, total_price, payment_type, payment_confirmed, items')
-    .eq('id', id)
-    .single();
+    .in('id', ids)
+    .limit(ids.length);
 
+  const order = orders?.find(o => o.id === id);
   if (error || !order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
-  if (order.delivery_type !== RZ_DELIVERY_TYPE) {
-    return NextResponse.json({ error: 'Це не «ROZETKA Доставка»' }, { status: 400 });
+  if (orders!.length !== ids.length) return NextResponse.json({ error: 'Частину замовлень не знайдено' }, { status: 404 });
+  for (const o of orders!) {
+    const tag = ids.length > 1 ? `№${o.order_number}: ` : '';
+    if (o.delivery_type !== RZ_DELIVERY_TYPE) {
+      return NextResponse.json({ error: `${tag}Це не «ROZETKA Доставка»` }, { status: 400 });
+    }
+    if (o.tracking_number) {
+      return NextResponse.json({ error: `${tag}Накладна вже створена: ${o.tracking_number}` }, { status: 409 });
+    }
+    if (!o.delivery_warehouse_ref) {
+      return NextResponse.json({ error: `${tag}У замовленні немає точки видачі ROZETKA` }, { status: 400 });
+    }
   }
-  if (order.tracking_number) {
-    return NextResponse.json({ error: `Накладна вже створена: ${order.tracking_number}` }, { status: 409 });
-  }
-  if (!order.delivery_warehouse_ref) {
-    return NextResponse.json({ error: 'У замовленні немає точки видачі ROZETKA' }, { status: 400 });
+  if (ids.length > 1) {
+    if (new Set(orders!.map(o => o.delivery_warehouse_ref)).size > 1) {
+      return NextResponse.json({ error: 'Різні точки видачі — одна посилка неможлива' }, { status: 400 });
+    }
+    const normPhone = (s: unknown) => String(s ?? '').replace(/\D/g, '').replace(/^38/, '');
+    if (new Set(orders!.map(o => normPhone(o.phone))).size > 1) {
+      return NextResponse.json({ error: 'Різні покупці — одна посилка неможлива' }, { status: 400 });
+    }
   }
   // Пром-замовлення в «Магазини Rozetka» приходять із warehouse_id того ж
   // довідника, але БЕЗ city_id — знаходимо місто перебором кандидатів за назвою
@@ -153,21 +175,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Оголошена вартість строго > 0 — вимога API. Беремо суму замовлення з БД,
   // а не з тіла запиту: це гроші, і клієнтським цифрам тут не місце.
-  const total = Number(order.total_price) || 0;
+  // Об'єднана посилка: оголошена вартість — усе, що в коробці; післяплата —
+  // лише неоплачені замовлення (покупець платить на точці один раз за все).
+  const total = orders!.reduce((s, o) => s + (Number(o.total_price) || 0), 0);
   if (total <= 0) return NextResponse.json({ error: 'Нульова сума замовлення' }, { status: 400 });
 
-  const isCod = order.payment_type === 'cod' && !order.payment_confirmed;
+  const codTotal = orders!
+    .filter(o => o.payment_type === 'cod' && !o.payment_confirmed)
+    .reduce((s, o) => s + (Number(o.total_price) || 0), 0);
   const items = (order.items ?? []) as { name?: string }[];
-  const description = (body.description ?? items.map(i => i.name).filter(Boolean).join(', ')).slice(0, 100);
+  const description = (body.description ?? (ids.length > 1
+    ? mergedDescription(orders!.map(o => ({ order_number: o.order_number, items: (o.items ?? []) as { name?: string }[] })))
+    : items.map(i => i.name).filter(Boolean).join(', '))).slice(0, 100);
 
   try {
     const track = await rzCreateTrack({
-      visible_id:     String(order.order_number),
+      visible_id:     orders!.map(o => o.order_number).join('+'),
       description,
       type:           RZ_TRACK_TYPE_DEPT,
       places:         Number(body.places) > 0 ? Number(body.places) : 1,
       delivery_payer: deliveryPayer,
-      cost:           isCod ? total : 0,
+      cost:           codTotal,
       insurance_cost: total,
       params:         { weight, length, width, height },
       sender: {
@@ -189,14 +217,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     });
 
+    // Вартість доставки і комісія — на ОСНОВНОМУ замовленні: проводки по ЕН
+    // ідемпотентні за номером (rz-payment-fee:<ЕН>), тож дублювати їх на решту
+    // не можна — витрата подвоїлась би.
     await db.from('orders').update({
       tracking_number:   track.track_id,
       rz_delivery_cost:  track.shipping_cost ?? null,
       rz_payment_fee:    track.payment_fee ?? null,
       rz_delivery_payer: deliveryPayer,
     }).eq('id', order.id);
+    if (ids.length > 1) {
+      await db.from('orders').update({ tracking_number: track.track_id, rz_delivery_payer: deliveryPayer })
+        .in('id', ids.filter(x => x !== order.id));
+    }
     // Той самий номер — на непроведені РН, інакше синк доставки їх не знайде
-    await syncDraftShipmentTracking(order.id, track.track_id);
+    for (const oid of ids) await syncDraftShipmentTracking(oid, track.track_id);
 
     return NextResponse.json({
       ok: true,

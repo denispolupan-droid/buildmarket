@@ -15,7 +15,11 @@ import { X } from 'lucide-react';
  * замовчуванням» з налаштувань, менеджер править під конкретну посилку.
  */
 type Props = {
-  order: { id: string; order_number: number; items: { sku: string; qty: number; name: string }[] };
+  order: {
+    id: string; order_number: number; items: { sku: string; qty: number; name: string }[];
+    /** Об'єднана посилка: усі замовлення однією накладною (items тоді — сумарні) */
+    mergedIds?: string[]; mergedNumbers?: number[];
+  };
   onClose: () => void;
   onCreated: (ttn: string) => void;
 };
@@ -75,6 +79,7 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
           width: parseFloat(width), height: parseFloat(height),
           places: parseInt(places) || 1,
           deliveryPayer: payer,
+          ...(order.mergedIds?.length ? { mergedIds: order.mergedIds } : {}),
         }),
       });
       const d = await res.json();
@@ -106,7 +111,11 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>ROZETKA Доставка</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Замовлення #{order.order_number} · відділення → відділення</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              {order.mergedNumbers && order.mergedNumbers.length > 1
+                ? `Одна посилка: ${order.mergedNumbers.map(n => `#${n}`).join(' + ')}`
+                : `Замовлення #${order.order_number}`} · відділення → відділення
+            </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}><X size={18} /></button>
         </div>

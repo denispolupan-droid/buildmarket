@@ -20,9 +20,13 @@ type RzSender = {
 };
 
 type Props = {
-  order: { id: string; order_number: number; items: { sku: string; qty: number; name: string }[] };
+  order: {
+    id: string; order_number: number; items: { sku: string; qty: number; name: string }[];
+    /** Об'єднана посилка: усі замовлення однією накладною (items тоді — сумарні) */
+    mergedIds?: string[]; mergedNumbers?: number[];
+  };
   onClose: () => void;
-  onCreated: (ttn: string) => void;
+  onCreated: (ttn: string, warnings?: string[]) => void;
 };
 
 export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: Props) {
@@ -87,11 +91,12 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
           weight: parseFloat(weight), length: parseFloat(length),
           width: parseFloat(width), height: parseFloat(height),
           places: parseInt(places) || 1,
+          ...(order.mergedIds?.length ? { mergedIds: order.mergedIds } : {}),
         }),
       });
       const d = await res.json();
       if (!res.ok || d.error) { setError(d.error ?? 'Помилка'); return; }
-      onCreated(d.ttn);
+      onCreated(d.ttn, Array.isArray(d.warnings) ? d.warnings : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Збій мережі');
     } finally {
@@ -116,7 +121,11 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>Накладна Rozetka</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Замовлення #{order.order_number} · точка видачі</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              {order.mergedNumbers && order.mergedNumbers.length > 1
+                ? `Одна посилка: ${order.mergedNumbers.map(n => `#${n}`).join(' + ')}`
+                : `Замовлення #${order.order_number}`} · точка видачі
+            </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}><X size={18} /></button>
         </div>
