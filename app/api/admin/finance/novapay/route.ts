@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { recordTxn, recordSupplierPayment, recordMarketplaceTopup, type AccountType } from '../../../../../lib/accounting/money';
 import { ingestNovapayStatement, postNpPayouts } from '../../../../../lib/novapay-ingest';
+import { postNovapayAutoTopups } from '../../../../../lib/novapay-autopost';
 
 // Виписка NovaPay: список документів і категоризація списань людиною.
 // Списання = DR <витрата | bank | cash | supplier | owner | marketplace_balance> / CR novapay;
@@ -38,7 +39,8 @@ export async function POST(req: NextRequest) {
     try {
       const ingest = await ingestNovapayStatement(14);
       const payouts = await postNpPayouts(by);
-      return NextResponse.json({ ok: true, ingest, payouts });
+      const autopost = await postNovapayAutoTopups(`autopost:${by}`);
+      return NextResponse.json({ ok: true, ingest, payouts, autopost });
     } catch (err) {
       return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }

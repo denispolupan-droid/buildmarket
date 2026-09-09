@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { refreshNovapayBalance, getNovapayLiveBalance, refreshNovapayRegisters } from '../../../../lib/novapay-api';
 import { ingestNovapayStatement, postNpPayouts } from '../../../../lib/novapay-ingest';
+import { postNovapayAutoTopups } from '../../../../lib/novapay-autopost';
 import { createServiceClient } from '../../../../lib/supabase';
 import { alertAdmin } from '../../../../lib/alert';
 
@@ -29,10 +30,12 @@ export async function GET(req: NextRequest) {
 
   // Виписка → облік: виплати за реєстрами по ЕН (DR novapay + DR logistics[np] / CR np:cod).
   // Окремі try: збій виписки не має ховати збій балансу і навпаки.
-  let ingest: unknown = null, payouts: unknown = null;
+  let ingest: unknown = null, payouts: unknown = null, autopost: unknown = null;
   try {
     ingest = await ingestNovapayStatement(10);
     payouts = await postNpPayouts();
+    // Поповнення балансів Rozetka/Prom — за правилом, без людини (lib/novapay-autopost)
+    autopost = await postNovapayAutoTopups();
   } catch (err) {
     console.error('[novapay-statement]', err instanceof Error ? err.message : err);
     ingest = { error: err instanceof Error ? err.message : String(err) };
@@ -61,7 +64,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: balance !== null, balance, registers: registers ? { lastDate: registers.lastDate, count: registers.payouts.length } : null, ingest, payouts });
+  return NextResponse.json({ ok: balance !== null, balance, registers: registers ? { lastDate: registers.lastDate, count: registers.payouts.length } : null, ingest, payouts, autopost });
 }
 
 export const POST = GET;
