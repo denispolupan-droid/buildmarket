@@ -74,9 +74,9 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
       const d = await res.json();
       if (!res.ok) { setMsg(`Помилка: ${d.error}`); return; }
       const parts = [
-        `Реєстр за ${d.register.periodFrom}…${d.register.periodTo}: ${d.register.rows} платежів на ${d.register.totalGross} ₴ → переказів ${(d.payouts ?? []).filter((p: { monoTxnId: string | null }) => p.monoTxnId).length}/${(d.payouts ?? []).length}`,
-        d.posted.length ? `проведено ${d.posted.map((p: { orderNumber: number }) => '#' + p.orderNumber).join(' ')}` : '',
-        d.undone.length ? `сторновано підбір ${d.undone.map((p: { orderNumber: number }) => '#' + p.orderNumber).join(' ')}` : '',
+        `Файл за ${d.register.periodFrom}…${d.register.periodTo}: ${d.register.rows} рядків на ${d.register.totalGross} ₴ → переказів ${(d.payouts ?? []).filter((p: { monoTxnId: string | null }) => p.monoTxnId).length}/${(d.payouts ?? []).length}, змінено ${(d.payouts ?? []).filter((p: { changed: boolean }) => p.changed).length}`,
+        d.posted.length ? `проведено ${d.posted.length}: ${d.posted.map((p: { orderNumber: number }) => '#' + p.orderNumber).join(' ')}` : '',
+        d.undone.length ? `сторновано підбір ${d.undone.length}: ${d.undone.map((p: { orderNumber: number }) => '#' + p.orderNumber).join(' ')}` : '',
         d.kept ? `без змін ${d.kept}` : '',
         ...(d.warnings ?? []),
       ].filter(Boolean);
@@ -123,9 +123,9 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
             <RefreshCw size={12} style={busy === 'refresh' ? { animation: 'spin 1s linear infinite' } : undefined} /> {busy === 'refresh' ? 'Тягнемо…' : 'Оновити виписку (7 днів)'}
           </button>
           <label style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 12px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
-            title="Кабінет RozetkaPay → Реєстр платежів (XLSX). Склад виплати береться з файлу: зайве з підбору сторнується, відсутнє проводиться">
-            📄 {busy === 'rzpay-register' ? 'Розносимо…' : 'Реєстр RozetkaPay (XLSX)'}
-            <input type="file" accept=".xlsx,.xls" hidden disabled={!!busy}
+            title="Кабінет RozetkaPay → розгорнутий експорт транзакцій (CSV) або реєстр платежів за період (XLSX). Склад виплат береться з файлу: зайве з підбору сторнується, відсутнє проводиться">
+            📄 {busy === 'rzpay-register' ? 'Розносимо…' : 'Виплати RozetkaPay (CSV/XLSX)'}
+            <input type="file" accept=".csv,.xlsx,.xls" hidden disabled={!!busy}
               onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadRzPayRegister(f); }} />
           </label>
           <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Надходження за замовленнями, виплати RozetkaPay і покриття еквайрингу проводяться самі (вебхук + крон). Склад виплати RozetkaPay крон підбирає під суму — реєстр із кабінету робить його точним. Тут — списання і незіставлені надходження.</div>

@@ -46,7 +46,7 @@ describe('planRzPayRegisterApply — склад виплати за фактом
     '425398995': { id: 'A', order_number: 26091039, party: 'mp:prom' },
     '425194204': { id: 'B', order_number: 26091026, party: 'mp:prom' },
   };
-  const lookup = (_mp: 'prom' | 'rozetka' | null, id: string) => orders[id] ?? null;
+  const lookup = (_mp: 'prom' | 'rozetka' | null, id: string, _ref: string | null) => orders[id] ?? null;
 
   it('кейс 09.09: підбір поклав #26081071 + #26081165 (502 + 400 = 902) — сторно обох, проводка двох із реєстру', () => {
     const plan = planRzPayRegisterApply(parseRzPayRegister(sheet()), lookup, { X: 502, Y: 400 });
@@ -77,5 +77,77 @@ describe('planRzPayRegisterApply — склад виплати за фактом
     (s[9] as unknown[])[8] = '425398995';
     const plan = planRzPayRegisterApply(parseRzPayRegister(s), lookup, {});
     expect(plan.post).toEqual([{ orderId: 'A', orderNumber: 26091039, party: 'mp:prom', amount: 902, marketplaceOrderId: '425398995' }]);
+  });
+});
+
+import { parseRzPayTransactionsCsv, refOfPurpose, splitCsvLine } from '../lib/rozetkapay-register';
+
+describe('parseRzPayTransactionsCsv — розгорнутий експорт транзакцій RozetkaPay', () => {
+  const H = '№ замовлення;№ операції;Дата замовлення;Сума платежу;Тип оплати;Платформа;Статус;Дата оплати покупцем;Дата перерахування торговцю;ID платника;ID отримувача;№ платежу;Номер картки;Картка отримувача;Сума комісії з отримувача;Сума комісії з платника;Проект;Спосіб оплати;Призначення платежу;Платіжна система;RRN;Email ініціатора замовлення;Телефон ініціатора замовлення;Ініціатор замовлення;Банк-партнер (оплата частинами);Кількість платежів (оплата частинами);TID;MID;Банк-еквайр;Код авторизації;Статус фіскалізації';
+  const csv = [
+    H,
+    '905647656;239029106;09.09.2026/22:40:19;1230;Оплата;rozetka_market;Успіх;09.09.2026/22:41:04;;1;2;3;4255****1;;18.45;0;[FC_Acquiring] Rozetka marketplace ФОП;GooglePay;Оплата за товар згідно замовлення №905647656;VISA;1;e;p;i;;;T;M;"АТ ""Ощадбанк""";1;',
+    '904933433;1;05.09.2026/15:26:09;2240;Оплата;pnfp_fr;Успіх;05.09.2026/15:26:20;07.09.2026/15:45:25;;;5;5445****2;;33.6;;ПНФП 10024;POS-термінал;Оплата за замовлення RMP-240248756;MasterCard;2;;p;;;;;;"АТ ""Ощадбанк""";;',
+    '26081148;2;30.08.2026/11:00:00;356;Оплата;pnfp_fr;Успіх;30.08.2026/11:00:10;31.08.2026/15:43:20;;;6;5445****3;;5.34;;ПНФП 10024;POS-термінал;Оплата за замовлення 101807100841;MasterCard;3;;p;;;;;;"АТ ""Ощадбанк""";;',
+    '425398995;3;03.09.2026/16:57:14;404;Оплата;prom;Успіх;03.09.2026/16:57:30;09.09.2026/14:00:00;;;7;4627****4;;6.87;0;[FC_Acquiring] Prom marketplace ФОП;Карта;Переказ в оплату товарів;VISA;4;e;p;i;;;T;M;"АТ ""Ощадбанк""";2;',
+    '904872023;4;01.09.2026/15:30:47;8680;Оплата;rozetka_market;Успіх;01.09.2026/15:32:07;02.09.2026/14:34:31;;;8;4;;130.2;0;[FC_Acquiring] Rozetka marketplace ФОП;Карта;Оплата за товар згідно замовлення №904872023;VISA;5;e;p;i;;;T;M;"АТ ""Ощадбанк""";3;',
+    '904872023;5;01.09.2026/16:12:47;8680;Повернення;rozetka_market;Успіх;01.09.2026/16:12:48;02.09.2026/14:34:31;;;9;4;;0;0;[FC_Acquiring] Rozetka marketplace ФОП;Карта;Оплата за товар згідно замовлення №904872023;VISA;6;e;p;i;;;T;M;"АТ ""Ощадбанк""";3;',
+    '426451509;6;08.09.2026/19:52:06;1401;Блокування;prom;Невдало;;;;;;;;;;;;;;;;;;;;;;;;',
+  ].join('\n');
+
+  it('лапки з подвоєнням, дати, платформи, повернення зі знаком мінус, pending без дати перерахування', () => {
+    expect(splitCsvLine('a;"АТ ""Ощадбанк""";b')).toEqual(['a', 'АТ "Ощадбанк"', 'b']);
+    const r = parseRzPayTransactionsCsv(csv);
+    expect(r.rows.map(x => [x.payoutDate, x.marketplace, x.marketplaceOrderId, x.gross, x.kind, x.ref])).toEqual([
+      ['2026-09-07', 'rozetka', '904933433', 2240, 'payment', 'RMP-240248756'],
+      ['2026-08-31', 'rozetka', '26081148', 356, 'payment', '101807100841'],
+      ['2026-09-09', 'prom', '425398995', 404, 'payment', null],
+      ['2026-09-02', 'rozetka', '904872023', 8680, 'payment', null],
+      ['2026-09-02', 'rozetka', '904872023', -8680, 'refund', null],
+    ]);
+    expect(r.pending).toEqual([{ marketplaceOrderId: '905647656', project: 'rozetka_market · [FC_Acquiring] Rozetka marketplace ФОП', gross: 1230, paidAt: '09.09.2026/22:41:04' }]);
+    expect(r.periodFrom).toBe('2026-08-31');
+    expect(r.periodTo).toBe('2026-09-09');
+    expect(r.rows[0].fee).toBe(33.6);
+  });
+
+  it('оплата + повернення в одному переказі дають нуль — замовлення не проводиться', () => {
+    const r = parseRzPayTransactionsCsv(csv);
+    const rows = r.rows.filter(x => x.payoutDate === '2026-09-02');
+    const plan = planRzPayRegisterApply({ ...r, rows }, (_mp, id) => id === '904872023' ? { id: 'R', order_number: 26091001, party: 'mp:rozetka' } : null, {});
+    expect(plan.post).toEqual([]);
+    expect(plan.zeroed).toBe(1);
+  });
+
+  it('пошук нашого замовлення за накладною з призначення', () => {
+    expect(refOfPurpose('Оплата за замовлення RMP-240248756')).toBe('RMP-240248756');
+    expect(refOfPurpose('Оплата за замовлення 101807100841')).toBe('101807100841');
+    expect(refOfPurpose('Оплата замовлення 904771142')).toBeNull();
+    const r = parseRzPayTransactionsCsv(csv);
+    const lookup = (_mp: 'prom' | 'rozetka' | null, id: string, ref: string | null) => ref === '101807100841' ? { id: 'W', order_number: 26081148, party: 'mp:rozetka' } : null;
+    const plan = planRzPayRegisterApply({ ...r, rows: r.rows.filter(x => x.payoutDate === '2026-08-31') }, lookup, {});
+    expect(plan.post).toEqual([{ orderId: 'W', orderNumber: 26081148, party: 'mp:rozetka', amount: 356, marketplaceOrderId: '26081148' }]);
+  });
+
+  it('чужий CSV — зрозуміла помилка', () => {
+    expect(() => parseRzPayTransactionsCsv('a;b;c\n1;2;3')).toThrow(/не розгорнутий експорт/);
+  });
+});
+
+describe('planRzPayRegisterApply — платіж більший за замовлення (рахунок на кілька замовлень)', () => {
+  it('кейс 04.08: 6 150 на #26081008 (сума 2 050) — не проводимо і не сторнуємо підтверджений склад', () => {
+    const reg = parseRzPayRegister([
+      ['Договір:', 'x'], ['Період:', '03.08.2026', '03.08.2026'],
+      ['№', 'Дата перерахування', 'Дата та час платежу', 'Сума платежу', 'Сума комісії з отримувача', 'Сума комісії з платника', 'Сума перерахованих коштів', 'Назва проекту', '№ замовлення'],
+      ['1', '04.08.2026', '03.08.2026 10:00', 6150, -92.25, 0, 6057.75, 'Rozetka marketplace', '901'],
+    ]);
+    const plan = planRzPayRegisterApply(reg, () => ({ id: 'I', order_number: 26081008, party: 'mp:rozetka', total: 2050 }), { I: 2050 });
+    expect(plan.post).toEqual([]);
+    expect(plan.undo).toEqual([]);
+    expect(plan.keep).toBe(1);
+    expect(plan.overpaid).toEqual([{ orderNumber: 26081008, amount: 6150, total: 2050, leftover: 4100 }]);
+    // ще не рознесене — проводимо лише суму замовлення, решта рахунку лишається на клірингу
+    const fresh = planRzPayRegisterApply(reg, () => ({ id: 'I', order_number: 26081008, party: 'mp:rozetka', total: 2050 }), {});
+    expect(fresh.post).toEqual([{ orderId: 'I', orderNumber: 26081008, party: 'mp:rozetka', amount: 2050, marketplaceOrderId: '901' }]);
   });
 });
