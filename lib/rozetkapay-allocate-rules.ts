@@ -7,10 +7,13 @@
  * Що знаємо про виплату (рядок виписки Mono, lib/rozetkapay-statement): період операцій
  * і брутто. Кандидати — замовлення, чиї гроші йдуть через RozetkaPay (правило дебітора:
  * mp:prom / mp:rozetka), ще не рознесені; дата події:
- *   Prom-оплата            — delivered_at: Prom тримає гроші до вручення й платить наступного дня
+ *   Prom-оплата            — дата ВРУЧЕННЯ: Prom тримає гроші до вручення й платить наступного дня
  *                            (факт власника + історія 08.09.2026: 20/20 коректних збігів = вручення + 1 день)
  *   Rozetka передоплата    — payment.payment_status.created_at (name = paid)
- *   наложка через Rozetka Delivery (будь-який канал) — delivered_at
+ *   наложка через Rozetka Delivery (будь-який канал) — дата вручення
+ * Дата вручення = carrier_delivered_at (час перевізника: НП RecipientDateTime, Prom
+ * unified_status=delivered), а без нього — delivered_at (коли доставку побачив наш крон;
+ * відстає до доби, і саме через це виплата 07.09 на 19 801 не підбиралась).
  * Rozetka Pay платить за передоплату наступного дня після оплати (до вручення!), тож
  * невручені Rozetka-замовлення — кандидати; їхній дебітор mp:* іде в мінус (аванс) і обнуляється продажем.
  * Емпірика 07.09 (30 виплат): гроші приходять з лагом до кількох днів, тому вікно
@@ -28,6 +31,8 @@ const MAX_CANDIDATES = 60;
 export type RzPayCandidateOrder = {
   id: string; order_number: number; channel_code: string | null; payment_type: string | null; delivery_type: string | null;
   customer_id?: string | null; status: string; total_price: number; delivered_at: string | null; created_at?: string | null;
+  /** Час вручення за даними перевізника — точніший за delivered_at (див. шапку) */
+  carrier_delivered_at?: string | null;
   /** Rozetka «безготівковий рахунок» (no_cash): незакритий борг покупця — платять або нам на Mono, або через рахунок Rozetka (RozetkaPay) */
   invoice_open?: number | null;
   prom_payment?: { status?: string; status_modified?: string } | null;
@@ -55,17 +60,18 @@ export function rzPayEventFor(o: RzPayCandidateOrder): RzPayEvent | null {
   const amount = Math.round(Number(o.total_price) * 100) / 100;
   if (!(amount > 0)) return null;
   const base = { orderId: o.id, orderNumber: o.order_number, party, amount };
+  const handedAt = o.carrier_delivered_at ?? o.delivered_at;
   if (o.payment_type === 'prepaid' && o.channel_code === 'prom') {
     // Пром-оплата: гроші виплачують лише після вручення (не в момент оплати покупцем)
     if (o.prom_payment?.status !== 'paid') return null;
-    return o.delivered_at ? { ...base, at: kyivDate(o.delivered_at), kind: 'prom_delivered' } : null;
+    return handedAt ? { ...base, at: kyivDate(handedAt), kind: 'prom_delivered' } : null;
   }
   if (o.payment_type === 'prepaid' && o.channel_code === 'rozetka') {
     const ps = o.rz_payment?.payment_status;
     return ps?.name === 'paid' && ps.created_at ? { ...base, at: ps.created_at.slice(0, 10), kind: 'rz_paid' } : null;
   }
   // Наложка через Rozetka Delivery: RozetkaPay платить після вручення
-  return o.delivered_at ? { ...base, at: kyivDate(o.delivered_at), kind: 'cod_delivered' } : null;
+  return handedAt ? { ...base, at: kyivDate(handedAt), kind: 'cod_delivered' } : null;
 }
 
 /**

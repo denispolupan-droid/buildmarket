@@ -10,6 +10,18 @@ describe('rzPayEventFor — коли RozetkaPay має заплатити за �
     const e = rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: paid, delivered_at: '2026-09-05T22:30:00+00:00' });
     expect(e).toMatchObject({ party: 'mp:prom', at: '2026-09-06', kind: 'prom_delivered', amount: 500 });
   });
+  it('час перевізника важливіший за delivered_at крона: вручено 05.09 увечері, крон побачив 06.09', () => {
+    const paid = { status: 'paid', status_modified: '2026-09-02T20:17:43+00:00' };
+    const prom = rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: paid,
+      delivered_at: '2026-09-06T08:00:00+00:00', carrier_delivered_at: '2026-09-05T15:40:00+00:00' });
+    expect(prom).toMatchObject({ at: '2026-09-05', kind: 'prom_delivered' });
+    const cod = rzPayEventFor({ ...base, channel_code: 'rozetka', payment_type: 'cod', delivery_type: 'rozetka_delivery',
+      delivered_at: '2026-09-06T08:00:00+00:00', carrier_delivered_at: '2026-09-05T15:40:00+00:00' });
+    expect(cod).toMatchObject({ at: '2026-09-05', kind: 'cod_delivered' });
+    // без часу перевізника — як було, delivered_at
+    expect(rzPayEventFor({ ...base, channel_code: 'rozetka', payment_type: 'cod', delivery_type: 'rozetka_delivery', delivered_at: '2026-09-06T08:00:00+00:00', carrier_delivered_at: null }))
+      .toMatchObject({ at: '2026-09-06' });
+  });
   it('Prom-оплата без статусу paid — не кандидат навіть після вручення', () => {
     expect(rzPayEventFor({ ...base, channel_code: 'prom', payment_type: 'prepaid', delivery_type: 'nova_poshta', prom_payment: { status: 'not_paid' }, delivered_at: '2026-09-05T10:00:00Z' })).toBeNull();
   });

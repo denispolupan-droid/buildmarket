@@ -68,7 +68,7 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
   const since = shiftDate(pending[0].txn_time.slice(0, 10), -60);
   const orders = await fetchAllRows<Record<string, unknown>>((f, t) => db
     .from('orders')
-    .select('id, order_number, channel_code, payment_type, delivery_type, customer_id, status, total_price, delivered_at, created_at, prom_payment:prom_data->payment_data, rz_payment:rozetka_data->payment')
+    .select('id, order_number, channel_code, payment_type, delivery_type, customer_id, status, total_price, delivered_at, carrier_delivered_at, created_at, prom_payment:prom_data->payment_data, rz_payment:rozetka_data->payment')
     .in('channel_code', ['prom', 'rozetka', 'website', 'retail']).neq('status', 'cancelled').gte('created_at', since)
     .order('created_at', { ascending: true }).range(f, t));
   // Відкритий борг покупця по рахунках Rozetka (no_cash): може закритись виплатою RozetkaPay

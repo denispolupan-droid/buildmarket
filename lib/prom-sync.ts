@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getPromOrders, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus } from './prom-api';
 import { computePromCommission } from './prom-commission';
+import { completeOrderDelivery, allOrderSalesPosted } from './accounting/completion';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +27,7 @@ export async function syncPromOrders() {
   const dateFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const orders   = await getPromOrders({ dateFrom, limit: 100 });
 
-  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0, ttnRepushed: 0, paidUpdated: 0 };
+  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0, ttnRepushed: 0, deliveredFromProm: 0, paidUpdated: 0 };
 
   // Read plan setting once for all orders in this batch
   const { data: planRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
@@ -38,6 +39,7 @@ export async function syncPromOrders() {
   let skipped = 0;
   let repushed = 0;
   let ttnRepushed = 0;
+  let deliveredFromProm = 0;
 
 
   let paidUpdated = 0;
@@ -45,7 +47,7 @@ export async function syncPromOrders() {
   for (const promOrder of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, status, payment_confirmed, total_price, comment, prom_data, tracking_number, delivery_type')
+      .select('id, order_number, status, payment_confirmed, total_price, comment, prom_data, tracking_number, delivery_type, carrier_delivered_at')
       .eq('prom_order_id', promOrder.id)
       .maybeSingle();
 
@@ -77,6 +79,32 @@ export async function syncPromOrders() {
         if (promComment) {
           const { error: cErr } = await db.from('orders').update({ comment: promComment }).eq('id', existing.id);
           if (cErr) console.error('[prom-sync] comment backfill failed:', promOrder.id, cErr.message);
+        }
+      }
+
+      // Вручення за даними Prom. Prom трекає свою декларацію сам (unified_status:
+      // on_the_way → in_warehouse → delivered) — для «Магазинів Rozetka» (PRM-…, Meest
+      // за договором Prom) це ЄДИНЕ джерело, наші крони той номер не бачать. Для НП
+      // це резерв: крон НП зробить те саме і перезапише carrier_delivered_at точним
+      // часом вручення. Проводки ідемпотентні; «доставлено» — лише коли всі РН
+      // проведені (як у крона доставки).
+      const promDelivered = promOrder.delivery_provider_data?.unified_status === 'delivered';
+      if (promDelivered && existing.status === 'shipped') {
+        const actor = 'cron:prom-sync';
+        try {
+          const now = new Date().toISOString();
+          if (!existing.carrier_delivered_at) {
+            await db.from('orders').update({ carrier_delivered_at: now, carrier_status_text: 'Вручено (за даними Prom)', carrier_status_synced_at: now }).eq('id', existing.id);
+          }
+          await completeOrderDelivery(existing.id, actor);
+          if (await allOrderSalesPosted(existing.id)) {
+            await db.from('orders').update({ status: 'delivered', delivered_at: now }).eq('id', existing.id);
+            existing.status = 'delivered';
+            deliveredFromProm++;
+            console.log(`[prom-sync] delivered by Prom status: #${existing.order_number} (${existing.tracking_number ?? '—'})`);
+          }
+        } catch (err) {
+          console.error('[prom-sync] delivery by Prom status failed:', existing.order_number, err);
         }
       }
 
@@ -185,5 +213,5 @@ export async function syncPromOrders() {
     }
   }
 
-  return { ok: true, created, skipped, repushed, ttnRepushed, paidUpdated, total: orders.length };
+  return { ok: true, created, skipped, repushed, ttnRepushed, deliveredFromProm, paidUpdated, total: orders.length };
 }
