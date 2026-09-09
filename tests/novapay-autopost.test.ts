@@ -9,7 +9,7 @@ const row = (over: Partial<NovapayOutgoing> = {}): NovapayOutgoing => ({
 describe('classifyNovapayOutgoing — автопроводка поповнень балансів МП', () => {
   it('Rozetka: обидві живі форми призначення гарантійного платежу', () => {
     expect(classifyNovapayOutgoing(row())?.category).toBe('topup:rozetka');
-    expect(classifyNovapayOutgoing(row({ purpose: 'Рахунок на оплату ТР-000931138 (Гарантійний платіж) від 17 серпня 2026 р.' }))?.marketplace).toBe('rozetka');
+    expect(classifyNovapayOutgoing(row({ purpose: 'Рахунок на оплату ТР-000931138 (Гарантійний платіж) від 17 серпня 2026 р.' }))).toMatchObject({ kind: 'topup', marketplace: 'rozetka' });
   });
 
   it('Prom: УАПРОМ + рахунок UA-…', () => {
@@ -25,9 +25,16 @@ describe('classifyNovapayOutgoing — автопроводка поповнен�
     expect(classifyNovapayOutgoing(row({ counterparty: 'ТОВ "УАПРОМ"', purpose: 'Повернення коштів' }))).toBeNull();
   });
 
-  it('інші списання лишаються людині: Нова Пошта, постачальник, власник', () => {
-    expect(classifyNovapayOutgoing(row({ counterparty: 'Товариство з обмеженою відповідальністю "Нова Пошта"', purpose: 'Рахунок-фактура № НП-018942197' }))).toBeNull();
+  it('Нова Пошта: рахунок-фактура НП-… — витрата логістики (оплата повернень, факт власника 09.09)', () => {
+    const r = row({ counterparty: 'Товариство з обмеженою відповідальністю "Нова Пошта"', purpose: 'Рахунок-фактура № НП-018942197 від 20 серпня 2026р.' });
+    expect(classifyNovapayOutgoing(r)).toMatchObject({ kind: 'expense', category: 'logistics' });
+    // інший платіж НП без рахунку-фактури — людині
+    expect(classifyNovapayOutgoing(row({ counterparty: 'ТОВ "Нова Пошта"', purpose: 'Поповнення рахунку' }))).toBeNull();
+  });
+
+  it('інші списання лишаються людині: постачальник, власник', () => {
     expect(classifyNovapayOutgoing(row({ counterparty: 'ФОП РАВЛО ГАННА ВАСИЛІВНА', purpose: 'За консультацію' }))).toBeNull();
+    expect(classifyNovapayOutgoing(row({ counterparty: 'Фізична особа-підприємець Курохтіна Ірина Анатоліївна', purpose: 'Оплата за товар' }))).toBeNull();
   });
 
   it('зарахування і нульові суми — ніколи', () => {
