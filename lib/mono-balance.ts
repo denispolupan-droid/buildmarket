@@ -1,16 +1,22 @@
 import { createServiceClient } from './supabase';
-import { getMonoToken } from './mono-config';
+import { getMonoToken, getMonoFopAccount } from './mono-config';
 
 // Живі залишки рахунків Monobank (Personal API client-info) для «Огляду»
 // фінансів. client-info має жорсткий рейт-ліміт (1 запит / 60 с), тому
 // відповідь кешується в app_settings — кожен рендер сторінки НЕ б'є в банк.
+//
+// total — ЛИШЕ рахунок ФОП (app_settings.mono_fop_account_id). Токен один на
+// клієнта, і client-info віддає ще й особисту картку власника; її залишок —
+// не гроші бізнесу (рішення власника 10.09.2026: до того «Огляд» показував
+// 65 369 = 62 264 ФОП + 3 105 особиста). Список accounts лишається повним —
+// для діагностики.
 
 const CACHE_KEY = 'mono_balance_cache';
 const TTL_MS = 90_000;
 
 export type MonoLiveBalance = {
-  total: number;                                   // сума всіх грн-рахунків, ₴
-  accounts: { type: string; balance: number }[];   // fop / black …, ₴
+  total: number;                                   // залишок рахунку ФОП, ₴
+  accounts: { type: string; balance: number; fop?: boolean }[];   // fop / black …, ₴
   fetchedAt: string;
 };
 
@@ -21,12 +27,14 @@ export async function getMonoLiveBalance(): Promise<MonoLiveBalance | null> {
   if (cached?.value) {
     try {
       const parsed = JSON.parse(cached.value) as MonoLiveBalance;
-      if (Date.now() - Date.parse(parsed.fetchedAt) < TTL_MS) return parsed;
+      // Старий кеш (до 10.09) без позначки fop сумував усі картки — не віддаємо його
+      if (Date.now() - Date.parse(parsed.fetchedAt) < TTL_MS && parsed.accounts?.some(a => a.fop)) return parsed;
     } catch { /* битий кеш — перечитаємо з API */ }
   }
 
   const token = await getMonoToken(db);
   if (!token) return null;
+  const fopId = await getMonoFopAccount(db);
 
   try {
     const res = await fetch('https://api.monobank.ua/personal/client-info', {
@@ -39,11 +47,14 @@ export async function getMonoLiveBalance(): Promise<MonoLiveBalance | null> {
       if (cached?.value) { try { return JSON.parse(cached.value) as MonoLiveBalance; } catch { /* ignore */ } }
       return null;
     }
-    const j = await res.json() as { accounts?: { type: string; currencyCode: number; balance: number }[] };
+    const j = await res.json() as { accounts?: { id: string; type: string; currencyCode: number; balance: number }[] };
     const uah = (j.accounts ?? []).filter(a => a.currencyCode === 980);
+    // Рахунок ФОП — за налаштуванням; без нього — за типом 'fop'
+    const isFop = (a: { id: string; type: string }) => fopId ? a.id === fopId : a.type === 'fop';
+    const fopAccounts = uah.filter(isFop);
     const result: MonoLiveBalance = {
-      total: Math.round(uah.reduce((s, a) => s + a.balance, 0)) / 100,
-      accounts: uah.map(a => ({ type: a.type, balance: a.balance / 100 })),
+      total: Math.round(fopAccounts.reduce((s, a) => s + a.balance, 0)) / 100,
+      accounts: uah.map(a => ({ type: a.type, balance: a.balance / 100, fop: isFop(a) })),
       fetchedAt: new Date().toISOString(),
     };
     await db.from('app_settings').upsert({ key: CACHE_KEY, value: JSON.stringify(result) });
