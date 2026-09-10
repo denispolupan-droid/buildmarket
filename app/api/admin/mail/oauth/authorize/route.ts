@@ -3,7 +3,7 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 
 const SCOPES = [
   'ZohoMail.messages.ALL',
-  'ZohoMail.folders.READ',
+  'ZohoMail.folders.ALL',
   'ZohoMail.accounts.READ',
 ].join(',');
 
