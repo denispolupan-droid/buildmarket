@@ -3,11 +3,11 @@ import { createServiceClient } from '../../../../lib/supabase';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { epicentrPrice } from '../../../../lib/marketplace-pricing';
 import { mpDescription } from '../../../../lib/marketplace-description';
-import { toRozetkaVolume } from '../../../../lib/rozetka-name';
 import { epicentrAvailabilityOf, toEpicentrId } from '../../../../lib/epicentr-availability';
 import { EPICENTR_COUNTRY_CODE, EPICENTR_BRAND_CODE } from '../../../../lib/epicentr-dictionaries';
 import { epicentrName, epicentrDescription, epicentrWeightGrams } from '../../../../lib/epicentr-content';
 import { resolveCountry } from '../../../../lib/brand-country';
+import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
 
 /**
  * XML-фід для маркетплейсу Епіцентр (кабінет → «Імпорт товарів» / «Автооновлення»).
@@ -24,6 +24,8 @@ import { resolveCountry } from '../../../../lib/brand-country';
  *   <availability> перекриває available: in_stock / under_the_order / out_of_stock.
  *   <category code> — код з дерева категорій Епіцентру (categories.epicentr_category_code).
  *   Розміри — мм, вага — г. Російські name/description не шлемо (UA-версія сайту).
+ *   Характеристики — лише з довідників Епіцентру (lib/epicentr-attributes:
+ *   paramcode/valuecode за набором атрибутів категорії); вільний текст площадка ігнорує.
  *
  * Як і у фідах Prom/Rozetka, вимкнені (on_epicentr=false) товари НЕ прибираємо, а
  * віддаємо available="false": зникнення офера площадка трактує як «немає даних».
@@ -44,8 +46,6 @@ function x(str: string | null | undefined): string {
     .replace(/'/g, '&apos;')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
-
-const MULTISELECT_LABELS = new Set(['Область застосування', 'Призначення', 'Тип використання']);
 
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key');
@@ -114,7 +114,6 @@ export async function GET(req: NextRequest) {
     const pics = p.image ? [p.image.startsWith('http') ? p.image : `${SITE_URL}${p.image}`] : [];
 
     const chars = [...(p.characteristics || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-    const charLabels = new Set(chars.map(c => c.label));
     const name    = epicentrName(p);
     const desc    = epicentrDescription(mpDescription(p));
     const country = resolveCountry(chars, p.brand);
@@ -147,21 +146,14 @@ export async function GET(req: NextRequest) {
     if (weight) lines.push(`      <param paramcode="weight" name="Вага"><![CDATA[${weight}]]></param>`);
     lines.push(`      <url>${x(`${SITE_URL}/product/${p.slug ?? p.sku}`)}</url>`);
 
-    for (const c of chars) {
-      if (!c.label || !c.value) continue;
-      // Країна вже пішла окремим тегом, бренд — у <vendor>
-      if (/^Країна виробник/.test(c.label) || c.label === 'Бренд') continue;
-      if (MULTISELECT_LABELS.has(c.label) && c.value.includes(';')) {
-        for (const v of c.value.split(';').map(v => v.trim()).filter(Boolean)) {
-          lines.push(`      <param name="${x(c.label)}">${x(v)}</param>`);
-        }
+    // Характеристики за словниками Епіцентру (набір = код категорії)
+    const mapped = mapEpicentrAttributes(cat.epicentr_category_code, { name: p.name, description: p.description_mp, volume: p.volume, color: p.color, characteristics: chars });
+    for (const a of mapped.params) {
+      if (a.valuecode) {
+        lines.push(`      <param paramcode="${x(a.code)}" name="${x(a.title)}" valuecode="${x(a.valuecode)}">${x(a.value)}</param>`);
       } else {
-        lines.push(`      <param name="${x(c.label)}">${x(c.value)}</param>`);
+        lines.push(`      <param paramcode="${x(a.code)}" name="${x(a.title)}"><![CDATA[${a.value.replace(/]]>/g, ']]]]><![CDATA[>')}]]></param>`);
       }
-    }
-    if (p.color && !charLabels.has('Колір')) lines.push(`      <param name="Колір">${x(p.color)}</param>`);
-    if (p.volume && !charLabels.has('Фасування') && !charLabels.has("Об'єм")) {
-      lines.push(`      <param name="Фасування">${x(toRozetkaVolume(p.volume))}</param>`);
     }
     lines.push('    </offer>');
   }

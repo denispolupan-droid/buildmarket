@@ -6,6 +6,7 @@ import {
 import { epicentrPrice, epicentrMargin } from '../lib/marketplace-pricing';
 import { epicentrAvailabilityOf, toEpicentrId, fromEpicentrId } from '../lib/epicentr-availability';
 import { epicentrName, epicentrDescription, epicentrWeightGrams } from '../lib/epicentr-content';
+import { mapEpicentrAttributes, toUnit } from '../lib/epicentr-attributes';
 
 // Форма замовлення — за OrdersGridItemModel зі свагера merchant-api.epicentrm.com.ua
 function order(over: Partial<EpicentrOrder> = {}): EpicentrOrder {
@@ -194,5 +195,67 @@ describe('toEpicentrId / fromEpicentrId — артикул без розділо
     expect(fromEpicentrId('1603014')).toBe('1603-014');
     expect(fromEpicentrId('EP-1')).toBe('EP-1');
     expect(fromEpicentrId(undefined)).toBe('');
+  });
+});
+
+describe('mapEpicentrAttributes — характеристики за словниками Епіцентру', () => {
+  it('герметик: тип/основа/призначення/сфера з наших характеристик, об’єм↔вага перехресно', () => {
+    const r = mapEpicentrAttributes('4030', {
+      name: 'Герметик силіконовий Lacrysil санітарний білий 280 мл', color: 'Білий', volume: '280 мл',
+      characteristics: [
+        { label: 'Матеріал', value: 'Силіконовий' }, { label: 'Призначення', value: 'Санітарний' },
+        { label: 'Тип використання', value: 'Внутрішні та зовнішні роботи' }, { label: 'Форма випуску', value: 'Картридж' },
+        { label: 'Водостійкість', value: 'Так' },
+      ],
+    });
+    const by = Object.fromEntries(r.params.map(p => [p.title + ':' + p.type, p]));
+    expect(by['Тип:multiselect'].value).toBe('санітарний');
+    expect(by['Основа:select'].value).toBe('силікон');
+    expect(by['Упаковка:select'].value).toBe('картридж');
+    expect(by['Сфера застосування:multiselect'].value).toBe('для внутрішніх і зовнішніх робіт');
+    expect(by['Призначення:multiselect'].value).toContain('для ванної кімнати');
+    expect(by['Базовий колір:multiselect'].value).toBe('білий');
+    expect(r.params.find(p => p.code === '10064')!.value).toBe('280');   // Об'єм, мл
+    expect(r.params.find(p => p.code === '10066')!.value).toBe('280');   // Вага, г — щільність 1
+    expect(r.params.every(p => p.type === 'float' || p.type === 'text' || p.valuecode)).toBe(true);
+    expect(r.missingRequired).toEqual([]);
+  });
+
+  it('колорант: колір → базовий колір і відтінок, застосування з «Тип використання», дефолт основи', () => {
+    const r = mapEpicentrAttributes('3203', {
+      name: 'Колорант Polifarb Color Mix арт.04 кавовий 0,12 л', color: 'Кавовий', volume: '0,12 л',
+      characteristics: [{ label: 'Колір', value: 'Кавовий' }, { label: 'Тип використання', value: 'Внутрішні роботи' }, { label: 'Основа', value: 'Акрилова' }],
+    });
+    const titles = Object.fromEntries(r.params.map(p => [p.code, p.value]));
+    expect(titles['12097']).toBe('коричневий');
+    expect(titles['2879']).toBe('для внутрішніх робіт');
+    expect(titles['2889']).toBe('Кавовий');
+    expect(titles['1098']).toBe('120');
+    expect(titles['3150']).toBe('на водній основі');
+    expect(r.missingRequired).toEqual([]);
+  });
+
+  it('фуга: дефолти категорії закривають обов’язкові select-поля', () => {
+    const r = mapEpicentrAttributes('2326', {
+      name: 'Затирка Ceresit CE 40 Aquastatic сіра 2 кг', color: 'Сірий', volume: '2 кг',
+      characteristics: [{ label: 'Тип', value: 'Цементна затирка' }, { label: 'Основа', value: 'Цементна' }, { label: 'Ширина шва', value: '1–6 мм' }],
+    });
+    const v = Object.fromEntries(r.params.map(p => [p.title, p.value]));
+    expect(v['Основа']).toBe('на цементній основі');
+    expect(v['Компонентність']).toBe('однокомпонентний');
+    expect(v['Жаростійка']).toBe('ні');
+    expect(v['Максимальна ширина шва, мм']).toBe('6');
+    expect(v['Особливості']).toContain('гідрофобізований');
+    expect(r.missingRequired).toEqual([]);
+  });
+
+  it('невідомий набір — порожній результат; toUnit конвертує одиниці під суфікс', () => {
+    expect(mapEpicentrAttributes('999999', { name: 'x' }).params).toEqual([]);
+    expect(toUnit('2,7 кг', 'г', '')).toBe(2700);
+    expect(toUnit('750 мл', 'л', '')).toBe(0.75);
+    expect(toUnit('30 хв', 'год', '')).toBe(0.5);
+    expect(toUnit('7 діб', 'год', '')).toBe(168);
+    expect(toUnit('2 роки', 'міс.', '')).toBe(24);
+    expect(toUnit('1–6 мм', 'мм', 'Максимальна ширина шва, мм')).toBe(6);
   });
 });
