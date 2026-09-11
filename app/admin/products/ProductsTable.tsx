@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Search, Edit, Package, AlertCircle, Wand2, Image as ImageIcon } from 'lucide-react';
+import { Search, Edit, Package, AlertCircle, Wand2, Image as ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AdminProductRow, Category } from '../../../types';
 import AiFillModal from './AiFillModal';
 import BrandLogosModal from './BrandLogosModal';
@@ -17,8 +17,6 @@ type Props = {
   brandLogos?: Record<string, BrandLogoEntry>;
   supplierSkus?: string[]; // SKU, що є хоч в одному прайсі постачальника (supplier_stock)
 };
-
-const PAGE_SIZE = 100;
 
 // Колонки з грошима. nowrap обов'язковий: «141.5 ₴» переносило гривню на другий
 // рядок, і сусідні ціни ставали різної висоти — читалося як помилка даних.
@@ -63,7 +61,9 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
   const [filterCategory, setFilterCategory] = useState(initialParams.get('cat') ?? '');
   const [filterBrand, setFilterBrand]     = useState(initialParams.get('brand') ?? '');
   const [filterStatus, setFilterStatus]   = useState(initialParams.get('status') ?? '');
-  const [visibleCount, setVisibleCount]   = useState(PAGE_SIZE);
+  // Групи за категоріями згорнуті за замовчуванням (як у «Цінах»): рядки
+  // згорнутої групи не рендеряться. Фільтри й пошук розгортають знайдене самі.
+  const [collapsed, setCollapsed]         = useState<Set<string>>(() => new Set([...categories.map(c => c.slug), '__none__']));
 
   // Рядок запиту, що відображає поточні фільтри. Використовується і для дзеркалення
   // в адресний рядок, і для параметра ?back= у посиланні на картку.
@@ -174,28 +174,35 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
     return list;
   }, [products, categories, search, filterCategory, filterBrand, filterStatus]);
 
-  const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
-
-  const resetVisible = () => setVisibleCount(PAGE_SIZE);
+  // Групи за категоріями в порядку вітрини (батьківська → дочірня), як у «Цінах»
+  const grouped = useMemo(() => {
+    const sortOf = new Map(categories.map(c => [c.slug, c.sort_order ?? 999]));
+    const rank = (slug: string): [number, number] => {
+      const c = categories.find(x => x.slug === slug);
+      if (!c) return [9999, 9999];
+      return [c.parent_slug ? (sortOf.get(c.parent_slug) ?? 999) : (c.sort_order ?? 999), c.sort_order ?? 999];
+    };
+    const map = new Map<string, AdminProductRow[]>();
+    for (const p of filtered) {
+      const k = p.category_slug ?? '__none__';
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(p);
+    }
+    return [...map.entries()].sort(([a], [b]) => { const ra = rank(a), rb = rank(b); return ra[0] - rb[0] || ra[1] - rb[1] || a.localeCompare(b); });
+  }, [filtered, categories]);
+  const filtersActive = !!(search.trim() || filterCategory || filterBrand || filterStatus);
+  const allCollapsed = grouped.length > 0 && grouped.every(([slug]) => collapsed.has(slug));
 
   // Selection helpers
-  const allVisibleSelected = visibleProducts.length > 0 && visibleProducts.every(p => selected.has(p.sku));
   const someSelected = selected.size > 0;
 
-  function toggleSelectAll() {
-    if (allVisibleSelected) {
-      setSelected(prev => {
-        const next = new Set(prev);
-        visibleProducts.forEach(p => next.delete(p.sku));
-        return next;
-      });
-    } else {
-      setSelected(prev => {
-        const next = new Set(prev);
-        visibleProducts.forEach(p => next.add(p.sku));
-        return next;
-      });
-    }
+  function toggleRows(rows: AdminProductRow[]) {
+    const all = rows.every(p => selected.has(p.sku));
+    setSelected(prev => {
+      const next = new Set(prev);
+      rows.forEach(p => all ? next.delete(p.sku) : next.add(p.sku));
+      return next;
+    });
   }
 
   function toggleSelect(sku: string) {
@@ -206,161 +213,16 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
     });
   }
 
-  return (
-    <div>
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 300px' }}>
-          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            placeholder="Пошук за назвою, SKU, брендом..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); resetVisible(); }}
-            style={{
-              width: '100%', height: '44px', paddingLeft: '42px', paddingRight: '16px',
-              borderRadius: '10px', border: '1px solid var(--border)', fontSize: '14px',
-              outline: 'none',
-            }}
-          />
-        </div>
-
-        <select
-          value={filterCategory}
-          onChange={e => { setFilterCategory(e.target.value); resetVisible(); }}
-          style={{
-            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid var(--border)', fontSize: '14px',
-            background: filterCategory ? 'var(--brand-blue-light)' : 'var(--bg-card)',
-          }}
-        >
-          <option value="">Всі категорії</option>
-          {parentCats.map(c => (
-            <option key={c.slug} value={c.slug}>{c.name}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterBrand}
-          onChange={e => { setFilterBrand(e.target.value); resetVisible(); }}
-          style={{
-            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid var(--border)', fontSize: '14px',
-            background: filterBrand ? 'var(--brand-blue-light)' : 'var(--bg-card)',
-          }}
-        >
-          <option value="">Всі бренди</option>
-          {brands.map(b => (
-            <option key={b} value={b}>{b}</option>
-          ))}
-        </select>
-
-        <button
-          onClick={() => setShowBrandLogos(true)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px', flexShrink: 0,
-            height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)',
-            fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-          }}
-        >
-          <ImageIcon size={16} /> Логотипи брендів
-        </button>
-
-        <select
-          value={filterStatus}
-          onChange={e => { setFilterStatus(e.target.value); resetVisible(); }}
-          style={{
-            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
-            border: '1px solid var(--border)', fontSize: '14px',
-            background: filterStatus ? 'var(--brand-blue-light)' : 'var(--bg-card)',
-          }}
-        >
-          <option value="">Всі статуси</option>
-          <option value="active">Активні</option>
-          <option value="inactive">Неактивні</option>
-          <option value="no_price">Без ціни</option>
-          <option value="out_of_stock">Немає в наявності</option>
-          <option value="unfilled">Незаповнені (без опису/keywords/характеристик)</option>
-          <option value="few_chars">Мало характеристик (менше 6)</option>
-          <option value="no_supplier">Немає в прайсах постачальників</option>
-        </select>
-      </div>
-
-      {/* Counter + bulk action bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', minHeight: 32, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Знайдено: {filtered.length} товарів
-          {someSelected && (
-            <span style={{ marginLeft: 8, color: '#3DBFB8', fontWeight: 600 }}>
-              · вибрано {selected.size}
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {filtered.length > visibleCount && !someSelected && (
-            <button
-              onClick={() => setSelected(new Set(filtered.map(p => p.sku)))}
-              style={{
-                height: 34, padding: '0 14px', borderRadius: 8,
-                border: '1px solid var(--border)', background: 'var(--bg-card)',
-                color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Вибрати всі {filtered.length}
-            </button>
-          )}
-          {someSelected && (
-            <button
-              onClick={() => setSelected(new Set())}
-              style={{
-                height: 34, padding: '0 14px', borderRadius: 8,
-                border: '1px solid var(--border)', background: 'var(--bg-card)',
-                color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Зняти вибір
-            </button>
-          )}
-          {someSelected && (
-            <BulkActionsMenu
-              skus={Array.from(selected)}
-              categories={categories}
-              brands={brands}
-              onDone={() => { setSelected(new Set()); setFieldOverrides({}); }}
-            />
-          )}
-          <button
-            onClick={() => someSelected && setShowAiFill(true)}
-            disabled={!someSelected}
-            style={{
-              height: 34, padding: '0 16px', borderRadius: 8, border: 'none',
-              background: someSelected ? '#3DBFB8' : '#E2E8F0',
-              color: someSelected ? '#fff' : '#94A3B8',
-              fontSize: 13, fontWeight: 600,
-              cursor: someSelected ? 'pointer' : 'not-allowed',
-              display: 'flex', alignItems: 'center', gap: 6,
-              transition: 'background 0.15s, color 0.15s',
-            }}
-          >
-            <Wand2 size={14} /> AI заповнення{someSelected ? ` (${selected.size})` : ''}
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      {/* overflow-x: auto, а не hidden: у таблиці 15 колонок і ціни в один рядок,
-          тож на вузькому екрані вона ширша за контейнер. З hidden правий край
-          (статус, SEO, кнопка редагування) просто зникав без жодної підказки. */}
-      <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflowX: 'auto', overflowY: 'hidden' }}>
+  // Таблиця однієї групи: розмітка рядків та сама, що була в плоскому списку
+  const renderTable = (rows: AdminProductRow[]) => (
         <table style={{ width: '100%', minWidth: '1100px', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}>
               <th style={{ padding: '12px 12px 12px 16px', width: 36 }}>
                 <input
                   type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={toggleSelectAll}
+                  checked={rows.every(p => selected.has(p.sku))}
+                  onChange={() => toggleRows(rows)}
                   style={{ cursor: 'pointer', width: 15, height: 15 }}
                 />
               </th>
@@ -383,7 +245,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
             </tr>
           </thead>
           <tbody>
-            {visibleProducts.map(p => {
+            {rows.map(p => {
               const hasIssue = !p.stock?.price_retail || p.stock?.stock_status === 'out_of_stock';
               const active = getField(p, 'is_active');
               const isHit = getField(p, 'is_hit');
@@ -519,25 +381,197 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
             })}
           </tbody>
         </table>
+  );
 
-        {filtered.length > visibleCount && (
-          <div style={{ padding: '20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-              Показано {visibleCount} з {filtered.length}
-            </div>
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 300px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            type="text"
+            placeholder="Пошук за назвою, SKU, брендом..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); }}
+            style={{
+              width: '100%', height: '44px', paddingLeft: '42px', paddingRight: '16px',
+              borderRadius: '10px', border: '1px solid var(--border)', fontSize: '14px',
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        <select
+          value={filterCategory}
+          onChange={e => { setFilterCategory(e.target.value); }}
+          style={{
+            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', fontSize: '14px',
+            background: filterCategory ? 'var(--brand-blue-light)' : 'var(--bg-card)',
+          }}
+        >
+          <option value="">Всі категорії</option>
+          {parentCats.map(c => (
+            <option key={c.slug} value={c.slug}>{c.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterBrand}
+          onChange={e => { setFilterBrand(e.target.value); }}
+          style={{
+            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', fontSize: '14px',
+            background: filterBrand ? 'var(--brand-blue-light)' : 'var(--bg-card)',
+          }}
+        >
+          <option value="">Всі бренди</option>
+          {brands.map(b => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={() => setShowBrandLogos(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px', flexShrink: 0,
+            height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)',
+            fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          <ImageIcon size={16} /> Логотипи брендів
+        </button>
+
+        <select
+          value={filterStatus}
+          onChange={e => { setFilterStatus(e.target.value); }}
+          style={{
+            flex: '1 1 0', minWidth: 0, height: '44px', padding: '0 16px', borderRadius: '10px',
+            border: '1px solid var(--border)', fontSize: '14px',
+            background: filterStatus ? 'var(--brand-blue-light)' : 'var(--bg-card)',
+          }}
+        >
+          <option value="">Всі статуси</option>
+          <option value="active">Активні</option>
+          <option value="inactive">Неактивні</option>
+          <option value="no_price">Без ціни</option>
+          <option value="out_of_stock">Немає в наявності</option>
+          <option value="unfilled">Незаповнені (без опису/keywords/характеристик)</option>
+          <option value="few_chars">Мало характеристик (менше 6)</option>
+          <option value="no_supplier">Немає в прайсах постачальників</option>
+        </select>
+      </div>
+
+      {/* Counter + bulk action bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', minHeight: 32, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Знайдено: {filtered.length} товарів
+          {someSelected && (
+            <span style={{ marginLeft: 8, color: '#3DBFB8', fontWeight: 600 }}>
+              · вибрано {selected.size}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {grouped.length > 1 && !filtersActive && (
             <button
-              onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
+              onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(grouped.map(([slug]) => slug)))}
               style={{
-                height: '38px', padding: '0 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                border: '1.5px solid var(--border)', background: 'var(--bg-card)',
-                color: 'var(--text-primary)', cursor: 'pointer',
+                height: 34, padding: '0 14px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
               }}
             >
-              Показати ще {Math.min(PAGE_SIZE, filtered.length - visibleCount)}
+              {allCollapsed ? 'Розгорнути все' : 'Згорнути все'}
             </button>
-          </div>
-        )}
+          )}
+          {filtered.length > 0 && !someSelected && (
+            <button
+              onClick={() => setSelected(new Set(filtered.map(p => p.sku)))}
+              style={{
+                height: 34, padding: '0 14px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Вибрати всі {filtered.length}
+            </button>
+          )}
+          {someSelected && (
+            <button
+              onClick={() => setSelected(new Set())}
+              style={{
+                height: 34, padding: '0 14px', borderRadius: 8,
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Зняти вибір
+            </button>
+          )}
+          {someSelected && (
+            <BulkActionsMenu
+              skus={Array.from(selected)}
+              categories={categories}
+              brands={brands}
+              onDone={() => { setSelected(new Set()); setFieldOverrides({}); }}
+            />
+          )}
+          <button
+            onClick={() => someSelected && setShowAiFill(true)}
+            disabled={!someSelected}
+            style={{
+              height: 34, padding: '0 16px', borderRadius: 8, border: 'none',
+              background: someSelected ? '#3DBFB8' : '#E2E8F0',
+              color: someSelected ? '#fff' : '#94A3B8',
+              fontSize: 13, fontWeight: 600,
+              cursor: someSelected ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
+            <Wand2 size={14} /> AI заповнення{someSelected ? ` (${selected.size})` : ''}
+          </button>
+        </div>
+      </div>
 
+      {/* Групи за категоріями, як у «Цінах»: згорнуті за замовчуванням, рядки
+          згорнутої групи не рендеряться. У кожній групі — та сама таблиця, що й
+          раніше (overflow-x: auto — 15 колонок ширші за вузький екран). */}
+      {grouped.map(([slug, rows]) => {
+        const isCollapsed = !filtersActive && collapsed.has(slug);
+        const allSel = rows.every(p => selected.has(p.sku));
+        const someSel = rows.some(p => selected.has(p.sku));
+        return (
+          <div key={slug} style={{ marginBottom: 16 }}>
+            <div
+              onClick={() => setCollapsed(prev => { const next = new Set(prev); if (next.has(slug)) next.delete(slug); else next.add(slug); return next; })}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: isCollapsed ? 12 : '12px 12px 0 0', cursor: 'pointer' }}
+            >
+              <input
+                type="checkbox"
+                checked={allSel}
+                ref={el => { if (el) el.indeterminate = someSel && !allSel; }}
+                onChange={() => toggleRows(rows)}
+                onClick={e => e.stopPropagation()}
+                style={{ cursor: 'pointer', width: 15, height: 15 }}
+              />
+              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', flex: 1 }}>{slug === '__none__' ? 'Без категорії' : (categoryMap[slug] ?? slug)}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rows.length} товарів</span>
+              {isCollapsed ? <ChevronDown size={15} color="var(--text-muted)" /> : <ChevronUp size={15} color="var(--text-muted)" />}
+            </div>
+            {!isCollapsed && (
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflowX: 'auto', overflowY: 'hidden' }}>
+                {renderTable(rows)}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: filtered.length === 0 ? '1px solid var(--border)' : 'none' }}>
         {filtered.length === 0 && (
           <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <Package size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
