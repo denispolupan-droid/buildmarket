@@ -126,6 +126,16 @@ export type ProductFull = Product & {
   characteristics: ProductCharacteristic[];
 };
 
+/** Легкий рядок адмін-списку товарів: без текстів описів (≈5 МБ на 830 SKU у select *) — лише факти про них, потрібні таблиці й SEO-бейджу. */
+export type AdminProductRow = Pick<Product, 'id' | 'sku' | 'name' | 'name_ru' | 'brand' | 'category_slug' | 'volume' | 'image' | 'is_active' | 'is_hit' | 'is_new' | 'sort_order' | 'updated_at'> & {
+  stock: ProductStock | null;
+  description_full_len: number;
+  description_full_ru_len: number;
+  has_description_ru: boolean;
+  has_keywords: boolean;
+  characteristics_count: number;
+};
+
 export type ProductListItem = Product & {
   stock: ProductStock | null;
 };

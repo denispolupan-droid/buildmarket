@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Edit, Package, AlertCircle, Wand2, Image as ImageIcon } from 'lucide-react';
-import type { ProductFull, Category } from '../../../types';
+import type { AdminProductRow, Category } from '../../../types';
 import AiFillModal from './AiFillModal';
 import BrandLogosModal from './BrandLogosModal';
 import BulkActionsMenu from './BulkActionsMenu';
@@ -12,7 +12,7 @@ import BulkActionsMenu from './BulkActionsMenu';
 type BrandLogoEntry = { logoUrl: string; showOnHome: boolean };
 
 type Props = {
-  products: ProductFull[];
+  products: AdminProductRow[];
   categories: Category[];
   brandLogos?: Record<string, BrandLogoEntry>;
   supplierSkus?: string[]; // SKU, що є хоч в одному прайсі постачальника (supplier_stock)
@@ -30,21 +30,21 @@ const moneyCell: React.CSSProperties = {
 
 // SEO-готовність товару: зелений — усе на місці, жовтий — контентні пробіли,
 // червоний — критично (немає опису або фото). Поріг тонкого опису — 800 симв.
-function seoGaps(p: ProductFull): string[] {
+function seoGaps(p: AdminProductRow): string[] {
   const gaps: string[] = [];
   if (!p.image) gaps.push('немає фото');
-  if (!p.description_full) gaps.push('немає повного опису');
-  else if (p.description_full.length < 800) gaps.push('короткий опис');
-  if (!p.keywords) gaps.push('немає keywords');
-  if (!p.name_ru || !p.description_ru) gaps.push('немає рос. версії');
-  if (p.description_full && p.description_full.length >= 800 && (p.description_full_ru ?? '').length < 800) gaps.push('рос. опис застарів');
-  if (!p.characteristics?.length) gaps.push('немає характеристик');
+  if (!p.description_full_len) gaps.push('немає повного опису');
+  else if (p.description_full_len < 800) gaps.push('короткий опис');
+  if (!p.has_keywords) gaps.push('немає keywords');
+  if (!p.name_ru || !p.has_description_ru) gaps.push('немає рос. версії');
+  if (p.description_full_len >= 800 && p.description_full_ru_len < 800) gaps.push('рос. опис застарів');
+  if (!p.characteristics_count) gaps.push('немає характеристик');
   return gaps;
 }
 
-function SeoBadge({ p }: { p: ProductFull }) {
+function SeoBadge({ p }: { p: AdminProductRow }) {
   const gaps = seoGaps(p);
-  const critical = !p.image || !p.description_full;
+  const critical = !p.image || !p.description_full_len;
   const color = gaps.length === 0 ? '#22C55E' : critical ? '#EF4444' : '#F59E0B';
   return (
     <Link
@@ -110,7 +110,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
     }
   }, [toggling]);
 
-  const getField = useCallback((p: ProductFull, field: BoolField) => {
+  const getField = useCallback((p: AdminProductRow, field: BoolField) => {
     const override = fieldOverrides[p.sku]?.[field];
     return override !== undefined ? override : p[field];
   }, [fieldOverrides]);
@@ -160,12 +160,10 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
       list = list.filter(p => p.stock?.stock_status === 'out_of_stock' || (!p.stock?.stock_status && (p.stock?.stock_qty ?? 0) < 1));
     } else if (filterStatus === 'unfilled') {
       list = list.filter(p =>
-        !p.description_full ||
-        !p.keywords ||
-        !p.characteristics?.length
+        !p.description_full_len || !p.has_keywords || !p.characteristics_count
       );
     } else if (filterStatus === 'few_chars') {
-      list = list.filter(p => (p.characteristics?.length ?? 0) < 6);
+      list = list.filter(p => p.characteristics_count < 6);
     } else if (filterStatus === 'no_supplier') {
       // "Сироти": активний товар без жодного рядка в прайсах постачальників —
       // ціни заморожені, наявність не оновлюється (постачальник зняв позицію)
@@ -392,7 +390,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
               const isNewBadge = getField(p, 'is_new');
               const isToggling = toggling.has(`${p.sku}:is_active`);
               const isSelected = selected.has(p.sku);
-              const isFilled = p.description_full && p.keywords && p.characteristics?.length;
+              const isFilled = p.description_full_len > 0 && p.has_keywords && p.characteristics_count > 0;
               return (
                 <tr
                   key={p.sku}

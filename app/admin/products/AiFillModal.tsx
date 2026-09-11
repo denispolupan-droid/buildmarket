@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react';
 import { X, Wand2 } from 'lucide-react';
-import type { ProductFull } from '../../../types';
 
 type FillEvent =
   | { type: 'start'; total: number }
@@ -23,7 +22,7 @@ export type FillFields = {
 
 type Props = {
   skus: string[];
-  products: ProductFull[];
+  products: { sku: string; name: string }[];
   onClose: () => void;
   onDone?: () => void;
 };
