@@ -22,27 +22,21 @@ export default async function AdminProductsPage() {
   // Пагінація: 768 товарів вже майже впритул до ліміту 1000; без range() лічильник
   // і сам список мовчки обрізалися б, щойно каталог перевищить 1000 SKU.
   //
-  // Списку потрібні не тексти описів, а факти про них: у select(*) 5 із 5,5 МБ
-  // каталогу — описи й keywords, і все це їхало в браузер як props таблиці.
-  // Тексти читаємо на сервері (той самий регіон, що й база) і віддаємо довжини.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, форму задає AdminProductRow нижче
-  const raw = await fetchAllRows<any>((f, t) => serviceClient
-    .from('products')
-    .select('id, sku, name, name_ru, brand, category_slug, volume, image, is_active, is_hit, is_new, sort_order, updated_at, description_full, description_full_ru, description_ru, keywords, stock:product_stock(*), characteristics:product_characteristics(id)')
-    .order('category_slug', { ascending: true })
-    .order('sku', { ascending: true })
-    .range(f, t));
-  const products: AdminProductRow[] = raw.map(p => ({
-    id: p.id, sku: p.sku, name: p.name, name_ru: p.name_ru ?? null, brand: p.brand, category_slug: p.category_slug ?? null,
-    volume: p.volume ?? null, image: p.image ?? null, is_active: !!p.is_active, is_hit: !!p.is_hit, is_new: !!p.is_new,
-    sort_order: p.sort_order ?? 0, updated_at: p.updated_at,
-    stock: Array.isArray(p.stock) ? (p.stock[0] ?? null) : (p.stock ?? null),
-    description_full_len: (p.description_full ?? '').length,
-    description_full_ru_len: (p.description_full_ru ?? '').length,
-    has_description_ru: !!p.description_ru,
-    has_keywords: !!p.keywords,
-    characteristics_count: Array.isArray(p.characteristics) ? p.characteristics.length : 0,
-  }));
+  // Списку потрібні не тексти описів, а факти про них — їх рахує база у
+  // представленні admin_products_list (міграція 116): довжини описів, наявність
+  // keywords і рос. версії, кількість характеристик. Тексти (5 із 5,5 МБ
+  // каталогу) не залишають Postgres. Залишки — окремим запитом, склеюємо по SKU.
+  const [rows, { data: stockRows }] = await Promise.all([
+    fetchAllRows<Omit<AdminProductRow, 'stock'>>((f, t) => serviceClient
+      .from('admin_products_list')
+      .select('*')
+      .order('category_slug', { ascending: true })
+      .order('sku', { ascending: true })
+      .range(f, t)),
+    serviceClient.from('product_stock').select('*'),
+  ]);
+  const stockBySku = new Map((stockRows ?? []).map(s => [s.sku as string, s as AdminProductRow['stock']]));
+  const products: AdminProductRow[] = rows.map(p => ({ ...p, stock: stockBySku.get(p.sku) ?? null }));
 
   const { data: categories } = await serviceClient
     .from('categories')
