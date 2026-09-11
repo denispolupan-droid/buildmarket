@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag } from 'lucide-react';
+import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag, Image as ImageIcon } from 'lucide-react';
 // Округлення й наценка — спільні з синком постачальника (lib/price-formula):
 // прев'ю має показувати рівно ту цифру, яку синк потім відтворить із наценки.
 import { roundFor, markupFromPrice } from '../../../lib/price-formula';
@@ -150,7 +150,11 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
   // SKU, чиї акції достроково завершені в цій сесії (для миттєвого оновлення UI)
   const [promoCancelled, setPromoCancelled] = useState<Set<string>>(new Set());
   const [promoCancelBusy, setPromoCancelBusy] = useState(false);
-  const [collapsed, setCollapsed]       = useState<Set<string>>(new Set());
+  // Категорії згорнуті за замовчуванням: усі 830 рядків одразу — це ~13 тис.
+  // елементів і ~8 тис. інпутів, браузер будував їх кілька секунд, і сторінка
+  // «не відкривалась». Рядки згорнутої категорії не рендеряться взагалі;
+  // «Розгорнути все» лишається кнопкою, а пошук і фільтр бренду розгортають самі.
+  const [collapsed, setCollapsed]       = useState<Set<string>>(() => new Set([...categories.map(c => c.slug), '__none__']));
   const [selected, setSelected]         = useState<Set<string>>(new Set());
   const [editSku, setEditSku]           = useState<string | null>(null);
   const [editState, setEditState]       = useState<EditState | null>(null);
@@ -1245,7 +1249,7 @@ async function sendEmail(){
       {/* Price table */}
       {[...grouped.entries()].map(([catSlug, catRows]) => {
         const catName     = catRows[0]?.cat?.name ?? catSlug;
-        const isCollapsed = collapsed.has(catSlug);
+        const isCollapsed = !search.trim() && !filterBrand && collapsed.has(catSlug);
         const allSelected = catRows.length > 0 && catRows.every(r => selected.has(r.p.sku));
         const someSelected = catRows.some(r => selected.has(r.p.sku));
 
@@ -1274,6 +1278,7 @@ async function sendEmail(){
                   <thead>
                     <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                       <th style={{ width: 36, padding: '8px 12px' }} />
+                      <th style={{ width: 52 }} />
                       <th style={th}>Товар</th>
                       <th style={{ ...th, width: 90 }}>Собівартість</th>
                       <th style={{ ...th, width: 90 }}>Оптова</th>
@@ -1291,6 +1296,20 @@ async function sendEmail(){
                         <tr key={r.p.sku} style={{ borderBottom: '1px solid #F3F4F6', background: selected.has(r.p.sku) && r.promo != null ? '#FFFBEB' : selected.has(r.p.sku) ? '#F0F7FF' : undefined }}>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <input type="checkbox" checked={selected.has(r.p.sku)} onChange={() => toggleRow(r.p.sku)} />
+                          </td>
+                          {/* Мініатюра — як у «Товарах»: сусідні фасування відрізняються трьома символами, а фото впізнається миттєво */}
+                          <td style={{ padding: '8px 0 8px 4px', width: 52 }}>
+                            <div
+                              title={r.p.image ? `${r.p.brand ?? ''} ${r.p.name}`.trim() : 'Немає фото'}
+                              style={{
+                                width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                                border: '1px solid var(--border-light)',
+                                background: r.p.image ? `#fff url("${r.p.image}") center/cover no-repeat` : 'var(--bg-soft)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}
+                            >
+                              {!r.p.image && <ImageIcon size={15} color="var(--border)" />}
+                            </div>
                           </td>
                           <td style={{ padding: '8px 14px' }}>
                             <div style={{ fontSize: 13, fontWeight: 500, color: '#111', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
