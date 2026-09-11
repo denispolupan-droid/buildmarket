@@ -7,6 +7,7 @@ import { getOrderReservations } from '../../../../../../lib/accounting/reservati
 import { knownItemPlan, type KnownSource } from '../../../../../../lib/orders/item-sources';
 import { computePromCommission } from '../../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commission';
+import { computeEpicentrCommission, getEpicentrFallbackPct } from '../../../../../../lib/epicentr-commission';
 
 export async function GET(
   _req: NextRequest,
@@ -97,7 +98,7 @@ export async function GET(
   // при доставці (брекети Rozetka ×1.08 / категорійні ставки Prom), а не плоским % ──
   let commissionEstimate: number | null = null;
   const mp = order.channel_code;
-  if (!fact && (mp === 'prom' || mp === 'rozetka')) {
+  if (!fact && (mp === 'prom' || mp === 'rozetka' || mp === 'epicentr')) {
     try {
       const calcItems = items
         .filter(i => (i.price ?? 0) > 0)
@@ -111,6 +112,8 @@ export async function GET(
           const plan = (planRow?.value ?? 'single') as 'single' | 'econom';
           const fallbackPct = parseFloat(fbRow?.value ?? '3');
           commissionEstimate = (await computePromCommission(calcItems, { plan, fallbackPct })).total_commission;
+        } else if (mp === 'epicentr') {
+          commissionEstimate = (await computeEpicentrCommission(calcItems, { fallbackPct: await getEpicentrFallbackPct(db) })).total_commission;
         } else {
           const { data: fbRow } = await db
             .from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();

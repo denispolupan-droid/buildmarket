@@ -43,6 +43,9 @@ const CARRIERS: Record<string, CarrierInfo> = {
   ukrposhta:        { name: 'Укрпошта',         trackUrl: 'https://track.ukrposhta.ua',        place: 'у відділенні Укрпошти' },
   pickup:           { name: 'Самовивіз',        trackUrl: null,                                place: 'на нашому складі' },
   kharkiv:          { name: 'Доставка по Харкову', trackUrl: null,                             place: 'при отриманні' },
+  // Епіцентр: точки видачі/поштомати Епіцентру обслуговує Meest; кур'єр — загальний кошик
+  meest:            { name: 'Meest',            trackUrl: 'https://ua.meest.com/parcel-track', place: 'у відділенні Meest' },
+  courier:          { name: "Кур'єр",          trackUrl: null,                                place: 'при отриманні' },
 };
 
 export function carrierInfo(deliveryType?: string | null): CarrierInfo {

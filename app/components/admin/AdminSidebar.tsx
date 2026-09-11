@@ -36,7 +36,7 @@ const NAV = [
   { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,          exact: false },
   { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,          exact: false },
   { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
-  // Обидві площадки під одним пунктом; перемикач Prom/Rozetka — усередині
+  // Усі площадки під одним пунктом; перемикач Prom/Rozetka/Епіцентр — усередині
   // розділу (MarketplaceTabs). Адреси лишились ті самі, тому закладки й
   // посилання з телеграм-алертів працюють.
   { href: '/admin/prom',                 label: 'Маркетплейси',   icon: ShoppingBasket, exact: false },
@@ -230,7 +230,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
             : href === '/admin/partners'
             ? (pathname.startsWith('/admin/partners') || pathname.startsWith('/admin/contracts'))
             : href === '/admin/prom'
-            ? (pathname.startsWith('/admin/prom') || pathname.startsWith('/admin/rozetka'))
+            ? (pathname.startsWith('/admin/prom') || pathname.startsWith('/admin/rozetka') || pathname.startsWith('/admin/epicentr'))
             : exact ? pathname === href : pathname.startsWith(href);
 
           const badgeCount =

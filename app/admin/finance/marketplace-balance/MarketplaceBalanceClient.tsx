@@ -55,6 +55,7 @@ type MarketplaceData = { rows: LedgerRow[]; balance: number; inTransit: InTransi
 const MARKETPLACE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   prom:    { label: 'Prom.ua',  color: '#1E3A5F', bg: 'var(--bg-soft)' },
   rozetka: { label: 'Rozetka',  color: '#1E3A5F', bg: 'var(--bg-soft)' },
+  epicentr: { label: 'Епіцентр', color: '#1E3A5F', bg: 'var(--bg-soft)' },
 };
 
 function fmt(n: number) {
@@ -72,12 +73,13 @@ const lbl: React.CSSProperties = {
 };
 
 export default function MarketplaceBalanceClient({
-  prom, rozetka,
-}: { prom: MarketplaceData; rozetka: MarketplaceData }) {
+  prom, rozetka, epicentr,
+}: { prom: MarketplaceData; rozetka: MarketplaceData; epicentr?: MarketplaceData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <MarketplacePanel marketplace="prom" data={prom} />
       <MarketplacePanel marketplace="rozetka" data={rozetka} />
+      {epicentr && <MarketplacePanel marketplace="epicentr" data={epicentr} />}
     </div>
   );
 }
@@ -122,7 +124,7 @@ function ArticlesTable({ articles, total, theirLabel }: { articles: Article[]; t
   );
 }
 
-function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetka'; data: MarketplaceData }) {
+function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetka' | 'epicentr'; data: MarketplaceData }) {
   const router = useRouter();
   const cfg = MARKETPLACE_LABEL[marketplace];
 

@@ -108,6 +108,7 @@ type Order = {
   channel_code:       string | null;
   prom_order_id:      string | number | null;
   rozetka_order_id:   string | number | null;
+  epicentr_order_id:  string | null;
   customer_id:        string | null;
   price_type:         string | null;
   discount_pct:       number | null;
@@ -129,6 +130,7 @@ type Order = {
   items: OrderItem[];
   prom_data:          ({ _commission?: PromCommissionData } & Record<string, unknown>) | null;
   rozetka_data:       ({ _commission?: RozetkaCommissionData } & Record<string, unknown>) | null;
+  epicentr_data:      ({ _commission?: PromCommissionData; number?: string } & Record<string, unknown>) | null;
 };
 
 const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -139,6 +141,7 @@ const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }
   phone:    { label: 'Телефон',  color: 'var(--text-primary)', bg: '#F3F4F6' },
   prom:     { label: 'Prom',     color: '#C2410C', bg: '#FFF7ED' },
   rozetka:  { label: 'Rozetka',  color: '#15803D', bg: '#DCFCE7' },
+  epicentr: { label: 'Епіцентр', color: '#9A3412', bg: '#FFEDD5' },
 };
 
 const STATUSES = [
@@ -1749,6 +1752,15 @@ export default function AdminOrders({
           showToast(d.ok ? 'ТТН надіслано на Prom' : `Prom TTN: ${d.error ?? 'помилка'}`, d.ok ? 'success' : 'error');
         } catch {
           showToast('Не вдалося надіслати ТТН на Prom', 'error');
+        }
+        return;
+      case 'push-epicentr':
+        try {
+          const res = await fetch(`/api/admin/orders/${o.id}/push-epicentr-ttn`, { method: 'POST' });
+          const d = await res.json().catch(() => ({}));
+          showToast(d.ok ? 'ТТН надіслано в Епіцентр' : `Епіцентр TTN: ${d.error ?? 'помилка'}`, d.ok ? 'success' : 'error');
+        } catch {
+          showToast('Не вдалося надіслати ТТН в Епіцентр', 'error');
         }
         return;
       default:
@@ -4003,11 +4015,13 @@ export default function AdminOrders({
                               let commission: number | undefined;
                               if (isFact) {
                                 commission = fact.commission;
-                              } else if (order.channel_code === 'prom' || order.channel_code === 'rozetka') {
-                                const cd = order.channel_code === 'prom' ? order.prom_data?._commission : order.rozetka_data?._commission;
+                              } else if (order.channel_code === 'prom' || order.channel_code === 'rozetka' || order.channel_code === 'epicentr') {
+                                const cd = order.channel_code === 'prom' ? order.prom_data?._commission
+                                  : order.channel_code === 'epicentr' ? order.epicentr_data?._commission
+                                  : order.rozetka_data?._commission;
                                 commission = cd?.total_commission
                                   ?? fi?.commission_estimate
-                                  ?? Math.round(order.total_price * (order.channel_code === 'prom' ? promCommissionPct : rozetkaCommissionPct)) / 100;
+                                  ?? Math.round(order.total_price * (order.channel_code === 'rozetka' ? rozetkaCommissionPct : promCommissionPct)) / 100;
                               } else {
                                 commission = 0;
                               }
@@ -4267,6 +4281,7 @@ export default function AdminOrders({
                               // Per-SKU marketplace commission (Prom/Rozetka) для показу в розбивці по позиціях
                               const commItems = order.channel_code === 'prom' ? order.prom_data?._commission?.items
                                               : order.channel_code === 'rozetka' ? order.rozetka_data?._commission?.items
+                                              : order.channel_code === 'epicentr' ? order.epicentr_data?._commission?.items
                                               : undefined;
                               const commBySku = new Map<string, { amt: number; pct: number }>();
                               (commItems ?? []).forEach(c => commBySku.set(c.sku, { amt: c.commission_amt, pct: c.commission_pct }));

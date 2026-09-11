@@ -4,6 +4,7 @@ import { fetchAllRows } from '@/lib/db-paginate';
 import { promPrice, promPriceFromBase, resolveMarkup, promCommissionOf, type PromPlan } from '@/lib/marketplace-pricing';
 import { mpDescription, mpDescriptionRu } from '@/lib/marketplace-description';
 import { PROM_READY_TO_SHIP_KEY, promAvailability, readyToShipEnabled } from '@/lib/prom-ready-to-ship';
+import { BRAND_COUNTRY } from '../../../lib/brand-country';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,47 +20,6 @@ const PROM_UNKNOWN_BRANDS = new Set([
   'Aqua-protect', 'БАЙРИС', 'BITUGUM', 'ПОЛЯРА-ХИМ',
 ]);
 
-// Fallback country by brand — used when product has no "Країна виробник" characteristic
-const BRAND_COUNTRY: Record<string, string> = {
-  'AURA':        'Україна',
-  'Polifarb':    'Україна',
-  'Lacrysil':    'Україна',
-  'Дивоцвіт':   'Україна',
-  'Lotus':       'Україна',
-  'Сталь':       'Україна',
-  'Siltek':      'Україна',
-  'Ataman':      'Україна',
-  'Титан':       'Україна',
-  'Байрис':      'Україна',
-  'БАЙРИС':      'Україна',
-  'Masterplast': 'Україна',
-  'Aqua Protect':'Україна',
-  'Aqua-protect':'Україна',
-  'Sprut-A':     'Україна',
-  'Хімік':       'Україна',
-  'Хімконтакт':  'Україна',
-  'Weco':        'Україна',
-  'Werk':        'Україна',
-  'ХАDО':        'Україна',
-  'Spitce':      'Україна',
-  'Budmonster':  'Україна',
-  'Krumix':      'Україна',
-  'ЗИП':         'Україна',
-  'ПОЛЯРА-ХИМ':  'Україна',
-  'Bitugum':     'Україна',
-  'BITUGUM':     'Україна',
-  'Ceresit':     'Німеччина',
-  'Pattex':      'Німеччина',
-  'Knauf':       'Німеччина',
-  'Pufas':       'Німеччина',
-  'Henkel':      'Німеччина',
-  'Rigips':      'Німеччина',
-  'Eskaro':      'Естонія',
-  'Wkret-met':   'Польща',
-  'Quelyd':      'Франція',
-  'HARDEX':      'Китай',
-  'Soudal':      'Бельгія',
-};
 
 // "Тип використання" inferred from category when product has no such characteristic
 const CATEGORY_USAGE_TYPE: Record<string, string> = {

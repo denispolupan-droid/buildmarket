@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   };
   const { marketplace, amount, paymentMethod, businessDate } = body;
 
-  if (marketplace !== 'prom' && marketplace !== 'rozetka') {
+  if (marketplace !== 'prom' && marketplace !== 'rozetka' && marketplace !== 'epicentr') {
     return NextResponse.json({ error: 'Невірний маркетплейс' }, { status: 400 });
   }
   if (!amount || amount <= 0) {

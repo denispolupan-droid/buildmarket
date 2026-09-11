@@ -62,7 +62,7 @@ const BIG_CHANGE_UAH = 500;
 /** Доба допуску на дату: часовий пояс клієнта не має вважатись «майбутнім». */
 const FUTURE_TOLERANCE_MS = 86_400_000;
 
-const MARKETPLACE_CHANNELS = ['prom', 'rozetka'];
+const MARKETPLACE_CHANNELS = ['prom', 'rozetka', 'epicentr'];
 
 /** Місяць у київському часі: 1 серпня 01:00 Києва — це ще 31 липня за UTC. */
 export function kyivMonth(iso: string | Date): string {

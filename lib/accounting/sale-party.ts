@@ -4,7 +4,7 @@
  * Сторона визначається КАНАЛОМ ГРОШЕЙ, а не наявністю картки клієнта:
  *   • наложений платіж через Нову Пошту   → np:cod      (НоваПей збирає і виплачує)
  *   • наложений платіж через Rozetka Доставка → mp:rozetka (Rozetka збирає і виплачує)
- *   • передоплата на маркетплейсі (Пром-оплата, Rozetka Pay) → mp:prom / mp:rozetka
+ *   • передоплата на маркетплейсі (Пром-оплата, Rozetka Pay, онлайн-оплата Епіцентру) → mp:prom / mp:rozetka / mp:epicentr
  *   • дропшип-партнер                     → сам партнер (customer_id), його COD
  *                                            нараховується окремо (credit_cod_to_partner)
  *   • все, що покупець платить нам напряму (картка на сайті, безнал, готівка,
@@ -23,6 +23,7 @@ export const SALE_DEBTOR = {
   npCod:   'np:cod',
   prom:    'mp:prom',
   rozetka: 'mp:rozetka',
+  epicentr: 'mp:epicentr',
   guest:   'guest',
   /**
    * Кліринг виплат RozetkaPay. Усі гроші площадок (Rozetka Pay, наложка через
@@ -42,6 +43,7 @@ export const SPECIAL_DEBTOR_LABEL: Record<SpecialDebtor, string> = {
   'np:cod':        'Нова Пошта — наложені платежі',
   'mp:prom':       'Prom.ua — до виплати',
   'mp:rozetka':    'Rozetka — до виплати',
+  'mp:epicentr':   'Епіцентр — до виплати',
   'mp:rozetkapay': 'RozetkaPay — отримано, не рознесено',
   'guest':         'Гість (без картки клієнта)',
 };
@@ -77,6 +79,7 @@ export function saleDebitPartyFor(order: SalePartyOrder): string {
   if (order.payment_type === 'prepaid') {
     if (order.channel_code === 'prom')    return SALE_DEBTOR.prom;
     if (order.channel_code === 'rozetka') return SALE_DEBTOR.rozetka;
+    if (order.channel_code === 'epicentr') return SALE_DEBTOR.epicentr;
   }
 
   // Картка на сайті, безнал за рахунком (у т.ч. для замовлень з Rozetka), готівка,

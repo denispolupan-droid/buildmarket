@@ -1,6 +1,7 @@
 import { createServiceClient } from '../supabase';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
+import { computeEpicentrCommission, EPICENTR_COMMISSION_FALLBACK_KEY, EPICENTR_COMMISSION_DEFAULT_PCT } from '../epicentr-commission';
 
 // Комісії «в дорозі»: очікувана комісія по РН-чернетках (посилки відвантажені,
 // ще не доставлені → комісія ще НЕ проведена). Площадка спише її при доставці,
@@ -10,7 +11,7 @@ import { computeRozetkaCommission } from '../rozetka-commission';
 export type InTransitItem = { docId: string; orderNumber: number | null; ttn: string | null; commission: number };
 export type InTransit = { total: number; items: InTransitItem[] };
 
-export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka'): Promise<InTransit> {
+export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka' | 'epicentr'): Promise<InTransit> {
   const db = createServiceClient();
   const { data: docs } = await db
     .from('acc_documents')
@@ -33,11 +34,15 @@ export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka'): 
   const mpDocs = docs.filter(d => orderMap.has(d.order_id));
   if (!mpDocs.length) return { total: 0, items: [] };
 
-  const settingKeys = marketplace === 'prom' ? ['prom_plan', 'prom_commission_pct'] : ['rozetka_commission_pct'];
+  const settingKeys = marketplace === 'prom' ? ['prom_plan', 'prom_commission_pct']
+    : marketplace === 'epicentr' ? [EPICENTR_COMMISSION_FALLBACK_KEY]
+    : ['rozetka_commission_pct'];
   const { data: settings } = await db.from('app_settings').select('key, value').in('key', settingKeys);
   const sMap = new Map((settings ?? []).map(s => [s.key, s.value]));
   const plan = (sMap.get('prom_plan') ?? 'single') as 'single' | 'econom';
-  const fallbackPct = parseFloat(sMap.get(marketplace === 'prom' ? 'prom_commission_pct' : 'rozetka_commission_pct') ?? (marketplace === 'prom' ? '3' : '15'));
+  const fallbackPct = marketplace === 'prom' ? parseFloat(sMap.get('prom_commission_pct') ?? '3')
+    : marketplace === 'epicentr' ? (parseFloat(sMap.get(EPICENTR_COMMISSION_FALLBACK_KEY) ?? '') || EPICENTR_COMMISSION_DEFAULT_PCT)
+    : parseFloat(sMap.get('rozetka_commission_pct') ?? '15');
 
   const items: InTransitItem[] = [];
   let total = 0;
@@ -46,6 +51,8 @@ export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka'): 
     const li = (lines ?? []).map(l => ({ sku: l.sku, qty: Number(l.qty), price: Number(l.price) }));
     const commission = marketplace === 'prom'
       ? (await computePromCommission(li, { plan, fallbackPct })).total_commission
+      : marketplace === 'epicentr'
+      ? (await computeEpicentrCommission(li, { fallbackPct })).total_commission
       : (await computeRozetkaCommission(li, { fallbackPct })).total_commission;
     const o = orderMap.get(d.order_id)!;
     total += commission;

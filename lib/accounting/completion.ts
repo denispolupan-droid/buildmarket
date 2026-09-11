@@ -21,6 +21,8 @@ import { computeRozetkaCommission } from '../rozetka-commission';
 import { computeSmartFee, getSmartTariff } from '../rozetka-smart';
 import { computePromDeliveryFee, getPromDeliveryTariff, isPromCheapDelivery } from '../prom-delivery';
 import { getPromOrder } from '../prom-api';
+import { computeEpicentrCommission, getEpicentrFallbackPct } from '../epicentr-commission';
+import { getEpicentrBillingInvoice } from '../epicentr-api';
 import { alertAdmin } from '../alert';
 
 export async function applyCompletionEffects(docId: string, createdBy = 'system'): Promise<void> {
@@ -41,11 +43,11 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   // 2) Комісія маркетплейсу — рахуємо по позиціях САМЕ цієї посилки.
   const { data: order } = await db
     .from('orders')
-    .select('order_number, channel_code, total_price, rozetka_data, prom_data, prom_order_id')
+    .select('order_number, channel_code, total_price, rozetka_data, prom_data, prom_order_id, epicentr_order_id')
     .eq('id', doc.order_id)
     .single();
   const mp = order?.channel_code;
-  if (mp !== 'prom' && mp !== 'rozetka') return;
+  if (mp !== 'prom' && mp !== 'rozetka' && mp !== 'epicentr') return;
 
   const { data: lines } = await db
     .from('acc_document_lines')
@@ -93,6 +95,23 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
         const fallbackPct = parseFloat(fbRow?.value ?? '3');
         totalCommission = (await computePromCommission(items, { plan, fallbackPct })).total_commission;
       }
+    } else if (mp === 'epicentr') {
+      // Факт — з білінгу Епіцентру (/v1/billing/orders/{id}/invoice): саме цю суму
+      // спишуть з балансу. Береться лише коли РН покриває все замовлення; інакше
+      // (мультипосилка) або коли білінг ще не порахував — оцінка за ставками категорій.
+      const wholeOrder = Math.abs(docRevenue - (Number(order?.total_price) || 0)) < 0.01;
+      let fact = 0;
+      if (wholeOrder && order?.epicentr_order_id) {
+        try {
+          const inv = await getEpicentrBillingInvoice(String(order.epicentr_order_id));
+          fact = Number(String(inv?.orderCommissionTotal ?? '').replace(',', '.')) || 0;
+        } catch (err) {
+          console.error('[completion] epicentr billing invoice failed, using estimate:', order?.epicentr_order_id, err);
+        }
+      }
+      totalCommission = fact > 0
+        ? fact
+        : (await computeEpicentrCommission(items, { fallbackPct: await getEpicentrFallbackPct(db) })).total_commission;
     } else {
       const { data: fbRow } = await db
         .from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();

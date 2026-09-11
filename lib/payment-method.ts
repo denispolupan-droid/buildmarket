@@ -50,6 +50,7 @@ export type PaymentSource = {
   channel_code?: string | null;
   prom_data?: Record<string, unknown> | null;
   rozetka_data?: Record<string, unknown> | null;
+  epicentr_data?: Record<string, unknown> | null;
 };
 
 export type PaymentMethodInfo = {
@@ -105,9 +106,29 @@ function rozetkaMethod(rozetkaData: Record<string, unknown>): PaymentMethodInfo 
   return label ? { label } : null;
 }
 
+// Епіцентр: address.shipment.paymentProvider — код способу оплати з їхнього enum
+const EPICENTR_PAYMENT_LABEL: Record<string, string> = {
+  pay_on_pickup:     'Оплата при отриманні',
+  pay_on_delivery:   'Накладений платіж',
+  easypay:           'Онлайн (EasyPay)',
+  monobank:          'Онлайн (monobank)',
+  invoice:           'Рахунок для юр. осіб',
+  prepayment:        'Передоплата',
+  credit_pravexbank: 'Кредит (Правекс Банк)',
+};
+
+function epicentrMethod(epicentrData: Record<string, unknown>): PaymentMethodInfo | null {
+  const address  = epicentrData.address as { shipment?: { paymentProvider?: unknown } } | null | undefined;
+  const provider = str(address?.shipment?.paymentProvider);
+  if (!provider) return null;
+  const label = EPICENTR_PAYMENT_LABEL[provider] ?? provider;
+  return epicentrData.payed === true ? { label, detail: 'оплачено' } : { label };
+}
+
 /** Спосіб оплати з payload маркетплейсу; null — якщо площадка нічого не дала. */
 export function marketplacePaymentMethod(order: PaymentSource): PaymentMethodInfo | null {
   if (order.channel_code === 'prom' && order.prom_data) return promMethod(order.prom_data);
   if (order.channel_code === 'rozetka' && order.rozetka_data) return rozetkaMethod(order.rozetka_data);
+  if (order.channel_code === 'epicentr' && order.epicentr_data) return epicentrMethod(order.epicentr_data);
   return null;
 }

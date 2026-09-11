@@ -17,12 +17,16 @@ type Order = {
   channel_code?: string | null;
   prom_order_id?: string | number | null;
   rozetka_order_id?: string | number | null;
+  epicentr_order_id?: string | null;
+  epicentr_data?: { number?: string } | null;
 };
 
 /** Маркетплейс-джерело замовлення: назва + номер замовлення саме на маркетплейсі. */
-export function orderMarketplace(order: Pick<Order, 'channel_code' | 'prom_order_id' | 'rozetka_order_id' | 'order_number'>): { name: string; num: string } | null {
+export function orderMarketplace(order: Pick<Order, 'channel_code' | 'prom_order_id' | 'rozetka_order_id' | 'order_number' | 'epicentr_data'>): { name: string; num: string } | null {
   if (order.channel_code === 'rozetka') return { name: 'Rozetka', num: String(order.rozetka_order_id ?? order.order_number) };
   if (order.channel_code === 'prom')    return { name: 'Prom.ua', num: String(order.prom_order_id ?? order.order_number) };
+  // Номер замовлення Епіцентру для людей — у payload (id — UUID)
+  if (order.channel_code === 'epicentr') return { name: 'Епіцентр', num: String(order.epicentr_data?.number ?? order.order_number) };
   return null;
 }
 

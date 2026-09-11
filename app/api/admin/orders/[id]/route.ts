@@ -14,6 +14,8 @@ import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../..
 import { alertAdmin } from '../../../../../lib/alert';
 import { computePromCommission } from '../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission';
+import { computeEpicentrCommission, getEpicentrFallbackPct } from '../../../../../lib/epicentr-commission';
+import { ourStatusToEpicentrStatus, setEpicentrOrderStatus, setEpicentrTTN } from '../../../../../lib/epicentr-api';
 import { completeOrderDelivery, syncDraftShipmentTracking } from '../../../../../lib/accounting/completion';
 import { notifyCustomer } from '../../../../../lib/notify/send';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
@@ -259,7 +261,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
       const { data: ord } = await db
         .from('orders')
-        .select('channel_code, prom_data, rozetka_data')
+        .select('channel_code, prom_data, rozetka_data, epicentr_data')
         .eq('id', id)
         .single();
       const items = bodyItems
@@ -283,6 +285,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const comm = await computeRozetkaCommission(items, { fallbackPct: parseFloat(fbRow?.value ?? '15') });
         await db.from('orders').update({
           rozetka_data: { ...((ord.rozetka_data ?? {}) as Record<string, unknown>), _commission: comm },
+        }).eq('id', id);
+      } else if (ord?.channel_code === 'epicentr') {
+        const comm = await computeEpicentrCommission(items, { fallbackPct: await getEpicentrFallbackPct(db) });
+        await db.from('orders').update({
+          epicentr_data: { ...((ord.epicentr_data ?? {}) as Record<string, unknown>), _commission: comm },
         }).eq('id', id);
       }
     } catch (err) {
@@ -609,6 +616,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error('[rozetka] status push lookup failed:', err);
+    }
+  }
+
+  // Push status to Epicentr (fire-and-forget). Скасування вимагає причину —
+  // за замовчуванням «товару немає в наявності»; відправка — попередньо ТТН.
+  if (status) {
+    try {
+      const { data: epiOrder } = await db
+        .from('orders')
+        .select('epicentr_order_id, channel_code, tracking_number')
+        .eq('id', id)
+        .maybeSingle();
+      if (epiOrder?.channel_code === 'epicentr' && epiOrder.epicentr_order_id) {
+        const epiId = String(epiOrder.epicentr_order_id);
+        const epiStatus = ourStatusToEpicentrStatus(status);
+        if (epiStatus) {
+          const ttn = (update.tracking_number as string | undefined) ?? (epiOrder.tracking_number as string | null) ?? null;
+          const push = async () => {
+            if (epiStatus === 'sent') {
+              if (!ttn) return;   // без ТТН Епіцентр «Відправлено» не приймає; допушить крон
+              await setEpicentrTTN(epiId, ttn);
+            }
+            await setEpicentrOrderStatus(epiId, epiStatus, epiStatus === 'canceled_by_merchant' ? { reason: 'product_not_available' } : undefined);
+          };
+          push().catch(err => {
+            console.error('[epicentr] status push failed:', err);
+            if (status === 'cancelled') {
+              alertAdmin(`Епіцентр: скасування замовлення ${epiId} не доїхало`, err instanceof Error ? err.message : String(err));
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[epicentr] status push lookup failed:', err);
     }
   }
 

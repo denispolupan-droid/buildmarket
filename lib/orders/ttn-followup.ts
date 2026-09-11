@@ -21,7 +21,7 @@ export type TtnFollowUpOrder = {
   delivery_type: string;
 };
 
-export type TtnFollowUpAction = 'ship' | 'push-rozetka' | 'push-prom' | 'none';
+export type TtnFollowUpAction = 'ship' | 'push-rozetka' | 'push-prom' | 'push-epicentr' | 'none';
 
 export function ttnFollowUpAction(o: TtnFollowUpOrder): TtnFollowUpAction {
   // Дропшип: відвантаження сам створює видаткову і доносить номер у маркетплейс.
@@ -34,6 +34,8 @@ export function ttnFollowUpAction(o: TtnFollowUpOrder): TtnFollowUpAction {
   }
 
   if (o.channel_code === 'prom' && o.status !== 'new') return 'push-prom';
+
+  if (o.channel_code === 'epicentr' && o.status !== 'new') return 'push-epicentr';
 
   return 'none';
 }

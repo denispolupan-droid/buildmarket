@@ -10,6 +10,7 @@ import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
 import { setPromTTN } from '../../../../../../lib/prom-api';
+import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
 import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
 import { pickupWithTtnError } from '../../../../../../lib/orders/ship-guards';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
@@ -62,7 +63,7 @@ export async function POST(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, tracking_number, tracking_ref, shipping_supplier_id, total_price, rozetka_data, fulfillment_mode')
+    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, epicentr_order_id, tracking_number, tracking_ref, shipping_supplier_id, total_price, rozetka_data, fulfillment_mode')
     .eq('id', id)
     .single();
 
@@ -165,6 +166,13 @@ export async function POST(
           alertAdmin(`⚠ ЕН ${reTtn} не передана в Prom для #${order.order_number}`,
             err instanceof Error ? err.message : String(err));
         });
+    }
+    const reEpiId = order.epicentr_order_id as string | null;
+    if (reEpiId && reTtn) {
+      setEpicentrTTN(reEpiId, reTtn).then(() => setEpicentrOrderStatus(reEpiId, 'sent')).catch(err => {
+        console.warn('[ship] epicentr TTN/sent failed (re-ship):', err);
+        alertAdmin(`⚠ ЕН ${reTtn} не передана в Епіцентр для #${order.order_number}`, err instanceof Error ? err.message : String(err));
+      });
     }
     const reRozId = order.rozetka_order_id as number | null;
     const reRozStatus = reRozId ? ourStatusToRozetkaStatus(reStatus) : null;
@@ -328,6 +336,18 @@ export async function POST(
       alertAdmin(`⚠ ЕН ${effectiveTtn} не передана в Prom для #${order.order_number}`,
         err instanceof Error ? err.message : String(err));
     });
+  }
+
+  // Епіцентр: ТТН, потім «Відправлено» (без ТТН статус не приймається). Крон
+  // синку допушить обидва, якщо тут не доїхало.
+  const epicentrOrderId = order.epicentr_order_id as string | null;
+  if (epicentrOrderId && effectiveTtn) {
+    setEpicentrTTN(epicentrOrderId, effectiveTtn)
+      .then(() => (fullyShipped ? setEpicentrOrderStatus(epicentrOrderId, 'sent') : undefined))
+      .catch(err => {
+        console.warn('[ship] epicentr TTN/sent failed:', err);
+        alertAdmin(`⚠ ЕН ${effectiveTtn} не передана в Епіцентр для #${order.order_number}`, err instanceof Error ? err.message : String(err));
+      });
   }
 
   // Push status(+TTN) to Rozetka after successful shipment (fire-and-forget)

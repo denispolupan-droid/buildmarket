@@ -34,25 +34,42 @@ function RozetkaLogo() {
   );
 }
 
+function EpicentrLogo() {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="16" height="16" rx="3.5" fill="#FF7A00"/>
+        <path d="M5.5 5.5h7M5.5 9h5.5M5.5 12.5h7" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', letterSpacing: '-0.2px', fontFamily: 'inherit' }}>
+        Епіцентр
+      </span>
+    </span>
+  );
+}
+
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
 interface Tab   { href: string; label: string }
 interface Props {
   /** на якій площадці ми зараз — вона підсвічена в перемикачі */
-  active:      'prom' | 'rozetka';
+  active:      'prom' | 'rozetka' | 'epicentr';
   activeBg:    string;   // soft rgba for active tab background
   activeText:  string;   // darker solid color for active tab text
   tabs:        Tab[];
 }
 
-// Обидві площадки живуть під одним пунктом сайдбара «Маркетплейси», тож
+// Усі площадки живуть під одним пунктом сайдбара «Маркетплейси», тож
 // перемикач між ними — тут, зліва від вкладок самої площадки. Адреси
 // лишились ті самі (/admin/prom, /admin/rozetka): закладки, посилання з
 // картки товару і з телеграм-алерта модерації працюють як працювали.
 const MARKETS = [
   { key: 'prom'    as const, href: '/admin/prom',    logo: <PromLogo /> },
   { key: 'rozetka' as const, href: '/admin/rozetka', logo: <RozetkaLogo /> },
+  { key: 'epicentr' as const, href: '/admin/epicentr', logo: <EpicentrLogo /> },
 ];
+
+const MARKET_TITLE: Record<Props['active'], string> = { prom: 'Prom.ua', rozetka: 'Rozetka', epicentr: 'Епіцентр Маркетплейс' };
 
 /* ── Component ──────────────────────────────────────────────────────────────── */
 
@@ -123,7 +140,7 @@ export default function MarketplaceTabs({ active, activeBg, activeText, tabs }: 
             <Link
               key={m.key}
               href={m.href}
-              title={m.key === 'prom' ? 'Prom.ua' : 'Rozetka'}
+              title={MARKET_TITLE[m.key]}
               className={`mkswitch mkswitch--${m.key === active ? 'on' : 'off'}`}
             >
               {m.logo}

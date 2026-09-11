@@ -130,6 +130,35 @@ export function promMargin(inp: PromInputs): { uah: number; pct: number } | null
   return { uah: net - inp.cost, pct: ((net - inp.cost) / net) * 100 };
 }
 
+// ── Епіцентр ──────────────────────────────────────────────────────────────────
+
+export type EpicentrInputs = {
+  cost: number | null | undefined;     // ціна входу
+  retail: number;                      // price_retail — fallback-база
+  productMarkupPct: number | null | undefined;   // products.epicentr_markup_pct
+  categoryMarkupPct: number | null | undefined;  // categories.epicentr_markup_pct
+  commissionPct: number;               // categories.epicentr_commission_pct
+};
+
+/**
+ * Ціна Епіцентру — та сама схема, що Prom: вхід → націнка → комісія → ceil до 1 грн.
+ * Без комісії й націнки — роздрібна як є (щоб порожні налаштування не ламали фід).
+ */
+export function epicentrPrice(inp: EpicentrInputs): number {
+  const markup = resolveMarkup(inp.productMarkupPct, inp.categoryMarkupPct);
+  if (inp.commissionPct <= 0 && markup <= 0) return Math.ceil(inp.retail);
+  return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, inp.commissionPct);
+}
+
+/** Чиста маржа Епіцентру: ціна × (1 − комісія) − собівартість. */
+export function epicentrMargin(inp: EpicentrInputs): { uah: number; pct: number } | null {
+  if (!inp.cost || inp.cost <= 0) return null;
+  const price = epicentrPrice(inp);
+  const net = inp.commissionPct > 0 ? price * (1 - inp.commissionPct / 100) : price;
+  if (net <= 0) return null;
+  return { uah: net - inp.cost, pct: ((net - inp.cost) / net) * 100 };
+}
+
 // ── Сайт ──────────────────────────────────────────────────────────────────────
 
 /** Маржа роздрібної ціни сайту (без комісій). */

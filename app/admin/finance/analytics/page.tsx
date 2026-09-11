@@ -17,6 +17,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   website:  'Сайт',
   prom:     'Prom.ua',
   rozetka:  'Rozetka',
+  epicentr: 'Епіцентр',
   b2b:      'Опт (B2B)',
   phone:    'Телефон',
   retail:   'Роздріб',

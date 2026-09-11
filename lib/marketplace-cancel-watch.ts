@@ -21,7 +21,7 @@ import { alertAdmin } from './alert';
 
 const LOOKBACK_DAYS = 45;
 
-type OurOrder = {
+export type CancelWatchOrder = {
   id: string;
   order_number: number;
   status: string;
@@ -30,7 +30,7 @@ type OurOrder = {
   status_history: { status: string; at: string; by: string }[] | null;
 };
 
-async function activeMarketplaceOrders(db: ReturnType<typeof createServiceClient>, channel: 'rozetka' | 'prom'): Promise<OurOrder[]> {
+async function activeMarketplaceOrders(db: ReturnType<typeof createServiceClient>, channel: 'rozetka' | 'prom'): Promise<CancelWatchOrder[]> {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString();
   const { data } = await db
     .from('orders')
@@ -38,12 +38,13 @@ async function activeMarketplaceOrders(db: ReturnType<typeof createServiceClient
     .eq('channel_code', channel)
     .not('status', 'in', '(cancelled,delivered)')
     .gte('created_at', since);
-  return (data ?? []) as OurOrder[];
+  return (data ?? []) as CancelWatchOrder[];
 }
 
-async function handleCancelledOrder(
+/** Спільна реакція на скасування покупцем/площадкою — її ж кличе синк Епіцентру. */
+export async function handleMarketplaceCancelledOrder(
   db: ReturnType<typeof createServiceClient>,
-  order: OurOrder,
+  order: CancelWatchOrder,
   marketplace: string,
 ): Promise<'auto_cancelled' | 'needs_return'> {
   // Відвантажена посилка лишає по собі РН: доставлена — confirmed, ще в дорозі —
@@ -122,7 +123,7 @@ export async function watchRozetkaCancellations(): Promise<{ checked: number; au
 
   for (const order of ours) {
     if (!order.rozetka_order_id || !cancelledIds.has(Number(order.rozetka_order_id))) continue;
-    const outcome = await handleCancelledOrder(db, order, 'Rozetka');
+    const outcome = await handleMarketplaceCancelledOrder(db, order, 'Rozetka');
     result[outcome === 'auto_cancelled' ? 'auto_cancelled' : 'needs_return']++;
   }
   return result;
@@ -144,7 +145,7 @@ export async function watchPromCancellations(): Promise<{ checked: number; auto_
 
   for (const order of ours) {
     if (!order.prom_order_id || !cancelledIds.has(Number(order.prom_order_id))) continue;
-    const outcome = await handleCancelledOrder(db, order, 'Prom');
+    const outcome = await handleMarketplaceCancelledOrder(db, order, 'Prom');
     result[outcome === 'auto_cancelled' ? 'auto_cancelled' : 'needs_return']++;
   }
   return result;

@@ -5,6 +5,7 @@ import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/comp
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, getRozetkaOrderStatusInfo } from '../../../../../../lib/rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { setPromTTN } from '../../../../../../lib/prom-api';
+import { setEpicentrTTN } from '../../../../../../lib/epicentr-api';
 
 /**
  * Заміна ТТН у вже відвантаженому замовленні.
@@ -38,7 +39,7 @@ export async function POST(
   const db = createServiceClient();
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, tracking_number, channel_code, delivery_type, rozetka_order_id, prom_order_id, rozetka_data, status_history')
+    .select('id, order_number, status, tracking_number, channel_code, delivery_type, rozetka_order_id, prom_order_id, epicentr_order_id, rozetka_data, status_history')
     .eq('id', id)
     .single();
   if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -100,6 +101,13 @@ export async function POST(
       await setPromTTN(order.prom_order_id as number, ttn);
     } catch (e) {
       pushErrors.push(`Prom: ${(e as Error).message}`);
+    }
+  }
+  if (order.channel_code === 'epicentr' && order.epicentr_order_id) {
+    try {
+      await setEpicentrTTN(String(order.epicentr_order_id), ttn);
+    } catch (e) {
+      pushErrors.push(`Епіцентр: ${(e as Error).message}`);
     }
   }
 

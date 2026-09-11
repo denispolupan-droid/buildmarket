@@ -342,7 +342,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const codTransit = sum(pTransit.filter(o => o.payment_type === 'cod'));
   // Передоплата площадок у дорозі: покупець уже заплатив Prom/Rozetka, товар їде;
   // після вручення борг ляже на mp:* до пакетної виплати
-  const mpPrepaidTransitAll = pTransit.filter(o => o.payment_type === 'prepaid' && (o.channel_code === 'prom' || o.channel_code === 'rozetka'));
+  const mpPrepaidTransitAll = pTransit.filter(o => o.payment_type === 'prepaid' && (o.channel_code === 'prom' || o.channel_code === 'rozetka' || o.channel_code === 'epicentr'));
   // Комісії «в дорозі» — та сама функція, що на екрані «Маркетплейси»;
   // живий залишок Mono — паралельно (кешований client-info)
   const [promTransit, rozetkaTransit, monoLiveRaw, novapayLiveRaw, npRegisters, npCodDelivered, heldRows, npStmtRows, npFeeSetting] = await Promise.all([
@@ -364,7 +364,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     // виплати, що вже прийшли в банк, але ще не підібрані до замовлень (баланс від'ємний).
     fetchAllRows<{ counterparty_id: string; order_id: string | null; amount: number }>((f, t) => db
       .from('money_entries').select('counterparty_id, order_id, amount')
-      .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:rozetkapay', 'np:cod'])
+      .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:epicentr', 'mp:rozetkapay', 'np:cod'])
       .range(f, t)),
     // Залишок NovaPay «за випискою» = Σ усіх документів виписки (рахунок відкрито
     // 16.07.2026 з нуля). Виписка віддає день лише після його закриття, а живий
@@ -388,6 +388,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const mpPrepaidReceived = new Set(Object.keys(perOrder).filter(k => perOrder[k].bal < -0.005));
   for (const { party, bal } of Object.values(perOrder)) {
     if (bal <= 0) continue;
+    // mp:epicentr поки додається до «Rozetka»-кошика картки «Гроші та борги» — окремий
+    // рядок для Епіцентру на «Огляді» з'явиться разом із першими виплатами
     if (party === 'mp:prom') heldMp.prom += bal; else heldMp.rozetka += bal;
   }
   heldMp.prom = Math.round(heldMp.prom * 100) / 100;
@@ -533,8 +535,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   };
   const [stockCostRows, prodCatRows, commSettings, perOrderRows] = await Promise.all([
     Promise.all(chunk(estSkus, 200).map(c => db.from('product_stock').select('sku, price_cost').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
-    Promise.all(chunk(estSkus, 200).map(c => db.from('products').select('sku, categories(prom_commission_pct, prom_commission_pct_econom, rozetka_commission_pct)').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
-    db.from('app_settings').select('key, value').in('key', ['prom_plan', 'prom_commission_pct', 'rozetka_commission_pct']).then(r => r.data ?? []),
+    Promise.all(chunk(estSkus, 200).map(c => db.from('products').select('sku, categories(prom_commission_pct, prom_commission_pct_econom, rozetka_commission_pct, epicentr_commission_pct)').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
+    db.from('app_settings').select('key, value').in('key', ['prom_plan', 'prom_commission_pct', 'rozetka_commission_pct', 'epicentr_commission_pct']).then(r => r.data ?? []),
     Promise.all(chunk(estIds, 150).map(c => db.from('money_entries').select('order_id, account_type, amount').in('account_type', ['cogs', 'marketplace_fee']).in('order_id', c).then(r => r.data ?? []))).then(a => a.flat()),
   ]);
   const commCfg = Object.fromEntries(commSettings.map(s => [s.key, s.value]));
@@ -542,15 +544,18 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const promPlan     = (commCfg.prom_plan ?? 'single') as 'single' | 'econom';
   const promFallback = parseFloat(commCfg.prom_commission_pct ?? '3');
   const rozFallback  = parseFloat(commCfg.rozetka_commission_pct ?? '15');
-  const ratesBySku = new Map<string, { prom: number; rozetka: number }>();
+  const epiFallback  = parseFloat(commCfg.epicentr_commission_pct ?? '12');
+  const ratesBySku = new Map<string, { prom: number; rozetka: number; epicentr: number }>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation
   for (const p of prodCatRows as any[]) {
     const promRaw = promPlan === 'econom' ? p.categories?.prom_commission_pct_econom : p.categories?.prom_commission_pct;
     const promPct = parseFloat(String(promRaw));
     const rozPct  = parseFloat(String(p.categories?.rozetka_commission_pct));
+    const epiPct  = parseFloat(String(p.categories?.epicentr_commission_pct));
     ratesBySku.set(p.sku, {
-      prom:    Number.isFinite(promPct) ? promPct : promFallback,
-      rozetka: Number.isFinite(rozPct)  ? rozPct  : rozFallback,
+      prom:     Number.isFinite(promPct) ? promPct : promFallback,
+      rozetka:  Number.isFinite(rozPct)  ? rozPct  : rozFallback,
+      epicentr: Number.isFinite(epiPct)  ? epiPct  : epiFallback,
     });
   }
   const costBySku = new Map(stockCostRows.map(r => [r.sku as string, Number(r.price_cost ?? 0)]));
@@ -565,7 +570,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     const cost = factCogs.has(o.id)
       ? factCogs.get(o.id)!
       : items.reduce((s, i) => s + (costBySku.get(i.sku) ?? 0) * Number(i.qty ?? 0), 0);
-    const ch = o.channel_code === 'prom' || o.channel_code === 'rozetka' ? o.channel_code : null;
+    const ch = o.channel_code === 'prom' || o.channel_code === 'rozetka' || o.channel_code === 'epicentr' ? o.channel_code : null;
     const fee = factFee.has(o.id)
       ? factFee.get(o.id)!
       : ch

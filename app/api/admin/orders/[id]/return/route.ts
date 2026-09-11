@@ -176,7 +176,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // за повернений товар). Сторнуємо ПРОПОРЦІЮ від фактично проведеної комісії, а не
   // перерахунок за таблицею категорій: ставка на момент нарахування могла відрізнятися
   // від поточної (реальний кейс 2026-07-29 — перемикання плану Prom на «Економ»).
-  if (order.channel_code === 'prom' || order.channel_code === 'rozetka') {
+  if (order.channel_code === 'prom' || order.channel_code === 'rozetka' || order.channel_code === 'epicentr') {
     try {
       // Нетто проведеної комісії по замовленню (нарахування мінус попередні сторно).
       // Сервісні збори (Rozetka Smart / «дешева доставка» НП) мають той самий doc_type,
