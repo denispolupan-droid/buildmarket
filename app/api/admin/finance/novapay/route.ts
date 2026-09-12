@@ -112,11 +112,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
   if (isExpense) {
-    await db.from('expenses').insert({
+    // source_id — uuid (acc_documents); номер документа виписки — у doc_ref (до 12.09 insert мовчки падав)
+    const { error: expErr } = await db.from('expenses').insert({
       expense_type: category, description, counterparty: row.counterparty ?? null, amount,
-      payment_method: 'novapay', source: 'novapay', source_id: row.id, txn_id: txnId,
+      payment_method: 'novapay', source: 'novapay', source_id: null, doc_ref: row.id, txn_id: txnId,
       business_date: date, created_by: by,
     });
+    if (expErr) console.error('[novapay] expenses insert failed:', row.id, expErr.message);
   }
   await db.from('novapay_txns').update({ status: 'posted', category: category === 'supplier' ? `supplier:${body.supplierId}` : category, txn_id: txnId, note: body.note ?? null, posted_at: new Date().toISOString(), posted_by: by }).eq('id', row.id);
   return NextResponse.json({ ok: true, txnId });

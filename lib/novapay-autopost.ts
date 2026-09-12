@@ -50,11 +50,14 @@ export async function postNovapayAutoTopups(createdBy = 'cron:novapay-autopost')
           debitAccount: rule.category, creditAccount: 'novapay', amount, businessDate: date, docType: 'expense',
           description, idempotencyKey: key, createdBy, meta: { novapay_doc_id: r.id, counterparty: r.counterparty, auto: true },
         });
-        await db.from('expenses').insert({
+        // source_id у expenses — uuid (посилання на acc_documents); номер документа виписки — у doc_ref.
+        // До 12.09 сюди писався r.id і insert мовчки падав: проводка в леджері була, рядка у «Витратах» — ні.
+        const { error: expErr } = await db.from('expenses').insert({
           expense_type: rule.category, description, counterparty: r.counterparty ?? null, amount,
-          payment_method: 'novapay', source: 'novapay', source_id: r.id, txn_id: txnId,
+          payment_method: 'novapay', source: 'novapay', source_id: null, doc_ref: r.id, txn_id: txnId,
           business_date: date, created_by: createdBy,
         });
+        if (expErr) console.error('[novapay-autopost] expenses insert failed:', r.id, expErr.message);
         title = `🚚 Витрата логістики ${amount.toFixed(2)} ₴ (рахунок Нової Пошти) проведена автоматично`;
       }
       await db.from('novapay_txns').update({

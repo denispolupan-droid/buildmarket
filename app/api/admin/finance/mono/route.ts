@@ -96,7 +96,9 @@ export async function POST(req: NextRequest) {
     } else if (EXPENSE_ACCOUNTS.includes(category as AccountType)) {
       txnId = await recordTxn({ debitAccount: category as AccountType, creditAccount: 'bank', amount, businessDate: date, docType: 'expense', description: descr,
         idempotencyKey: `mono-txn:${row.id}`, createdBy: by, meta: { mono_txn_id: row.id, manual: true, counterparty: row.counter_name } });
-      await db.from('expenses').insert({ expense_type: category, description: descr, counterparty: row.counter_name ?? null, amount, payment_method: 'bank', source: 'mono', source_id: row.id, txn_id: txnId, business_date: date, created_by: by });
+      // source_id — uuid (acc_documents); id операції Mono — у doc_ref (до 12.09 insert мовчки падав)
+      const { error: expErr } = await db.from('expenses').insert({ expense_type: category, description: descr, counterparty: row.counter_name ?? null, amount, payment_method: 'bank', source: 'mono', source_id: null, doc_ref: row.id, txn_id: txnId, business_date: date, created_by: by });
+      if (expErr) console.error('[mono] expenses insert failed:', row.id, expErr.message);
     } else {
       return NextResponse.json({ error: 'Невірна категорія' }, { status: 400 });
     }
