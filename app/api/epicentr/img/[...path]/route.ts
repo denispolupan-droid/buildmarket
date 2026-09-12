@@ -25,9 +25,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   segs[segs.length - 1] = last.slice(0, -4);
   if (!segs.every(s => SEGMENT_RX.test(s))) return new NextResponse('Not found', { status: 404 });
 
-  const base = process.env.R2_PUBLIC_URL || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua'}/img/products`;
-  const res = await fetch(`${base}/${segs.map(encodeURIComponent).join('/')}.webp`);
-  if (!res.ok) return new NextResponse('Not found', { status: 404 });
+  // Більшість фото — у R2, але частина старих (44 файли) лежить у репозиторії в
+  // public/img/products і сайт віддає їх статикою. Тому: спершу R2, інакше — та сама
+  // адреса на сайті (там спрацює і статика, і rewrite на R2).
+  const rel = `${segs.map(encodeURIComponent).join('/')}.webp`;
+  const site = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua'}/img/products/${rel}`;
+  let res = process.env.R2_PUBLIC_URL ? await fetch(`${process.env.R2_PUBLIC_URL}/${rel}`) : null;
+  if (!res?.ok) res = await fetch(site);
+  if (!res.ok || !(res.headers.get('content-type') ?? '').startsWith('image/')) {
+    return new NextResponse('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  }
 
   const img = sharp(Buffer.from(await res.arrayBuffer()));
   const { width = 0, height = 0 } = await img.metadata();
