@@ -152,7 +152,6 @@ export async function GET(req: NextRequest) {
       lines.push(`      <weight>${weight}</weight>`);
       lines.push(`      <param paramcode="weight" name="Вага"><![CDATA[${weight}]]></param>`);
     }
-    lines.push(`      <url>${x(`${SITE_URL}/product/${p.slug ?? p.sku}`)}</url>`);
 
     // Характеристики за словниками Епіцентру (набір = код категорії)
     const mapped = mapEpicentrAttributes(cat.epicentr_category_code, { name: p.name, description: p.description_mp, volume: p.volume, color: p.color, characteristics: chars });
