@@ -270,7 +270,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                           </div>
                         ))}
                         {ov.moneyTransit.shipped > 0 && (
-                          <div title={`Посилки ще їдуть до покупця: наложка ${fmt(ov.moneyTransit.shippedCod)} ₴ + передоплата площадок ${fmt(ov.moneyTransit.shippedPrepaid)} ₴`}
+                          <div title={`Гроші, яких ще немає на наших рахунках, за відправлені й не вручені посилки: наложка ${fmt(ov.moneyTransit.shippedCod)} ₴ + передоплати площадок, ще не виплачені RozetkaPay, ${fmt(ov.moneyTransit.shippedPrepaid)} ₴. Оплати карткою на сайті та вже виплачені передоплати сюди не входять — вони вже в нас. Скільки товару їде і що на ньому заробимо — «Аналітика», картка «В дорозі».`}
                             style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
                             <span style={{ color: '#B45309', fontWeight: 600, minWidth: 0 }}>Ще їде до покупця</span>
                             <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#B45309', whiteSpace: 'nowrap', flexShrink: 0 }}>+{fmt(ov.moneyTransit.shipped)} ₴</span>
