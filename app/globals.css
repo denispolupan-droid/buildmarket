@@ -2708,6 +2708,10 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 
 /* Пояснення походження цифри в картках фінансів */
 .fin-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 7px; }
+.fin-hint-more > summary { cursor: pointer; list-style: none; }
+.fin-hint-more > summary::-webkit-details-marker { display: none; }
+.fin-hint-toggle { color: var(--brand-blue); font-weight: 600; white-space: nowrap; }
+.fin-hint-more[open] .fin-hint-toggle { display: none; }
 .fin-card-sub {
   font-size: 11.5px; font-weight: 500; color: var(--text-muted);
   text-transform: none; letter-spacing: 0;

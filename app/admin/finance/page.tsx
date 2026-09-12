@@ -93,14 +93,15 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
             hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
           { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
-            hint: `Прогноз по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: сума замовлень мінус собівартість і комісії маркетплейсів (вручені — факт, ще в дорозі — оцінка за закупівлею і ставками комісій). Окремо — те, що вже проведено в обліку датою ${dmy(ov.from)}–${dmy(ov.to)} (продаж фіксується в момент вручення, тому сюди входять і давніші замовлення, вручені в цей період, і не входять свіжі, що ще їдуть): валовий ${fmt(ov.kpi.profit.value)} ₴, чистий ${fmt(ov.kpi.netProfit.value)} ₴ (опер. витрати ${fmt(ov.kpi.netProfit.opex)}, податки ${fmt(ov.kpi.netProfit.taxes)}) — як у «Звітах».` },
+            hint: `Прогноз по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: сума замовлень − собівартість − комісії (вручені — факт, в дорозі — оцінка).`,
+            more: `Окремо — те, що вже проведено в обліку датою ${dmy(ov.from)}–${dmy(ov.to)}. Продаж фіксується в момент вручення, тому сюди входять і давніші замовлення, вручені в цей період, і не входять свіжі, що ще їдуть: валовий ${fmt(ov.kpi.profit.value)} ₴, чистий ${fmt(ov.kpi.netProfit.value)} ₴ (опер. витрати ${fmt(ov.kpi.netProfit.opex)}, податки ${fmt(ov.kpi.netProfit.taxes)}) — як у «Звітах».` },
           { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,
             hint: 'Валовий прибуток ÷ сума замовлень періоду (та сама база — всі замовлення)' },
           { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, months: ov.monthly.orders, mFmt: (v: number) => fmt(v), color: 'var(--brand-blue)',
             hint: 'Створені за період, без скасованих — включно з ще не відвантаженими' },
           { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev, months: ov.monthly.avgCheck, mFmt: (v: number) => `${fmt(v)} ₴`,
             hint: 'Сума створених замовлень ÷ їх кількість (оцінка до доставки)' },
-        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; months: (number | null)[]; mFmt: (v: number) => string; color?: string; pp?: boolean; hint: string }[]).map(k => (
+        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; months: (number | null)[]; mFmt: (v: number) => string; color?: string; pp?: boolean; hint: string; more?: string }[]).map(k => (
           <div key={k.key} className="fin-card fin-kpi">
             <div className="fin-kpi-label">{k.label}</div>
             <div className="fin-kpi-value">{k.value}</div>
@@ -111,7 +112,16 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             <div className="fin-kpi-spark" title="Останні 6 місяців; кольоровий — поточний">
               <MonthBars values={k.months} labels={ov.monthly.labels} color={k.color} format={k.mFmt} />
             </div>
-            <div className="fin-hint">{k.hint}</div>
+            {/* Довге пояснення — під «детальніше»: розгорнутий текст розтягував усі
+                картки ряду до висоти найдовшої. <details> без JS, стан не зберігається. */}
+            {k.more ? (
+              <details className="fin-hint fin-hint-more">
+                <summary>{k.hint} <span className="fin-hint-toggle">детальніше</span></summary>
+                <div style={{ marginTop: 6 }}>{k.more}</div>
+              </details>
+            ) : (
+              <div className="fin-hint">{k.hint}</div>
+            )}
           </div>
         ))}
       </div>
