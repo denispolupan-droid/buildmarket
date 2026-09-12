@@ -133,17 +133,25 @@ export async function GET(req: NextRequest) {
       lines.push(`      <category>${x(cat.name)}</category>`);
     }
     for (const u of pics) lines.push(`      <picture>${x(u)}</picture>`);
-    if (p.brand) lines.push(`      <vendor>${x(p.brand)}</vendor>`);
+    // Два шаблони Епіцентру: старий (yak-importuvaty-tovary) чекає бренд/країну/вагу
+    // тегами з code, новий (xmlfayl) — <param paramcode>. Віддаємо обидва.
+    const brandCode = p.brand ? EPICENTR_BRAND_CODE[p.brand] : undefined;
+    if (p.brand) lines.push(brandCode ? `      <vendor code="${brandCode}">${x(p.brand)}</vendor>` : `      <vendor>${x(p.brand)}</vendor>`);
     lines.push(`      <name lang="ua">${x(name)}</name>`);
     if (desc) lines.push(`      <description lang="ua"><![CDATA[${desc.replace(/]]>/g, ']]]]><![CDATA[>')}]]></description>`);
     // Системні атрибути — за зразком xmlfayl: valuecode із довідників (lib/epicentr-dictionaries)
     const countryCode = country ? EPICENTR_COUNTRY_CODE[country] : undefined;
-    if (country && countryCode) lines.push(`      <param paramcode="country_of_origin" name="Країна-виробник" valuecode="${countryCode}">${x(country)}</param>`);
-    const brandCode = p.brand ? EPICENTR_BRAND_CODE[p.brand] : undefined;
+    if (country && countryCode) {
+      lines.push(`      <country_of_origin code="${countryCode}">${x(country)}</country_of_origin>`);
+      lines.push(`      <param paramcode="country_of_origin" name="Країна-виробник" valuecode="${countryCode}">${x(country)}</param>`);
+    }
     if (p.brand && brandCode) lines.push(`      <param paramcode="brand" name="Бренд" valuecode="${brandCode}">${x(p.brand)}</param>`);
     lines.push('      <param paramcode="measure" name="Міра виміру" valuecode="measure_pcs">шт.</param>');
     lines.push('      <param paramcode="ratio" name="Мінімальна кратність товару"><![CDATA[1]]></param>');
-    if (weight) lines.push(`      <param paramcode="weight" name="Вага"><![CDATA[${weight}]]></param>`);
+    if (weight) {
+      lines.push(`      <weight>${weight}</weight>`);
+      lines.push(`      <param paramcode="weight" name="Вага"><![CDATA[${weight}]]></param>`);
+    }
     lines.push(`      <url>${x(`${SITE_URL}/product/${p.slug ?? p.sku}`)}</url>`);
 
     // Характеристики за словниками Епіцентру (набір = код категорії)

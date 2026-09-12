@@ -48,6 +48,9 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
+    // Next 16 віддає лише перелічені якості: картка товару просить quality={90}
+    // (ProductImage), без цього рядка воно мовчки падало до 75 з попередженням у логу.
+    qualities: [75, 90],
     minimumCacheTTL: 86400,
     // Broad catch-all rather than enumerating each public/ subfolder (blog/covers,
     // brands, images, img/products) — missing just one silently breaks its images,
