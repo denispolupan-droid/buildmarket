@@ -5,7 +5,7 @@ import { epicentrPrice } from '../../../../lib/marketplace-pricing';
 import { mpDescription } from '../../../../lib/marketplace-description';
 import { epicentrAvailabilityOf, toEpicentrId } from '../../../../lib/epicentr-availability';
 import { EPICENTR_COUNTRY_CODE, EPICENTR_BRAND_CODE } from '../../../../lib/epicentr-dictionaries';
-import { epicentrName, epicentrDescription, epicentrWeightGrams } from '../../../../lib/epicentr-content';
+import { epicentrName, epicentrDescription, epicentrWeightGrams, epicentrBrand } from '../../../../lib/epicentr-content';
 import { resolveCountry } from '../../../../lib/brand-country';
 import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
 
@@ -35,6 +35,13 @@ import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
  */
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
+
+/** /img/products/{…}.webp → /api/epicentr/img/{…}.jpg (JPEG для імпортера); інші адреси — як є. */
+function epicentrPictureUrl(image: string): string {
+  const m = /^(?:https?:\/\/[^/]+)?\/img\/products\/(.+)\.webp$/.exec(image);
+  if (m) return `${SITE_URL}/api/epicentr/img/${m[1].split('/').map(encodeURIComponent).join('/')}.jpg`;
+  return image.startsWith('http') ? image : `${SITE_URL}${image}`;
+}
 
 function x(str: string | null | undefined): string {
   if (!str) return '';
@@ -86,7 +93,8 @@ export async function GET(req: NextRequest) {
 
   const offers = products.filter(p => {
     const s = Array.isArray(p.stock) ? p.stock[0] : p.stock;
-    return s && Number(s.price_retail) > 0 && catMap.has(p.category_slug);
+    // Бренди поза довідником Епіцентру не віддаємо зовсім (lib/epicentr-content)
+    return s && Number(s.price_retail) > 0 && catMap.has(p.category_slug) && epicentrBrand(p.brand) !== null;
   });
 
   const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
@@ -111,12 +119,16 @@ export async function GET(req: NextRequest) {
 
     const inStock = epicentrAvailabilityOf(p.on_epicentr === true, stock) === 'in_stock';
 
-    const pics = p.image ? [p.image.startsWith('http') ? p.image : `${SITE_URL}${p.image}`] : [];
+    // Фото у JPEG через /api/epicentr/img: WebP імпортер Епіцентру не підхоплює
+    const pics = p.image ? [epicentrPictureUrl(p.image)] : [];
 
     const chars = [...(p.characteristics || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    // Бренд для Епіцентру (Tangit → Ceresit); назву форматуємо за оригінальним брендом,
+    // бо саме він стоїть у тексті назви
+    const brand   = epicentrBrand(p.brand)!;
     const name    = epicentrName(p);
     const desc    = epicentrDescription(mpDescription(p));
-    const country = resolveCountry(chars, p.brand);
+    const country = resolveCountry(chars, brand);
     const weight  = epicentrWeightGrams({ name: p.name, volume: p.volume, characteristics: chars });
 
     // offer id — без розділових знаків (вимога XML): 1603-014 → 1603014
@@ -135,8 +147,8 @@ export async function GET(req: NextRequest) {
     for (const u of pics) lines.push(`      <picture>${x(u)}</picture>`);
     // Два шаблони Епіцентру: старий (yak-importuvaty-tovary) чекає бренд/країну/вагу
     // тегами з code, новий (xmlfayl) — <param paramcode>. Віддаємо обидва.
-    const brandCode = p.brand ? EPICENTR_BRAND_CODE[p.brand] : undefined;
-    if (p.brand) lines.push(brandCode ? `      <vendor code="${brandCode}">${x(p.brand)}</vendor>` : `      <vendor>${x(p.brand)}</vendor>`);
+    const brandCode = brand ? EPICENTR_BRAND_CODE[brand] : undefined;
+    if (brand) lines.push(brandCode ? `      <vendor code="${brandCode}">${x(brand)}</vendor>` : `      <vendor>${x(brand)}</vendor>`);
     lines.push(`      <name lang="ua">${x(name)}</name>`);
     if (desc) lines.push(`      <description lang="ua"><![CDATA[${desc.replace(/]]>/g, ']]]]><![CDATA[>')}]]></description>`);
     // Системні атрибути — за зразком xmlfayl: valuecode із довідників (lib/epicentr-dictionaries)
@@ -145,7 +157,7 @@ export async function GET(req: NextRequest) {
       lines.push(`      <country_of_origin code="${countryCode}">${x(country)}</country_of_origin>`);
       lines.push(`      <param paramcode="country_of_origin" name="Країна-виробник" valuecode="${countryCode}">${x(country)}</param>`);
     }
-    if (p.brand && brandCode) lines.push(`      <param paramcode="brand" name="Бренд" valuecode="${brandCode}">${x(p.brand)}</param>`);
+    if (brand && brandCode) lines.push(`      <param paramcode="brand" name="Бренд" valuecode="${brandCode}">${x(brand)}</param>`);
     lines.push('      <param paramcode="measure" name="Міра виміру" valuecode="measure_pcs">шт.</param>');
     lines.push('      <param paramcode="ratio" name="Мінімальна кратність товару"><![CDATA[1]]></param>');
     if (weight) {

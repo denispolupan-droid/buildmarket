@@ -15,6 +15,7 @@ import { fetchAllRows } from './db-paginate';
 import { batchUpdateEpicentrOffers, EPICENTR_OFFERS_BATCH, type EpicentrOfferUpdate } from './epicentr-api';
 import { epicentrPrice } from './marketplace-pricing';
 import { epicentrAvailabilityOf } from './epicentr-availability';
+import { epicentrBrand } from './epicentr-content';
 
 export type EpicentrPushResult = {
   ok: boolean;
@@ -30,7 +31,7 @@ export type EpicentrPushResult = {
 
 type Cat = { slug: string; epicentr_commission_pct: number | null; epicentr_markup_pct: number | null };
 type Stock = { price_retail: number | null; price_cost: number | null; price_old: number | null; stock_qty: number | null; stock_status: string | null };
-type Row = { sku: string; on_epicentr: boolean | null; epicentr_markup_pct: number | null; category_slug: string; stock: Stock | Stock[] | null };
+type Row = { sku: string; brand: string | null; on_epicentr: boolean | null; epicentr_markup_pct: number | null; category_slug: string; stock: Stock | Stock[] | null };
 
 export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Promise<EpicentrPushResult> {
   const db = createServiceClient();
@@ -40,7 +41,7 @@ export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Pr
     fetchAllRows<Cat>((from, to) => db.from('categories').select('slug, epicentr_commission_pct, epicentr_markup_pct').order('slug').range(from, to)),
     fetchAllRows<Row>((from, to) => {
       let q = db.from('products')
-        .select('sku, on_epicentr, epicentr_markup_pct, category_slug, stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status)')
+        .select('sku, brand, on_epicentr, epicentr_markup_pct, category_slug, stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status)')
         .eq('is_active', true);
       if (opts.onlySkus?.length) q = q.in('sku', opts.onlySkus);
       return q.order('sku').range(from, to);
@@ -50,6 +51,8 @@ export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Pr
 
   const updates: EpicentrOfferUpdate[] = [];
   for (const p of rows) {
+    // Бренди поза довідником Епіцентру — так само, як у фіді, не шлемо
+    if (epicentrBrand(p.brand) === null) continue;
     const stock = Array.isArray(p.stock) ? p.stock[0] ?? null : p.stock;
     const cat = catMap.get(p.category_slug);
     const retail = Number(stock?.price_retail) || 0;

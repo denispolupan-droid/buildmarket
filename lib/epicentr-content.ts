@@ -11,16 +11,54 @@
  * Фото:   мін. 500×500, рекомендовано 1280×1280, без вотермарок/написів, до 10 шт.
  * Пакування: вага в грамах обов'язкова для розрахунку доставки.
  */
-import { formatForRozetka, toRozetkaVolume } from './rozetka-name';
+import { formatForRozetka } from './rozetka-name';
 
 export const EPICENTR_NAME_MAX = 150;
 export const EPICENTR_DESC_MAX = 1500;
 
+/**
+ * Бренди для Епіцентру, яких немає в їхньому довіднику (звіт імпорту 12.09.2026):
+ *   • заміна — бренд показуємо під іншим (рішення власника: Tangit → Ceresit);
+ *   • виключення — товари не йдуть ні у фід, ні в пуш цін/наявності.
+ * Лише для Епіцентру: у БД, на сайті й на інших площадках бренд лишається як є.
+ */
+const EPICENTR_BRAND_OVERRIDE: Record<string, string> = {
+  Tangit: 'Ceresit',
+};
+const EPICENTR_EXCLUDED_BRANDS = new Set(['Хімконтакт', 'Spitce', 'HARDEX', 'ПОЛЯРА-ХИМ']);
+
+/** Бренд товару для Епіцентру; null — товар на Епіцентр не йде. */
+export function epicentrBrand(brand: string | null | undefined): string | null {
+  const b = (brand ?? '').trim();
+  if (EPICENTR_EXCLUDED_BRANDS.has(b)) return null;
+  return EPICENTR_BRAND_OVERRIDE[b] ?? b;
+}
+
+/**
+ * Форматер дописує колір у кінець, навіть коли він уже є в назві іншою формою
+ * («темно зелена 2.7 кг Темно-зелений»). Прибираємо хвіст, якщо кожне слово кольору
+ * (за основою з 4 літер) уже трапляється раніше.
+ */
+function dropTrailingColorDup(name: string, color: string | null | undefined): string {
+  const c = (color ?? '').trim();
+  if (!c || !name.endsWith(c)) return name;
+  const head = name.slice(0, -c.length).toLowerCase();
+  const stems = c.toLowerCase().split(/[\s\-/]+/).filter(w => w.length >= 3).map(w => w.slice(0, 4));
+  return stems.length && stems.every(s => head.includes(s)) ? name.slice(0, -c.length).trim() : name;
+}
+
 /** Назва за шаблоном Епіцентру; артикул у дужках — частина їхнього шаблону. */
 export function epicentrName(p: { sku: string; name: string; rozetka_name?: string | null; brand?: string | null; volume?: string | null; color?: string | null }): string {
   // Десяткові коми → крапки ДО форматування: cleanCommas у formatForRozetka інакше
-  // розірве «6,0» на «6 0». Об'єм нормалізуємо так само, щоб він знайшовся в назві.
-  let base = (p.rozetka_name?.trim() || formatForRozetka(toRozetkaVolume(p.name) ?? p.name, p.brand, toRozetkaVolume(p.volume), p.color))
+  // розірве «6,0» на «6 0». Але саме фасування лишаємо в оригінальному вигляді:
+  // форматер шукає його в назві за значенням volume, і якщо не знайде — допише ще
+  // раз («ExtraLatex 1.4 кг 1.4 кг», звіт кабінету 12.09.2026).
+  const VOL = '⟦VOL⟧';
+  const vol = p.volume?.trim() || '';
+  const protectedName = vol && p.name.includes(vol)
+    ? p.name.split(vol).map(part => part.replace(/(\d),(\d)/g, '$1.$2')).join(VOL).replace(new RegExp(VOL, 'g'), vol)
+    : p.name.replace(/(\d),(\d)/g, '$1.$2');
+  let base = (p.rozetka_name?.trim() || dropTrailingColorDup(formatForRozetka(protectedName, p.brand, p.volume, p.color), p.color))
     // розділові знаки в назві заборонені (крім тих, що всередині моделі — їх не відрізнити, тож
     // прибираємо лише коми, крапки з комою, двокрапки і кінцеві крапки)
     .replace(/(\d),(\d)/g, '$1.$2')   // десятковий роздільник — крапка, як у Rozetka

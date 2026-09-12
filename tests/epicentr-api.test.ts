@@ -5,7 +5,7 @@ import {
 } from '../lib/epicentr-api';
 import { epicentrPrice, epicentrMargin } from '../lib/marketplace-pricing';
 import { epicentrAvailabilityOf, toEpicentrId, fromEpicentrId } from '../lib/epicentr-availability';
-import { epicentrName, epicentrDescription, epicentrWeightGrams } from '../lib/epicentr-content';
+import { epicentrName, epicentrDescription, epicentrWeightGrams, epicentrBrand } from '../lib/epicentr-content';
 import { mapEpicentrAttributes, toUnit } from '../lib/epicentr-attributes';
 
 // Форма замовлення — за OrdersGridItemModel зі свагера merchant-api.epicentrm.com.ua
@@ -257,5 +257,29 @@ describe('mapEpicentrAttributes — характеристики за словн
     expect(toUnit('7 діб', 'год', '')).toBe(168);
     expect(toUnit('2 роки', 'міс.', '')).toBe(24);
     expect(toUnit('1–6 мм', 'мм', 'Максимальна ширина шва, мм')).toBe(6);
+  });
+});
+
+describe('epicentrBrand — бренди поза довідником Епіцентру', () => {
+  it('Tangit показуємо як Ceresit, решту брендів — як є', () => {
+    expect(epicentrBrand('Tangit')).toBe('Ceresit');
+    expect(epicentrBrand('Pattex')).toBe('Pattex');
+    expect(epicentrBrand(null)).toBe('');
+  });
+  it('Хімконтакт, Spitce, HARDEX, ПОЛЯРА-ХИМ на Епіцентр не йдуть', () => {
+    for (const b of ['Хімконтакт', 'Spitce', 'HARDEX', 'ПОЛЯРА-ХИМ']) expect(epicentrBrand(b)).toBeNull();
+  });
+});
+
+describe('epicentrName — фасування і колір не задвоюються (звіт кабінету 12.09)', () => {
+  it('фасування в кінці назви не дописується вдруге', () => {
+    expect(epicentrName({ sku: '2100-007', name: 'Фарба Polifarb ExtraLatex 1,4 кг', brand: 'Polifarb', volume: '1,4 кг' }))
+      .toBe('Фарба Polifarb ExtraLatex 1.4 кг (2100-007)');
+    expect(epicentrName({ sku: '2109-012', name: 'Aura Luxpro 1 — Абсолютно матова стійка до миття фарба, 0,95 л', brand: 'AURA', volume: '0,95 л' }))
+      .toBe('Абсолютно матова стійка до миття фарба AURA Luxpro 1 0.95 л (2109-012)');
+  });
+  it('колір, що вже є в назві іншою формою, у кінець не дописується', () => {
+    expect(epicentrName({ sku: '2101-022', name: 'Емаль Polifarb DekoMal ПФ-115 темно зелена, 2,7 кг', brand: 'Polifarb', volume: '2,7 кг', color: 'Темно-зелений' }))
+      .toBe('Емаль Polifarb DekoMal ПФ-115 темно зелена 2.7 кг (2101-022)');
   });
 });
