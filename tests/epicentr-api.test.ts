@@ -7,6 +7,7 @@ import { epicentrPrice, epicentrMargin } from '../lib/marketplace-pricing';
 import { epicentrAvailabilityOf, toEpicentrId, fromEpicentrId } from '../lib/epicentr-availability';
 import { epicentrName, epicentrDescription, epicentrWeightGrams, epicentrBrand } from '../lib/epicentr-content';
 import { mapEpicentrAttributes, toUnit } from '../lib/epicentr-attributes';
+import { webpRelFromImage, jpegKeyFor, staticJpegUrl, dynamicJpegUrl } from '../lib/epicentr-images';
 
 // Форма замовлення — за OrdersGridItemModel зі свагера merchant-api.epicentrm.com.ua
 function order(over: Partial<EpicentrOrder> = {}): EpicentrOrder {
@@ -281,5 +282,19 @@ describe('epicentrName — фасування і колір не задвоюю�
   it('колір, що вже є в назві іншою формою, у кінець не дописується', () => {
     expect(epicentrName({ sku: '2101-022', name: 'Емаль Polifarb DekoMal ПФ-115 темно зелена, 2,7 кг', brand: 'Polifarb', volume: '2,7 кг', color: 'Темно-зелений' }))
       .toBe('Емаль Polifarb DekoMal ПФ-115 темно зелена 2.7 кг (2101-022)');
+  });
+});
+
+describe('epicentr-images — адреси статичних JPEG', () => {
+  it('WebP з /img/products → rel; інші адреси — null', () => {
+    expect(webpRelFromImage('/img/products/aura/1204-018-482798b36e.webp')).toBe('aura/1204-018-482798b36e');
+    expect(webpRelFromImage('https://fixline.com.ua/img/products/2100-014.webp')).toBe('2100-014');
+    expect(webpRelFromImage('/img/products/lotus/2107-005.jpg')).toBeNull();
+    expect(webpRelFromImage(null)).toBeNull();
+  });
+  it('статична адреса — під /img/products/epicentr, кирилиця кодується', () => {
+    expect(jpegKeyFor('aura/x-1')).toBe('epicentr/aura/x-1.jpg');
+    expect(staticJpegUrl('дніпро-м/5596-207')).toMatch(/\/img\/products\/epicentr\/%D0%B4%D0%BD%D1%96%D0%BF%D1%80%D0%BE-%D0%BC\/5596-207\.jpg$/);
+    expect(dynamicJpegUrl('aura/x-1')).toMatch(/\/api\/epicentr\/img\/aura\/x-1\.jpg$/);
   });
 });

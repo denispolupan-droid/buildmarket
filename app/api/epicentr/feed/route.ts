@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { epicentrPrice } from '../../../../lib/marketplace-pricing';
@@ -8,6 +8,7 @@ import { EPICENTR_COUNTRY_CODE, EPICENTR_BRAND_CODE } from '../../../../lib/epic
 import { epicentrName, epicentrDescription, epicentrWeightGrams, epicentrBrand } from '../../../../lib/epicentr-content';
 import { resolveCountry } from '../../../../lib/brand-country';
 import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
+import { readEpicentrManifest, ensureEpicentrJpegs, webpRelFromImage, staticJpegUrl, dynamicJpegUrl } from '../../../../lib/epicentr-images';
 
 /**
  * XML-фід для маркетплейсу Епіцентр (кабінет → «Імпорт товарів» / «Автооновлення»).
@@ -35,13 +36,6 @@ import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
  */
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
-
-/** /img/products/{…}.webp → /api/epicentr/img/{…}.jpg (JPEG для імпортера); інші адреси — як є. */
-function epicentrPictureUrl(image: string): string {
-  const m = /^(?:https?:\/\/[^/]+)?\/img\/products\/(.+)\.webp$/.exec(image);
-  if (m) return `${SITE_URL}/api/epicentr/img/${m[1].split('/').map(encodeURIComponent).join('/')}.jpg`;
-  return image.startsWith('http') ? image : `${SITE_URL}${image}`;
-}
 
 function x(str: string | null | undefined): string {
   if (!str) return '';
@@ -90,6 +84,9 @@ export async function GET(req: NextRequest) {
   ]);
 
   const catMap = new Map<string, Cat>(categories.map(c => [c.slug, c]));
+  // Статичні JPEG для Епіцентру, які вже лежать у R2 (lib/epicentr-images)
+  const jpegManifest = await readEpicentrManifest();
+  const missingJpegs = new Set<string>();
 
   const offers = products.filter(p => {
     const s = Array.isArray(p.stock) ? p.stock[0] : p.stock;
@@ -119,8 +116,13 @@ export async function GET(req: NextRequest) {
 
     const inStock = epicentrAvailabilityOf(p.on_epicentr === true, stock) === 'in_stock';
 
-    // Фото у JPEG через /api/epicentr/img: WebP імпортер Епіцентру не підхоплює
-    const pics = p.image ? [epicentrPictureUrl(p.image)] : [];
+    // Фото — статичний JPEG у R2; якщо його ще немає — конвертація на льоту, а файл
+    // догенеровується у фоні після відповіді (наступний фід уже зі статичною адресою)
+    const rel = webpRelFromImage(p.image);
+    if (rel && !jpegManifest.has(rel)) missingJpegs.add(rel);
+    const pics = !p.image ? []
+      : rel ? [jpegManifest.has(rel) ? staticJpegUrl(rel) : dynamicJpegUrl(rel)]
+      : [p.image.startsWith('http') ? p.image : `${SITE_URL}${p.image}`];
 
     const chars = [...(p.characteristics || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
     // Бренд для Епіцентру (Tangit → Ceresit); назву форматуємо за оригінальним брендом,
@@ -179,6 +181,12 @@ export async function GET(req: NextRequest) {
 
   lines.push('  </offers>');
   lines.push('</yml_catalog>');
+
+  if (missingJpegs.size) {
+    after(() => ensureEpicentrJpegs([...missingJpegs]).then(r => {
+      if (r.created || r.missingSource.length) console.log('[epicentr-feed] jpeg створено:', r.created, 'без джерела:', r.missingSource.length);
+    }));
+  }
 
   return new NextResponse(lines.join('\n'), {
     headers: {
