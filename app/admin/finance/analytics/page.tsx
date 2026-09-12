@@ -498,17 +498,17 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення. Сума створених замовлень періоду — на «Огляді».',
           },
           {
-            label: 'В роботі · зараз', value: `${fmt(inWork.margin)} ₴`, color: 'var(--text-primary)',
+            label: 'В роботі · зараз · прогноз прибутку', value: `${fmt(inWork.margin)} ₴`, color: 'var(--text-primary)',
             sub: `${inWork.count} замовл. · виручка ${fmt(inWork.revenue)} ₴${inWork.commission > 0 ? ` · комісії −${fmt(inWork.commission)} ₴` : ''}`,
             hint: 'Очікуваний чистий прибуток по підтвердженим, ще не відвантаженим замовленням (оцінка: собівартість за закупівлею, комісії за ставками маркетплейсів).',
           },
           {
-            label: 'В дорозі · зараз', value: `${fmt(transit.margin)} ₴`, color: 'var(--text-primary)',
+            label: 'В дорозі · зараз · прогноз прибутку', value: `${fmt(transit.margin)} ₴`, color: 'var(--text-primary)',
             sub: `${transit.count} замовл. · виручка ${fmt(transit.revenue)} ₴${transit.commission > 0 ? ` · комісії −${fmt(transit.commission)} ₴` : ''}`,
             hint: 'Очікуваний чистий прибуток по відвантаженим, ще не доставленим посилкам. Проведеться в облік після вручення (продаж = доставка).',
           },
           {
-            label: `Доставлено · факт · ${curMonthLabel}`, value: `${fmt(ledgerGross)} ₴`,
+            label: `Валовий прибуток · факт · ${curMonthLabel}`, value: `${fmt(ledgerGross)} ₴`,
             color: ledgerGross >= 0 ? '#15803D' : '#DC2626',
             sub: `${factPct}% від виручки · виручка ${fmt(ledger.revenue)} ₴ · комісії −${fmt(ledger.commission)} ₴${ledger.delivery > 0 ? ` · еквайринг і збори НП −${fmt(ledger.delivery)} ₴` : ''}`,
             hint: 'Валовий прибуток з бухгалтерських проводок: виручка проведених РН − FIFO-собівартість − комісії маркетплейсів − еквайринг і збори НП. Те саме визначення і ті самі цифри, що «факт за обліком» на «Огляді» та у «Звітах».',
@@ -527,7 +527,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 7' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="fin-card-title">Виручка та прибуток по місяцях <span className="fin-card-sub">· за датою створення замовлення</span></div>
+            <div className="fin-card-title">Оборот і прибуток по місяцях <span className="fin-card-sub">· оборот = сума замовлень, прибуток = валовий після комісій (доставлені — факт, решта — прогноз) · за датою створення замовлення</span></div>
             <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
               <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
               <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
@@ -539,7 +539,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>
-          <div className="fin-card-title">Комісії маркетплейсів <span className="fin-card-sub">· факт з обліку, % від фактичної виручки</span></div>
+          <div className="fin-card-title">Комісії маркетплейсів <span className="fin-card-sub">· факт з обліку за місяць: сума комісій і % від фактичної виручки каналу</span></div>
           {feeTrendHasData ? (
             <table className="fin-table">
               <tbody>
@@ -563,7 +563,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       {/* Збиткові / тонкі угоди (факт) */}
       {thinDeals.length > 0 && (
         <div className="fin-card" style={{ marginBottom: '16px' }}>
-          <div className="fin-card-title">Збиткові та тонкі угоди <span className="fin-card-sub">· доставлені за {curMonthLabel} з чистим прибутком &lt; {THIN_PCT}% — перевірте ціну/комісію</span></div>
+          <div className="fin-card-title">Збиткові та тонкі угоди <span className="fin-card-sub">· замовлення: виручка → валовий прибуток після комісій і % від виручки · доставлені за {curMonthLabel} з прибутком &lt; {THIN_PCT}% — перевірте ціну/комісію</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: '6px' }}>
             {thinDeals.map(d => (
               <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-attn">
@@ -586,7 +586,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div className="fin-card-title">
-            Топ товарів за прибутком <span className="fin-card-sub">· доставлені за {curMonthLabel} · ABC: <b style={{ color: '#15803D' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: '#B45309' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
+            Топ товарів за прибутком <span className="fin-card-sub">· виручка → собівартість (з комісіями) → валовий прибуток · доставлені за {curMonthLabel} · ABC: <b style={{ color: '#15803D' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: '#B45309' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
           </div>
           {topProducts.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних за період</div>
@@ -624,7 +624,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
         <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="fin-card">
-            <div className="fin-card-title">По каналах <span className="fin-card-sub">· доставлені за {curMonthLabel}</span></div>
+            <div className="fin-card-title">По каналах <span className="fin-card-sub">· виручка і її частка, валовий прибуток після комісій, замовлень і прибуток на замовлення · доставлені за {curMonthLabel}</span></div>
             {channels.length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
             ) : (
@@ -651,7 +651,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           </div>
 
           <div className="fin-card">
-            <div className="fin-card-title">Клієнти <span className="fin-card-sub">· доставлені за {curMonthLabel}</span></div>
+            <div className="fin-card-title">Клієнти <span className="fin-card-sub">· нові vs повторні: замовлень, виручка, валовий прибуток · доставлені за {curMonthLabel}</span></div>
             <table className="fin-table">
               <tbody>
                 <tr>
@@ -677,7 +677,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       {/* Категорії і топ клієнти — факт (доставлені за період) */}
       <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
         <div className="fin-card">
-          <div className="fin-card-title">Валовий прибуток за категоріями <span className="fin-card-sub">· доставлені за {curMonthLabel}, з урахуванням комісій</span></div>
+          <div className="fin-card-title">Валовий прибуток за категоріями <span className="fin-card-sub">· прибуток після комісій по кореневих категоріях · доставлені за {curMonthLabel}</span></div>
           {categories.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
           ) : (
@@ -705,7 +705,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
         <div className="fin-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title">Топ клієнти за прибутком <span className="fin-card-sub">· доставлені за {curMonthLabel}</span></div>
+            <div className="fin-card-title">Топ клієнти за прибутком <span className="fin-card-sub">· замовлень, виручка, валовий прибуток після комісій · доставлені за {curMonthLabel}</span></div>
             <Link href="/admin/finance/settlements" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>всі клієнти →</Link>
           </div>
           {topClients.length === 0 ? (
@@ -731,7 +731,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       {/* Прибуток по брендах і постачальниках — факт (доставлені за період) */}
       <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <div className="fin-card">
-          <div className="fin-card-title">Прибуток по брендах <span className="fin-card-sub">· доставлені за {curMonthLabel}, з урахуванням комісій</span></div>
+          <div className="fin-card-title">Валовий прибуток по брендах <span className="fin-card-sub">· шт, виручка, прибуток після комісій і % від виручки · доставлені за {curMonthLabel}</span></div>
           {brands.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
           ) : (
@@ -755,7 +755,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </div>
 
         <div className="fin-card">
-          <div className="fin-card-title">Валовий прибуток по постачальниках <span className="fin-card-sub">· доставлені за {curMonthLabel}, до комісій</span></div>
+          <div className="fin-card-title">Валовий прибуток по постачальниках <span className="fin-card-sub">· шт, виручка, прибуток ДО комісій і % від виручки · доставлені за {curMonthLabel}</span></div>
           {suppliers.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
           ) : (
