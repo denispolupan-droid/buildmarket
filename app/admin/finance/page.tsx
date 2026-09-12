@@ -19,6 +19,9 @@ const db = createClient(
 
 export const dynamic = 'force-dynamic';
 
+// YYYY-MM-DD → дд.мм для підписів періоду
+const dmy = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
+
 function fmt(n: number) {
   return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 }
@@ -90,7 +93,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
             hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
           { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
-            hint: `Очікуваний: сума замовлень мінус собівартість і комісії маркетплейсів по ВСІХ замовленнях періоду (доставлені — факт, недоставлені — оцінка). Факт за обліком за той самий період: валовий ${fmt(ov.kpi.profit.value)} ₴, чистий ${fmt(ov.kpi.netProfit.value)} ₴ (опер. витрати ${fmt(ov.kpi.netProfit.opex)}, податки ${fmt(ov.kpi.netProfit.taxes)}) — те саме визначення, що у «Звітах».` },
+            hint: `Прогноз по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: сума замовлень мінус собівартість і комісії маркетплейсів (вручені — факт, ще в дорозі — оцінка за закупівлею і ставками комісій). Окремо — те, що вже проведено в обліку датою ${dmy(ov.from)}–${dmy(ov.to)} (продаж фіксується в момент вручення, тому сюди входять і давніші замовлення, вручені в цей період, і не входять свіжі, що ще їдуть): валовий ${fmt(ov.kpi.profit.value)} ₴, чистий ${fmt(ov.kpi.netProfit.value)} ₴ (опер. витрати ${fmt(ov.kpi.netProfit.opex)}, податки ${fmt(ov.kpi.netProfit.taxes)}) — як у «Звітах».` },
           { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,
             hint: 'Валовий прибуток ÷ сума замовлень періоду (та сама база — всі замовлення)' },
           { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, months: ov.monthly.orders, mFmt: (v: number) => fmt(v), color: 'var(--brand-blue)',
