@@ -3,6 +3,7 @@ import Link from 'next/link';
 import FinanceTabs from '../FinanceTabs';
 import { DualLineChart } from '../overview-charts';
 import { fetchAllRows } from '../../../../lib/db-paginate';
+import { summarizePL, PL_ACCOUNTS } from '../../../../lib/accounting/profit-rules';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -92,25 +93,26 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   let ledgerQuery = db
     .from('money_entries')
     .select('account_type, amount, doc_type, business_date')
-    .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
+    .in('account_type', PL_ACCOUNTS)
     .gte('business_date', prevFromDate);
   if (periodTo) ledgerQuery = ledgerQuery.lt('business_date', periodTo.toISOString().slice(0, 10));
   const { data: ledgerAllRows } = await ledgerQuery;
   const ledgerRows     = (ledgerAllRows ?? []).filter(r => r.business_date >= monthStartDate);
   const ledgerPrevRows = (ledgerAllRows ?? []).filter(r => r.business_date < monthStartDate);
 
-  const ledgerSum = (type: string) =>
-    ledgerRows.filter(r => r.account_type === type)
-      .reduce((s, r) => s + Number(r.amount), 0);
+  // Те саме визначення, що на «Огляді» й у «Звітах» (lib/accounting/profit-rules):
+  // валовий = виручка − COGS − витрати угод (комісії МП, еквайринг, доставка/збори
+  // НП). До 12.09 тут не рахувались еквайринг і збори НП за переказ наложки —
+  // картка розходилась з «Оглядом» на їхню суму (166 ₴ за вересень).
+  const pl = summarizePL(ledgerRows);
   const ledger = {
-    revenue:    -ledgerSum('revenue'),        // кредитовий рахунок → знак мінус
-    cogs:        ledgerSum('cogs'),
-    commission:  ledgerSum('marketplace_fee'),
-    // Доставка НП за наш рахунок (logistics ділиться з landed-cost закупівель → фільтр doc_type)
-    delivery:    ledgerRows.filter(r => r.account_type === 'logistics' && r.doc_type === 'delivery_cost')
-                   .reduce((s, r) => s + Number(r.amount), 0),
+    revenue:    pl.revenue,
+    cogs:       pl.cogs,
+    commission: pl.deal.marketplaceFee,
+    // еквайринг + доставка/збори НП — решта витрат угод
+    delivery:   pl.deal.total - pl.deal.marketplaceFee,
   };
-  const ledgerGross = ledger.revenue - ledger.cogs - ledger.commission - ledger.delivery;
+  const ledgerGross = pl.grossProfit;
   const prevLedgerRevenue = -ledgerPrevRows.filter(r => r.account_type === 'revenue')
     .reduce((s, r) => s + Number(r.amount), 0);
   const revFactDelta = prevLedgerRevenue > 0
@@ -508,8 +510,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           {
             label: `Доставлено · факт · ${curMonthLabel}`, value: `${fmt(ledgerGross)} ₴`,
             color: ledgerGross >= 0 ? '#15803D' : '#DC2626',
-            sub: `${factPct}% від виручки · виручка ${fmt(ledger.revenue)} ₴ · комісії −${fmt(ledger.commission)} ₴${ledger.delivery > 0 ? ` · доставка −${fmt(ledger.delivery)} ₴` : ''}`,
-            hint: 'Чистий прибуток з бухгалтерських проводок: виручка проведених РН − FIFO-собівартість − комісії маркетплейсів − доставка НП за наш рахунок. Ті самі цифри, що в P&L.',
+            sub: `${factPct}% від виручки · виручка ${fmt(ledger.revenue)} ₴ · комісії −${fmt(ledger.commission)} ₴${ledger.delivery > 0 ? ` · еквайринг і збори НП −${fmt(ledger.delivery)} ₴` : ''}`,
+            hint: 'Валовий прибуток з бухгалтерських проводок: виручка проведених РН − FIFO-собівартість − комісії маркетплейсів − еквайринг і збори НП. Те саме визначення і ті самі цифри, що «факт за обліком» на «Огляді» та у «Звітах».',
           },
         ].map(card => (
           <div key={card.label} className="fin-card fin-kpi">
