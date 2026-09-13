@@ -5,7 +5,7 @@ import { loadInTransitCommission } from '../../../lib/accounting/marketplace-tra
 import { getMonoLiveBalance } from '../../../lib/mono-balance';
 import { getNovapayLiveBalance, getNovapayRegistersCache } from '../../../lib/novapay-api';
 import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
-import { PL_ACCOUNTS, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
+import { PL_ACCOUNTS, classifyPLEntry, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -538,7 +538,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     Promise.all(chunk(estSkus, 200).map(c => db.from('product_stock').select('sku, price_cost').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
     Promise.all(chunk(estSkus, 200).map(c => db.from('products').select('sku, categories(prom_commission_pct, prom_commission_pct_econom, rozetka_commission_pct, epicentr_commission_pct)').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
     db.from('app_settings').select('key, value').in('key', ['prom_plan', 'prom_commission_pct', 'rozetka_commission_pct', 'epicentr_commission_pct']).then(r => r.data ?? []),
-    Promise.all(chunk(estIds, 150).map(c => db.from('money_entries').select('order_id, account_type, amount').in('account_type', ['cogs', 'marketplace_fee']).in('order_id', c).then(r => r.data ?? []))).then(a => a.flat()),
+    Promise.all(chunk(estIds, 150).map(c => db.from('money_entries').select('order_id, account_type, doc_type, amount').in('account_type', ['cogs', 'marketplace_fee', 'acquiring_fee', 'logistics']).in('order_id', c).then(r => r.data ?? []))).then(a => a.flat()),
   ]);
   const commCfg = Object.fromEntries(commSettings.map(s => [s.key, s.value]));
   // Дефолти — як у prom-sync/completion, щоб оцінка не розходилась із фактом
@@ -562,9 +562,18 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const costBySku = new Map(stockCostRows.map(r => [r.sku as string, Number(r.price_cost ?? 0)]));
   const factCogs = new Map<string, number>();
   const factFee  = new Map<string, number>();
-  for (const e of perOrderRows as { order_id: string; account_type: string; amount: number }[]) {
-    const m = e.account_type === 'cogs' ? factCogs : factFee;
-    m.set(e.order_id, (m.get(e.order_id) ?? 0) + Number(e.amount));
+  // Решта витрат угоди, уже проведених по замовленню: еквайринг і збори НП
+  // (доставка за наш рахунок, переказ наложки) — ті самі, що віднімає облік
+  // (classifyPLEntry → 'deal'). Без них «вже вручені» на «Огляді» були більші
+  // за факт у «Аналітиці» на суму цих зборів.
+  const factDealExtra = new Map<string, number>();
+  for (const e of perOrderRows as { order_id: string; account_type: string; doc_type: string | null; amount: number }[]) {
+    if (e.account_type === 'cogs' || e.account_type === 'marketplace_fee') {
+      const m = e.account_type === 'cogs' ? factCogs : factFee;
+      m.set(e.order_id, (m.get(e.order_id) ?? 0) + Number(e.amount));
+    } else if (classifyPLEntry(e.account_type, e.doc_type) === 'deal') {
+      factDealExtra.set(e.order_id, (factDealExtra.get(e.order_id) ?? 0) + Number(e.amount));
+    }
   }
   const orderMargin = (o: EstOrder): number => {
     const items = o.items ?? [];
@@ -577,7 +586,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       : ch
       ? items.reduce((s, i) => s + Number(i.price ?? 0) * Number(i.qty ?? 0) * ((ratesBySku.get(i.sku)?.[ch] ?? 0) / 100), 0)
       : 0;
-    return Number(o.total_price ?? 0) - cost - fee;
+    return Number(o.total_price ?? 0) - cost - fee - (factDealExtra.get(o.id) ?? 0);
   };
   const curProfitEst  = (curOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   // Розбивка для підказки картки: вручені (собівартість уже проведена) — факт, решта — прогноз

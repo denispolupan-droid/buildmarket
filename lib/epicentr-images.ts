@@ -29,8 +29,15 @@ export const jpegKeyFor = (rel: string) => `${EPICENTR_IMG_PREFIX}/${rel}.jpg`;
 
 const encodePath = (p: string) => p.split('/').map(encodeURIComponent).join('/');
 
-/** Публічна статична адреса JPEG (через rewrite /img/products → R2). */
-export const staticJpegUrl = (rel: string) => `${SITE_URL()}/img/products/${encodePath(jpegKeyFor(rel))}`;
+/**
+ * Публічна статична адреса JPEG — напряму з R2 (власний домен на Cloudflare), без
+ * сайту й Vercel посередині: навіть статичні файли через rewrite кабінет підтягував
+ * вибірково (13.09.2026), а що бачить сервер Епіцентру на шляху через Vercel, з
+ * наших логів не видно. Без R2_PUBLIC_URL — через rewrite /img/products.
+ */
+export const staticJpegUrl = (rel: string) => process.env.R2_PUBLIC_URL
+  ? `${process.env.R2_PUBLIC_URL}/${encodePath(jpegKeyFor(rel))}`
+  : `${SITE_URL()}/img/products/${encodePath(jpegKeyFor(rel))}`;
 
 /** Запасна адреса — конвертація на льоту, поки статичного файлу ще немає. */
 export const dynamicJpegUrl = (rel: string) => `${SITE_URL()}/api/epicentr/img/${encodePath(rel)}.jpg`;
