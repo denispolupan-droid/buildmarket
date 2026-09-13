@@ -35,7 +35,8 @@ export type OverviewData = {
     netProfit: { value: number; prev: number; opex: number; taxes: number };   // чистий факт = валовий − опер. витрати − податки
     /* Очікуваний валовий прибуток по ВСІХ замовленнях періоду (та сама база,
        що «Замовлення · сума»): доставлені — факт з леджера, решта — оцінка */
-    profitEst: { value: number; prev: number };
+    /** delivered — частина value по вже вручених (є проведена собівартість), forecast — по решті */
+    profitEst: { value: number; prev: number; delivered: number; forecast: number };
     margin: { value: number | null; prev: number | null };      // від оцінки (profitEst / orderSum)
     orders: KpiSeries;    // к-ть замовлень (когорта періоду, без скасованих)
     orderSum: { value: number; prev: number };  // сума створених замовлень (оцінка до доставки)
@@ -579,6 +580,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     return Number(o.total_price ?? 0) - cost - fee;
   };
   const curProfitEst  = (curOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
+  // Розбивка для підказки картки: вручені (собівартість уже проведена) — факт, решта — прогноз
+  const curProfitDelivered = (curOrders as EstOrder[]).filter(o => factCogs.has(o.id)).reduce((s, o) => s + orderMargin(o), 0);
   const prevProfitEst = (prevOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   const prevOrdSum    = sum(prevOrders);
 
@@ -734,7 +737,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       revenue:  { value: curRev, prev: prevRev, daily: revDaily, prevDaily: prevRevDaily },
       profit:   { value: curProfit, prev: prevProfit, daily: profDaily, prevDaily: prevProfDaily },
       netProfit: { value: curPL.netProfit, prev: prevPL.netProfit, opex: curPL.opex.total, taxes: curPL.taxes },
-      profitEst: { value: curProfitEst, prev: prevProfitEst },
+      profitEst: { value: curProfitEst, prev: prevProfitEst, delivered: curProfitDelivered, forecast: curProfitEst - curProfitDelivered },
       margin:   { value: pct(curProfitEst, curOrdSum), prev: pct(prevProfitEst, prevOrdSum) },
       orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },
       orderSum: { value: curOrdSum, prev: prevOrdSum },
