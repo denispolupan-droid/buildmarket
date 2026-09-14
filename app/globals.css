@@ -1943,28 +1943,46 @@ input, select { font-family: inherit; }
   gap: 20px;
 }
 
+.cabinet-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
 @media (max-width: 900px) {
   .cabinet-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .cabinet-grid-4 { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
+  /* Колонка замість wrap: інакше рядки flex-wrap розтягуються на min-height 100vh
+     і сайдбар займає весь екран, а контент з'їжджає вниз. */
+  .cabinet-layout {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+  }
   .cabinet-sidebar {
     width: 100%;
     height: auto;
     position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
     padding: 10px;
-    gap: 4px;
-    align-items: center;
+    gap: 8px;
   }
   .cabinet-sidebar-logo {
-    width: 100%;
-    padding: 8px 10px 6px !important;
+    padding: 4px 10px 0 !important;
     border-bottom: none !important;
   }
   .cabinet-sidebar-actions {
-    display: none !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+  }
+  .cabinet-sidebar-actions a {
+    flex: 1;
+    min-width: 0;
+    height: 36px !important;
+    white-space: nowrap;
   }
   .cabinet-sidebar-nav {
     display: flex !important;
@@ -1974,6 +1992,7 @@ input, select { font-family: inherit; }
     gap: 2px !important;
     padding: 0 !important;
     width: 100%;
+    flex: none !important;
     scrollbar-width: none;
   }
   .cabinet-sidebar-nav::-webkit-scrollbar { display: none; }
@@ -1994,6 +2013,44 @@ input, select { font-family: inherit; }
   }
   .cabinet-grid-3 { grid-template-columns: 1fr; }
   .cabinet-grid-2 { grid-template-columns: 1fr; }
+
+  /* Нове замовлення: рядок товару — назва на всю ширину, під нею к-сть і ціни з підписами */
+  .do-items-head { display: none !important; }
+  .do-items-row {
+    grid-template-columns: 96px 1fr 1fr 28px !important;
+    row-gap: 6px !important;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .do-items-row > :nth-child(1) { grid-column: 1 / -1; }
+  .do-items-row > :nth-child(2) { display: none; }
+  .do-items-row > [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .do-items-total { border-bottom: none; }
+  .do-name-grid { grid-template-columns: 1fr !important; }
+
+  /* Мої замовлення: рядок-картка */
+  .co-list-head { display: none !important; }
+  .co-list-row {
+    grid-template-columns: 1fr auto !important;
+    row-gap: 6px;
+    padding: 12px 16px !important;
+  }
+  .co-list-row > :nth-child(1) { grid-column: 1; grid-row: 1; }
+  .co-list-row > :nth-child(3) { grid-column: 2; grid-row: 1; text-align: right; }
+  .co-list-row > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; padding-right: 0 !important; }
+  .co-list-row > :nth-child(4) { grid-column: 1; grid-row: 3; }
+  .co-list-row > :nth-child(5) { grid-column: 2; grid-row: 3; }
+  .co-list-row > :nth-child(6) { display: none !important; }
+
+  .co-detail-items { grid-template-columns: 1fr 36px 72px 80px !important; }
 }
 
 

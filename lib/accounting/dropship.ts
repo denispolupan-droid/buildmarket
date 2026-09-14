@@ -21,6 +21,8 @@ import { createDocument, confirmDocument } from './documents';
 import { resolveOrderFulfillment } from './fulfillment';
 import { createReservation, getOrderReservations } from './reservations';
 import type { OrderItem } from '../../types';
+import { saleLinePrice } from './sale-party';
+import { postPartnerSaleOffset, reversePartnerSaleOffset } from './partner-ledger';
 
 // ── Информация о выполнении заказа ────────────────────────────────────────────
 
@@ -368,7 +370,7 @@ export async function createSaleDraft(
       return {
         sku:              item.sku,
         qty:              item.qty,
-        price:            item.price,
+        price:            saleLinePrice(input.channel_code, item as OrderItem & { cost_price?: number }),
         cost_price:       costMap.get(item.sku) ?? 0,
         fulfillment_type: source?.fulfillment_type ?? 'dropship',
         warehouse_id:     source?.warehouse_id,
@@ -483,9 +485,12 @@ export async function syncSaleDraftLines(
   const [{ data: warehouse }, { data: stockRows }, { data: order }] = await Promise.all([
     db.from('warehouses').select('id').eq('is_default', true).single(),
     db.from('product_stock').select('sku, price_cost').in('sku', skus),
-    db.from('orders').select('channel_code').eq('id', orderId).single(),
+    db.from('orders').select('channel_code, items').eq('id', orderId).single(),
   ]);
   const costMap = new Map((stockRows ?? []).map(r => [r.sku, r.price_cost ?? 0]));
+  // Дропшип: ціна рядка РН — закупка партнера з рядків замовлення (див. saleLinePrice)
+  const partnerCost = new Map(((order?.items ?? []) as { sku: string; cost_price?: number }[])
+    .map(i => [i.sku, i.cost_price]));
 
   const plan = await resolveOrderFulfillment(
     items.map(i => ({ sku: i.sku, qty: i.qty })),
@@ -498,7 +503,7 @@ export async function syncSaleDraftLines(
       document_id:      docId,
       sku:              item.sku,
       qty:              item.qty,
-      price:            item.price,
+      price:            saleLinePrice(order?.channel_code, { price: item.price, cost_price: partnerCost.get(item.sku) }),
       cost_price:       costMap.get(item.sku) ?? 0,
       fulfillment_type: source?.fulfillment_type ?? 'dropship',
       warehouse_id:     source?.warehouse_id ?? null,
@@ -655,6 +660,9 @@ export async function postSaleDoc(
   const by = opts.confirmed_by ?? 'system';
   await confirmDocument(docId, by);
 
+  // Дропшип-партнер заплатив закупку наперед з балансу — закриваємо борг продажу його авансом.
+  await postPartnerSaleOffset(docId, doc.order_id ?? null, { businessDate: opts.business_date, createdBy: by });
+
   const { data: lines } = await db
     .from('acc_document_lines')
     .select('sku, qty, cost_price, fulfillment_type, supplier_id')
@@ -709,6 +717,9 @@ export async function reverseDropshipLedgerExtras(params: {
   createdBy?:  string;
 }): Promise<void> {
   const db = createServiceClient();
+
+  // Залік балансу дропшип-партнера (partner-ledger) — теж поза потоком документа.
+  await reversePartnerSaleOffset(params.docId, { createdBy: params.createdBy });
 
   const { data: entries } = await db
     .from('money_entries')

@@ -33,6 +33,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!PRICEABLE_STATUSES.includes(order.status)) {
     return NextResponse.json({ error: 'Тип цін можна змінювати лише до відгрузки' }, { status: 409 });
   }
+  // Дропшип: price у рядках — ціна партнера для кінцевого клієнта (накладений платіж),
+  // а закупка вже списана з балансу партнера. Перерахунок затер би суму наложки.
+  if (order.channel_code === 'dropship') {
+    return NextResponse.json({ error: 'Ціни дропшип-замовлення задає партнер у кабінеті' }, { status: 409 });
+  }
   if (LOCKED_CHANNELS.includes(order.channel_code ?? '')) {
     return NextResponse.json({ error: 'Ціни маркетплейс-замовлення зафіксовані маркетплейсом' }, { status: 409 });
   }

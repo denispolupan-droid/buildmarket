@@ -356,7 +356,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     // останнього реєстру виплат = НоваПей ще не виплатила»
     db.from('orders').select('order_number, total_price, delivered_at')
       .eq('status', 'delivered').eq('payment_type', 'cod').in('delivery_type', ['nova', 'nova_poshta'])
-      .neq('channel_code', 'dropship')
       .gte('delivered_at', new Date(Date.now() - 14 * 86400000).toISOString())
       .then(r => r.data ?? []),
     // Вручено, гроші тримає площадка (службові дебітори Варіанту B) — по замовленнях,

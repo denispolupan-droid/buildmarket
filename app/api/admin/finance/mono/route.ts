@@ -5,6 +5,7 @@ import { recordTxn, recordSupplierPayment, type AccountType } from '../../../../
 import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '../../../../../lib/mono-ingest';
 import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';
 import { allocateRzPayPayouts } from '../../../../../lib/rozetkapay-allocate';
+import { recordPartnerBankTopup, recordPartnerBankPayout } from '../../../../../lib/accounting/partner-ledger';
 
 // Виписка Mono: документи (списання і незіставлені надходження) і категоризація людиною.
 // Списання = DR <витрата | novapay | cash | supplier | owner | taxes> / CR bank;
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
-  const body = await req.json().catch(() => ({})) as { action?: string; id?: string; category?: string; description?: string; note?: string; supplierId?: string; orderNumber?: string };
+  const body = await req.json().catch(() => ({})) as { action?: string; id?: string; category?: string; description?: string; note?: string; supplierId?: string; orderNumber?: string; partnerId?: string };
   const by = auth.user.email ?? 'admin';
 
   if (body.action === 'refresh') {
@@ -74,6 +75,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, orderNumber, amountPaid: res.amountPaid, isFullyPaid: res.isFullyPaid });
   }
   const descr = (body.description ?? '').trim() || `${row.comment ?? row.description ?? ''} — ${row.counter_name ?? ''}`.replace(/ — $/, '').trim();
+
+  // Дропшип-партнер: поповнення балансу / виплата з балансу (рахунок partner у леджері)
+  if (category === 'partner-topup' || category === 'partner-payout') {
+    const partnerId = String(body.partnerId ?? '');
+    if (!partnerId) return NextResponse.json({ error: 'Оберіть партнера' }, { status: 400 });
+    const { data: partner } = await db.from('customers').select('id, name').eq('id', partnerId).maybeSingle();
+    if (!partner) return NextResponse.json({ error: 'Партнера не знайдено' }, { status: 404 });
+    if ((category === 'partner-topup') !== (row.direction === 'in')) {
+      return NextResponse.json({ error: category === 'partner-topup' ? 'Поповнення — лише для надходжень' : 'Виплата — лише для списань' }, { status: 400 });
+    }
+    try {
+      const params = { customerId: partner.id, amount, monoTxnId: row.id, businessDate: date, createdBy: by,
+        description: (body.description ?? '').trim() || `${category === 'partner-topup' ? 'Поповнення балансу' : 'Виплата'} — ${partner.name}` };
+      const partnerTxnId = category === 'partner-topup'
+        ? (await recordPartnerBankTopup(params)).txnId
+        : await recordPartnerBankPayout(params);
+      await db.from('mono_bank_txns').update({ status: 'posted', category: `${category}:${partner.id}`, txn_id: partnerTxnId, note: body.note ?? null, posted_at: new Date().toISOString(), posted_by: by }).eq('id', row.id);
+      return NextResponse.json({ ok: true, txnId: partnerTxnId });
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });
+    }
+  }
+
   let txnId: string;
   try {
     if (row.direction === 'in') {

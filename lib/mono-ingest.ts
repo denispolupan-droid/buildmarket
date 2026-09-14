@@ -194,6 +194,18 @@ export async function ingestMonoTxn(
       covered = (cardOrders ?? []).some(o => Math.abs(Number(o.total_price) - gross) < 0.01);
     }
     if (!covered) {
+      // Поповнення балансу дропшип-партнера карткою — теж еквайринг, але не замовлення.
+      const since = new Date((item.time - 3 * 24 * 60 * 60) * 1000).toISOString();
+      const { data: topups } = await db
+        .from('partner_balance_transactions')
+        .select('amount')
+        .eq('tx_type', 'top_up')
+        .like('external_ref', 'mono:topup:%')
+        .gte('created_at', since)
+        .limit(200);
+      covered = (topups ?? []).some(t => Math.abs(Number(t.amount) - gross) < 0.01);
+    }
+    if (!covered) {
       alertAdmin(
         `🚨 Еквайринг ${gross.toFixed(2)} ₴ — карткового замовлення на цю суму НЕМАЄ`,
         `Покупець оплатив на сайті, а замовлення не створилось. Подивіться pending_card_orders за цей день і оформіть вручну. ${item.comment ?? ''}`.trim(),

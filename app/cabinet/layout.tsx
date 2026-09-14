@@ -19,7 +19,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
   if (role !== 'dropship') redirect('/account');
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-page)', flexDirection: 'row', flexWrap: 'wrap' }}>
+    <div className="cabinet-layout" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-page)', flexDirection: 'row', flexWrap: 'wrap' }}>
       <CabinetSidebar />
       <main className="cabinet-layout-main" style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
         {children}

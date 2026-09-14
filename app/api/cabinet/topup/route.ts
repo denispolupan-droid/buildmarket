@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { getRole } from '../../../../lib/user-role';
+import { requireCustomer } from '../../../../lib/auth-guard';
 import { getMonoAcquiringToken } from '../../../../lib/mono-config';
 
 const serviceClient = createClient(
@@ -11,16 +10,15 @@ const serviceClient = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const { data: { user } } = await supabase.auth.getUser();
-    const role = getRole(user);
-    if (!user || (role !== 'dropship' && role !== 'wholesale')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Поповнення балансу є лише в кабінеті дропшипера — оптовику баланс не потрібен.
+    const auth = await requireCustomer('dropship');
+    if (!auth.ok) return auth.response;
+    const user = auth.user;
 
-    const { amount } = await req.json();
-    if (!amount || amount < 500) {
-      return NextResponse.json({ error: 'Мінімальна сума поповнення — 500 ₴' }, { status: 400 });
+    const body = await req.json().catch(() => null) as { amount?: unknown } | null;
+    const amount = Number(body?.amount);
+    if (!Number.isFinite(amount) || amount < 500 || amount > 200000) {
+      return NextResponse.json({ error: 'Сума поповнення — від 500 до 200 000 ₴' }, { status: 400 });
     }
 
     const { data: customer } = await serviceClient

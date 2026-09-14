@@ -1,15 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { PARTNER_TX_LABELS } from '../../../lib/cabinet-order-status';
 
 type Transaction = { id: number; tx_type: string; amount: number; balance_after: number | null; description: string; created_at: string };
 type PayoutRequest = { id: string; amount: number; method: string; status: string; requested_at: string; notes: string | null };
 
-const TX_LABELS: Record<string, string> = {
-  top_up: 'Поповнення', charge: 'Списання (замовлення)', cod_credit: 'Нарахування COD',
-  np_fee: 'Комісія НП', return_refund: 'Повернення товару', return_fee: 'Зворотна доставка',
-  payout: 'Виплата', goods_offset: 'Товарний залік', adjustment: 'Коригування',
-};
+const TX_LABELS = PARTNER_TX_LABELS;
 
 const PAYOUT_STATUS: Record<string, { label: string; color: string }> = {
   pending:  { label: 'Очікує',    color: '#B45309' },
@@ -137,7 +134,7 @@ export default function BalanceClient({ customerId, transactions, payoutRequests
                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {r.method === 'bank' ? 'Банківський переказ' : 'Товарний залік'} — {r.amount} ₴
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(r.requested_at).toLocaleDateString('uk-UA')}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(r.requested_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}</div>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: st.color }}>{st.label}</span>
               </div>
@@ -159,7 +156,7 @@ export default function BalanceClient({ customerId, transactions, payoutRequests
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{TX_LABELS[tx.tx_type] ?? tx.tx_type}</div>
                 {tx.description && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{tx.description}</div>}
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(tx.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(tx.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: tx.amount >= 0 ? '#15803D' : '#DC2626' }}>

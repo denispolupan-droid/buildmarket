@@ -1,56 +1,59 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { getRole } from '../../../../lib/user-role';
+import { requireCustomer } from '../../../../lib/auth-guard';
+import { fetchAllRows } from '../../../../lib/db-paginate';
+import { dropshipOrderable, dropshipItemName } from '../../../../lib/dropship-order';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export async function GET() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || getRole(user) !== 'dropship') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+type ProductRow = { sku: string; name: string; brand: string; category_slug: string | null; volume: string | null; min_order: number | null; is_active: boolean };
+type StockRow   = { sku: string; price_drop: number | null; price_retail: number | null; stock_status: string | null };
 
-  const [{ data: products }, { data: stock }, { data: categories }] = await Promise.all([
-    serviceClient
+export async function GET() {
+  const auth = await requireCustomer('dropship');
+  if (!auth.ok) return auth.response;
+
+  // Пагінація обов'язкова: без неї PostgREST мовчки віддає лише 1000 рядків,
+  // і частина товарів випадала б із прайсу без жодної помилки.
+  const [products, stock, { data: categories }] = await Promise.all([
+    fetchAllRows<ProductRow>((f, t) => serviceClient
       .from('products')
-      .select('sku, name, brand, category_slug, volume, min_order')
+      .select('sku, name, brand, category_slug, volume, min_order, is_active')
       .eq('is_active', true)
-      .order('sort_order'),
-    serviceClient
+      .order('sort_order')
+      .order('sku')
+      .range(f, t)),
+    fetchAllRows<StockRow>((f, t) => serviceClient
       .from('product_stock')
-      .select('sku, price_drop, price_retail, stock_status'),
-    serviceClient
-      .from('categories')
-      .select('slug, name'),
+      .select('sku, price_drop, price_retail, stock_status')
+      .order('sku')
+      .range(f, t)),
+    serviceClient.from('categories').select('slug, name').limit(1000),
   ]);
 
-  const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
+  const stockMap = new Map(stock.map(s => [s.sku, s]));
   const catMap   = new Map((categories ?? []).map(c => [c.slug, c.name]));
 
-  const rows = (products ?? [])
-    .filter(p => {
-      const s = stockMap.get(p.sku);
-      return s?.stock_status === 'in_stock' && (s?.price_drop ?? 0) > 0;
-    })
+  const rows = products
     .map(p => {
-      const s = stockMap.get(p.sku)!;
-      return [
-        p.sku,
-        p.brand,
-        p.name + (p.volume ? ` ${p.volume}` : ''),
-        catMap.get(p.category_slug ?? '') ?? '',
-        s.price_drop,
-        s.price_retail ?? '',
-        p.min_order ?? 1,
-        'В наявності',
-      ];
-    });
+      const s = stockMap.get(p.sku);
+      return { p, s, item: { ...p, stock_status: s?.stock_status ?? null, price_drop: s?.price_drop ?? null } };
+    })
+    .filter(({ item }) => dropshipOrderable(item))
+    .map(({ p, s, item }) => [
+      p.sku,
+      p.brand,
+      dropshipItemName(item),
+      catMap.get(p.category_slug ?? '') ?? '',
+      Number(s!.price_drop),
+      s!.price_retail ?? '',
+      p.min_order ?? 1,
+      'В наявності',
+    ]);
 
   const headers = [
     'Артикул',
@@ -71,16 +74,9 @@ export async function GET() {
     { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 12 },
   ];
 
-  // Жирний заголовок
-  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1');
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
-    if (cell) cell.s = { font: { bold: true } };
-  }
-
   XLSX.utils.book_append_sheet(wb, ws, 'Прайс-лист');
 
-  const date = new Date().toISOString().slice(0, 10);
+  const date = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
   const buf  = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
   return new NextResponse(buf, {

@@ -3,19 +3,13 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
+import { cabinetOrderStatus } from '../../../../lib/cabinet-order-status';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  new:       { label: 'Нове',         color: '#1E3A5F', bg: '#EFF4FF' },
-  confirmed: { label: 'Підтверджено', color: '#15803D', bg: '#DCFCE7' },
-  shipped:   { label: 'Відправлено',  color: '#B45309', bg: '#FEF3C7' },
-  delivered: { label: 'Доставлено',   color: '#15803D', bg: '#DCFCE7' },
-  cancelled: { label: 'Скасовано',    color: '#DC2626', bg: '#FEE2E2' },
-};
 
 const card: React.CSSProperties = {
   background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -49,22 +43,23 @@ export default async function CabinetOrderDetailPage({
 
   const { data: order } = await serviceClient
     .from('orders')
-    .select('*')
+    .select('id, order_number, status, items, contact, phone, delivery_city_name, delivery_address, payment_type, tracking_number, comment, created_at')
     .eq('id', id)
     .eq('partner_code', customer.id)
     .single();
 
   if (!order) notFound();
 
-  const st = STATUS[order.status] ?? { label: order.status, color: '#64748B', bg: '#F1F5F9' };
-  const items = (order.items ?? []) as { name: string; qty: number; price: number; sku?: string }[];
+  const st = cabinetOrderStatus(order.status);
+  const items = (order.items ?? []) as { name: string; qty: number; price: number; cost_price?: number; sku?: string }[];
   const totalSell = items.reduce((s, i) => s + (i.price ?? 0) * i.qty, 0);
+  const totalCost = items.reduce((s, i) => s + (i.cost_price ?? 0) * i.qty, 0);
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '760px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
         <Link href="/cabinet/orders" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '13px', textDecoration: 'none' }}>
           <ChevronLeft size={15} /> Назад
         </Link>
@@ -80,14 +75,14 @@ export default async function CabinetOrderDetailPage({
       <div style={card}>
         <div style={cardHeader}>Товари</div>
         <div style={{ padding: '0 20px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px', gap: '8px', padding: '8px 0', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>
+          <div className="co-detail-items" style={{ display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px', gap: '8px', padding: '8px 0', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>
             <span>Назва</span>
             <span style={{ textAlign: 'center' }}>К-сть</span>
             <span style={{ textAlign: 'right' }}>Ціна</span>
             <span style={{ textAlign: 'right' }}>Сума</span>
           </div>
           {items.map((item, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px', gap: '8px', padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
+            <div key={i} className="co-detail-items" style={{ display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px', gap: '8px', padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{item.name}</div>
                 {item.sku && <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{item.sku}</div>}
@@ -99,8 +94,15 @@ export default async function CabinetOrderDetailPage({
               </div>
             </div>
           ))}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 0', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Разом: {totalSell.toFixed(2)} ₴
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', padding: '10px 0' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              {order.payment_type === 'cod' ? 'Накладений платіж' : 'Сума для клієнта'}: {totalSell.toFixed(2)} ₴
+            </div>
+            {totalCost > 0 && (
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Списано з балансу (закупка): {totalCost.toFixed(2)} ₴
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -129,7 +131,7 @@ export default async function CabinetOrderDetailPage({
         <div style={card}>
           <div style={cardHeader}>ТТН Нової Пошти</div>
           <div style={{ padding: '16px 20px' }}>
-            <div style={{ fontSize: '28px', fontWeight: 800, color: '#1E3A5F', letterSpacing: '1px', marginBottom: '6px' }}>
+            <div style={{ fontSize: '28px', fontWeight: 800, color: '#1E3A5F', letterSpacing: '1px', marginBottom: '6px', wordBreak: 'break-all' }}>
               {order.tracking_number}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>

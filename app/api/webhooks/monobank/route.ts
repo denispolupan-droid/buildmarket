@@ -6,6 +6,7 @@ import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../..
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { recordCustomerPayment } from '../../../../lib/accounting/money';
 import { resolveSaleDebitParty } from '../../../../lib/accounting/documents';
+import { recordPartnerCardTopup } from '../../../../lib/accounting/partner-ledger';
 import { verifyMonoSignature } from '../../../../lib/mono-signature';
 import { alertAdmin } from '../../../../lib/alert';
 import { getMonoAcquiringToken } from '../../../../lib/mono-config';
@@ -123,6 +124,20 @@ export async function POST(req: NextRequest) {
         });
         return NextResponse.json({ error: 'top-up failed' }, { status: 500 });
       }
+      // Облік: гроші на еквайрингу, джерело — аванс партнера. Без цієї проводки
+      // покриття еквайрингу від Monobank закривало б рахунок, на який нічого не приходило.
+      try {
+        await recordPartnerCardTopup({ customerId, amount: amountUah, invoiceId: String(body.invoiceId ?? reference) });
+      } catch (err) {
+        alertAdmin('Monobank: поповнення партнера зараховано на баланс, але не проведено в облік', {
+          customerId, amount: amountUah, reference, error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    } else {
+      // Гроші з картки вже списані — мовчати не можна, зарахувати треба вручну.
+      alertAdmin('Monobank: оплачено поповнення, але партнера не знайдено — зарахуйте вручну', {
+        customerId, amount: amountUah, reference, invoiceId: body.invoiceId ?? null,
+      });
     }
     return NextResponse.json({ ok: true });
   }

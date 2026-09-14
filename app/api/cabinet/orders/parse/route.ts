@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
-import { getRole } from '../../../../../lib/user-role';
-import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { requireCustomer } from '../../../../../lib/auth-guard';
 import { DROPSHIP_MIN } from '../../../../../lib/site';
+import { getDropshipCustomer, loadDropshipCatalog } from '../../../../../lib/dropship-order-create';
+import { validateDropshipLine, dropshipParcelKey } from '../../../../../lib/dropship-order';
 
 // xlsx (SheetJS 0.18.x) має відомі CVE при парсингу недовірених файлів; обмежуємо розмір,
 // щоб зняти вектор zip-bomb / OOM від завантажень партнерів.
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_ROWS = 300;
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -17,24 +18,25 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-async function npPost(modelName: string, calledMethod: string, props: object) {
+// Ключ НП — той самий пріоритет, що в адмінці: app_settings, потім env.
+async function npApiKey(): Promise<string> {
+  const { data } = await serviceClient.from('app_settings').select('value').eq('key', 'np_api_key').maybeSingle();
+  return data?.value || process.env.NOVA_POSHTA_API_KEY || '';
+}
+
+async function npPost(apiKey: string, modelName: string, calledMethod: string, props: object) {
   const res = await fetch(NP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      apiKey:           process.env.NOVA_POSHTA_API_KEY,
-      modelName,
-      calledMethod,
-      methodProperties: props,
-    }),
+    body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties: props }),
   });
   const data = await res.json();
   return data.success ? data.data : [];
 }
 
 // Пошук міста за назвою → повертає { ref, name }
-async function findCity(name: string): Promise<{ ref: string; name: string } | null> {
-  const results = await npPost('Address', 'searchSettlements', {
+async function findCity(apiKey: string, name: string): Promise<{ ref: string; name: string } | null> {
+  const results = await npPost(apiKey, 'Address', 'searchSettlements', {
     CityName: name.trim(),
     Limit:    5,
     Page:     1,
@@ -47,8 +49,8 @@ async function findCity(name: string): Promise<{ ref: string; name: string } | n
 }
 
 // Пошук відділення за ref міста + номером відділення
-async function findWarehouse(cityRef: string, branchNum: string): Promise<{ ref: string; name: string } | null> {
-  const results = await npPost('AddressGeneral', 'getWarehouses', {
+async function findWarehouse(apiKey: string, cityRef: string, branchNum: string): Promise<{ ref: string; name: string } | null> {
+  const results = await npPost(apiKey, 'AddressGeneral', 'getWarehouses', {
     SettlementRef:     cityRef,
     WarehouseId:       branchNum.trim(),
     CategoryOfWarehouse: 'Branch',
@@ -58,23 +60,37 @@ async function findWarehouse(cityRef: string, branchNum: string): Promise<{ ref:
   return wh ? { ref: wh.Ref, name: wh.ShortAddress ?? wh.Description } : null;
 }
 
+type ParsedRow = {
+  row_num:        number;
+  sku:            string;
+  product_name:   string;
+  qty:            number;
+  cost_price:     number;
+  selling_price:  number;
+  last_name:      string;
+  first_name:     string;
+  mid_name:       string;
+  phone:          string;
+  city_name:      string;
+  city_ref:       string;
+  warehouse_name: string;
+  warehouse_ref:  string;
+  branch_number:  string;
+  parcel_key:     string;
+  status:         'valid' | 'error';
+  errors:         string[];
+};
+
 export async function POST(req: NextRequest) {
-  // ── Auth ─────────────────────────────────────────────────────────────────────
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || getRole(user) !== 'dropship') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireCustomer('dropship');
+  if (!auth.ok) return auth.response;
 
-  const { data: customer } = await serviceClient
-    .from('customers')
-    .select('id, balance, balance_held')
-    .eq('auth_user_id', user.id)
-    .single();
-
+  const customer = await getDropshipCustomer(serviceClient, auth.user.id);
   if (!customer) return NextResponse.json({ error: 'Партнера не знайдено' }, { status: 404 });
 
-  const balanceAvail = Number(customer.balance) - Number(customer.balance_held);
+  const { data: bal } = await serviceClient
+    .from('customers').select('balance, balance_held').eq('id', customer.id).single();
+  const balanceAvail = Number(bal?.balance ?? 0) - Number(bal?.balance_held ?? 0);
 
   // ── Читаємо файл ──────────────────────────────────────────────────────────────
   const formData = await req.formData();
@@ -95,98 +111,62 @@ export async function POST(req: NextRequest) {
   if (!dataRows.length) {
     return NextResponse.json({ error: 'Файл порожній або містить тільки заголовки' }, { status: 400 });
   }
+  if (dataRows.length > MAX_ROWS) {
+    return NextResponse.json({ error: `Забагато рядків (${dataRows.length}). Максимум — ${MAX_ROWS} за один файл.` }, { status: 400 });
+  }
 
-  // ── Завантажуємо каталог SKU + ціни ───────────────────────────────────────────
-  // Пагінація: без range() каталог > 1000 SKU мовчки обрізався б і частина товарів
-  // партнера позначалась би як "не знайдено".
-  const stockData = await fetchAllRows<{ sku: string; price_drop: number | null; stock_status: string }>((f, t) => serviceClient
-    .from('product_stock')
-    .select('sku, price_drop, stock_status')
-    .range(f, t));
-  const productsData = await fetchAllRows<{ sku: string; name: string; brand: string }>((f, t) => serviceClient
-    .from('products')
-    .select('sku, name, brand')
-    .range(f, t));
+  const apiKey = await npApiKey();
+  if (!apiKey) return NextResponse.json({ error: 'Сервіс Нової Пошти тимчасово недоступний' }, { status: 503 });
 
-  const stockMap   = new Map(stockData.map(s => [s.sku, s]));
-  const productMap = new Map(productsData.map(p => [p.sku, p]));
+  const catalog = await loadDropshipCatalog(serviceClient, dataRows.map((r: unknown[]) => String(r[0] ?? '').trim()));
 
   // ── Батч-пошук міст (дедуплікація) ────────────────────────────────────────────
   const cityNames = [...new Set(dataRows.map((r: unknown[]) => String(r[7] ?? '').trim()).filter(Boolean))];
   const cityCache = new Map<string, { ref: string; name: string } | null>();
   await Promise.all(cityNames.map(async n => {
-    cityCache.set(n.toLowerCase(), await findCity(n));
+    cityCache.set(n.toLowerCase(), await findCity(apiKey, n));
   }));
+  const whCache = new Map<string, { ref: string; name: string } | null>();
 
   // ── Обробка рядків ────────────────────────────────────────────────────────────
-  type ParsedRow = {
-    row_num:      number;
-    sku:          string;
-    product_name: string;
-    qty:          number;
-    cost_price:   number;
-    selling_price: number;
-    last_name:    string;
-    first_name:   string;
-    mid_name:     string;
-    phone:        string;
-    city_name:    string;
-    city_ref:     string;
-    warehouse_name: string;
-    warehouse_ref:  string;
-    branch_number:  string;
-    status:       'valid' | 'error';
-    errors:       string[];
-  };
-
   const parsed: ParsedRow[] = [];
 
   for (let i = 0; i < dataRows.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const r: any[] = dataRows[i] as any[];
+    const r = dataRows[i] as unknown[];
     const rowNum  = i + 2; // +2 бо рядок 1 = заголовок
     const errors: string[] = [];
 
-    const sku         = String(r[0] ?? '').trim();
-    const qty         = parseInt(r[1] ?? '1') || 1;
-    const sellingPrice = parseFloat(r[2] ?? '0') || 0;
-    const lastName    = String(r[3] ?? '').trim();
-    const firstName   = String(r[4] ?? '').trim();
-    const midName     = String(r[5] ?? '').trim();
-    const phone       = String(r[6] ?? '').trim();
-    const cityName    = String(r[7] ?? '').trim();
-    const branchNum   = String(r[8] ?? '').trim();
+    const cell = (idx: number) => String(r[idx] ?? '').trim();
+    const sku          = cell(0);
+    const qtyRaw       = cell(1);
+    const qty          = qtyRaw === '' ? 1 : Number(qtyRaw.replace(',', '.'));
+    const sellingPrice = Number(cell(2).replace(/\s/g, '').replace(',', '.'));
+    const lastName     = cell(3);
+    const firstName    = cell(4);
+    const midName      = cell(5);
+    const phone        = cell(6);
+    const cityName     = cell(7);
+    const branchNum    = cell(8);
 
-    // Валідація полів
     if (!sku)        errors.push('Артикул порожній');
     if (!lastName)   errors.push('Прізвище порожнє');
     if (!firstName)  errors.push("Ім'я порожнє");
-    if (!phone)      errors.push('Телефон порожній');
+    if (phone.replace(/\D/g, '').length < 10) errors.push('Телефон порожній або неповний');
     if (!cityName)   errors.push('Місто порожнє');
     if (!branchNum)  errors.push('Відділення порожнє');
-    if (sellingPrice <= 0) errors.push('Вкажіть вашу ціну > 0');
 
-    // Перевірка SKU
-    const stock   = stockMap.get(sku);
-    const product = productMap.get(sku);
-    if (!product && sku) errors.push(`Артикул "${sku}" не знайдено в каталозі`);
-    else if (stock?.stock_status === 'out_of_stock') errors.push(`"${sku}" немає в наявності`);
-
-    const costPrice = stock?.price_drop ?? 0;
-
-    // Мінімум — на рядок, бо кожен рядок стане окремою посилкою. Ловимо його
-    // тут, у прев'ю, а не на підтвердженні: інакше партнер бачить «10 рядків
-    // готово», тисне кнопку й отримує помилки по половині файлу.
-    if (costPrice > 0 && costPrice * qty < DROPSHIP_MIN) {
-      errors.push(`Мінімальна сума замовлення — ${DROPSHIP_MIN} ₴, у рядку ${(costPrice * qty).toFixed(2)} ₴`);
+    // Товар, кількість, ціна — та сама перевірка, що й на створенні замовлення.
+    const product = catalog.get(sku);
+    let costPrice = Number(product?.price_drop ?? 0);
+    let productName = sku;
+    if (sku) {
+      const v = validateDropshipLine({ sku, qty, selling_price: sellingPrice }, catalog);
+      if (v.ok) { costPrice = v.line.cost_price; productName = v.line.name; }
+      else errors.push(v.error);
     }
 
-    // НП: місто
-    let cityRef       = '';
-    let resolvedCity  = '';
-    let warehouseRef  = '';
-    let warehouseName = '';
-
+    // НП: місто і відділення
+    let cityRef = '', resolvedCity = '', warehouseRef = '', warehouseName = '';
     if (cityName) {
       const city = cityCache.get(cityName.toLowerCase());
       if (!city) {
@@ -194,10 +174,10 @@ export async function POST(req: NextRequest) {
       } else {
         cityRef      = city.ref;
         resolvedCity = city.name;
-
-        // НП: відділення
         if (branchNum) {
-          const wh = await findWarehouse(cityRef, branchNum);
+          const whKey = `${cityRef}|${branchNum}`;
+          if (!whCache.has(whKey)) whCache.set(whKey, await findWarehouse(apiKey, cityRef, branchNum));
+          const wh = whCache.get(whKey);
           if (!wh) {
             errors.push(`Відділення №${branchNum} не знайдено в "${cityName}"`);
           } else {
@@ -209,38 +189,62 @@ export async function POST(req: NextRequest) {
     }
 
     parsed.push({
-      row_num:      rowNum,
+      row_num:        rowNum,
       sku,
-      product_name: product ? `${product.brand} ${product.name}` : sku,
-      qty,
-      cost_price:   costPrice,
-      selling_price: sellingPrice,
-      last_name:    lastName,
-      first_name:   firstName,
-      mid_name:     midName,
+      product_name:   productName,
+      qty:            Number.isFinite(qty) ? qty : 0,
+      cost_price:     costPrice,
+      selling_price:  Number.isFinite(sellingPrice) ? sellingPrice : 0,
+      last_name:      lastName,
+      first_name:     firstName,
+      mid_name:       midName,
       phone,
-      city_name:    resolvedCity || cityName,
-      city_ref:     cityRef,
+      city_name:      resolvedCity || cityName,
+      city_ref:       cityRef,
       warehouse_name: warehouseName,
-      warehouse_ref: warehouseRef,
-      branch_number: branchNum,
-      status:       errors.length === 0 ? 'valid' : 'error',
+      warehouse_ref:  warehouseRef,
+      branch_number:  branchNum,
+      parcel_key:     dropshipParcelKey({ phone, city_name: cityName, branch_number: branchNum }),
+      status:         errors.length === 0 ? 'valid' : 'error',
       errors,
     });
   }
 
+  // ── Посилки: рядки одного отримувача → одне замовлення ───────────────────────
+  // Мінімальна сума і повтор артикула — на посилку, бо саме вона стане замовленням.
+  const groups = new Map<string, ParsedRow[]>();
+  for (const row of parsed.filter(r => r.status === 'valid')) {
+    groups.set(row.parcel_key, [...(groups.get(row.parcel_key) ?? []), row]);
+  }
+  for (const rows of groups.values()) {
+    const seen = new Set<string>();
+    for (const row of rows) {
+      if (seen.has(row.sku)) { row.status = 'error'; row.errors.push(`Артикул ${row.sku} вже є в цій посилці — об'єднайте кількість в один рядок`); }
+      seen.add(row.sku);
+    }
+    const ok = rows.filter(r => r.status === 'valid');
+    const cost = ok.reduce((s, r) => s + r.cost_price * r.qty, 0);
+    if (ok.length && cost < DROPSHIP_MIN) {
+      for (const row of ok) {
+        row.status = 'error';
+        row.errors.push(`Мінімальна сума посилки — ${DROPSHIP_MIN} ₴ за закупочними цінами, у цій посилці ${cost.toFixed(2)} ₴`);
+      }
+    }
+  }
+
   const validRows   = parsed.filter(r => r.status === 'valid');
-  const totalCost   = validRows.reduce((s, r) => s + r.cost_price * r.qty, 0);
-  const totalCod    = validRows.reduce((s, r) => s + r.selling_price * r.qty, 0);
-  const canSubmit   = totalCost <= balanceAvail;
+  const totalCost   = Math.round(validRows.reduce((s, r) => s + r.cost_price * r.qty, 0) * 100) / 100;
+  const totalCod    = Math.round(validRows.reduce((s, r) => s + r.selling_price * r.qty, 0) * 100) / 100;
+  const parcelCount = new Set(validRows.map(r => r.parcel_key)).size;
 
   return NextResponse.json({
     rows:          parsed,
     valid_count:   validRows.length,
     error_count:   parsed.length - validRows.length,
+    parcel_count:  parcelCount,
     total_cost:    totalCost,
     total_cod:     totalCod,
     balance_avail: balanceAvail,
-    can_submit:    canSubmit,
+    can_submit:    totalCost <= balanceAvail,
   });
 }

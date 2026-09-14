@@ -11,6 +11,7 @@ import { pickReturnTtn, buildReturnTracking } from './np-return-tracking';
 import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from './accounting/completion';
 import { recordTxn } from './accounting/money';
 import { notifyParcelEvent } from './notify/parcel';
+import { chargeDropshipReturnFee } from './dropship-return-fee';
 
 // Синхронізація руху посилок (НП + точки видачі Rozetka) і супутні проводки.
 // Живе в lib, а не в роуті крона, бо викликається З ДВОХ місць: щогодинний крон
@@ -56,7 +57,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
   const returnWindow = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: orders, error } = await serviceClient
     .from('orders')
-    .select('id, status, tracking_number, carrier_accepted_at, channel_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags, phone, email, contact, company, rz_payment_fee, rz_delivery_cost, rz_delivery_payer')
+    .select('id, status, tracking_number, carrier_accepted_at, channel_code, partner_code, rozetka_order_id, delivery_type, telegram_chat_id, order_number, flags, phone, email, contact, company, rz_payment_fee, rz_delivery_cost, rz_delivery_payer')
     .or([
       'status.eq.shipped',
       'and(status.eq.cancelled,carrier_accepted_at.not.is.null)',
@@ -167,10 +168,21 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       // отримання». Запам'ятовуємо номер зворотної — рух саме по ній відповідає
       // на питання «де посилка зараз».
       const returnTtn = pickReturnTtn(doc);
-      if (returnTtn) returnTtnOrders.set(returnTtn, [
-        ...(returnTtnOrders.get(returnTtn) ?? []),
-        ...docOrders.map(o => o.id),
-      ]);
+      if (returnTtn) {
+        returnTtnOrders.set(returnTtn, [
+          ...(returnTtnOrders.get(returnTtn) ?? []),
+          ...docOrders.map(o => o.id),
+        ]);
+        // Дропшип: зворотну доставку оплачує партнер (раз на замовлення, ідемпотентно).
+        for (const o of docOrders) {
+          if (o.channel_code !== 'dropship') continue;
+          try {
+            await chargeDropshipReturnFee(serviceClient, o, doc, returnTtn, actor);
+          } catch (err) {
+            console.error('[sync-delivery-status] dropship return fee failed:', o.id, err);
+          }
+        }
+      }
 
       for (const order of docOrders) {
         // Скасовані відстежуємо ТІЛЬКИ заради тексту статусу (посилка їде назад).

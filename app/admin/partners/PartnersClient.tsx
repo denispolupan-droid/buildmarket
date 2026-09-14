@@ -231,7 +231,7 @@ export default function PartnersClient({
       body: JSON.stringify({ customer_id: id, amount: Number(topupAmount), description: topupNote || 'Поповнення (адмін)' }),
     });
     setSaving(false);
-    if (!res.ok) { setError('Помилка'); return; }
+    if (!res.ok) { setError((await res.json().catch(() => ({}))).error ?? 'Помилка'); return; }
     setCustomers(prev => prev.map(c =>
       c.id === id ? { ...c, balance: Number(c.balance) + Number(topupAmount) } : c
     ));

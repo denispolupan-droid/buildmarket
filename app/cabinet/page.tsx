@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import { Wallet, ShoppingBag, TrendingUp, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { cabinetOrderStatus, PARTNER_TX_LABELS } from '../../lib/cabinet-order-status';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +26,11 @@ export default async function CabinetPage() {
     .order('created_at', { ascending: false })
     .limit(5) : { data: [] };
 
+  const { count: ordersCount } = customer ? await serviceClient
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('partner_code', customer.id) : { count: 0 };
+
   const { data: recentTx } = customer ? await serviceClient
     .from('partner_balance_transactions')
     .select('id, tx_type, amount, description, created_at')
@@ -35,27 +41,8 @@ export default async function CabinetPage() {
   const balance        = Number(customer?.balance ?? 0);
   const balanceHeld    = Number(customer?.balance_held ?? 0);
   const balanceAvail   = balance - balanceHeld;
-  const totalOrders    = recentOrders?.length ?? 0;
+  const totalOrders    = ordersCount ?? 0;
 
-  const TX_LABELS: Record<string, string> = {
-    top_up:        'Поповнення',
-    charge:        'Списання (замовлення)',
-    cod_credit:    'Нарахування COD',
-    np_fee:        'Комісія НП',
-    return_refund: 'Повернення товару',
-    return_fee:    'Повернення доставка',
-    payout:        'Виплата',
-    goods_offset:  'Товарний залік',
-    adjustment:    'Коригування',
-  };
-
-  const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-    new:       { label: 'Нове',         color: '#4880B8' },
-    confirmed: { label: 'Підтверджено', color: '#15803D' },
-    shipped:   { label: 'Відправлено',  color: '#B45309' },
-    delivered: { label: 'Доставлено',   color: '#15803D' },
-    cancelled: { label: 'Скасовано',    color: '#DC2626' },
-  };
 
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '1100px' }}>
@@ -101,7 +88,7 @@ export default async function CabinetPage() {
           {
             label: 'Замовлень',
             value: String(totalOrders),
-            sub:   'Останні 5 замовлень',
+            sub:   'За весь час',
             icon: ShoppingBag, color: '#4880B8', bg: '#EFF6FF',
           },
           {
@@ -146,13 +133,13 @@ export default async function CabinetPage() {
             </div>
           ) : (
             recentOrders.map((o, i) => {
-              const st = STATUS_LABEL[o.status] ?? { label: o.status, color: '#64748B' };
+              const st = cabinetOrderStatus(o.status);
               return (
                 <div key={o.id} style={{ padding: '12px 20px', borderBottom: i < recentOrders.length - 1 ? '1px solid var(--border-light)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>#{o.order_number}</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {new Date(o.created_at).toLocaleDateString('uk-UA')}
+                      {new Date(o.created_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}
                       {o.tracking_number && ` · ТТН: ${o.tracking_number}`}
                     </div>
                   </div>
@@ -182,10 +169,10 @@ export default async function CabinetPage() {
               <div key={tx.id} style={{ padding: '12px 20px', borderBottom: i < recentTx.length - 1 ? '1px solid var(--border-light)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {TX_LABELS[tx.tx_type] ?? tx.tx_type}
+                    {PARTNER_TX_LABELS[tx.tx_type] ?? tx.tx_type}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {new Date(tx.created_at).toLocaleDateString('uk-UA')}
+                    {new Date(tx.created_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}
                   </div>
                 </div>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: tx.amount >= 0 ? '#15803D' : '#DC2626' }}>

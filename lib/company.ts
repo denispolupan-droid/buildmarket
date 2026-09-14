@@ -18,12 +18,13 @@ const clean = (s: string | undefined, fallback: string): string =>
   [...(s ?? fallback)].filter(ch => !INVISIBLE.has(ch.charCodeAt(0))).join('').trim();
 
 export const SELLER = {
-  name:      clean(process.env.BANK_RECIPIENT, 'ФОП Buildmarket'),
+  name:      clean(process.env.BANK_RECIPIENT, 'ФОП Полупан Денис Олександрович'),
   edrpou:    clean(process.env.BANK_EDRPOU,    '3198107136'),
   address:   clean(process.env.BANK_ADDRESS,   ''),
   // Місце складання первинних документів (вимога до реквізитів накладної)
   city:      clean(process.env.SELLER_CITY,    'м. Харків'),
-  bank:      clean(process.env.BANK_NAME,      'АТ «ПриватБанк»'),
+  // IBAN 322001… — це АТ «Універсал Банк» (Monobank), не ПриватБанк
+  bank:      clean(process.env.BANK_NAME,      'АТ УНІВЕРСАЛ БАНК (Monobank)'),
   iban:      clean(process.env.BANK_IBAN,      'UA803220010000026000370117963'),
   signatory: clean(process.env.SIGNATORY_NAME, ''),
 } as const;

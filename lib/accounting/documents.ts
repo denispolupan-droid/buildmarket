@@ -459,11 +459,12 @@ export async function resolveSaleDebitParty(
 
     const { data: order } = await db
       .from('orders')
-      .select('customer_id, channel_code, payment_type, delivery_type')
+      .select('customer_id, partner_code, channel_code, payment_type, delivery_type')
       .eq('id', doc.order_id)
       .maybeSingle();
     return saleDebitPartyFor({
       customer_id:   order?.customer_id ?? doc.customer_id ?? null,
+      partner_code:  order?.partner_code ?? null,
       channel_code:  order?.channel_code ?? null,
       payment_type:  order?.payment_type ?? null,
       delivery_type: order?.delivery_type ?? null,

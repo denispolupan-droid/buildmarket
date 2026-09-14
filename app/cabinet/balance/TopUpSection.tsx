@@ -3,10 +3,7 @@
 import { useState } from 'react';
 import { Copy, Check, CreditCard, Banknote, ChevronDown, ChevronUp } from 'lucide-react';
 
-const IBAN      = 'UA803220010000026000370117963';
-const RECIPIENT = 'ФОП Полупан Денис Олександрович';
-const EDRPOU    = '3198107136';
-const BANK      = 'АТ УНІВЕРСАЛ БАНК (Monobank)';
+export type SellerRequisites = { name: string; iban: string; edrpou: string; bank: string };
 
 const AMOUNTS = [500, 1000, 2000, 5000];
 
@@ -34,7 +31,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function TopUpSection({ partnerName }: { partnerName: string }) {
+export default function TopUpSection({ partnerName, seller }: { partnerName: string; seller: SellerRequisites }) {
   const [amount,      setAmount]      = useState('');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
@@ -94,8 +91,8 @@ export default function TopUpSection({ partnerName }: { partnerName: string }) {
           </div>
 
           {/* Amount input */}
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 180px' }}>
               <input
                 type="number" min={500} step={100}
                 value={amount}
@@ -141,10 +138,10 @@ export default function TopUpSection({ partnerName }: { partnerName: string }) {
 
         {showDetails && (
           <div style={{ padding: '4px 20px 18px', borderTop: '1px solid var(--border)' }}>
-            <CopyField label="Одержувач" value={RECIPIENT} />
-            <CopyField label="IBAN" value={IBAN} />
-            <CopyField label="ЄДРПОУ" value={EDRPOU} />
-            <CopyField label="Банк" value={BANK} />
+            <CopyField label="Одержувач" value={seller.name} />
+            <CopyField label="IBAN" value={seller.iban} />
+            <CopyField label="ЄДРПОУ" value={seller.edrpou} />
+            <CopyField label="Банк" value={seller.bank} />
             <CopyField label="Призначення платежу" value={purpose} />
             <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '8px', padding: '10px 12px', marginTop: '8px', fontSize: '12px', color: '#92400E', lineHeight: 1.5 }}>
               Вкажіть призначення платежу точно як вказано вище. Баланс поповнюється протягом 1 робочого дня.

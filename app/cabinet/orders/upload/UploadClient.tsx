@@ -17,6 +17,7 @@ type ParsedRow = {
   phone:         string;
   city_name:     string;
   warehouse_name: string;
+  parcel_key:    string;
   status:        'valid' | 'error';
   errors:        string[];
 };
@@ -25,6 +26,7 @@ type ParseResponse = {
   rows:          ParsedRow[];
   valid_count:   number;
   error_count:   number;
+  parcel_count:  number;
   total_cost:    number;
   total_cod:     number;
   balance_avail: number;
@@ -32,10 +34,9 @@ type ParseResponse = {
 };
 
 type ConfirmResult = {
-  row_num:      number;
-  status:       'ok' | 'error';
+  row_nums:      number[];
+  status:        'ok' | 'error';
   order_number?: number;
-  ttn?:          string;
   error?:        string;
 };
 
@@ -75,23 +76,33 @@ export default function UploadClient() {
 
   async function handleSubmit() {
     if (!parseData) return;
-    const validRows = parseData.rows.filter(r => r.status === 'valid');
-    if (!validRows.length) return;
+    // Рядки одного отримувача — одна посилка, одне замовлення.
+    const parcels = new Map<string, ParsedRow[]>();
+    for (const r of parseData.rows.filter(r => r.status === 'valid')) {
+      parcels.set(r.parcel_key, [...(parcels.get(r.parcel_key) ?? []), r]);
+    }
+    const groups = [...parcels.values()];
+    if (!groups.length) return;
 
     setSubmitting(true);
     setProgress(0);
 
-    // Обробляємо по одному для відстеження прогресу
+    // По одній посилці — щоб показувати прогрес і не впертися в таймаут
     const allResults: ConfirmResult[] = [];
-    for (let i = 0; i < validRows.length; i++) {
-      setProgress(Math.round(((i) / validRows.length) * 100));
-      const res  = await fetch('/api/cabinet/orders/bulk-confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: [validRows[i]] }),
-      });
-      const data = await res.json();
-      allResults.push(...(data.results ?? []));
+    for (let i = 0; i < groups.length; i++) {
+      setProgress(Math.round((i / groups.length) * 100));
+      const rowNums = groups[i].map(r => r.row_num);
+      try {
+        const res  = await fetch('/api/cabinet/orders/bulk-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: groups[i] }),
+        });
+        const data = await res.json();
+        allResults.push(...(data.results ?? [{ row_nums: rowNums, status: 'error', error: data.error ?? `Помилка ${res.status}` }]));
+      } catch {
+        allResults.push({ row_nums: rowNums, status: 'error', error: 'Помилка мережі' });
+      }
     }
     setProgress(100);
     setSubmitting(false);
@@ -131,24 +142,31 @@ export default function UploadClient() {
           )}
         </div>
 
-        {/* TTN list */}
+        {ok.length > 0 && (
+          <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Ми перевіримо наявність і відправимо посилки. Номери ТТН з&apos;являться у списку замовлень після відправки.
+          </div>
+        )}
+
+        {/* Orders list */}
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px' }}>
           <div style={{ padding: '14px 20px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Створені ТТН
+            Посилки
           </div>
           {results.map((r, i) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < results.length - 1 ? '1px solid var(--border-light)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Рядок {r.row_num}</div>
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < results.length - 1 ? '1px solid var(--border-light)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                {r.row_nums.length > 1 ? 'Рядки' : 'Рядок'} {r.row_nums.join(', ')}
+              </div>
               {r.status === 'ok' ? (
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Замовлення #{r.order_number}</span>
-                  <span style={{ fontSize: '15px', fontWeight: 800, color: '#1E3A5F', letterSpacing: '1px', fontFamily: 'monospace' }}>{r.ttn}</span>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#1E3A5F' }}>Замовлення #{r.order_number}</span>
                   <CheckCircle size={16} color="#15803D" />
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <span style={{ fontSize: '12px', color: '#DC2626' }}>{r.error}</span>
-                  <XCircle size={16} color="#DC2626" />
+                  <XCircle size={16} color="#DC2626" style={{ flexShrink: 0 }} />
                 </div>
               )}
             </div>
@@ -187,7 +205,8 @@ export default function UploadClient() {
             <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>Завантажте шаблон</span>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', paddingLeft: '40px' }}>
-            Заповніть шаблон: артикул, кількість, ваша ціна, дані отримувача, місто і номер відділення НП.
+            Заповніть шаблон: артикул, кількість, ваша ціна (сума накладеного платежу за 1 шт), дані отримувача, місто і номер відділення НП.
+            Рядки з однаковим телефоном, містом і відділенням об&apos;єднуються в одну посилку.
           </p>
           <div style={{ paddingLeft: '40px' }}>
             <a href="/api/cabinet/orders/template" download style={{
@@ -253,10 +272,10 @@ export default function UploadClient() {
       {parseData && !submitting && (
         <>
           {/* Summary bar */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+          <div className="cabinet-grid-4" style={{ marginBottom: '20px' }}>
             {[
               { label: 'Рядків у файлі', value: String(parseData.rows.length), color: 'var(--text-primary)' },
-              { label: '✓ Коректних', value: String(parseData.valid_count), color: '#15803D' },
+              { label: '✓ Посилок', value: `${parseData.parcel_count} (${parseData.valid_count} рядк.)`, color: '#15803D' },
               { label: '✗ З помилками', value: String(parseData.error_count), color: parseData.error_count ? '#DC2626' : 'var(--text-muted)' },
               { label: 'Списання з балансу', value: `${parseData.total_cost.toFixed(2)} ₴`, color: parseData.can_submit ? '#1E3A5F' : '#DC2626' },
             ].map(c => (
@@ -280,7 +299,8 @@ export default function UploadClient() {
           )}
 
           {/* Preview table */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflowX: 'auto', marginBottom: '20px' }}>
+           <div style={{ minWidth: '760px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '50px 80px 1fr 60px 90px 90px 120px auto', padding: '10px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', gap: '8px' }}>
               <span>#</span><span>Артикул</span><span>Товар / Отримувач</span>
               <span style={{ textAlign: 'center' }}>К-сть</span>
@@ -318,9 +338,10 @@ export default function UploadClient() {
                 </div>
               </div>
             ))}
+           </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => { setParseData(null); setParseErr(''); }} style={{ height: '40px', padding: '0 18px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
               Завантажити інший файл
             </button>
@@ -336,7 +357,7 @@ export default function UploadClient() {
               }}
             >
               <Send size={14} />
-              Створити {parseData.valid_count} замовлення
+              Створити замовлень: {parseData.parcel_count}
             </button>
           </div>
         </>
@@ -346,7 +367,7 @@ export default function UploadClient() {
       {submitting && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '48px', textAlign: 'center' }}>
           <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-            Створюємо замовлення та ТТН... {progress}%
+            Створюємо замовлення... {progress}%
           </div>
           <div style={{ background: 'var(--bg-soft)', borderRadius: '8px', height: '8px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${progress}%`, background: '#1E3A5F', borderRadius: '8px', transition: 'width 0.3s ease' }} />

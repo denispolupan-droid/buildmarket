@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../lib/supabase-server';
 import { Wallet, ArrowDownCircle, Package } from 'lucide-react';
 import BalanceClient from './BalanceClient';
 import TopUpSection from './TopUpSection';
+import { SELLER } from '../../../lib/company';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,7 +48,7 @@ export default async function BalancePage() {
       </div>
 
       {/* Balance cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div className="cabinet-grid-3">
         {[
           { label: 'Доступний баланс', value: `${balanceAvail.toFixed(2)} ₴`, color: balanceAvail >= 0 ? '#15803D' : '#DC2626', bg: '#F0FDF4', icon: Wallet },
           { label: 'Зарезервовано',    value: `${balanceHeld.toFixed(2)} ₴`,  color: '#B45309', bg: '#FEF3C7', icon: ArrowDownCircle },
@@ -70,7 +71,10 @@ export default async function BalancePage() {
         })}
       </div>
 
-      <TopUpSection partnerName={customer?.name ?? 'Партнер'} />
+      <TopUpSection
+        partnerName={customer?.name ?? 'Партнер'}
+        seller={{ name: SELLER.name, iban: SELLER.iban, edrpou: SELLER.edrpou, bank: SELLER.bank }}
+      />
 
       {/* Interactive part: payout requests */}
       <BalanceClient

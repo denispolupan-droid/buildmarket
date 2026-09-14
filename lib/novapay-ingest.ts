@@ -21,11 +21,11 @@ import { createServiceClient } from './supabase';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';
 import { getNovapayAccountExtract } from './novapay-api';
+import { getNpCodFeePct } from './np-cod-fee';
 import { parseNovapayStatement, classifyNovapayDoc, registerNumberOf, extractOwnAccount, matchNpRegister } from './novapay-statement';
 
 const ddmmyyyy = (d: Date) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 const isDup = (err: unknown) => /unique|duplicate|23505/.test(String(err instanceof Error ? err.message : err));
-const NP_COD_FEE_KEY = 'novapay_cod_fee_pct';   // app_settings, за замовчуванням 0.5
 const MATCH_WINDOW_DAYS = 4;
 
 type Db = ReturnType<typeof createServiceClient>;
@@ -57,19 +57,19 @@ export async function ingestNovapayStatement(days = 10, dateFrom?: Date): Promis
   return { fetched, inserted, from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
 }
 
-async function npCodFeePct(db: Db): Promise<number> {
-  const { data } = await db.from('app_settings').select('value').eq('key', NP_COD_FEE_KEY).maybeSingle();
-  const v = parseFloat(String(data?.value ?? ''));
-  return Number.isFinite(v) ? v : 0.5;
-}
+const npCodFeePct = (db: Db) => getNpCodFeePct(db);
 
 type CodOrder = { id: string; order_number: number; gross: number; delivered: string };
 
-/** Вручені НП-наложки (не дропшип, не Rozetka Доставка), ще без виплати по ЕН. */
+/**
+ * Вручені НП-наложки (не Rozetka Доставка), ще без виплати по ЕН. Дропшип теж тут:
+ * ТТН партнерів їдуть з нашого акаунта, наложку виплачує та сама НоваПей, а борг
+ * np:cod по ній ставить recordPartnerCodCollected при врученні.
+ */
 async function unsettledNpCodOrders(db: Db, from: string, to: string): Promise<CodOrder[]> {
   const { data: orders } = await db.from('orders').select('id, order_number, total_price, delivered_at')
     .eq('status', 'delivered').eq('payment_type', 'cod')
-    .in('delivery_type', ['nova', 'nova_poshta']).neq('channel_code', 'dropship')
+    .in('delivery_type', ['nova', 'nova_poshta'])
     .gte('delivered_at', `${from}T00:00:00`).lt('delivered_at', `${to}T00:00:00`)
     .order('delivered_at').limit(500);
   if (!orders?.length) return [];

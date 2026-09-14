@@ -24,6 +24,8 @@ import { getPromOrder } from '../prom-api';
 import { computeEpicentrCommission, getEpicentrFallbackPct } from '../epicentr-commission';
 import { getEpicentrBillingInvoice } from '../epicentr-api';
 import { alertAdmin } from '../alert';
+import { getNpCodFeePct } from '../np-cod-fee';
+import { recordPartnerCodCollected } from './partner-ledger';
 
 export async function applyCompletionEffects(docId: string, createdBy = 'system'): Promise<void> {
   const db = createServiceClient();
@@ -206,12 +208,21 @@ export async function settleOrderCOD(orderId: string, createdBy = 'system'): Pro
         p_customer_id: customer.id,
         p_cod_amount:  order.total_price,
         p_order_id:    order.id,
-        p_np_fee_pct:  2,
+        // Реальна ставка НоваПей (0,5 % за замовчуванням), а не колишні «~2 %».
+        p_np_fee_pct:  await getNpCodFeePct(db),
       });
       if (error) throw error;
     }
   } catch (err) {
     alertAdmin(`COD партнеру не нарахувався (замовлення #${order.order_number})`, err);
+    return;
+  }
+  // Облік: НоваПей винна нам наложку, ми — партнеру (мінус утримана комісія).
+  // Ідемпотентно, тож повторне «Доставлено» нічого не задвоїть.
+  try {
+    await recordPartnerCodCollected(order.id, { createdBy });
+  } catch (err) {
+    alertAdmin(`Наложка дропшип-партнера не проведена в облік (замовлення #${order.order_number})`, err);
   }
 }
 

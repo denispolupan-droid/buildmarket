@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,32 +8,20 @@ const db = createClient(
 );
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ payoutId: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
 
   const { payoutId } = await params;
-  const { action } = await req.json();
+  const { action } = await req.json().catch(() => ({}));
 
   if (!['approve', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  if (action === 'reject') {
-    const { error } = await db
-      .from('partner_payout_requests')
-      .update({ status: 'rejected', processed_at: new Date().toISOString(), processed_by: user.email })
-      .eq('id', payoutId)
-      .eq('status', 'pending');
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true });
-  }
-
-  // approve — атомарно через SQL-функцію (списання балансу + зміна статусу в одній транзакції)
-  const { data, error } = await db.rpc('approve_payout', {
+  // Обидві дії — атомарно через SQL-функції: схвалення списує баланс і знімає
+  // резерв заявки, відхилення знімає резерв (міграція 117).
+  const { data, error } = await db.rpc(action === 'approve' ? 'approve_payout' : 'reject_payout', {
     p_payout_id:   payoutId,
     p_admin_email: user.email ?? 'admin',
   });

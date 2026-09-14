@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { getRole } from '../../../../lib/user-role';
+import { requireCustomer } from '../../../../lib/auth-guard';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,23 +8,25 @@ const serviceClient = createClient(
 );
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || getRole(user) !== 'dropship') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireCustomer('dropship');
+  if (!auth.ok) return auth.response;
+
+  const body = await req.json().catch(() => null) as { amount?: unknown; method?: unknown; bank_details?: unknown } | null;
+  const amount = Number(body?.amount);
+  if (!Number.isFinite(amount) || amount < 500) {
+    return NextResponse.json({ error: 'Мінімальна сума — 500 ₴' }, { status: 400 });
   }
-
-  const { amount, method, bank_details } = await req.json();
-
-  if (!amount || typeof amount !== 'number') {
-    return NextResponse.json({ error: 'Некоректна сума' }, { status: 400 });
+  const method = body?.method === 'goods_offset' ? 'goods_offset' : 'bank';
+  const bankDetails = typeof body?.bank_details === 'string' ? body.bank_details.trim().slice(0, 500) : '';
+  if (method === 'bank' && !bankDetails) {
+    return NextResponse.json({ error: 'Вкажіть реквізити для переказу' }, { status: 400 });
   }
 
   const { data, error } = await serviceClient.rpc('submit_payout_request', {
-    p_auth_user_id: user.id,
-    p_amount:       amount,
-    p_method:       method ?? 'bank',
-    p_bank_details: bank_details ?? null,
+    p_auth_user_id: auth.user.id,
+    p_amount:       Math.round(amount * 100) / 100,
+    p_method:       method,
+    p_bank_details: bankDetails || null,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

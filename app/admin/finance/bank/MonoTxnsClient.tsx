@@ -20,7 +20,8 @@ const OUT_CATEGORIES: { value: string; label: string }[] = [
   { value: 'transfer:novapay', label: '→ Переказ на NovaPay' },
   { value: 'transfer:cash',    label: '→ Зняття готівки в касу' },
   { value: 'owner',            label: 'Вилучення власника (не витрата)' },
-  { value: 'taxes',            label: 'Податки / ЄСВ' },
+  { value: 'partner-payout',   label: 'Виплата дропшип-партнеру (з балансу)' },
+  { value: 'taxes',           label: 'Податки / ЄСВ' },
   { value: 'logistics',        label: 'Витрата · логістика' },
   { value: 'packaging',        label: 'Витрата · пакування' },
   { value: 'marketing',        label: 'Витрата · маркетинг' },
@@ -31,14 +32,22 @@ const OUT_CATEGORIES: { value: string; label: string }[] = [
 ];
 const IN_CATEGORIES: { value: string; label: string }[] = [
   { value: 'order',               label: 'Оплата замовлення №…' },
+  { value: 'partner-topup',       label: 'Поповнення балансу дропшип-партнера' },
   { value: 'transfer-in:owner',   label: '← Внесок власника (особисті гроші в бізнес)' },
   { value: 'transfer-in:novapay', label: '← Переказ з NovaPay' },
   { value: 'transfer-in:cash',    label: '← Внесення готівки' },
   { value: 'ignore',              label: 'Ігнорувати (не наш рух)' },
 ];
+// Категорія партнера зберігається як «partner-topup:<id>» — показуємо назву і ім'я партнера.
+function categoryLabel(category: string, partners: SupplierOpt[]): string {
+  const [base, partnerId] = category.startsWith('partner-') ? category.split(':') : [category, undefined];
+  const label = [...OUT_CATEGORIES, ...IN_CATEGORIES].find(c => c.value === base)?.label ?? category;
+  const who = partnerId ? partners.find(p => p.id === partnerId)?.name : undefined;
+  return who ? `${label} · ${who}` : label;
+}
 const STATUS_LABEL: Record<MonoRow['status'], string> = { matched: 'зараховано', unmatched: 'на категоризацію', acquiring: 'еквайринг', posted: 'проведено', ignored: 'ігнор' };
 
-export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }: { rows: MonoRow[]; suppliers: SupplierOpt[]; ledgerBank: number; liveBank: number | null }) {
+export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, liveBank }: { rows: MonoRow[]; suppliers: SupplierOpt[]; partners: SupplierOpt[]; ledgerBank: number; liveBank: number | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -46,6 +55,7 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
   const [desc, setDesc] = useState<Record<string, string>>({});
   const [supplier, setSupplier] = useState<Record<string, string>>({});
   const [orderNo, setOrderNo] = useState<Record<string, string>>({});
+  const [partner, setPartner] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'todo' | 'all'>('todo');
 
   const todo = useMemo(() => rows.filter(r => r.status === 'unmatched'), [rows]);
@@ -91,7 +101,7 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
     setBusy(row.id); setMsg(null);
     try {
       const res = await fetch('/api/admin/finance/mono', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: row.id, category, description: desc[row.id], supplierId: supplier[row.id] ?? suppliers[0]?.id, orderNumber: orderNo[row.id] }) });
+        body: JSON.stringify({ id: row.id, category, description: desc[row.id], supplierId: supplier[row.id] ?? suppliers[0]?.id, orderNumber: orderNo[row.id], partnerId: partner[row.id] }) });
       const d = await res.json();
       if (!res.ok) { setMsg(`Помилка: ${d.error}`); return; }
       router.refresh();
@@ -167,7 +177,7 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
                   <td style={{ ...cell, minWidth: '320px' }}>
                     {r.status !== 'unmatched' && (
                       <span style={{ color: r.status === 'ignored' ? 'var(--text-muted)' : '#15803D', fontSize: '12px' }}>
-                        ✓ {STATUS_LABEL[r.status]}{r.category ? ` · ${[...OUT_CATEGORIES, ...IN_CATEGORIES].find(c => c.value === r.category)?.label ?? r.category}` : ''}
+                        ✓ {STATUS_LABEL[r.status]}{r.category ? ` · ${categoryLabel(r.category, partners)}` : ''}
                         {r.note && <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{r.note}</div>}
                       </span>
                     )}
@@ -185,10 +195,16 @@ export default function MonoTxnsClient({ rows, suppliers, ledgerBank, liveBank }
                             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         )}
+                        {choice[r.id]?.startsWith('partner-') && (
+                          <select value={partner[r.id] ?? ''} onChange={e => setPartner(p => ({ ...p, [r.id]: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                            <option value="">Оберіть партнера…</option>
+                            {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        )}
                         {choice[r.id] && !choice[r.id].startsWith('transfer') && choice[r.id] !== 'ignore' && choice[r.id] !== 'supplier' && choice[r.id] !== 'order' && (
                           <input value={desc[r.id] ?? ''} onChange={e => setDesc(d => ({ ...d, [r.id]: e.target.value }))} placeholder="Опис (необов'язково)" style={inp} />
                         )}
-                        <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id || (choice[r.id] === 'order' && !orderNo[r.id])}
+                        <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id || (choice[r.id] === 'order' && !orderNo[r.id]) || (choice[r.id]?.startsWith('partner-') && !partner[r.id])}
                           style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? '#1D4ED8' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>
                           {busy === r.id ? 'Проводимо…' : 'Провести'}
                         </button>

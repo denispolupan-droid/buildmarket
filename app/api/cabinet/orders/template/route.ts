@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
+import { requireCustomer } from '../../../../../lib/auth-guard';
 
 export async function GET() {
+  const auth = await requireCustomer('dropship');
+  if (!auth.ok) return auth.response;
+
   const wb = XLSX.utils.book_new();
 
   const headers = [
     'Артикул (SKU)',
     'Кількість',
-    'Ваша ціна (COD, грн)',
+    'Ваша ціна за 1 шт (COD, грн)',
     'Прізвище',
     "Ім'я",
     'По батькові',

@@ -62,14 +62,17 @@ export async function GET(request: NextRequest) {
     .map(p => {
       const price = stockMap.get(p.sku)!.price_drop;
       const desc  = p.description ?? `${p.brand} ${p.name}`;
-      const img   = p.image ?? `${BASE_URL}/product/${p.sku}/opengraph-image`;
+      // У БД шлях відносний (/img/products/...) — без домену Prom і Horoshop
+      // картинку не завантажать. Так само, як у нашому робочому фіді для Prom.
+      const img   = !p.image ? `${BASE_URL}/product/${p.sku}/opengraph-image`
+        : p.image.startsWith('/') ? `${BASE_URL}${p.image}` : p.image;
       const catId = catIdBySlug.get(p.category_slug ?? '') ?? OTHER_CATEGORY_ID;
       return `    <offer id="${p.sku}" available="true">
       <url>${BASE_URL}/product/${p.sku}</url>
       <price>${price}</price>
       <currencyId>UAH</currencyId>
       <categoryId>${catId}</categoryId>
-      <picture>${img}</picture>
+      <picture>${x(img)}</picture>
       <name>${x(p.name)}${p.volume ? ` ${x(p.volume)}` : ''}</name>
       <vendor>${x(p.brand)}</vendor>
       <vendorCode>${x(p.sku)}</vendorCode>

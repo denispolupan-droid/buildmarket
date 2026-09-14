@@ -16,7 +16,7 @@ export default async function BankPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  const [{ data: contracts }, { data: monoRows }, { data: suppliers }, { data: bankRows }, monoLive] = await Promise.all([
+  const [{ data: contracts }, { data: monoRows }, { data: suppliers }, { data: bankRows }, monoLive, { data: partners }] = await Promise.all([
     db.from('customer_contracts').select('id, contract_number, customer_id, customer_name').eq('status', 'active').order('customer_name'),
     db.from('mono_bank_txns')
       .select('id, txn_time, amount, direction, comment, description, counter_name, status, category, note, matched_order_id')
@@ -24,6 +24,7 @@ export default async function BankPage() {
     db.from('suppliers').select('id, name').order('id'),
     db.from('money_entries').select('amount').eq('account_type', 'bank').limit(20000),
     getMonoLiveBalance(),
+    db.from('customers').select('id, name').eq('type', 'dropship_partner').order('name').limit(500),
   ]);
   const ledgerBank = Math.round((bankRows ?? []).reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
 
@@ -47,6 +48,7 @@ export default async function BankPage() {
       <MonoTxnsClient
         rows={(monoRows ?? []) as MonoRow[]}
         suppliers={(suppliers ?? []).map(s => ({ id: String(s.id), name: s.name as string }))}
+        partners={(partners ?? []).map(p => ({ id: String(p.id), name: p.name as string }))}
         ledgerBank={ledgerBank}
         liveBank={monoLive ? monoLive.total : null}
       />

@@ -35,6 +35,14 @@ describe('saleDebitPartyFor — дебітор продажу за канало�
     expect(saleDebitPartyFor({ customer_id: CUST, channel_code: 'dropship', payment_type: 'cod', delivery_type: 'nova_poshta' })).toBe(CUST);
   });
 
+  it('замовлення з кабінету (лише partner_code) — дебітор партнер, не гість', () => {
+    const PARTNER = 'ccc6b4f0-1f23-4994-9319-48aa1a1b3111';
+    expect(saleDebitPartyFor({ customer_id: null, partner_code: PARTNER, channel_code: 'dropship', payment_type: 'cod', delivery_type: 'nova' })).toBe(PARTNER);
+    expect(saleDebitPartyFor({ customer_id: null, partner_code: PARTNER, channel_code: 'dropship', payment_type: 'prepaid' })).toBe(PARTNER);
+    // partner_code поза дропшипом не впливає
+    expect(saleDebitPartyFor({ customer_id: null, partner_code: PARTNER, channel_code: 'website', payment_type: 'cod', delivery_type: 'nova' })).toBe('np:cod');
+  });
+
   it('prepaid поза маркетплейсом не тягне на площадку', () => {
     expect(saleDebitPartyFor({ customer_id: CUST, channel_code: 'website', payment_type: 'prepaid' })).toBe(CUST);
   });

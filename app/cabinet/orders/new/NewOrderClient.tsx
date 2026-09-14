@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Trash2, ChevronLeft, Send, AlertCircle, CheckCircle, Minus, Plus } from 'lucide-react';
 import NovaPoshtaSelect from '../../../components/NovaPoshtaSelect';
 import { DROPSHIP_MIN } from '../../../../lib/site';
+import { npCodFee } from '../../../../lib/dropship-order';
 
 // ── Phone formatting (same as cart) ─────────────────────────────────────────
 function getLocalDigits(str: string): string {
@@ -25,10 +26,6 @@ function formatPhone(localDigits: string): string {
   if (d.length <= 8) return r;
   return r + '-' + d.slice(8, 10);
 }
-
-// НП комісія за переказ: 2% від суми COD
-const NP_COD_RATE = 0.02;
-function npCommission(amount: number) { return Math.max(20, amount * NP_COD_RATE); }
 
 type OrderItem = {
   sku:           string;
@@ -61,10 +58,11 @@ const lbl: React.CSSProperties = {
 };
 
 export default function NewOrderClient({
-  customerId, balanceAvail,
+  balanceAvail, codFeePct,
 }: {
-  customerId: string;
   balanceAvail: number;
+  /** Ставка НоваПей за накладений платіж, % — та, що реально утримується при нарахуванні. */
+  codFeePct: number;
 }) {
   const router = useRouter();
 
@@ -140,7 +138,7 @@ export default function NewOrderClient({
 
   const totalCost    = items.reduce((s, i) => s + i.cost_price * i.qty, 0);
   const totalSell    = items.reduce((s, i) => s + i.selling_price * i.qty, 0);
-  const commission   = hasCod ? npCommission(totalSell) : 0;
+  const commission   = hasCod ? npCodFee(totalSell, codFeePct) : 0;
   const netProfit    = totalSell - totalCost - commission;
   const balanceAfter = balanceAvail - totalCost;
   const hasBalance   = balanceAfter >= 0;
@@ -171,9 +169,13 @@ export default function NewOrderClient({
     const res = await fetch('/api/cabinet/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, recipient, comment, has_cod: hasCod, cod_amount: totalSell }),
-    });
-    const data = await res.json();
+      body: JSON.stringify({
+        items: items.map(i => ({ sku: i.sku, qty: i.qty, selling_price: i.selling_price })),
+        recipient, comment, has_cod: hasCod,
+      }),
+    }).catch(() => null);
+    if (!res) { setSaving(false); setError('Помилка мережі — спробуйте ще раз'); return; }
+    const data = await res.json().catch(() => ({}));
     setSaving(false);
     if (!res.ok) { setError(data.error ?? 'Помилка оформлення'); return; }
     setResult(data);
@@ -273,7 +275,7 @@ export default function NewOrderClient({
                 {prodResults.map(p => (
                   <button key={p.sku} onMouseDown={() => addProduct(p)} style={{ width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                     <div style={{ minWidth: 0 }}>
-                      <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{p.brand} {p.name}</span>
+                      <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{p.name}</span>
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace', marginLeft: '8px' }}>{p.sku}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
@@ -300,7 +302,7 @@ export default function NewOrderClient({
           ) : (
             <>
               {/* Header row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 130px 32px', gap: '8px', marginBottom: '8px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <div className="do-items-head" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 130px 32px', gap: '8px', marginBottom: '8px',fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 <span>Товар</span>
                 <span style={{ textAlign: 'center' }}>Наявн.</span>
                 <span style={{ textAlign: 'center' }}>К-сть</span>
@@ -314,10 +316,10 @@ export default function NewOrderClient({
                 const rawQty    = rawQtys[item.sku];
                 const displayQty = rawQty !== undefined ? rawQty : String(item.qty);
                 return (
-                  <div key={item.sku} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 130px 32px', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                  <div key={item.sku} className="do-items-row" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 130px 32px', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
                     {/* Name */}
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.brand} {item.name}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.name}</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{item.sku}</div>
                     </div>
 
@@ -367,13 +369,13 @@ export default function NewOrderClient({
                     </div>
 
                     {/* Cost */}
-                    <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    <div data-label="Закупочна" style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                       <div>{item.cost_price} ₴</div>
                       {item.qty > 1 && <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{(item.cost_price * item.qty).toFixed(0)} ₴</div>}
                     </div>
 
                     {/* Selling price */}
-                    <div>
+                    <div data-label="Ваша ціна">
                       <input
                         type="number"
                         min={item.cost_price}
@@ -404,12 +406,12 @@ export default function NewOrderClient({
               })}
 
               {/* Totals row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 130px 32px', gap: '8px', borderTop: '1px solid var(--border)', marginTop: '8px', paddingTop: '10px', alignItems: 'center' }}>
+              <div className="do-items-row do-items-total" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 110px 110px 130px 32px', gap: '8px', borderTop: '1px solid var(--border)', marginTop: '8px', paddingTop: '10px', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Разом</span>
                 <span />
                 <span />
-                <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>{totalCost.toFixed(2)} ₴</div>
-                <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#15803D' }}>{totalSell.toFixed(2)} ₴</div>
+                <div data-label="Закупка" style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>{totalCost.toFixed(2)} ₴</div>
+                <div data-label="Клієнт платить" style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#15803D' }}>{totalSell.toFixed(2)} ₴</div>
                 <span />
               </div>
 
@@ -433,9 +435,17 @@ export default function NewOrderClient({
                       <span style={{ color: 'var(--text-secondary)' }}>COD з клієнта:</span>
                       <strong style={{ color: '#15803D' }}>{totalSell.toFixed(2)} ₴</strong>
                     </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Комісія НоваПей ({String(codFeePct).replace('.', ',')} %):</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>−{commission.toFixed(2)} ₴</span>
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderTop: '1px solid var(--border)', paddingTop: '5px', marginTop: '2px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Ваш заробіток:</span>
-                      <strong style={{ color: (totalSell - totalCost) >= 0 ? '#4880B8' : '#DC2626' }}>{(totalSell - totalCost).toFixed(2)} ₴</strong>
+                      <strong style={{ color: netProfit >= 0 ? '#4880B8' : '#DC2626' }}>{netProfit.toFixed(2)} ₴</strong>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Після вручення посилки на баланс зараховується сума накладеного платежу мінус комісія.
+                      Якщо клієнт не забере посилку — вартість доставки Новою Поштою туди й назад утримується з балансу.
                     </div>
                   </div>
                 ) : (
@@ -458,7 +468,7 @@ export default function NewOrderClient({
           Дані отримувача (ваш клієнт)
         </div>
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+          <div className="do-name-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div>
               <label style={lbl}>Прізвище *</label>
               <input style={inp} value={recipient.last_name} onChange={e => setR('last_name', e.target.value)} placeholder="Іваненко" />

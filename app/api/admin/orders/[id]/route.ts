@@ -12,6 +12,7 @@ import { recordCustomerPayment, recordShipment } from '../../../../../lib/accoun
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
+import { partnerCancelRefund } from '../../../../../lib/dropship-order';
 import { computePromCommission } from '../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission';
 import { computeEpicentrCommission, getEpicentrFallbackPct } from '../../../../../lib/epicentr-commission';
@@ -441,17 +442,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
       const { data: order } = await db
         .from('orders')
-        .select('channel_code, partner_code, items, status')
+        .select('order_number, channel_code, partner_code, items, status')
         .eq('id', id)
         .single();
 
       if (order?.channel_code === 'dropship' && order.partner_code) {
         const orderItems = (order.items ?? []) as { qty: number; cost_price?: number; price?: number }[];
-        const totalCost = orderItems.reduce((s, i) => s + (i.cost_price ?? 0) * i.qty, 0);
-        if (totalCost > 0) {
+        const itemsCost = orderItems.reduce((s, i) => s + (i.cost_price ?? 0) * i.qty, 0);
+        // Повертаємо з фактичних рухів балансу: повторне скасування раніше
+        // повертало закупку вдруге, а скасування після вручення — поверх наложки.
+        const { data: txs } = await db
+          .from('partner_balance_transactions')
+          .select('tx_type, amount')
+          .eq('order_id', id)
+          .limit(200);
+        const refund = partnerCancelRefund(txs ?? [], itemsCost);
+        if (refund.skip === 'cod_credited') {
+          alertAdmin(`Дропшип #${order.order_number}: скасовано після зарахування накладеного платежу партнеру — баланс не повертали, перевірте вручну`);
+        } else if (refund.amount > 0) {
           await db.rpc('refund_partner_balance', {
             p_customer_id: order.partner_code,
-            p_amount:      totalCost,
+            p_amount:      refund.amount,
             p_order_id:    id,
             p_description: 'Повернення: замовлення скасовано',
           });

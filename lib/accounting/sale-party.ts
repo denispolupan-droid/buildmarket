@@ -54,6 +54,8 @@ export function isSpecialDebtor(party: string | null | undefined): party is Spec
 
 export type SalePartyOrder = {
   customer_id?:   string | null;
+  /** Дропшип: id партнера (customers.id). Кабінет не ставить customer_id — лише його. */
+  partner_code?:  string | null;
   channel_code?:  string | null;
   payment_type?:  string | null;
   delivery_type?: string | null;
@@ -64,12 +66,27 @@ export function isRozetkaCarrier(deliveryType: string | null | undefined): boole
   return deliveryType === 'rozetka_delivery' || deliveryType === 'rz_delivery';
 }
 
+/**
+ * Ціна рядка видаткової накладної. У дропшип-замовленні `price` — сума, яку платить
+ * кінцевий клієнт партнера (наложка), а наша виручка — те, що платить НАМ партнер:
+ * `cost_price` (дроп-ціна, списана з його балансу). Без цього виручка й борг партнера
+ * рахувались би за чужою ціною продажу.
+ */
+export function saleLinePrice(
+  channelCode: string | null | undefined,
+  item: { price: number; cost_price?: number | null },
+): number {
+  if (channelCode === 'dropship' && Number(item.cost_price) > 0) return Number(item.cost_price);
+  return Number(item.price);
+}
+
 /** Чиста функція: сторона дебіторки за полями замовлення. */
 export function saleDebitPartyFor(order: SalePartyOrder): string {
   const direct = order.customer_id || SALE_DEBTOR.guest;
 
   // Дропшип-партнер отримує рахунок від нас; його наложка — окремий механізм.
-  if (order.channel_code === 'dropship') return direct;
+  // Замовлення з кабінету мають лише partner_code — без нього продаж ішов на «гостя».
+  if (order.channel_code === 'dropship') return order.partner_code || direct;
 
   if (order.payment_type === 'cod') {
     return isRozetkaCarrier(order.delivery_type) ? SALE_DEBTOR.rozetka : SALE_DEBTOR.npCod;
