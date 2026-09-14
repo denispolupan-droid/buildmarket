@@ -121,16 +121,13 @@ describe('npCodFee', () => {
 });
 
 describe('dropshipReturnFee', () => {
-  it('одержувач мав платити доставку — утримуємо туди й назад', () => {
-    expect(dropshipReturnFee(90, 'Recipient')).toBe(180);
-    expect(dropshipReturnFee(90, undefined)).toBe(180);
-  });
-  it('доставку туди платили ми — лише зворотний шлях', () => {
-    expect(dropshipReturnFee(90, 'Sender')).toBe(90);
+  it('утримуємо один тариф — лише повернення', () => {
+    expect(dropshipReturnFee(90)).toBe(90);
+    expect(dropshipReturnFee(87.456)).toBe(87.46);
   });
   it('невідомий тариф — нуль (менеджер отримає сповіщення)', () => {
-    expect(dropshipReturnFee(NaN, 'Recipient')).toBe(0);
-    expect(dropshipReturnFee(0, 'Sender')).toBe(0);
+    expect(dropshipReturnFee(NaN)).toBe(0);
+    expect(dropshipReturnFee(0)).toBe(0);
   });
 });
 

@@ -128,17 +128,13 @@ export function partnerCancelRefund(
 }
 
 /**
- * Зворотна доставка відмовної посилки (lib/dropship-return-fee): скільки тарифів НП
- * утримати з партнера — зворотний шлях завжди, прямий — якщо його мав платити одержувач
- * (при відмові НП перекладає його на відправника).
+ * Зворотна доставка відмовної посилки (lib/dropship-return-fee): з партнера утримуємо
+ * один тариф НП — за повернення. Прямий шлях при відмові окремо не оплачується
+ * (підтвердив власник 14.09.2026).
  */
-export function returnFeeLegs(outboundPayer: string | null | undefined): 1 | 2 {
-  return outboundPayer === 'Sender' ? 1 : 2;
-}
-
-export function dropshipReturnFee(tariff: number, outboundPayer: string | null | undefined): number {
+export function dropshipReturnFee(tariff: number): number {
   if (!(tariff > 0)) return 0;
-  return round2(tariff * returnFeeLegs(outboundPayer));
+  return round2(tariff);
 }
 
 /**

@@ -2,10 +2,10 @@
  * Зворотна доставка відмовної дропшип-посилки — за рахунок партнера (рішення власника 14.09.2026).
  *
  * Коли одержувач не забирає посилку, НП створює зворотну накладну (CargoReturn) і
- * рахує відправнику (нам) доставку назад, а якщо доставку туди мав оплатити
- * одержувач — то й її. Трекінг вартості не віддає (безготівковий договір: 0 або
- * порожньо), тому суму рахуємо тарифом НП (InternetDocument.getDocumentPrice) за
- * маршрутом, вагою й оголошеною вартістю самої посилки.
+ * рахує відправнику (нам) доставку назад — один бік. Трекінг вартості не віддає
+ * (безготівковий договір: 0 або порожньо), тому суму рахуємо тарифом НП
+ * (InternetDocument.getDocumentPrice) за зворотним маршрутом, вагою й оголошеною
+ * вартістю самої посилки.
  *
  * Утримуємо один раз на замовлення (external_ref return-fee:{orderId}, унікальний
  * індекс), у кабінеті — рядок «Зворотна доставка»; у леджері DR partner / CR logistics[np].
@@ -14,7 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { npCall, getNpApiKey } from './np-api';
 import { recordTxn } from './accounting/money';
 import { alertAdmin } from './alert';
-import { dropshipReturnFee, returnFeeLegs } from './dropship-order';
+import { dropshipReturnFee } from './dropship-order';
 
 type TrackingDoc = {
   Number?: string; PayerType?: string; CargoType?: string; SeatsAmount?: string | number;
@@ -52,15 +52,13 @@ export async function chargeDropshipReturnFee(
     SeatsAmount:   String(Math.max(1, Number(doc.SeatsAmount) || 1)),
   });
   const tariff = Number(price.data?.[0]?.Cost);
-  const fee = dropshipReturnFee(tariff, doc.PayerType);
+  const fee = dropshipReturnFee(tariff);
   if (!price.success || fee <= 0) {
     alertAdmin(`Дропшип #${order.order_number}: не вдалося порахувати тариф зворотної доставки — утримайте з партнера вручну`, price.errors);
     return;
   }
 
-  const legs = returnFeeLegs(doc.PayerType);
-  const description = `Зворотна доставка відмовної посилки #${order.order_number} (ЕН ${returnTtn})`
-    + (legs === 2 ? ` — доставка туди й назад, по ${tariff} ₴` : '');
+  const description = `Зворотна доставка відмовної посилки #${order.order_number} (ЕН ${returnTtn})`;
   const { error } = await db.from('partner_balance_transactions').insert({
     customer_id: order.partner_code, tx_type: 'return_fee', amount: -fee, order_id: order.id,
     description, created_by: actor, external_ref: extRef,
@@ -76,7 +74,7 @@ export async function chargeDropshipReturnFee(
       debitAccount: 'partner', debitParty: order.partner_code, creditAccount: 'logistics', creditParty: 'np',
       amount: fee, docType: 'partner_return_fee', orderId: order.id, description,
       idempotencyKey: `partner-return-fee:${order.id}`, createdBy: actor,
-      meta: { return_ttn: returnTtn, tariff, legs },
+      meta: { return_ttn: returnTtn, tariff },
     });
   } catch (err) {
     alertAdmin(`Дропшип #${order.order_number}: зворотна доставка утримана з балансу, але не проведена в облік`, err);
