@@ -5062,45 +5062,47 @@ export default function AdminOrders({
                           ) : (
                             <>
                               <div style={{ marginTop: '3px' }}>Точку видачі покупець обрав сам — потрібні лише габарити.</div>
-                              <button onClick={() => setRzOwnTtnModal(order)}
-                                style={{ marginTop: '8px', height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
-                                Створити ЕН ROZETKA
-                              </button>
                               {/* Накладну не завжди виписують звідси: для Prom-замовлень її
                                   часто створюють у кабінеті Prom, а буває — одразу на
                                   відділенні. Тоді номер треба лише прив'язати. Той самий
                                   шлях, що й ручна ТТН НП: PATCH замовлення + звичайний
                                   хвіст (відгрузка дропшипу, номер у маркетплейс).
                                   Чужу для нашого договору ЕН крон статусів не бачить
-                                  (404 по номеру) — доставку тоді підтверджують кнопкою. */}
+                                  (404 по номеру) — доставку тоді підтверджують кнопкою.
+                                  Кнопка і поле — одним рядком: блок доставки має спільну
+                                  висоту з «Оплатою» сусідньої картки, зайвий рядок
+                                  розтягував обидві. */}
                               {(() => {
                                 const typed = (ttnValues[order.id] ?? '').trim();
                                 const looksLikeRz = /^\d{10,14}$/.test(typed);
                                 const busy = ttnSaving === order.id;
+                                const canSave = looksLikeRz && !busy;
                                 return (
-                                  <div style={{ marginTop: '10px' }}>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                                      Або вставте вже створену ЕН (кабінет Prom, відділення):
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                      <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
+                                  <>
+                                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <button onClick={() => setRzOwnTtnModal(order)}
+                                        style={{ height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                                        Створити ЕН ROZETKA
+                                      </button>
+                                      <div style={{ position: 'relative', flex: '1 1 120px', minWidth: 0 }}>
                                         <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
                                         <input type="text" inputMode="numeric" value={ttnValues[order.id] ?? ''}
                                           onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
-                                          onKeyDown={e => { if (e.key === 'Enter' && looksLikeRz && !busy) saveTTN(order.id); }}
-                                          placeholder="101268729178"
-                                          style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRz ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                          onKeyDown={e => { if (e.key === 'Enter' && canSave) saveTTN(order.id); }}
+                                          placeholder="або вставте готову ЕН"
+                                          title="ЕН, створена в кабінеті Prom чи на відділенні — 10–14 цифр"
+                                          style={{ width: '100%', height: '34px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRz ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '9px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                                       </div>
-                                      <button onClick={() => saveTTN(order.id)} disabled={busy || !looksLikeRz}
+                                      <button onClick={() => saveTTN(order.id)} disabled={!canSave}
                                         title={!typed ? 'Вставте номер ЕН' : !looksLikeRz ? 'Номер ЕН ROZETKA — 10–14 цифр' : 'Прив\'язати ЕН до замовлення'}
-                                        style={{ height: '32px', width: '32px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: busy || !looksLikeRz ? 'default' : 'pointer', opacity: busy || !looksLikeRz ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        style={{ height: '34px', width: '34px', borderRadius: '9px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         {busy ? '…' : <Save size={14} />}
                                       </button>
                                     </div>
                                     {typed && !looksLikeRz && (
                                       <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>Номер ЕН ROZETKA складається лише з цифр (10–14)</div>
                                     )}
-                                  </div>
+                                  </>
                                 );
                               })()}
                             </>
