@@ -439,6 +439,36 @@ function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; orderNu
   );
 }
 
+/** Назва позиції з брендом — без дубля, якщо бренд уже є в назві («Tangit Tangit Нитка…»). */
+function itemTitle(item: { brand?: string | null; name: string }): string {
+  const brand = (item.brand ?? '').trim();
+  return brand && !item.name.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${item.name}` : item.name;
+}
+
+/**
+ * Оплата дропшип-замовлення: партнер заплатив закупку з балансу в кабінеті, наложку
+ * клієнта (якщо є) ми збираємо для партнера й зараховуємо йому після вручення.
+ */
+function DropshipPaymentInfo({ order }: { order: Order }) {
+  const cost = order.items.reduce((s, i) => s + Number((i as OrderItem & { cost_price?: number }).cost_price ?? 0) * Number(i.qty), 0);
+  const paid = Number(order.amount_paid ?? 0) || cost;
+  const fmt = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const isCod = order.payment_type === 'cod';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+      <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+        <CreditCard size={12} /> ✓ Оплачено з балансу партнера {fmt(paid)} ₴
+      </div>
+      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+        {isCod
+          ? <>Наложка клієнта <b style={{ color: 'var(--text-secondary)' }}>{fmt(Number(order.total_price))} ₴</b> — у ТТН; після вручення зараховується на баланс партнера мінус 0,5 % НоваПей.</>
+          : <>Клієнт розрахувався з партнером — ТТН без накладеного платежу.</>}
+        {' '}Платник доставки — одержувач.
+      </div>
+    </div>
+  );
+}
+
 function ItemThumbs({ items, thumbs, size, max, pad, className, style }: {
   items: OrderItem[]; thumbs: Record<string, string>; size: number; max: number;
   pad?: boolean; className?: string; style?: CSSProperties;
@@ -451,7 +481,7 @@ function ItemThumbs({ items, thumbs, size, max, pad, className, style }: {
         const img = item.sku ? thumbs[item.sku] : undefined;
         const isLast = idx === shown.length - 1;
         return (
-          <div key={`${item.sku}-${idx}`} title={`${item.brand ?? ''} ${item.name}`.trim()}
+          <div key={`${item.sku}-${idx}`} title={itemTitle(item)}
             style={{
               width: `${size}px`, height: `${size}px`, flexShrink: 0, position: 'relative',
               borderRadius: `${Math.round(size / 5)}px`,
@@ -1395,7 +1425,7 @@ export default function AdminOrders({
 
       const lines = order.items.map(i => ({
         sku: i.sku,
-        name: i.brand ? `${i.brand} ${i.name}` : i.name,
+        name: itemTitle(i),
         qty: i.qty,
         cost_price: costMap[i.sku] ?? 0,
         matched: !!costMap[i.sku],
@@ -3147,7 +3177,7 @@ export default function AdminOrders({
                           size={34} max={3} style={{ display: 'none' }} />
                         <div className="oc-item" style={{ flex: 1, fontSize: '11px', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {order.items[0].is_bonus && <span style={{ marginRight: '4px' }}>🎁</span>}
-                        {order.items[0].brand ? `${order.items[0].brand} ` : ''}{order.items[0].name}
+                        {itemTitle(order.items[0])}
                         <span style={{ marginLeft: '4px' }}>×{order.items[0].qty}</span>
                         {order.items.length > 1 && <span style={{ marginLeft: '4px' }}>+{order.items.length - 1}</span>}
                         {order.items.some(i => i.is_bonus) && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#15803D', fontWeight: 600, background: '#F0FDF4', padding: '0 5px', borderRadius: '4px' }}>🎁 бонус</span>}
@@ -3896,7 +3926,9 @@ export default function AdminOrders({
                                     const left = Math.max(0, totalSum - paid);
                                     const partial = paid > 0 && left > 0;
                                     const unpaidInvoice = !isCod && !paymentConfirmed && paid === 0 && left > 0;
-                                    if (!partial && !unpaidInvoice) return;
+                                    // Дропшип: total — сума клієнта партнера, а нам він платить закупку
+                                    // з балансу; «До сплати» тут був би неправдою (див. DropshipPaymentInfo)
+                                    if (isDropship || (!partial && !unpaidInvoice)) return;
                                     const line = (key: string, label: string, value: number, color: string) => rows.push(
                                       <tr className="oc-total-row" key={key}>
                                         <td colSpan={4} style={{ padding: '2px 0 0', textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>{label}</td>
@@ -4543,6 +4575,11 @@ export default function AdminOrders({
                             </button>
                           </div>
                         </div>
+                      ) : isDropship ? (
+                        // Дропшип: закупку партнер уже заплатив з балансу при оформленні.
+                        // Ні зміни способу оплати, ні ручного внесення оплати тут бути не може —
+                        // це задвоїло б гроші (борг продажу закриває залік балансу партнера).
+                        <DropshipPaymentInfo order={order} />
                       ) : isCod ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
@@ -6031,7 +6068,7 @@ export default function AdminOrders({
                   {shipModal.items.map(item => (
                     <tr key={item.sku} style={{ borderBottom: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '8px 0' }}>
-                        <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{item.brand} {item.name}</div>
+                        <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{itemTitle(item)}</div>
                         <div style={{ fontSize: '10px', color: '#9CA3AF', fontFamily: 'monospace' }}>{item.sku}</div>
                       </td>
                       <td style={{ textAlign: 'center', padding: '8px', color: '#374151' }}>{item.orderQty}</td>

@@ -57,6 +57,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const db = createServiceClient();
   const update: Record<string, unknown> = {};
 
+  // Дропшип оплачує партнер з балансу при оформленні; «оплата підтверджена» тут
+  // провела б ще одну оплату в облік, а зміна способу оплати зламала б наложку.
+  if (payment_type !== undefined || payment_confirmed !== undefined) {
+    const { data: ch } = await db.from('orders').select('channel_code').eq('id', id).maybeSingle();
+    if (ch?.channel_code === 'dropship') {
+      return NextResponse.json({ error: 'Дропшип-замовлення оплачено з балансу партнера — спосіб і факт оплати тут не змінюються' }, { status: 409 });
+    }
+  }
+
   if (status !== undefined) {
     const VALID = ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered', 'cancelled'];
     if (!VALID.includes(status)) {
@@ -513,8 +522,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // (UNIQUE order_id+event), тож повторне натискання статусу нічого не надішле.
   if (status === 'confirmed') {
     const { data: o } = await db
-      .from('orders').select('order_number, phone, total_price').eq('id', id).single();
-    if (o) {
+      .from('orders').select('order_number, phone, total_price, channel_code').eq('id', id).single();
+    // Дропшип: телефон — клієнта партнера, йому від FIXLINE не пишемо
+    if (o && o.channel_code !== 'dropship') {
       notifyCustomer({
         orderId: id,
         phone:   o.phone as string,

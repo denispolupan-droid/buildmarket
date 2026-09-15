@@ -50,10 +50,15 @@ export async function applyOrderPayment(
 
   const { data: order, error: orderErr } = await db
     .from('orders')
-    .select('order_number, total_price, amount_paid, customer_id, payment_type')
+    .select('order_number, total_price, amount_paid, customer_id, payment_type, channel_code')
     .eq('id', orderId)
     .single();
   if (orderErr || !order) return { ok: false, error: 'Замовлення не знайдено' };
+  // Дропшип оплачує партнер з балансу при оформленні, а борг продажу закриває
+  // залік балансу (partner-ledger). Окрема «оплата» задвоїла б гроші в обліку.
+  if (order.channel_code === 'dropship') {
+    return { ok: false, error: `Замовлення #${order.order_number} — дропшип: його оплачено з балансу партнера, окрема оплата не приймається` };
+  }
 
   const { data: payment, error: insertErr } = await db
     .from('order_payments')

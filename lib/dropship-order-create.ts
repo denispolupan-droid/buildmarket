@@ -133,6 +133,10 @@ export async function createDropshipOrder(db: SupabaseClient, params: {
       delivery_city_name:     recipient.city_name,
       delivery_warehouse_ref: recipient.warehouse_ref,
       payment_type:     params.hasCod ? 'cod' : 'prepaid',
+      // Партнер уже заплатив нам закупку з балансу (списання вище) — замовлення
+      // оплачене. amount_paid = саме закупка: наложку клієнта ми збираємо для партнера.
+      payment_confirmed: true,
+      amount_paid:      totalCost,
       comment:          str(params.comment, 1000) || (params.source === 'excel' ? 'Імпорт з Excel' : null),
       items:            lines,
       // Сума, яку платить кінцевий клієнт (= накладений платіж), рахується тут

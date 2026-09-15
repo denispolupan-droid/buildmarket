@@ -24,6 +24,7 @@ type ParcelOrder = {
   telegram_chat_id: string | null;
   tracking_number: string | null;
   delivery_type: string | null;
+  channel_code?: string | null;
 };
 
 /** true = подію застовпили ми (слати можна); false = вже слали або збій клейму */
@@ -59,10 +60,13 @@ async function markFailed(orderId: string, event: string, message: string): Prom
 
 export async function notifyParcelEvent(order: ParcelOrder, event: 'shipped' | 'arrived'): Promise<void> {
   const num = order.order_number;
+  // Дропшип: одержувач — клієнт ПАРТНЕРА. Писати йому від FIXLINE (SMS/Viber/Telegram)
+  // не можна — він не знає про нас; лист піде партнеру (email у замовленні — його).
+  const isDropship = order.channel_code === 'dropship';
 
   // SMS/Viber (зараз вимкнено налаштуванням notify_provider — виклик стане
   // живим одразу після його заповнення, без правок коду)
-  notifyCustomer({
+  if (!isDropship) notifyCustomer({
     orderId: order.id,
     phone:   order.phone,
     event,
@@ -74,7 +78,7 @@ export async function notifyParcelEvent(order: ParcelOrder, event: 'shipped' | '
   }).catch((err: unknown) => console.error('[notify-parcel] sms failed:', order.id, err));
 
   // Telegram — якщо покупець прив'язав бота
-  if (order.telegram_chat_id) {
+  if (order.telegram_chat_id && !isDropship) {
     if (await claim(order.id, `${event}:telegram`, order.telegram_chat_id, `tg:${event} №${num}`, 'telegram')) {
       notifyCustomerStatus(order.telegram_chat_id, num, event, order.tracking_number, order.delivery_type);
     }
