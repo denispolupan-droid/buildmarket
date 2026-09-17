@@ -5074,7 +5074,12 @@ export default function AdminOrders({
                                   розтягував обидві. */}
                               {(() => {
                                 const typed = (ttnValues[order.id] ?? '').trim();
-                                const looksLikeRz = /^\d{10,14}$/.test(typed);
+                                // Номери бувають двох видів: власний договір rz-delivery дає
+                                // 12 цифр (101268729178), кабінет Prom для «Магазинів Rozetka» —
+                                // з літерним префіксом (PRM-376729644, у маркетплейсних RMP-…).
+                                // Перша версія приймала лише цифри — накладну з Prom вставити
+                                // було неможливо (17.09.2026, #26091137).
+                                const looksLikeRz = /^(\d{10,14}|[A-Z]{2,4}-?\d{6,14})$/.test(typed);
                                 const busy = ttnSaving === order.id;
                                 const canSave = looksLikeRz && !busy;
                                 return (
@@ -5087,20 +5092,20 @@ export default function AdminOrders({
                                       <div style={{ position: 'relative', flex: '1 1 120px', minWidth: 0 }}>
                                         <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
                                         <input type="text" inputMode="numeric" value={ttnValues[order.id] ?? ''}
-                                          onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                          onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value.toUpperCase() }))}
                                           onKeyDown={e => { if (e.key === 'Enter' && canSave) saveTTN(order.id); }}
                                           placeholder="або вставте готову ЕН"
-                                          title="ЕН, створена в кабінеті Prom чи на відділенні — 10–14 цифр"
+                                          title="ЕН, створена в кабінеті Prom (PRM-…) чи на відділенні (12 цифр)"
                                           style={{ width: '100%', height: '34px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRz ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '9px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                                       </div>
                                       <button onClick={() => saveTTN(order.id)} disabled={!canSave}
-                                        title={!typed ? 'Вставте номер ЕН' : !looksLikeRz ? 'Номер ЕН ROZETKA — 10–14 цифр' : 'Прив\'язати ЕН до замовлення'}
+                                        title={!typed ? 'Вставте номер ЕН' : !looksLikeRz ? 'Номер ЕН ROZETKA — 12 цифр або PRM-…' : 'Прив\'язати ЕН до замовлення'}
                                         style={{ height: '34px', width: '34px', borderRadius: '9px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         {busy ? '…' : <Save size={14} />}
                                       </button>
                                     </div>
                                     {typed && !looksLikeRz && (
-                                      <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>Номер ЕН ROZETKA складається лише з цифр (10–14)</div>
+                                      <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>Номер ЕН ROZETKA — 12 цифр або з префіксом, як PRM-376729644</div>
                                     )}
                                   </>
                                 );
