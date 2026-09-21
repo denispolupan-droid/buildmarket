@@ -26,7 +26,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { phoneLocal, phoneLocalDigits } from '../../lib/notify/phone';
 import { buildCopyLines, describeCopy, mapCopyDelivery, mapCopyPayment, copyComment, type CopyProduct } from '../../lib/order-copy';
-import { ttnFollowUpAction } from '../../lib/orders/ttn-followup';
+import { ttnFollowUpAction, type TtnSource } from '../../lib/orders/ttn-followup';
 import { storageDaysLeft, returnTrackingLabel, type ReturnTracking } from '../../lib/np-return-tracking';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
@@ -1764,11 +1764,12 @@ export default function AdminOrders({
    * застарілими даними — замовлення так і лишалось у «Підтверджено» замість
    * «До відправки».
    */
-  async function ttnFollowUp(o: Order) {
+  async function ttnFollowUp(o: Order, source: TtnSource = 'api') {
     // Саме рішення — чиста функція під тестами (lib/orders/ttn-followup):
     // «уже відвантажене повторно не відвантажуємо», «нове — не пушимо в МП»,
-    // «точку видачі Rozetka не пушимо їй же назад» перевіряються там.
-    switch (ttnFollowUpAction(o)) {
+    // «точку видачі Rozetka не пушимо їй же назад, якщо номер виписали ми самі»
+    // перевіряються там.
+    switch (ttnFollowUpAction(o, source)) {
       case 'ship':
         await autoShipDropship(o.id);   // всередині — і статус, і пуш у маркетплейс
         return;
@@ -1798,8 +1799,8 @@ export default function AdminOrders({
     }
   }
 
-  async function finishTtnFlow(ids: string[]) {
-    for (const o of orders.filter(o => ids.includes(o.id))) await ttnFollowUp(o);
+  async function finishTtnFlow(ids: string[], source: TtnSource = 'api') {
+    for (const o of orders.filter(o => ids.includes(o.id))) await ttnFollowUp(o, source);
   }
 
   function openMergeModal() {
@@ -1911,7 +1912,9 @@ export default function AdminOrders({
       // нічим не гірший за згенерований. Тут теж був перекіс — Rozetka чекала
       // status === 'shipped', тобто ТТН, вписана в підтверджене замовлення,
       // у кабінет не йшла зовсім.
-      if (ttnValues[id]) await finishTtnFlow([id]);
+      // 'manual': номер вписали руками. Для точки видачі Rozetka це єдиний
+      // випадок, коли номер треба донести в кабінет — накладну виписали не ми.
+      if (ttnValues[id]) await finishTtnFlow([id], 'manual');
     } else {
       // Раніше відмова сервера губилась мовчки: поле лишалось із номером,
       // а в базі його не було — менеджер дізнавався про це вже від покупця.
@@ -4999,10 +5002,50 @@ export default function AdminOrders({
                             <>
                               <div style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px' }}>Точка видачі Rozetka</div>
                               <div style={{ marginTop: '3px' }}>Адресу отримувача Rozetka візьме із замовлення — потрібні лише габарити.</div>
-                              <button onClick={() => setRzTtnModal(order)}
-                                style={{ marginTop: '8px', height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
-                                Створити накладну Rozetka
-                              </button>
+                              {/* Спільна посилка: Seller API виписує накладну рівно з ОДНОГО
+                                  замовлення Rozetka і не дає стягнути більше за його вартість
+                                  (два наложних не об'єднати — «Вказана вартість більша ніж
+                                  вартість замовлення»). Тому другий шлях: виписати ЕН у
+                                  сусідньому замовленні й прописати той самий «RMP-…» сюди.
+                                  Далі все працює саме собою: крон статусів закриває всіх
+                                  «сусідів» по спільному номеру (lib/delivery-sync), а номер
+                                  доїжджає в кабінет Rozetka — про ручну ЕН він не знає. */}
+                              {(() => {
+                                const typed = (ttnValues[order.id] ?? '').trim();
+                                // Номер точки видачі — лише «RMP-…». Голі цифри свідомо не
+                                // приймаємо: 14-значна ТТН Нової Пошти виглядала б так само,
+                                // а точка видачі таку посилку не прийме.
+                                const looksLikeRmp = /^RMP-\d{6,14}$/.test(typed);
+                                const busy = ttnSaving === order.id;
+                                const canSave = looksLikeRmp && !busy;
+                                return (
+                                  <>
+                                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <button onClick={() => setRzTtnModal(order)}
+                                        style={{ height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                                        Створити накладну Rozetka
+                                      </button>
+                                      <div style={{ position: 'relative', flex: '1 1 120px', minWidth: 0 }}>
+                                        <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
+                                        <input type="text" value={ttnValues[order.id] ?? ''}
+                                          onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value.toUpperCase().replace(/^RMP-?/, 'RMP-') }))}
+                                          onKeyDown={e => { if (e.key === 'Enter' && canSave) saveTTN(order.id); }}
+                                          placeholder="або вставте готову ЕН"
+                                          title="«RMP-…» накладної, виписаної в сусідньому замовленні — коли обидва їдуть однією коробкою"
+                                          style={{ width: '100%', height: '34px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRmp ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '9px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                      </div>
+                                      <button onClick={() => saveTTN(order.id)} disabled={!canSave}
+                                        title={!typed ? 'Вставте номер ЕН' : !looksLikeRmp ? 'Номер точки видачі Rozetka — RMP-…' : 'Прив\'язати ЕН до замовлення'}
+                                        style={{ height: '34px', width: '34px', borderRadius: '9px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        {busy ? '…' : <Save size={14} />}
+                                      </button>
+                                    </div>
+                                    {typed && !looksLikeRmp && (
+                                      <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>Номер точки видачі Rozetka має вигляд RMP-161376878</div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </>
                           )}
                         </div>

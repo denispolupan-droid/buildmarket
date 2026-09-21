@@ -34,10 +34,23 @@ describe('ttnFollowUpAction', () => {
     expect(ttnFollowUpAction(order({ fulfillment_mode: 'mixed', channel_code: 'prom' }))).toBe('push-prom');
   });
 
-  it('точка видачі Rozetka: номер назад у Rozetka не пушимо', () => {
+  it('точка видачі Rozetka: свій же номер назад у Rozetka не пушимо', () => {
     expect(ttnFollowUpAction(order({
       fulfillment_mode: 'own', channel_code: 'rozetka', delivery_type: 'rozetka_delivery', status: 'shipped',
     }))).toBe('none');
+  });
+
+  it('точка видачі Rozetka: ЕН, вписана руками, у кабінет ЙДЕ — він про неї не знає', () => {
+    // Спільна посилка: накладну виписали з сусіднього замовлення (Seller API
+    // вміє лише одне замовлення на ЕН), а цьому номер прописали руками.
+    const own = order({
+      fulfillment_mode: 'own', channel_code: 'rozetka', delivery_type: 'rozetka_delivery', status: 'shipped',
+    });
+    expect(ttnFollowUpAction(own, 'manual')).toBe('push-rozetka');
+    // Дропшип і тут відвантажується — пуш номера робить сама відгрузка
+    expect(ttnFollowUpAction({ ...own, fulfillment_mode: 'supplier', status: 'confirmed' }, 'manual')).toBe('ship');
+    // Непідтверджене не пушимо навіть руками
+    expect(ttnFollowUpAction({ ...own, status: 'new' }, 'manual')).toBe('none');
   });
 
   it('нове замовлення маркетплейсу: номер не пушимо, поки не підтверджене', () => {
