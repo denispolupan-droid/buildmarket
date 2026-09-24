@@ -15,13 +15,14 @@
 import { createServiceClient } from './supabase';
 import { rozetkaFetch, rozetkaFetchRaw } from './rozetka-api';
 import { RZ_SENDER_KEY } from './rz-delivery-api';
+import { normalizeSenderPickup, type RozetkaSenderPickup, type RozetkaSenderPickupRaw } from './rozetka-delivery';
 
 export const ROZETKA_SENDER_KEY = 'rozetka_delivery_sender';
 
 /** Форма rz_delivery_sender (Налаштування → ROZETKA Доставка) */
 type RzSettingsSender = {
   city?: string; city_name?: string;
-  department?: string; department_label?: string;
+  department?: string; department_label?: string; weight_limit_kg?: number | null;
   last_name?: string; first_name?: string; middle_name?: string; phone?: string;
 };
 
@@ -34,7 +35,20 @@ export type RozetkaSender = {
   department_type?: number;
   phones: string[];
   info?: string;
+  /** Довідково для модалки, у запит до Rozetka не йде (див. apiSender). */
+  city_name?: string;
+  weight_limit_kg?: number | null;
 };
+
+/** Рівно ті поля, які знає create-order-ttn: зайві ключі в sender туди не шлемо. */
+function apiSender(s: RozetkaSender): Omit<RozetkaSender, 'city_name' | 'weight_limit_kg'> {
+  return {
+    type: s.type, name: s.name, city: s.city, address: s.address, department: s.department,
+    ...(s.department_type != null ? { department_type: s.department_type } : {}),
+    phones: s.phones,
+    ...(s.info ? { info: s.info } : {}),
+  };
+}
 
 export type RozetkaDeliveryTtn = {
   id: number;
@@ -105,6 +119,8 @@ export async function getRozetkaSender(): Promise<RozetkaSender | null> {
         ...senderFromTtn(hist),
         ...(name ? { name } : {}),
         ...(settings.phone ? { phones: [settings.phone] } : {}),
+        ...(settings.city_name ? { city_name: settings.city_name } : {}),
+        weight_limit_kg: settings.weight_limit_kg ?? null,
       };
     }
     // Точки з налаштувань ще немає в історії МП-накладних — падаємо на «як минулого разу»
@@ -144,6 +160,50 @@ export async function getRozetkaSenderOptions(): Promise<RozetkaSender[]> {
 export async function saveRozetkaSender(sender: RozetkaSender): Promise<void> {
   const db = createServiceClient();
   await db.from('app_settings').upsert({ key: ROZETKA_SENDER_KEY, value: JSON.stringify(sender) });
+}
+
+/** Контакт відправника з Налаштувань — щоб обрати відділення можна було й без історії накладних. */
+export async function getRzSettingsContact(): Promise<{ name: string; phones: string[] } | null> {
+  const s = await getRzSettingsSender();
+  if (!s) return null;
+  const name = [s.last_name, s.first_name, s.middle_name].filter(Boolean).join(' ');
+  if (!name) return null;
+  return { name, phones: s.phone ? [s.phone] : [] };
+}
+
+// ── Довідник відділень відправника (Seller API, розділ Octopus) ────────────
+//
+// find-pickup-cities?send_available=1 → міста, звідки можна відправляти;
+// find-sender-pickups?city_id=… → точки міста, куди продавець може здати посилку.
+// pickup_id у відповіді — це той самий uuid, що лежить у sender.department
+// створених накладних (перевірено: 84a03f07… збігається з історією кабінету).
+// Сторінка — максимум 50 (більше API відхиляє), тому гортаємо.
+
+export type RozetkaSendCity = { id: string; name: string; region: string; district: string | null };
+
+export async function findRozetkaSendCities(query: string): Promise<RozetkaSendCity[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const d = await rozetkaFetch<{ models?: {
+    id: string; city_name: string; region_name?: string | null; district_name?: string | null; send_available?: boolean;
+  }[] }>(`/delivery-rozetka/find-pickup-cities?city_name=${encodeURIComponent(q)}&send_available=1`);
+  return (d.models ?? [])
+    .filter(m => m.send_available !== false)
+    .map(m => ({ id: m.id, name: m.city_name, region: m.region_name ?? '', district: m.district_name ?? null }));
+}
+
+export async function findRozetkaSenderPickups(city: { id: string; name: string }): Promise<RozetkaSenderPickup[]> {
+  if (!city.id) return [];
+  const out: RozetkaSenderPickup[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const d = await rozetkaFetch<{ senderPickups?: RozetkaSenderPickupRaw[]; _meta?: { pageCount?: number } }>(
+      `/delivery-rozetka/find-sender-pickups?city_id=${encodeURIComponent(city.id)}&pageSize=50&page=${page}`,
+    );
+    const rows = d.senderPickups ?? [];
+    for (const r of rows) if (r.pickup_id) out.push(normalizeSenderPickup(r, city));
+    if (rows.length === 0 || page >= (d._meta?.pageCount ?? 1)) break;
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label, 'uk'));
 }
 
 /**
@@ -199,7 +259,7 @@ export async function createRozetkaDeliveryTtn(opts: {
       // об'єм у м³ — Rozetka чекає його окремим полем разом із габаритами
       volume: Number(((length * width * height) / 1_000_000).toFixed(6)),
     },
-    sender: opts.sender,
+    sender: apiSender(opts.sender),
     ...(opts.description ? { description: opts.description.slice(0, 100) } : {}),
     has_paid: opts.hasPaid,
     cost: opts.hasPaid ? 0 : opts.codAmount,

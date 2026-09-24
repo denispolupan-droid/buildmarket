@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
-import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRozetkaDeliveryTtnPdf, getRzSettingsSender, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
+import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRozetkaDeliveryTtnPdf, getRzSettingsSender, getRzSettingsContact, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
@@ -14,8 +14,8 @@ import { mergedDescription } from '../../../../../../lib/orders/merge-ttn';
  * своїм API (розділ Octopus). Посилку з ТТН Нової Пошти точка видачі не прийме,
  * тому роут навмисно відмовляє всім іншим типам доставки.
  */
-/** Хто буде відправником + з яких відділень можна відправити — ДО створення
- *  накладної (options — різні відділення з останніх накладних кабінету).
+/** Хто буде відправником — ДО створення накладної. contact — ПІБ/телефон з
+ *  Налаштувань, щоб обрати відділення можна було і без жодної накладної в історії.
  *  ?label=1 — PDF етикетки вже створеної накладної (base64). */
 export async function GET(
   req: NextRequest,
@@ -47,19 +47,21 @@ export async function GET(
     }
   }
 
-  const [sender, options, settings] = await Promise.all([
+  const [sender, settings, contact] = await Promise.all([
     getRozetkaSender(),
-    getRozetkaSenderOptions().catch(() => [] as RozetkaSender[]),
     getRzSettingsSender().catch(() => null),
+    getRzSettingsContact().catch(() => null),
   ]);
-  // Поточний відправник міг бути з налаштування і не потрапити в історію
-  if (sender && !options.some(o => o.department === sender.department)) options.unshift(sender);
-  return NextResponse.json({ sender, options, settingsDepartment: settings?.department ?? null });
+  return NextResponse.json({ sender, contact, settingsDepartment: settings?.department ?? null });
 }
 
 /** Обрати відділення відправника для МП-накладних. Вибір точки, що збігається з
  *  Налаштуваннями → «ROZETKA Доставка», знімає перевизначення — далі відправник
- *  «слідує» за налаштуваннями; інша точка зберігається як явний override. */
+ *  «слідує» за налаштуваннями; інша точка зберігається як явний override.
+ *
+ *  Якщо з цього відділення вже відправляли, city/address беремо з тієї накладної:
+ *  кабінет пише в sender.city uuid з іншого довідника, ніж find-pickup-cities
+ *  (d12cbd6b… проти e1d394d7… для Харкова), і перевірений варіант надійніший. */
 export async function PUT(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -72,23 +74,31 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Неповні дані відправника' }, { status: 400 });
   }
 
-  const settings = await getRzSettingsSender().catch(() => null);
+  const [settings, history] = await Promise.all([
+    getRzSettingsSender().catch(() => null),
+    getRozetkaSenderOptions().catch(() => [] as RozetkaSender[]),
+  ]);
   if (settings?.department && settings.department === s.department) {
     const db = createServiceClient();
     await db.from('app_settings').delete().eq('key', ROZETKA_SENDER_KEY);
-    return NextResponse.json({ ok: true, mode: 'settings' });
+    const sender = await getRozetkaSender();
+    return NextResponse.json({ ok: true, mode: 'settings', sender });
   }
 
-  await saveRozetkaSender({
+  const known = history.find(o => o.department === s.department);
+  const sender: RozetkaSender = {
     type: s.type ?? 'natural',
     name: s.name,
-    city: s.city,
-    address: s.address ?? '',
+    city: known?.city ?? s.city,
+    address: known?.address ?? s.address ?? '',
     department: s.department,
-    department_type: s.department_type,
+    department_type: known?.department_type ?? s.department_type,
     phones: Array.isArray(s.phones) ? s.phones : [],
-  });
-  return NextResponse.json({ ok: true, mode: 'override' });
+    ...(s.city_name ? { city_name: s.city_name } : {}),
+    weight_limit_kg: typeof s.weight_limit_kg === 'number' ? s.weight_limit_kg : null,
+  };
+  await saveRozetkaSender(sender);
+  return NextResponse.json({ ok: true, mode: 'override', sender });
 }
 
 export async function POST(
