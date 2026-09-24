@@ -112,18 +112,39 @@ export async function getRozetkaSender(): Promise<RozetkaSender | null> {
   ]);
 
   if (settings?.department) {
+    const name = [settings.last_name, settings.first_name, settings.middle_name].filter(Boolean).join(' ');
+    const contact = {
+      ...(name ? { name } : {}),
+      ...(settings.phone ? { phones: [settings.phone] } : {}),
+      ...(settings.city_name ? { city_name: settings.city_name.replace(/^м\.\s*/i, '') } : {}),
+      weight_limit_kg: settings.weight_limit_kg ?? null,
+    };
     const hist = ttns.find(t => t.sender?.department === settings.department && t.sender?.city)?.sender;
-    if (hist) {
-      const name = [settings.last_name, settings.first_name, settings.middle_name].filter(Boolean).join(' ');
-      return {
-        ...senderFromTtn(hist),
-        ...(name ? { name } : {}),
-        ...(settings.phone ? { phones: [settings.phone] } : {}),
-        ...(settings.city_name ? { city_name: settings.city_name } : {}),
-        weight_limit_kg: settings.weight_limit_kg ?? null,
-      };
+    if (hist) return { ...senderFromTtn(hist), ...contact };
+
+    // З цієї точки ще не відправляли — беремо її з довідника Seller API (uuid
+    // міста в налаштуваннях той самий, що й у find-pickup-cities). Раніше тут
+    // падали на «як минулого разу», і точка з налаштувань без історії ніколи
+    // не спрацьовувала: обрали Аерокосмічний — накладна йшла з Б.Хмельницького.
+    if (settings.city) {
+      const pickup = await findRozetkaSenderPickup({ id: settings.city, name: contact.city_name ?? '' }, settings.department)
+        .catch(() => null);
+      const address = pickup?.address
+        ?? [contact.city_name, settings.department_label].filter(Boolean).join(', ');
+      if (address) {
+        return {
+          type: 'natural',
+          name: contact.name ?? '',
+          city: pickup?.cityId ?? settings.city,
+          address,
+          department: settings.department,
+          department_type: pickup?.typeMapped ?? 0,
+          phones: contact.phones ?? [],
+          ...(contact.city_name ? { city_name: contact.city_name } : {}),
+          weight_limit_kg: pickup?.limitKg ?? contact.weight_limit_kg,
+        };
+      }
     }
-    // Точки з налаштувань ще немає в історії МП-накладних — падаємо на «як минулого разу»
   }
 
   // ttn-list віддає найсвіжіші першими; беремо перший із заповненим відправником
@@ -204,6 +225,16 @@ export async function findRozetkaSenderPickups(city: { id: string; name: string 
     if (rows.length === 0 || page >= (d._meta?.pageCount ?? 1)) break;
   }
   return out.sort((a, b) => a.label.localeCompare(b.label, 'uk'));
+}
+
+/** Одна точка за uuid. API має фільтр pickup_id; якщо він не спрацює — шукаємо в повному списку. */
+export async function findRozetkaSenderPickup(city: { id: string; name: string }, pickupId: string): Promise<RozetkaSenderPickup | null> {
+  const d = await rozetkaFetch<{ senderPickups?: RozetkaSenderPickupRaw[] }>(
+    `/delivery-rozetka/find-sender-pickups?city_id=${encodeURIComponent(city.id)}&pickup_id=${encodeURIComponent(pickupId)}&pageSize=50`,
+  );
+  const direct = (d.senderPickups ?? []).find(r => r.pickup_id === pickupId);
+  if (direct) return normalizeSenderPickup(direct, city);
+  return (await findRozetkaSenderPickups(city)).find(p => p.id === pickupId) ?? null;
 }
 
 /**
