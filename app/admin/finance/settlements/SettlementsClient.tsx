@@ -43,14 +43,17 @@ function fmtShort(n: number) {
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   sale: 'Відвантаження', payment: 'Оплата', return_out: 'Повернення',
-  cogs: 'Собівартість',  correction: 'Коригування',
+  cogs: 'Собівартість',  correction: 'Коригування', debt_adjustment: 'Коригування боргу',
 };
 
 function rowContent(row: TxnRow): { label: string; href: string | null } {
   const typeLabel = DOC_TYPE_LABELS[row.doc_type ?? ''] ?? row.doc_type ?? '—';
   const docRef    = row.order_number ? ` / Замовлення #${row.order_number}` : '';
   const label     = (row.description ?? typeLabel) + docRef;
-  const href      = row.doc_id ? `/admin/accounting/documents/${row.doc_id}` : null;
+  // КБ — не товарний документ: його екран — «Коригування», а не картка накладної
+  const href      = row.doc_id
+    ? (row.doc_type === 'debt_adjustment' ? `/admin/finance/adjustments?id=${row.doc_id}` : `/admin/accounting/documents/${row.doc_id}`)
+    : null;
   return { label, href };
 }
 

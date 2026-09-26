@@ -4646,7 +4646,7 @@ export default function AdminOrders({
                         const payments    = orderPayments[order.id] ?? [];
                         const isFormOpen  = payFormOpen[order.id] ?? false;
                         const isSaving    = payFormSaving[order.id] ?? false;
-                        const modeLabel: Record<string, string> = { cash: 'Готівка', transfer: 'Безготівк.', card: 'Карта', acquiring: 'Еквайринг' };
+                        const modeLabel: Record<string, string> = { cash: 'Готівка', transfer: 'Безготівк.', card: 'Карта', acquiring: 'Еквайринг', adjustment: 'Коригування' };
                         const defaultMode = order.payment_type === 'cash' ? 'cash' : 'transfer';
                         const defaultRemaining = remaining > 0 ? remaining.toFixed(2) : total.toFixed(2);
 

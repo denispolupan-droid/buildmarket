@@ -25,6 +25,7 @@ const GROUPS: Group[] = [
     { href: '/admin/finance/settlements', label: 'Дебіторка' },
     { href: '/admin/finance/payables',    label: 'Кредиторка' },
     { href: '/admin/finance/aging',       label: 'Старіння' },
+    { href: '/admin/finance/adjustments', label: 'Коригування' },
   ] },
   { href: '/admin/finance/expenses',            label: 'Витрати' },
   { href: '/admin/finance/marketplace-balance', label: 'Маркетплейси' },

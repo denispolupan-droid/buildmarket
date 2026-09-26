@@ -16,7 +16,9 @@ export type DocType =
   | 'customer_payment_reversal'  // РКО: повернення оплати клієнту
   | 'supplier_payment'           // ПС: оплата постачальнику
   | 'cash_in'                    // КО: прихід готівки (не пов'язаний з клієнтом)
-  | 'cash_out';                  // РО: видача готівки
+  | 'cash_out'                   // РО: видача готівки
+  // ── Коригування боргу (direction=none, свої рядки в debt_adjustment_lines) ──
+  | 'debt_adjustment';           // КБ: перенесення боргу / взаємозалік / списання
 
 export type POStatus =
   | 'draft' | 'sent' | 'confirmed_by_supplier'

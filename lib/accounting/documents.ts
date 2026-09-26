@@ -34,6 +34,8 @@ const DIRECTION = {
   supplier_payment:          'none',
   cash_in:                   'none',
   cash_out:                  'none',
+  // Коригування боргу — лише грошові проводки, свої рядки (lib/accounting/debt-adjustment)
+  debt_adjustment:           'none',
 } as const satisfies Record<DocType, string>;
 
 type Direction = (typeof DIRECTION)[DocType];
@@ -592,6 +594,7 @@ export async function cancelDocument(
     'purchase_order', 'purchase_order_adjustment', 'supplier_invoice',
     // Платіжні ваучери скасовуються напряму (без сторно-документів)
     'customer_payment', 'customer_payment_reversal', 'supplier_payment', 'cash_in', 'cash_out',
+    'debt_adjustment',
   ]);
 
   if (doc.status === 'draft' || PLAN_ONLY_TYPES.has(doc.doc_type)) {
@@ -608,6 +611,11 @@ export async function cancelDocument(
         `в леджері залишаться незакриті проводки. ` +
         `Використовуй reverse-payment для скасування оплати.`,
       );
+    }
+    // Коригування боргу має зворотні проводки і синхронізацію замовлень —
+    // скасовується лише своїм модулем (cancelDebtAdjustment).
+    if (doc.status === 'confirmed' && doc.doc_type === 'debt_adjustment') {
+      throw new Error(`Коригування боргу (${doc.doc_number}) скасовується з екрана «Коригування», не напряму.`);
     }
 
     const { error } = await db

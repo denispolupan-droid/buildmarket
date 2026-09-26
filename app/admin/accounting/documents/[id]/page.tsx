@@ -25,6 +25,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   transfer:       'Переміщення',
   inventory:      'Інвентаризація',
   price_change:   'Переоцінка',
+  debt_adjustment: 'Коригування боргу',
 };
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   draft:     { label: 'Чернетка',  color: '#64748B', bg: '#F8FAFC' },

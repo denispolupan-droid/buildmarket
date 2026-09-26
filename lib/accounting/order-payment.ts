@@ -19,6 +19,7 @@ export const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> =
 
 const MODE_LABEL: Record<string, string> = {
   cash: 'Готівка', transfer: 'Безготівковий', bank: 'Безготівковий', card: 'Карта', acquiring: 'Еквайринг',
+  adjustment: 'Коригування боргу',
 };
 
 export type ApplyOrderPaymentInput = {

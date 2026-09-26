@@ -17,6 +17,7 @@ const DOC_LABELS: Record<string, string> = {
   payment:          'Оплата',
   return_out:       'Повернення',
   correction:       'Коригування',
+  debt_adjustment:  'Коригування боргу',
   cogs:             'Собівартість',
 };
 
@@ -91,7 +92,7 @@ export default async function CustomerActPage({
       || (orderNum ? `${typeLabel} — замовлення #${orderNum}` : typeLabel);
 
     const docHref = t.doc_id
-      ? `/admin/accounting/documents/${t.doc_id}`
+      ? (t.doc_type === 'debt_adjustment' ? `/admin/finance/adjustments?id=${t.doc_id}` : `/admin/accounting/documents/${t.doc_id}`)
       : (t.order_id ? `/admin/orders/${t.order_id}` : null);
     const docLabel = orderNum ? `#${orderNum}` : null;
 
