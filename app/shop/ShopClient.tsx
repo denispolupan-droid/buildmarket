@@ -22,6 +22,7 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductPublic, Category, ReviewStats } from '../../lib/supabase';
 import type { CategoryMeta } from '../../lib/category-descriptions';
 import { useCategoryMeta } from '../../lib/use-category-meta';
+import { useCategoryChars } from '../../lib/use-category-chars';
 import { publishCategoryView } from '../../lib/category-view';
 import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyCompact';
 import { orderByShowcase, isShowcaseVisible } from '../../lib/showcase';
@@ -271,9 +272,11 @@ type Props = {
   showcaseSkus?: string[];
   /** Опис/FAQ/гайд стартової категорії — з сервера, щоб текст був у HTML; решта — через /api/category-meta */
   initialMeta?: CategoryMeta | null;
+  /** Корінь гілки, чиї характеристики є в `products`; null — повний набір (lib/shop-chars) */
+  charsScope?: string | null;
 };
 
-export default function ShopClient({ products, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, initialSearch, showcaseSkus = [], initialMeta = null }: Props) {
+export default function ShopClient({ products: shippedProducts, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, initialSearch, showcaseSkus = [], initialMeta = null, charsScope = null }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
@@ -286,6 +289,9 @@ export default function ShopClient({ products, categories, reviewStats, initialS
   const [wholesaleModalSku, setWholesaleModalSku] = useState<string | null>(null);
   const [search,       setSearch]       = useState(initialSearch ?? '');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
+  // Характеристики чужих категорій довантажуються при перемиканні — увесь код
+  // нижче працює з повним списком і про це не знає.
+  const products = useCategoryChars(shippedProducts, categories, selCat, charsScope);
 
   // ?q= з пошуку на головній. /ru/shop статичний (ISR) і searchParams на
   // сервері не читає — тому параметр знімаємо на клієнті після маунту.
