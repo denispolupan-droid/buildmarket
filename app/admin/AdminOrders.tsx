@@ -546,6 +546,10 @@ interface AdminOrdersProps {
   carrierFilter?: string;
   /** код форми оплати з orders.payment_method_code ('' — без фільтра) */
   payFilter?: string;
+  /** 'pending' — показані лише повернення без рішення (зріз перекриває вкладку статусу) */
+  retFilter?: string;
+  /** скільки посилок їде назад без рішення «забрати з пошти / залишити» */
+  pendingReturns?: number;
   channelCounts?: Record<string, number>;
   carrierCounts?: Record<string, number>;
   /** скільки замовлень на кожну форму оплати в поточному зрізі */
@@ -571,7 +575,8 @@ export default function AdminOrders({
   initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin',
   hasRecentReceipts = false, expandOrderId, dateFrom, dateTo,
   statusCounts = {}, currentStatus = '',
-  initialSearch = '', channelFilter = '', carrierFilter = '', payFilter = '',
+  initialSearch = '', channelFilter = '', carrierFilter = '', payFilter = '', retFilter = '',
+  pendingReturns = 0,
   channelCounts = {}, carrierCounts = {}, payCounts = {},
   totalFound = 0, productThumbs = {},
   sortBy = 'created_at', sortDir = 'desc',
@@ -2465,6 +2470,31 @@ export default function AdminOrders({
                 </button>
               );
             })}
+            {/* Повернення без рішення. Це не стан замовлення, а робота, яка
+                висить: посилка їде назад, а забирати її з пошти чи залишити —
+                ще ніхто не сказав. Серед десятків скасованих такі рядки
+                губилися, а зберігання на відділенні з якогось дня стає платним.
+                Зріз рахує і фільтрує сервер, тому чіп видно на будь-якій
+                вкладці, і він перекриває вкладку статусу. */}
+            {(pendingReturns > 0 || retFilter === 'pending') && (() => {
+              const active = retFilter === 'pending';
+              return (
+                <button
+                  onClick={() => pushFilters({ ret: active ? '' : 'pending' })}
+                  title="Посилки, які їдуть назад, і рішення по них ще немає: забрати з пошти чи залишити (коли зворотна доставка дорожча за товар). Показує всі статуси одразу."
+                  style={{
+                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                    border: `1.5px solid ${active ? '#FDBA74' : 'var(--border)'}`,
+                    background: active ? '#FFF7ED' : 'var(--bg-card)',
+                    color: active ? '#C2410C' : 'var(--text-secondary)',
+                    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                  }}
+                >
+                  ↩ Повернення без рішення
+                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{pendingReturns}</span>
+                </button>
+              );
+            })()}
             {(() => {
               // Кнопка з'являється тільки коли є що показувати — інакше вона
               // просто займає місце в і без того щільній панелі фільтрів.
@@ -2635,11 +2665,11 @@ export default function AdminOrders({
         </div>
 
         {/* Скільки знайшлося — по всій базі, а не на цій сторінці */}
-        {(initialSearch || channelFilter || carrierFilter || payFilter) && (
+        {(initialSearch || channelFilter || carrierFilter || payFilter || retFilter) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
             <span>Знайдено: <strong style={{ color: 'var(--brand-blue)' }}>{totalFound}</strong> у всій базі</span>
             <button
-              onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '', pay: '' }); }}
+              onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '', pay: '', ret: '' }); }}
               style={{ height: '24px', padding: '0 10px', borderRadius: '20px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer' }}>
               Скинути фільтри
             </button>
@@ -2771,7 +2801,9 @@ export default function AdminOrders({
         }}>
           <Package size={36} strokeWidth={1} style={{ marginBottom: '10px', opacity: 0.4 }} />
           <p style={{ marginBottom: '16px', fontSize: '14px' }}>
-            {currentStatus
+            {retFilter === 'pending'
+              ? 'Повернень без рішення немає — по всіх посилках, що їхали назад, рішення прийнято'
+              : currentStatus
               ? `Немає замовлень зі статусом «${currentStatus === 'ready_to_ship' ? 'До відправки' : (STATUSES.find(s => s.value === currentStatus)?.label ?? currentStatus)}»`
               : 'Замовлень немає'}
           </p>

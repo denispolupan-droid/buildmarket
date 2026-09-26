@@ -38,7 +38,7 @@ const STATUS_TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string; q?: string; channel?: string; carrier?: string; pay?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string; q?: string; channel?: string; carrier?: string; pay?: string; ret?: string }>;
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -48,7 +48,7 @@ export default async function AdminPage({
   const {
     page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo,
     sortBy: sortByParam, sortDir: sortDirParam, q: qParam, channel: channelParam, carrier: carrierParam,
-    pay: payParam,
+    pay: payParam, ret: retParam,
   } = await searchParams;
   const search  = (qParam ?? '').trim();
   const channel = channelParam ?? '';
@@ -57,6 +57,8 @@ export default async function AdminPage({
   // (див. міграцію 099). Фільтрувати по payment_type не можна: у частини
   // замовлень маркетплейсів він розходиться з фактичним способом оплати.
   const pay = PAYMENT_METHOD_ORDER.includes(payParam as PaymentMethodCode) ? payParam! : '';
+  // Зріз «повернення без рішення» (див. applyReturnPendingFilter нижче)
+  const ret = retParam === 'pending' ? 'pending' : '';
   const SORT_COLS: Record<string, string> = { created_at: 'created_at', total_price: 'total_price', order_number: 'order_number' };
   const sortBy  = SORT_COLS[sortByParam ?? ''] ?? 'created_at';
   const sortAsc = sortDirParam === 'asc';
@@ -130,7 +132,34 @@ export default async function AdminPage({
    * = вже прийняті НП. Розрізняємо за carrier_accepted_at, щоб одне замовлення
    * не потрапляло у дві вкладки одночасно.
    */
+  /**
+   * «Повернення без рішення» — посилка фізично їде назад, а менеджер ще не
+   * сказав, що з нею робити (забрати з пошти чи залишити). Три джерела, бо
+   * повернення починається по-різному:
+   *   скасоване замовлення, яке перевізник УЖЕ прийняв (carrier_accepted_at) —
+   *   відмова на пошті, скасування в кабінеті МП чи наше рішення;
+   *   оформлена заявка на повернення НП (np_return_ref) — буває і на
+   *   доставленому замовленні;
+   *   відома зворотна накладна (np_return_tracking).
+   * Рішення лежить у flags (return_received / return_abandoned) — прийняті
+   * звідси випадають. Той самий предикат рахує isReturnPending у AdminOrders,
+   * тому мітка «↩ забрати?» в рядку і цей фільтр завжди показують одне й те саме.
+   */
+  function applyReturnPendingFilter<T>(query: T): T {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = query as any;
+    q = q.or('and(status.eq.cancelled,carrier_accepted_at.not.is.null),np_return_ref.not.is.null,np_return_tracking.not.is.null');
+    // flags — text[] NOT NULL DEFAULT '{}' (міграція 077), тож заперечення по
+    // масиву не губить рядки, як губило б на nullable-колонці.
+    q = q.not('flags', 'cs', '{return_received}').not('flags', 'cs', '{return_abandoned}');
+    return q as T;
+  }
+
   function applyStatusFilter<T>(query: T): T {
+    // Зріз повернень навмисно ПЕРЕКРИВАЄ вкладку статусу: такі замовлення
+    // шукають не по статусу, а по факту «висить без рішення», і частина з них
+    // (заявка на повернення НП) лежить поза «Скасовано».
+    if (ret === 'pending') return applyReturnPendingFilter(query);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = query as any;
     if (status === 'ready_to_ship') q = q.eq('status', 'shipped').is('carrier_accepted_at', null);
@@ -151,12 +180,12 @@ export default async function AdminPage({
 
   // Status counts + amounts — with same date filter as the main list.
   // Пагінація: без range() лічильники вкладок і суми по статусах мовчки обрізалися б на 1000.
-  const [{ data: orders, count }, statusRows, { count: recentReceiptCount }, channelRows, { data: promSetting }, { data: rozetkaSetting }] = await Promise.all([
+  const [{ data: orders, count }, statusRows, { count: recentReceiptCount }, channelRows, { count: pendingReturnsRaw }, { data: promSetting }, { data: rozetkaSetting }] = await Promise.all([
     query,
     // Лічильники вкладок — по тому ж зрізу, що й список (пошук/канал/перевізник),
     // інакше вкладка каже «89», а в списку три рядки.
-    fetchAllRows<{ status: string; carrier_accepted_at: string | null; carrier_status_text: string | null; flags: string[] | null; total_price: number | null }>((f, t) =>
-      applyOrderFilters(serviceClient.from('orders').select('status, carrier_accepted_at, carrier_status_text, flags, total_price')).range(f, t),
+    fetchAllRows<{ status: string; carrier_accepted_at: string | null; total_price: number | null }>((f, t) =>
+      applyOrderFilters(serviceClient.from('orders').select('status, carrier_accepted_at, total_price')).range(f, t),
     ),
     serviceClient.from('acc_documents')
       .select('id', { count: 'exact', head: true })
@@ -173,6 +202,11 @@ export default async function AdminPage({
         { ignoreFacets: true },
       )).range(f, t),
     ),
+    // Скільки посилок їде назад без рішення — тим самим запитом, що й сам зріз,
+    // тому цифра на чіпі завжди дорівнює довжині списку під ним.
+    applyReturnPendingFilter(applyOrderFilters(
+      serviceClient.from('orders').select('id', { count: 'exact', head: true }),
+    )),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
     serviceClient.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle(),
   ]);
@@ -317,16 +351,10 @@ export default async function AdminPage({
   }, {});
   const totalCount = statusRows?.length ?? 0;
 
-  // Невирішені повернення: замовлення скасоване, але перевізник УЖЕ прийняв посилку
-  // (carrier_accepted_at) — вона їде назад і з нею треба щось робити. Джерело скасування
-  // неважливе (відмова на пошті / скасування в кабінеті МП / наше рішення): раніше тут
-  // шукали слово «відмова» в статусі НП і кейс з кабінету Rozetka не рахувався.
-  const pendingReturns = (statusRows ?? []).filter(r =>
-    r.status === 'cancelled'
-    && !!r.carrier_accepted_at
-    && !(r.flags ?? []).includes('return_received')
-    && !(r.flags ?? []).includes('return_abandoned'),
-  ).length;
+  // Невирішені повернення — рахує БД тим самим предикатом, що фільтрує список
+  // (applyReturnPendingFilter): посилка їде назад, рішення «забрати / залишити»
+  // ще немає.
+  const pendingReturns = pendingReturnsRaw ?? 0;
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
   const curStatus = status;
@@ -346,7 +374,9 @@ export default async function AdminPage({
       <div className="admin-status-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 60, background: 'var(--bg-page)', padding: '20px 0 12px', marginBottom: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
           {STATUS_TABS.map(tab => {
-            const isActive = curStatus === tab.value;
+            // Поки активний зріз повернень, список не відповідає жодній вкладці —
+            // підсвічувати одну з них означало б збрехати про те, що на екрані.
+            const isActive = !ret && curStatus === tab.value;
             const cnt = tab.value === '' ? totalCount : (statusCounts[tab.value] ?? 0);
             const isNew = tab.value === 'new';
             return (
@@ -388,7 +418,7 @@ export default async function AdminPage({
                   // або відмовитись). Окреме попередження, не частина заголовка, тож
                   // стоїть нижче — там, де в інших картках сума.
                   const returnsChip = tab.value === 'cancelled' && pendingReturns > 0 && (
-                    <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити»`} style={{
+                    <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити». Усі одразу — фільтр «↩ Повернення без рішення» під вкладками`} style={{
                       flexShrink: 0,
                       fontSize: '10px', fontWeight: 700, lineHeight: '15px',
                       padding: '0 5px', borderRadius: '7px',
@@ -442,7 +472,7 @@ export default async function AdminPage({
         {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
       </p>
 
-      <AdminOrders key={curStatus} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
+      <AdminOrders key={`${curStatus}|${ret}`} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} retFilter={ret} pendingReturns={pendingReturns} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={ret ? '' : curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
     </div>
   );
 }
