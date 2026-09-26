@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { productDisplayName, variantBaseName } from '../../../lib/seo/meta';
 import { getCategoryNameRu } from '../../../lib/ru';
 import { fetchAllRows } from '../../../lib/db-paginate';
+import { googleProductCategoryId } from '../../../lib/google-product-category';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -129,6 +130,8 @@ export async function GET(request: NextRequest) {
       const description = truncate(rawDesc, 5000);
 
       const productType = categoryPath(p.category_slug);
+      const cat = p.category_slug ? catMap.get(p.category_slug) : null;
+      const googleCategory = googleProductCategoryId(p.category_slug, cat?.parent_slug ?? null);
 
       // Мітка придатності до реклами: кампанія в Google Ads фільтрується саме за
       // custom_label, тож без неї довелось би вручну перелічувати артикули і
@@ -154,6 +157,7 @@ export async function GET(request: NextRequest) {
       <g:identifier_exists>false</g:identifier_exists>
       ${gid ? `<g:item_group_id>${x(gid)}</g:item_group_id>` : ''}
       ${productType ? `<g:product_type>${x(productType)}</g:product_type>` : ''}
+      ${googleCategory ? `<g:google_product_category>${googleCategory}</g:google_product_category>` : ''}
       <g:custom_label_0>${adsLabel}</g:custom_label_0>
     </item>`;
     })
