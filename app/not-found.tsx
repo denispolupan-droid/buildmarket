@@ -1,5 +1,7 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
+import NotFoundBody from './components/NotFoundBody';
+import { getCategoriesCached, getProductsLightCached } from '../lib/supabase';
+import { categoriesWithProducts } from '../lib/seo/meta';
 
 export const metadata: Metadata = {
   title: 'Сторінку не знайдено',
@@ -10,42 +12,15 @@ export const metadata: Metadata = {
   alternates: { canonical: null },
 };
 
-export default function NotFound() {
-  return (
-    <div style={{
-      minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-page)',
-    }}>
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <div style={{
-          fontSize: '84px', fontWeight: 900, lineHeight: 1, letterSpacing: '-3px',
-          background: 'linear-gradient(135deg, var(--brand-blue) 20%, var(--brand-teal-bright))',
-          WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>404</div>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: '16px 0 8px' }}>
-          Сторінку не знайдено
-        </h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
-          Можливо, товар було видалено або URL введено некоректно
-        </p>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link href="/shop" style={{
-            height: '44px', padding: '0 24px', borderRadius: '10px',
-            background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700,
-            display: 'inline-flex', alignItems: 'center',
-          }}>
-            До каталогу
-          </Link>
-          <Link href="/" style={{
-            height: '44px', padding: '0 24px', borderRadius: '10px',
-            border: '1px solid var(--border)', background: 'var(--bg-card)',
-            color: 'var(--text-primary)', fontSize: '14px', fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center',
-          }}>
-            На головну
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+// 404 із виходами: кореневі категорії з товаром і блог, обома мовами (мову
+// визначає клієнт за адресою). Дані кешовані, тому сторінка лишається дешевою;
+// якщо база недоступна — показуємо 404 без списку, а не 500.
+export default async function NotFound() {
+  let categories: { slug: string; name: string }[] = [];
+  try {
+    const [cats, products] = await Promise.all([getCategoriesCached(), getProductsLightCached()]);
+    const live = categoriesWithProducts(cats, products);
+    categories = cats.filter(c => !c.parent_slug && live.has(c.slug)).map(c => ({ slug: c.slug, name: c.name }));
+  } catch { /* 404 без списку категорій */ }
+  return <NotFoundBody categories={categories} />;
 }

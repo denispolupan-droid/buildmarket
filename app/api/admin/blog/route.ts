@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
+import { after } from 'next/server';
+import { submitIndexNow } from '../../../../lib/indexnow';
 import { createClient } from '@supabase/supabase-js';
 import { checkAdmin } from '../../../../lib/check-admin';
 import { requireStaff } from '../../../../lib/auth-guard';
@@ -116,6 +118,11 @@ export async function PATCH(req: NextRequest) {
   // покриття, щоб черга тем не пропонувала вже написане. Не чекаємо: це ~2 500
   // рядків і кілька секунд, а відповідь адмінці потрібна одразу.
   if (body.is_published) refreshCoverage().catch(err => console.error('[demand] refreshCoverage:', err));
+  // Bing/ChatGPT-пошук дізнаються про нову статтю одразу, а не при наступному обході
+  if (body.is_published) {
+    const { data: p } = await serviceClient.from('blog_posts').select('slug').eq('id', body.id).maybeSingle();
+    if (p?.slug) after(() => submitIndexNow([`/blog/${p.slug}`, `/ru/blog/${p.slug}`, '/blog', '/ru/blog']));
+  }
   return NextResponse.json({ ok: true });
 }
 

@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${BASE}/ru/blog`,
     languages: { 'uk': `${BASE}/blog`, 'ru': `${BASE}/ru/blog`, 'x-default': `${BASE}/blog` },
+    types: { 'application/rss+xml': `${BASE}/blog/feed.xml` },
   },
   openGraph: {
     title: 'Блог FIXLINE — советы по строительной химии',

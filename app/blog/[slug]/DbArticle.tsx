@@ -92,7 +92,25 @@ export default async function DbArticle({ post, lang = 'uk' }: Props) {
     mainEntity: t.faq.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
   } : null;
 
-  const related = (await getPublishedPostsCached()).filter(p => p.slug !== post.slug).slice(0, 3);
+  // «Читайте також» — статті тієї ж товарної родини (корінь дерева від головної
+  // shop-категорії статті), а не просто три останні: читачу про герметики
+  // корисніші сусідні статті про герметики, і перелінковка тримає тему разом.
+  // Без спільної родини — фолбек на найновіші.
+  const rootOf = (slug: string): string => {
+    let cur = allCats.find(c => c.slug === slug);
+    while (cur?.parent_slug) cur = allCats.find(c => c.slug === cur!.parent_slug);
+    return cur?.slug ?? slug;
+  };
+  const familyOf = (links: { href: string }[]) => new Set(
+    links.filter(l => l.href.startsWith('/shop/')).map(l => rootOf(l.href.slice('/shop/'.length))),
+  );
+  const myFamily = familyOf(post.related_links);
+  const related = (await getPublishedPostsCached())
+    .filter(p => p.slug !== post.slug)
+    .map(p => ({ p, same: [...familyOf(p.related_links)].some(f => myFamily.has(f)) ? 1 : 0 }))
+    .sort((a, b) => b.same - a.same || ((b.p.published_at ?? '') > (a.p.published_at ?? '') ? 1 : -1))
+    .slice(0, 3)
+    .map(x => x.p);
   const crumbLink: React.CSSProperties = { color: 'rgba(226,232,240,0.65)', textDecoration: 'none' };
 
   return (

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { revalidateTag, revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { submitIndexNow } from '../../../../../lib/indexnow';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { saveCategoryContent, CATEGORY_CONTENT_TAG, type CategoryContentInput } from '../../../../../lib/category-content';
 import { buildGenContext, validateContent } from '../../../../../lib/category-content-gen';
@@ -34,6 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
   revalidateTag(CATEGORY_CONTENT_TAG, 'max');
   revalidatePath(`/shop/${slug}`);
   revalidatePath(`/ru/shop/${slug}`);
+  after(() => submitIndexNow([`/shop/${slug}`, `/ru/shop/${slug}`]));
   await logSeoAction({
     page: `/shop/${slug}`,
     action: 'category_content',
