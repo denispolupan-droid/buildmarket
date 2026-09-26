@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     // Merchant Center would stop listing them.
     fetchAllRows((f, t) => serviceClient
       .from('products')
-      .select('sku, slug, name, name_ru, brand, category_slug, volume, description, description_ru, description_full, description_full_ru, image')
+      .select('sku, slug, name, name_ru, brand, category_slug, volume, description, description_ru, description_full, description_full_ru, image, gtin')
       .eq('is_active', true)
       .order('sort_order')
       .range(f, t)),
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
       <g:price>${price.toFixed(2)} UAH</g:price>
       ${salePrice ? `<g:sale_price>${salePrice.toFixed(2)} UAH</g:sale_price>` : ''}
       <g:brand>${x(p.brand)}</g:brand>
-      <g:identifier_exists>false</g:identifier_exists>
+      ${(p as { gtin?: string | null }).gtin ? `<g:gtin>${x((p as { gtin?: string | null }).gtin)}</g:gtin>` : '<g:identifier_exists>false</g:identifier_exists>'}
       ${gid ? `<g:item_group_id>${x(gid)}</g:item_group_id>` : ''}
       ${productType ? `<g:product_type>${x(productType)}</g:product_type>` : ''}
       ${googleCategory ? `<g:google_product_category>${googleCategory}</g:google_product_category>` : ''}

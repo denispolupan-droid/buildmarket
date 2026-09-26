@@ -91,7 +91,71 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ sent, failed, skipped });
+  const reminders = await sendReminders();
+  return NextResponse.json({ sent, failed, skipped, reminders });
+}
+
+const REMINDER_AFTER_DAYS = 9;
+
+/**
+ * Друге (і останнє) нагадування: перший лист дав ~4,5 % відгуків (44 → 2 за
+ * 90 днів). Через 9 днів тим, хто не залишив відгук, — короткий лист із тим
+ * самим посиланням. Більше не пишемо: обіцянка «єдиний лист» у першому листі
+ * стосувалась розсилок, а не одного нагадування, і після нього — тиша.
+ */
+async function sendReminders(): Promise<{ sent: number; failed: number }> {
+  const cutoff = new Date(Date.now() - REMINDER_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data: orders } = await serviceClient
+    .from('orders')
+    .select('id, order_number, contact, email, review_token')
+    .eq('status', 'delivered')
+    .is('review_reminder_sent_at', null)
+    .not('review_request_sent_at', 'is', null)
+    .lte('review_request_sent_at', cutoff)
+    .not('review_token', 'is', null)
+    .order('review_request_sent_at', { ascending: true })
+    .limit(BATCH);
+  if (!orders?.length) return { sent: 0, failed: 0 };
+
+  // Хто вже відгукнувся — нагадувати нема про що
+  const { data: reviewed } = await serviceClient
+    .from('product_reviews').select('order_id').in('order_id', orders.map(o => o.id));
+  const done = new Set((reviewed ?? []).map(r => r.order_id as string));
+
+  let sent = 0, failed = 0;
+  for (const order of orders) {
+    const email = (order.email ?? '').trim();
+    if (done.has(order.id) || !EMAIL_RE.test(email)) {
+      // відгук є або пошти немає — закриваємо, щоб не перебирати щодня
+      await serviceClient.from('orders').update({ review_reminder_sent_at: new Date().toISOString() }).eq('id', order.id);
+      continue;
+    }
+    const firstName = (order.contact ?? '').trim().split(/\s+/)[0] || '';
+    const reviewUrl = `${BASE}/review/${order.review_token}`;
+    try {
+      const { error: sendErr } = await resend.emails.send({
+        from: FROM,
+        to: email,
+        subject: `Хвилинка на відгук? Замовлення №${order.order_number}`,
+        html: `
+<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1E293B">
+  <p>${firstName ? `${escapeHtml(firstName)}, в` : 'В'}и вже встигли випробувати товари із замовлення №${order.order_number}?</p>
+  <p>Коротка оцінка зірочками займає хвилину, а іншим покупцям допомагає обрати правильно. Це останнє нагадування — далі ми не турбуємо.</p>
+  <p style="margin:24px 0">
+    <a href="${reviewUrl}" style="background:#1E3A5F;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Оцінити товари</a>
+  </p>
+  <p style="color:#94A3B8;font-size:12px;margin-top:32px">Якщо лист потрапив до вас помилково, просто проігноруйте його.</p>
+</div>`,
+      });
+      if (sendErr) throw sendErr;
+      await serviceClient.from('orders').update({ review_reminder_sent_at: new Date().toISOString() }).eq('id', order.id);
+      sent++;
+    } catch (err) {
+      console.error(`review-reminder failed for order ${order.id}:`, err);
+      failed++;
+    }
+  }
+  return { sent, failed };
 }
 
 function escapeHtml(s: string): string {
