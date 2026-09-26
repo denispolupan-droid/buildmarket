@@ -106,7 +106,10 @@ export default async function Home() {
   const localBusinessLd = {
     '@context': 'https://schema.org',
     '@type': ['LocalBusiness', 'HardwareStore'],
-    '@id': 'https://fixline.com.ua/#organization',
+    // Окремий @id: раніше збігався з Organization вище, і два вузли з різними
+    // даними під одним ідентифікатором зливались у суперечливу сутність (аудит 23.09).
+    '@id': 'https://fixline.com.ua/#store',
+    parentOrganization: { '@id': 'https://fixline.com.ua/#organization' },
     name: 'FIXLINE',
     description: 'B2B постачальник будівельної хімії: герметики, монтажні піни, клеї, ґрунтовки оптом і в роздріб.',
     url: 'https://fixline.com.ua',

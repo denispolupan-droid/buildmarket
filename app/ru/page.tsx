@@ -110,7 +110,9 @@ export default async function HomeRu() {
   const localBusinessLd = {
     '@context': 'https://schema.org',
     '@type': ['LocalBusiness', 'HardwareStore'],
-    '@id': `${BASE}/#organization`,
+    // Окремий @id від Organization — див. app/page.tsx
+    '@id': `${BASE}/#store`,
+    parentOrganization: { '@id': `${BASE}/#organization` },
     name: 'FIXLINE',
     description: 'B2B поставщик строительной химии: герметики, монтажные пены, клеи, грунтовки оптом и в розницу.',
     url: BASE,

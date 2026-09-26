@@ -198,7 +198,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  const ruProductRoutes: MetadataRoute.Sitemap = products.map(p => ({
+  // Той самий фільтр, що й для uk: ru-фасовка з canonical на головну — не
+  // канонічна адреса (аудит 23.09: ru-список фільтра не мав).
+  const ruProductRoutes: MetadataRoute.Sitemap = products.filter(p => !isNonCanonicalVariant(p)).map(p => ({
     url: `${BASE}/ru/product/${p.slug ?? p.sku}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : SITE_UPDATED,
     changeFrequency: 'monthly' as const,
