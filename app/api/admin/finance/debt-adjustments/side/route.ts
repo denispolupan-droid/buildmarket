@@ -2,19 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { sideState, openItems } from '../../../../../../lib/accounting/debt-adjustment';
-import type { DebtSide } from '../../../../../../lib/accounting/debt-adjustment-rules';
+import { isDebtAccount, type DebtSide } from '../../../../../../lib/accounting/debt-adjustment-rules';
 
-// Стан однієї сторони для форми: сальдо контрагента, а без замовлення — ще й
-// його замовлення з розкладом «продаж / отримано / відкрито», щоб вибрати.
+// Стан однієї сторони для форми: сальдо контрагента (партнер — ще й баланс
+// кабінету), а клієнту без замовлення — ще й його замовлення з розкладом
+// «продаж / отримано / відкрито», щоб вибрати.
 export async function GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
   const sp = req.nextUrl.searchParams;
-  const account = sp.get('account');
+  const account = sp.get('account') ?? '';
   const party   = sp.get('party')?.trim() ?? '';
   const orderId = sp.get('order_id')?.trim() || null;
-  if ((account !== 'customer' && account !== 'supplier') || !party) {
+  if (!isDebtAccount(account) || !party) {
     return NextResponse.json({ error: 'account і party обов’язкові' }, { status: 400 });
   }
   const side: DebtSide = { account, party, orderId };

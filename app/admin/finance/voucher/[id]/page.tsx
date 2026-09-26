@@ -26,6 +26,7 @@ const TYPE_LABELS: Record<string, string> = {
 const ACCOUNT_LABELS: Record<string, string> = {
   supplier: 'Постачальник', customer: 'Покупець', bank: 'Банк', cash: 'Каса',
   acquiring: 'Еквайринг', correction: 'Коригування', advance: 'Аванси',
+  partner: 'Партнер (дропшип)', bad_debt: 'Списання боргів / компенсації',
 };
 
 function fmt(n: number) {

@@ -24,6 +24,7 @@ let db: SupabaseClient;
 let supplierId: number;
 let testSku: string;
 let customerId: string;
+let partnerId: string | null = null;
 const orderIds: string[] = [];
 const docIds: string[] = [];
 
@@ -88,6 +89,12 @@ afterAll(async () => {
   if (orderIds.length) await db.from('orders').delete().in('id', orderIds);
   const { data, error } = await db.rpc('reset_accounting_test_data');
   if (error || String(data).startsWith('REFUSED')) console.error('Cleanup error:', error?.message ?? data);
+  // Партнера — лише після reset: на нього посилаються acc_documents.customer_id (FK)
+  if (partnerId) {
+    await db.from('partner_balance_transactions').delete().eq('customer_id', partnerId);
+    const { error: pErr } = await db.from('customers').delete().eq('id', partnerId);
+    if (pErr) console.error('Cleanup partner error:', pErr.message);
+  }
 });
 
 describe('КБ — перенесення оплати між замовленнями (кейс 17.09.2026)', () => {
@@ -184,7 +191,7 @@ describe('КБ — взаємозалік і списання', () => {
     await assertInvariants();
   }, 30000);
 
-  it('списання: прощення залишку боргу по замовленню — DR correction / CR клієнт; повторне — відмова', async () => {
+  it('списання: прощення залишку боргу по замовленню — DR bad_debt (витрата) / CR клієнт; повторне — відмова', async () => {
     const order = await makeSoldOrder(120);
     const res = await createDebtAdjustment({
       lines: [{ op: 'write_off', side: { account: 'customer', party: customerId, orderId: order }, kind: 'forgive', amount: 120, note: 'копійки' }],
@@ -192,12 +199,107 @@ describe('КБ — взаємозалік і списання', () => {
     });
     docIds.push(res.id);
     expect(sum(await customerLedger(order))).toBe(0);
-    const { data: corr } = await db.from('money_entries').select('amount').eq('doc_id', res.id).eq('account_type', 'correction');
+    const { data: corr } = await db.from('money_entries').select('amount').eq('doc_id', res.id).eq('account_type', 'bad_debt');
     expect(sum(corr ?? [])).toBe(120);
     await expect(createDebtAdjustment({
       lines: [{ op: 'write_off', side: { account: 'customer', party: customerId, orderId: order }, kind: 'forgive', amount: 1 }],
       createdBy: 'test',
     })).rejects.toThrow(/відкритий борг по замовленню лише/);
+    await assertInvariants();
+  }, 30000);
+});
+
+describe('КБ — сторона «партнер» (баланс дропшипера, міграція 121)', () => {
+  let order: string;
+  let docId: string;
+
+  async function cabinet(): Promise<number> {
+    const { data } = await db.from('customers').select('balance').eq('id', partnerId!).single();
+    return Number(data?.balance ?? 0);
+  }
+  async function partnerLedger(): Promise<number> {
+    const { data } = await db.from('money_entries').select('amount').eq('account_type', 'partner').eq('counterparty_id', partnerId!).limit(1000);
+    return sum(data ?? []);
+  }
+
+  it('партнер поповнив баланс на 500 (кабінет і леджер узгоджені)', async () => {
+    const { data: p, error } = await db.from('customers').insert({
+      name: '[TEST] Дропшипер КБ', type: 'dropship_partner', price_tier: 'drop', phone: '+380000000004',
+    }).select('id').single();
+    if (error || !p) throw new Error('partner insert: ' + error?.message);
+    partnerId = p.id as string;
+    // Поповнення переказом: рядок кабінету (тригер підніме customers.balance) + проводка DR bank / CR partner
+    const { error: tErr } = await db.from('partner_balance_transactions').insert({
+      customer_id: partnerId, tx_type: 'top_up', amount: 500, description: '[TEST] поповнення', created_by: 'test', external_ref: `test-topup:${partnerId}`,
+    });
+    if (tErr) throw new Error('top_up insert: ' + tErr.message);
+    await recordTxn({
+      debitAccount: 'bank', creditAccount: 'partner', creditParty: partnerId, amount: 500,
+      docType: 'partner_topup', description: '[TEST] поповнення', idempotencyKey: `test-topup:${partnerId}`, createdBy: 'test',
+    });
+    expect(await cabinet()).toBe(500);
+    expect(await partnerLedger()).toBe(-500);
+    // Тригера-дзеркала більше немає: рядок кабінету не породив зайвих проводок
+    const { data: mirrored } = await db.from('money_entries').select('id').eq('counterparty_id', partnerId).eq('account_type', 'partner');
+    expect(mirrored).toHaveLength(1);
+    const st = await sideState(db, { account: 'partner', party: partnerId });
+    expect(st).toEqual({ balance: -500, cabinet: 500 });
+  }, 30000);
+
+  it('балансом партнера закрити замовлення клієнта на 300: кабінет 200, замовлення оплачене на 300', async () => {
+    order = await makeSoldOrder(450);
+    const res = await createDebtAdjustment({
+      lines: [{ op: 'transfer', from: { account: 'partner', party: partnerId! }, to: { account: 'customer', party: customerId, orderId: order }, amount: 300, note: 'за рахунок балансу' }],
+      notes: '[TEST] партнер → клієнт', createdBy: 'test',
+    });
+    docId = res.id; docIds.push(res.id);
+    expect(await cabinet()).toBe(200);
+    expect(await partnerLedger()).toBe(-200);
+    expect(sum(await customerLedger(order))).toBe(150);
+    expect(await orderPaid(order)).toEqual({ paid: 300, confirmed: false });
+    const { data: adj } = await db.from('partner_balance_transactions').select('tx_type, amount, external_ref').eq('customer_id', partnerId!).eq('tx_type', 'adjustment');
+    expect(adj?.map(a => ({ ...a, amount: Number(a.amount) }))).toEqual([{ tx_type: 'adjustment', amount: -300, external_ref: `debt-adj:${res.id}:1:${partnerId}` }]);
+    await assertInvariants();
+  }, 30000);
+
+  it('межа — баланс кабінету: ще 300 зняти не можна', async () => {
+    await expect(createDebtAdjustment({
+      lines: [{ op: 'transfer', from: { account: 'partner', party: partnerId! }, to: { account: 'customer', party: customerId, orderId: order }, amount: 300 }],
+      createdBy: 'test',
+    })).rejects.toThrow(/на балансі партнера лише 200,00/);
+    // Звичайний клієнт стороною «партнер» — відмова
+    await expect(createDebtAdjustment({
+      lines: [{ op: 'write_off', side: { account: 'partner', party: customerId }, kind: 'forgive', amount: 1 }],
+      createdBy: 'test',
+    })).rejects.toThrow(/не дропшип-партнер/);
+    expect(await cabinet()).toBe(200);
+  }, 30000);
+
+  it('компенсація партнеру 50: DR bad_debt / CR partner, кабінет 250', async () => {
+    const res = await createDebtAdjustment({
+      lines: [{ op: 'write_off', side: { account: 'partner', party: partnerId! }, kind: 'forgive', amount: 50, note: 'загублена посилка' }],
+      createdBy: 'test',
+    });
+    docIds.push(res.id);
+    expect(await cabinet()).toBe(250);
+    expect(await partnerLedger()).toBe(-250);
+    const { data: bd } = await db.from('money_entries').select('amount').eq('doc_id', res.id).eq('account_type', 'bad_debt');
+    expect(sum(bd ?? [])).toBe(50);
+    const [doc] = await listDebtAdjustments(db, { id: res.id });
+    expect(doc.lines[0].debit.label).toMatch(/Списання боргів/);
+    expect(doc.lines[0].credit.label).toMatch(/партнер/);
+    await assertInvariants();
+  }, 30000);
+
+  it('скасування перенесення повертає баланс партнера і відкриває замовлення', async () => {
+    await cancelDebtAdjustment(docId, 'test', 'помилково');
+    expect(await cabinet()).toBe(550);
+    expect(await partnerLedger()).toBe(-550);
+    expect(sum(await customerLedger(order))).toBe(450);
+    expect(await orderPaid(order)).toEqual({ paid: 0, confirmed: false });
+    const { data: adj } = await db.from('partner_balance_transactions').select('amount, external_ref').eq('customer_id', partnerId!).eq('tx_type', 'adjustment').order('id');
+    expect(adj?.map(a => Number(a.amount))).toEqual([-300, 50, 300]);
+    expect(adj?.[2].external_ref).toBe(`debt-adj-rev:${docId}:1:${partnerId}`);
     await assertInvariants();
   }, 30000);
 });

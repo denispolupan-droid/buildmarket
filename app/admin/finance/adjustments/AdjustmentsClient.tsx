@@ -5,12 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, Check, X, ChevronDown, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
 import {
-  OP_LABEL, validateLine, sideKey, legsFor,
+  OP_LABEL, ACCOUNT_LABEL, validateLine, sideKey, legsFor, isDebtAccount,
   type AdjustmentLineInput, type AdjustmentOp, type DebtSide, type SideState, type DebtAccount,
 } from '../../../../lib/accounting/debt-adjustment-rules';
 import type { OpenItem, DebtAdjustmentView } from '../../../../lib/accounting/debt-adjustment';
 
-type PartyOption = { id: string; label: string; sub: string | null; balance: number };
+type PartyOption = { id: string; label: string; sub: string | null; balance: number; cabinet?: number };
 type SideValue = { account: DebtAccount; party: PartyOption | null; orderId: string | null; state?: SideState; items?: OpenItem[] };
 type LineDraft = { line: AdjustmentLineInput; text: string };
 
@@ -25,12 +25,18 @@ const inputStyle: React.CSSProperties = {
 const btnPrimary: React.CSSProperties = { height: '36px', padding: '0 16px', borderRadius: '9px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
 const btnGhost: React.CSSProperties = { height: '32px', padding: '0 12px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
 
-/** Сальдо словами: клієнт «+» = винен нам; постачальник «−» = ми винні. */
-function balanceText(account: DebtAccount, b: number): { text: string; color: string } {
+/** Сальдо словами: клієнт «+» = винен нам; постачальник «−» = ми винні; партнер — баланс кабінету. */
+function balanceText(account: DebtAccount, b: number, cabinet?: number): { text: string; color: string } {
+  if (account === 'partner') {
+    const c = cabinet ?? 0;
+    return Math.abs(c) < 0.005 ? { text: 'баланс 0', color: 'var(--text-muted)' } : { text: `баланс ${fmt(c)} ₴`, color: c > 0 ? '#15803D' : '#DC2626' };
+  }
   if (Math.abs(b) < 0.005) return { text: 'сальдо 0', color: 'var(--text-muted)' };
   if (account === 'customer') return b > 0 ? { text: `винен нам ${fmt(b)} ₴`, color: '#DC2626' } : { text: `аванс ${fmt(-b)} ₴`, color: '#15803D' };
   return b < 0 ? { text: `ми винні ${fmt(-b)} ₴`, color: '#DC2626' } : { text: `переплата ${fmt(b)} ₴`, color: '#15803D' };
 }
+
+const PLACEHOLDER: Record<DebtAccount, string> = { customer: 'клієнт, np:cod, mp:prom…', supplier: 'постачальник…', partner: 'дропшип-партнер…' };
 
 // ── Вибір сторони: тип → контрагент (пошук) → замовлення (для клієнтів) ──────
 function SidePicker({ title, hint, value, onChange, lockAccount }: {
@@ -83,7 +89,7 @@ function SidePicker({ title, hint, value, onChange, lockAccount }: {
     void loadState(v);
   };
 
-  const b = value.state ? balanceText(value.account, value.state.balance) : null;
+  const b = value.state ? balanceText(value.account, value.state.balance, value.state.cabinet) : null;
   const item = value.orderId ? value.items?.find(i => i.order_id === value.orderId) : null;
 
   return (
@@ -97,12 +103,13 @@ function SidePicker({ title, hint, value, onChange, lockAccount }: {
           <select value={value.account} onChange={e => onChange(emptySide(e.target.value as DebtAccount))} style={inputStyle}>
             <option value="customer">Клієнт / службовий</option>
             <option value="supplier">Постачальник</option>
+            <option value="partner">Партнер (дропшип)</option>
           </select>
         )}
         <div ref={boxRef} style={{ position: 'relative' }}>
           <input
             value={open ? q : (value.party?.label ?? '')}
-            placeholder={value.account === 'supplier' ? 'постачальник…' : 'клієнт, np:cod, mp:prom…'}
+            placeholder={PLACEHOLDER[value.account]}
             onFocus={() => { setOpen(true); setQ(''); }}
             onChange={e => setQ(e.target.value)}
             style={inputStyle}
@@ -112,7 +119,7 @@ function SidePicker({ title, hint, value, onChange, lockAccount }: {
               {loading && <div style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-muted)' }}>Шукаю…</div>}
               {!loading && options.length === 0 && <div style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-muted)' }}>Нічого не знайдено</div>}
               {options.map(o => {
-                const bt = balanceText(value.account, o.balance);
+                const bt = balanceText(value.account, o.balance, o.cabinet);
                 return (
                   <button key={o.id} type="button" onMouseDown={() => pick(o)}
                     style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: '10px', alignItems: 'center', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--border-light)', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
@@ -132,8 +139,13 @@ function SidePicker({ title, hint, value, onChange, lockAccount }: {
       {value.party && (
         <div style={{ marginTop: '8px', fontSize: '12.5px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Сальдо:</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{value.account === 'partner' ? 'Кабінет:' : 'Сальдо:'}</span>
             {b ? <strong style={{ color: b.color }}>{b.text}</strong> : <span style={{ color: 'var(--text-muted)' }}>…</span>}
+            {value.account === 'partner' && value.state && Math.abs(-value.state.balance - (value.state.cabinet ?? 0)) > 0.005 && (
+              <span style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}>
+                (в обліку ми винні {fmt(-value.state.balance)} ₴ — різниця = замовлення в дорозі)
+              </span>
+            )}
           </div>
           {value.account === 'customer' && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -227,8 +239,8 @@ export default function AdjustmentsClient() {
   const addLine = () => {
     if (!draftLine || draftError) { setError(draftError); return; }
     const { debit, credit } = legsFor(draftLine);
-    const dl = debit.account === 'correction' ? 'Коригування' : label(debit as DebtSide);
-    const cl = credit.account === 'correction' ? 'Коригування' : label(credit as DebtSide);
+    const dl = isDebtAccount(debit.account)  ? label(debit as DebtSide)  : ACCOUNT_LABEL[debit.account];
+    const cl = isDebtAccount(credit.account) ? label(credit as DebtSide) : ACCOUNT_LABEL[credit.account];
     setLines(prev => [...prev, { line: draftLine, text: `${OP_LABEL[draftLine.op]}: Дт ${dl} → Кт ${cl}` }]);
     setAmount(''); setLineNote(''); setError(null);
   };
@@ -281,9 +293,9 @@ export default function AdjustmentsClient() {
         </div>
 
         <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-          {op === 'transfer' && <>Проводка <strong>Дт «звідки» / Кт «куди»</strong>. Щоб перенести оплату із загубленого замовлення на його копію: «звідки» — старе замовлення (його борг відновиться), «куди» — нове (борг закриється). Зняти можна не більше, ніж отримано по замовленню; на замовлення покласти не більше відкритого боргу.</>}
+          {op === 'transfer' && <>Проводка <strong>Дт «звідки» / Кт «куди»</strong>. Щоб перенести оплату із загубленого замовлення на його копію: «звідки» — старе замовлення (його борг відновиться), «куди» — нове (борг закриється). Зняти можна не більше, ніж отримано по замовленню (з партнера — не більше балансу кабінету); на замовлення покласти не більше відкритого боргу. Партнер ↔ клієнт теж можна: балансом партнера закрити замовлення клієнта чи переплату клієнта покласти партнеру на баланс.</>}
           {op === 'offset' && <>Проводка <strong>Дт постачальник / Кт клієнт</strong>: борг клієнта гаситься нашим боргом перед постачальником. Межі — борг клієнта і наш борг постачальнику.</>}
-          {op === 'write_off' && <>«Прощення боргу» — <strong>Дт коригування / Кт сторона</strong> (не більше боргу). «Переплата в дохід» — <strong>Дт сторона / Кт коригування</strong> (не більше авансу чи отриманого по замовленню).</>}
+          {op === 'write_off' && <>«Прощення боргу» — <strong>Дт списання боргів / Кт сторона</strong> (не більше боргу; це витрата в прибутку). Для партнера це <strong>компенсація на баланс</strong> без межі. «Переплата в дохід» — <strong>Дт сторона / Кт коригування</strong> (не більше авансу, отриманого по замовленню чи балансу партнера).</>}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: op === 'write_off' ? '1fr' : '1fr 1fr', gap: '12px' }}>
@@ -296,7 +308,7 @@ export default function AdjustmentsClient() {
             <SidePicker title="Постачальник" hint="наш борг йому зменшиться" value={b} onChange={setB} lockAccount="supplier" />
           </>}
           {op === 'write_off' && (
-            <SidePicker title="Сторона" hint={kind === 'forgive' ? 'борг списується' : 'переплата стає доходом'} value={a} onChange={setA} />
+            <SidePicker title="Сторона" hint={a.account === 'partner' ? (kind === 'forgive' ? 'баланс партнера зросте' : 'баланс партнера зменшиться') : (kind === 'forgive' ? 'борг списується' : 'переплата стає доходом')} value={a} onChange={setA} />
           )}
         </div>
 
@@ -304,8 +316,8 @@ export default function AdjustmentsClient() {
           {op === 'write_off' && (
             <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Вид
               <select value={kind} onChange={e => setKind(e.target.value as 'forgive' | 'income')} style={{ ...inputStyle, marginTop: '4px' }}>
-                <option value="forgive">Прощення боргу</option>
-                <option value="income">Переплата в дохід</option>
+                <option value="forgive">{a.account === 'partner' ? 'Компенсація на баланс' : 'Прощення боргу'}</option>
+                <option value="income">{a.account === 'partner' ? 'Баланс у дохід' : 'Переплата в дохід'}</option>
               </select>
             </label>
           )}

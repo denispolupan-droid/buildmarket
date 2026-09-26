@@ -47,7 +47,7 @@ const EXPENSE_LABELS: Record<string, string> = {
   packaging: 'Пакування', acquiring_fee: 'Комісія еквайрингу',
   marketplace_fee: 'Комісія маркетплейсу', np_delivery: 'Доставка НП (наш рахунок)', rent: 'Оренда',
   salary: 'Зарплата', marketing: 'Маркетинг', opex: 'Інші витрати',
-  other: 'Інше (каса)', taxes: 'Податки / ЄСВ',
+  other: 'Інше (каса)', taxes: 'Податки / ЄСВ', bad_debt: 'Списання боргів / компенсації',
 };
 
 const ACCOUNT_LABELS: Record<string, string> = {

@@ -16,14 +16,20 @@
  * Дропшип-замовлення (channel_code = 'dropship') сюди не пускаємо: їхній борг
  * живе в балансі партнера (partner_balance_transactions), і перенесення повз
  * нього розійшло б кабінет з обліком.
+ *
+ * Сторона «партнер» (фаза 2, міграція 121): нога 'partner' у проводці + рядок
+ * partner_balance_transactions (tx_type 'adjustment', external_ref = ключ
+ * проводки) — тригер fn_update_partner_balance править customers.balance, і
+ * кабінет партнера бачить зміну одразу. Скасування — зворотний рядок.
  */
 import { createServiceClient } from '../supabase';
 import { fetchAllRows } from '../db-paginate';
 import { isSpecialDebtor, SPECIAL_DEBTOR_LABEL } from './sale-party';
 import { settlementFor, type SettlementEntry } from './order-settlement';
 import {
-  legsFor, sidesOf, validateLine, orderPaymentDeltas, describeLine, totalAmount, sideKey, sideStateFrom,
-  type AdjustmentLineInput, type DebtSide, type SideState, type LegAccount,
+  legsFor, sidesOf, validateLine, orderPaymentDeltas, partnerBalanceDeltas, describeLine, totalAmount, sideKey, sideStateFrom,
+  isDebtAccount, ACCOUNT_LABEL,
+  type AdjustmentLineInput, type DebtSide, type DebtAccount, type SideState, type LegAccount,
 } from './debt-adjustment-rules';
 
 type Db = ReturnType<typeof createServiceClient>;
@@ -33,7 +39,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 // ── Стан сторін ─────────────────────────────────────────────────────────────
 
-async function partyBalance(db: Db, account: 'customer' | 'supplier', party: string): Promise<number> {
+async function partyBalance(db: Db, account: DebtAccount, party: string): Promise<number> {
   const { data } = await db
     .from('counterparty_balances')
     .select('balance')
@@ -44,7 +50,15 @@ async function partyBalance(db: Db, account: 'customer' | 'supplier', party: str
   return round2(Number(data?.balance ?? 0));
 }
 
-async function orderEntries(db: Db, account: 'customer' | 'supplier', party: string, orderId: string): Promise<SettlementEntry[]> {
+/** Кабінетний баланс дропшипера (customers.balance) — межа для списання з партнера. */
+async function partnerCabinetBalance(db: Db, partner: string): Promise<number> {
+  if (!UUID_RE.test(partner)) return 0;
+  const { data } = await db.from('customers').select('balance, type').eq('id', partner).maybeSingle();
+  if (!data || data.type !== 'dropship_partner') return 0;
+  return round2(Number(data.balance ?? 0));
+}
+
+async function orderEntries(db: Db, account: DebtAccount, party: string, orderId: string): Promise<SettlementEntry[]> {
   const { data } = await db
     .from('money_entries')
     .select('order_id, counterparty_id, amount, doc_type')
@@ -58,7 +72,8 @@ async function orderEntries(db: Db, account: 'customer' | 'supplier', party: str
 export async function sideState(db: Db, side: DebtSide): Promise<SideState> {
   const balance = await partyBalance(db, side.account, side.party);
   const entries = side.orderId ? await orderEntries(db, side.account, side.party, side.orderId) : null;
-  return sideStateFrom(balance, entries);
+  const cabinet = side.account === 'partner' ? await partnerCabinetBalance(db, side.party) : undefined;
+  return sideStateFrom(balance, entries, cabinet);
 }
 
 export type OpenItem = {
@@ -107,7 +122,7 @@ export async function openItems(db: Db, side: Pick<DebtSide, 'account' | 'party'
 // ── Назви сторін ─────────────────────────────────────────────────────────────
 
 async function sideLabels(db: Db, sides: DebtSide[]): Promise<(s: DebtSide) => string> {
-  const customerIds = [...new Set(sides.filter(s => s.account === 'customer' && !isSpecialDebtor(s.party) && UUID_RE.test(s.party)).map(s => s.party))];
+  const customerIds = [...new Set(sides.filter(s => (s.account === 'customer' || s.account === 'partner') && !isSpecialDebtor(s.party) && UUID_RE.test(s.party)).map(s => s.party))];
   const supplierIds = [...new Set(sides.filter(s => s.account === 'supplier').map(s => Number(s.party)).filter(Number.isInteger))];
   const orderIds    = [...new Set(sides.map(s => s.orderId).filter((x): x is string => !!x))];
   const [cust, sup, ord] = await Promise.all([
@@ -121,7 +136,9 @@ async function sideLabels(db: Db, sides: DebtSide[]): Promise<(s: DebtSide) => s
   return (s: DebtSide) => {
     const who = s.account === 'supplier'
       ? `постачальник ${sMap.get(s.party) ?? s.party}`
-      : isSpecialDebtor(s.party) ? SPECIAL_DEBTOR_LABEL[s.party] : (cMap.get(s.party) ?? s.party);
+      : s.account === 'partner'
+        ? `партнер ${cMap.get(s.party) ?? s.party}`
+        : isSpecialDebtor(s.party) ? SPECIAL_DEBTOR_LABEL[s.party] : (cMap.get(s.party) ?? s.party);
     const ord = s.orderId ? ` (замовлення #${oMap.get(s.orderId) ?? s.orderId.slice(0, 8)})` : '';
     return `${who}${ord}`;
   };
@@ -180,6 +197,22 @@ async function applyOrderDeltas(db: Db, deltas: { orderId: string; delta: number
   }
 }
 
+/**
+ * Шар кабінету партнера: рядок partner_balance_transactions на кожну ногу
+ * 'partner'. external_ref унікальний (ключ проводки + партнер), тож повтор —
+ * дублікат, який ми мовчки пропускаємо.
+ */
+async function applyPartnerDeltas(db: Db, deltas: { partner: string; delta: number }[], p: { keyBase: string; docNumber: string; createdBy: string; note: string }): Promise<void> {
+  for (const d of deltas) {
+    if (Math.abs(d.delta) < 0.005) continue;
+    const { error } = await db.from('partner_balance_transactions').insert({
+      customer_id: d.partner, tx_type: 'adjustment', amount: d.delta,
+      description: `${p.docNumber}: ${p.note}`, created_by: p.createdBy, external_ref: `${p.keyBase}:${d.partner}`,
+    });
+    if (error && !/unique|duplicate|23505/.test(error.message)) throw new Error(`partner_balance_transactions: ${error.message}`);
+  }
+}
+
 export async function createDebtAdjustment(input: CreateDebtAdjustmentInput): Promise<DebtAdjustmentResult> {
   const db = createServiceClient();
   if (!input.lines.length) throw new Error('Документ без рядків');
@@ -203,7 +236,15 @@ export async function createDebtAdjustment(input: CreateDebtAdjustmentInput): Pr
     const found = new Set((ords ?? []).map(o => o.id));
     for (const id of orderIds) if (!found.has(id)) throw new Error(`Замовлення ${id} не знайдено`);
     const drop = (ords ?? []).find(o => o.channel_code === 'dropship');
-    if (drop) throw new Error(`Замовлення #${drop.order_number} — дропшип: його борг живе в балансі партнера, коригуйте баланс у «Партнерах»`);
+    if (drop) throw new Error(`Замовлення #${drop.order_number} — дропшип: його борг живе в балансі партнера, коригуйте баланс тут стороною «Партнер»`);
+  }
+
+  // Партнер — лише картка дропшипера
+  const partnerIds = [...new Set(allSides.filter(s => s.account === 'partner').map(s => s.party))];
+  if (partnerIds.length) {
+    const { data: ps } = await db.from('customers').select('id, type').in('id', partnerIds.filter(p => UUID_RE.test(p)));
+    const ok = new Set((ps ?? []).filter(p => p.type === 'dropship_partner').map(p => p.id));
+    for (const id of partnerIds) if (!ok.has(id)) throw new Error(`${label({ account: 'partner', party: id })} — не дропшип-партнер`);
   }
 
   for (const [i, line] of input.lines.entries()) {
@@ -212,22 +253,24 @@ export async function createDebtAdjustment(input: CreateDebtAdjustmentInput): Pr
     // Спожити межі для наступних рядків
     const { debit, credit } = legsFor(line);
     const amt = round2(Number(line.amount));
-    if (debit.account !== 'correction') {
+    if (isDebtAccount(debit.account)) {
       const st = states.get(sideKey(debit as DebtSide))!;
       st.balance = round2(st.balance + amt);
       if (debit.orderId) { st.received = round2((st.received ?? 0) - amt); st.open = round2((st.open ?? 0) + amt); }
+      if (debit.account === 'partner') st.cabinet = round2((st.cabinet ?? 0) - amt);
     }
-    if (credit.account !== 'correction') {
+    if (isDebtAccount(credit.account)) {
       const st = states.get(sideKey(credit as DebtSide))!;
       st.balance = round2(st.balance - amt);
       if (credit.orderId) { st.received = round2((st.received ?? 0) + amt); st.open = round2((st.open ?? 0) - amt); }
+      if (credit.account === 'partner') st.cabinet = round2((st.cabinet ?? 0) + amt);
     }
   }
 
   // Документ — одразу проведений, як платіжні ваучери
   const { data: docNumber, error: numErr } = await db.rpc('next_doc_number', { p_type: 'debt_adjustment' });
   if (numErr) throw new Error(numErr.message);
-  const firstCustomer = allSides.find(s => s.account === 'customer' && UUID_RE.test(s.party) && !isSpecialDebtor(s.party))?.party ?? null;
+  const firstCustomer = allSides.find(s => (s.account === 'customer' || s.account === 'partner') && UUID_RE.test(s.party) && !isSpecialDebtor(s.party))?.party ?? null;
   const firstSupplier = allSides.find(s => s.account === 'supplier')?.party ?? null;
   const now = new Date().toISOString();
   const { data: doc, error: docErr } = await db.from('acc_documents').insert({
@@ -267,6 +310,7 @@ export async function createDebtAdjustment(input: CreateDebtAdjustmentInput): Pr
     });
     await db.from('debt_adjustment_lines').update({ txn_id: txnId }).eq('document_id', doc.id).eq('line_no', i + 1);
     await applyOrderDeltas(db, orderPaymentDeltas(line), { docId: doc.id, docNumber: doc.doc_number, businessDate: bizDate, createdBy: input.createdBy, note: describeLine(line, label) });
+    await applyPartnerDeltas(db, partnerBalanceDeltas(line), { keyBase: `debt-adj:${doc.id}:${i + 1}`, docNumber: doc.doc_number, createdBy: input.createdBy, note: describeLine(line, label) });
   }
 
   return { id: doc.id, doc_number: doc.doc_number, total: totalAmount(input.lines) };
@@ -300,6 +344,12 @@ export async function cancelDebtAdjustment(docId: string, cancelledBy: string, r
     if (real(l.credit_account, l.credit_party, l.credit_order_id)) deltas.push({ orderId: l.credit_order_id, delta: -round2(Number(l.amount)) });
     if (real(l.debit_account,  l.debit_party,  l.debit_order_id))  deltas.push({ orderId: l.debit_order_id,  delta:  round2(Number(l.amount)) });
     await applyOrderDeltas(db, deltas, { docId, docNumber: doc.doc_number, businessDate: today, createdBy: cancelledBy, note: `скасування рядка ${l.line_no}` });
+
+    // Шар кабінету партнера — зворотний рядок
+    const pDeltas: { partner: string; delta: number }[] = [];
+    if (l.credit_account === 'partner' && l.credit_party) pDeltas.push({ partner: l.credit_party, delta: -round2(Number(l.amount)) });
+    if (l.debit_account  === 'partner' && l.debit_party)  pDeltas.push({ partner: l.debit_party,  delta:  round2(Number(l.amount)) });
+    await applyPartnerDeltas(db, pDeltas, { keyBase: `debt-adj-rev:${docId}:${l.line_no}`, docNumber: doc.doc_number, createdBy: cancelledBy, note: `скасування рядка ${l.line_no}` });
   }
 
   const { error } = await db.from('acc_documents').update({
@@ -337,12 +387,12 @@ export async function listDebtAdjustments(db: Db, opts: { limit?: number; id?: s
   const { data: lines } = await db.from('debt_adjustment_lines').select('*').in('document_id', docs.map(d => d.id)).order('line_no').limit(5000);
   const sides: DebtSide[] = [];
   for (const l of lines ?? []) {
-    if (l.debit_account  !== 'correction') sides.push({ account: l.debit_account,  party: l.debit_party,  orderId: l.debit_order_id });
-    if (l.credit_account !== 'correction') sides.push({ account: l.credit_account, party: l.credit_party, orderId: l.credit_order_id });
+    if (isDebtAccount(l.debit_account))  sides.push({ account: l.debit_account,  party: l.debit_party,  orderId: l.debit_order_id });
+    if (isDebtAccount(l.credit_account)) sides.push({ account: l.credit_account, party: l.credit_party, orderId: l.credit_order_id });
   }
   const label = await sideLabels(db, sides);
   const legLabel = (acc: string, party: string | null, orderId: string | null) =>
-    acc === 'correction' ? 'Коригування (доходи/витрати)' : label({ account: acc as 'customer' | 'supplier', party: party ?? '', orderId });
+    isDebtAccount(acc) ? label({ account: acc, party: party ?? '', orderId }) : (ACCOUNT_LABEL[acc as LegAccount] ?? acc);
 
   return docs.map(d => ({
     id: d.id, doc_number: d.doc_number, status: d.status, doc_date: d.doc_date, total_amount: Number(d.total_amount),

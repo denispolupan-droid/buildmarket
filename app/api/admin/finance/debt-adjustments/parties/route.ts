@@ -2,21 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { SPECIAL_DEBTOR_LABEL } from '../../../../../../lib/accounting/sale-party';
+import { isDebtAccount } from '../../../../../../lib/accounting/debt-adjustment-rules';
 
-export type PartyOption = { id: string; label: string; sub: string | null; balance: number };
+export type PartyOption = { id: string; label: string; sub: string | null; balance: number; cabinet?: number };
 
 // Пошук сторони для форми КБ: клієнти (з сальдо), службові дебітори (np:cod,
-// mp:*), постачальники. Сальдо — з кешу counterparty_balances (інваріант I3
-// гарантує рівність леджеру).
+// mp:*), постачальники, дропшип-партнери (сальдо леджера + баланс кабінету).
+// Сальдо — з кешу counterparty_balances (інваріант I3 гарантує рівність леджеру).
 export async function GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
   const sp = req.nextUrl.searchParams;
-  const account = sp.get('account');
+  const account = sp.get('account') ?? '';
   const q = (sp.get('q') ?? '').trim();
-  if (account !== 'customer' && account !== 'supplier') {
-    return NextResponse.json({ error: 'account = customer | supplier' }, { status: 400 });
+  if (!isDebtAccount(account)) {
+    return NextResponse.json({ error: 'account = customer | supplier | partner' }, { status: 400 });
   }
   const db = createServiceClient();
   const balanceOf = async (ids: string[]) => {
@@ -32,6 +33,22 @@ export async function GET(req: NextRequest) {
     const { data } = await query;
     const bal = await balanceOf((data ?? []).map(s => String(s.id)));
     const options: PartyOption[] = (data ?? []).map(s => ({ id: String(s.id), label: s.name, sub: null, balance: bal.get(String(s.id)) ?? 0 }));
+    return NextResponse.json({ options });
+  }
+
+  if (account === 'partner') {
+    let query = db.from('customers').select('id, name, company, legal_name, phone, balance')
+      .eq('type', 'dropship_partner').order('name').limit(50);
+    if (q.length >= 2) query = query.or(`name.ilike.%${q}%,company.ilike.%${q}%,legal_name.ilike.%${q}%,phone.ilike.%${q}%`);
+    const { data } = await query;
+    const bal = await balanceOf((data ?? []).map(c => c.id as string));
+    const options: PartyOption[] = (data ?? []).map(c => ({
+      id: c.id as string,
+      label: ((c.company as string | null)?.trim() || (c.legal_name as string | null)?.trim() || c.name) as string,
+      sub: c.phone ? String(c.phone) : null,
+      balance: bal.get(c.id as string) ?? 0,
+      cabinet: Number(c.balance ?? 0),
+    }));
     return NextResponse.json({ options });
   }
 

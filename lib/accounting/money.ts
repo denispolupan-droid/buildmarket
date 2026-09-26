@@ -39,7 +39,9 @@ export type AccountType =
   | 'logistics' | 'loading' | 'customs' | 'packaging' | 'acquiring_fee'
   | 'rent' | 'salary' | 'marketing' | 'opex' | 'taxes'
   // Вилучення власника (міграція 114) — не витрата, не в P&L
-  | 'owner';
+  | 'owner'
+  // Списання боргів / компенсації партнерам (міграція 121) — витрата, у P&L як opex
+  | 'bad_debt';
 
 export type MoneyEntry = {
   id:              string;

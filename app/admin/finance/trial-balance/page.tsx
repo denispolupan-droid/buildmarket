@@ -25,7 +25,8 @@ const ACCOUNT_LABELS: Record<string, string> = {
   marketplace_fee: 'Комісії маркетплейсів', logistics: 'Логістика',
   loading: 'Навантаження', customs: 'Митниця', packaging: 'Пакування',
   acquiring_fee: 'Комісія еквайрингу', rent: 'Оренда', salary: 'Зарплата',
-  marketing: 'Маркетинг', opex: 'Опер. витрати',
+  marketing: 'Маркетинг', opex: 'Опер. витрати', taxes: 'Податки / ЄСВ',
+  owner: 'Вилучення власника', bad_debt: 'Списання боргів / компенсації', novapay: 'НоваПей',
 };
 
 const SPECIAL_CP: Record<string, string> = {

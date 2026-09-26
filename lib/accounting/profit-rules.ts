@@ -6,7 +6,8 @@ import type { AccountType } from './money';
 export type PLBucket = 'revenue' | 'cogs' | 'deal' | 'opex' | 'taxes' | 'correction' | 'other';
 
 const DEAL_LOGISTICS_DOCS = new Set(['delivery_cost', 'np_fee', 'np_deduction', 'rz_delivery_fee']);
-export const OPEX_ACCOUNTS: AccountType[] = ['logistics', 'loading', 'customs', 'packaging', 'rent', 'salary', 'marketing', 'opex'];
+// bad_debt — прощені борги клієнтів і компенсації партнерам (КБ, міграція 121): реальна втрата, у прибутку як операційна витрата
+export const OPEX_ACCOUNTS: AccountType[] = ['logistics', 'loading', 'customs', 'packaging', 'rent', 'salary', 'marketing', 'opex', 'bad_debt'];
 /** Рахунки, які взагалі беруть участь у P&L (для вибірок). */
 export const PL_ACCOUNTS: AccountType[] = ['revenue', 'cogs', 'marketplace_fee', 'acquiring_fee', 'taxes', 'correction', ...OPEX_ACCOUNTS];
 
