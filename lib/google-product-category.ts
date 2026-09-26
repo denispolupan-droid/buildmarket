@@ -97,6 +97,44 @@ const BY_SLUG: Record<string, number> = {
   'sitky-armuvalni': IDS.REMESH,
 };
 
+/** Повні назви гілок таксономії — для Product.category у JSON-LD (Google приймає шлях або ID; шлях читабельніший для ШІ-краулерів). */
+const PATHS: Record<number, string> = {
+  [IDS.SEALANTS]: 'Hardware > Building Consumables > Protective Coatings & Sealants',
+  [IDS.ADHESIVES]: 'Hardware > Building Consumables > Hardware Glue & Adhesives',
+  [IDS.INSULATION]: 'Hardware > Building Materials > Insulation',
+  [IDS.SOLVENTS]: 'Hardware > Building Consumables > Solvents, Strippers & Thinners',
+  [IDS.MORTAR_MIXES]: 'Hardware > Building Consumables > Masonry Consumables > Cement, Mortar & Concrete Mixes',
+  [IDS.MASONRY]: 'Hardware > Building Consumables > Masonry Consumables',
+  [IDS.GROUT]: 'Hardware > Building Consumables > Masonry Consumables > Grout',
+  [IDS.TAPE]: 'Hardware > Building Consumables > Hardware Tape',
+  [IDS.PRIMERS]: 'Hardware > Building Consumables > Painting Consumables > Primers',
+  [IDS.PAINT]: 'Hardware > Building Consumables > Painting Consumables > Paint',
+  [IDS.PAINTING]: 'Hardware > Building Consumables > Painting Consumables',
+  [IDS.STAINS]: 'Hardware > Building Consumables > Painting Consumables > Stains',
+  [IDS.VARNISHES]: 'Hardware > Building Consumables > Painting Consumables > Varnishes & Finishes',
+  [IDS.CHEMICALS]: 'Hardware > Building Consumables > Chemicals',
+  [IDS.WALL_PATCHING]: 'Hardware > Building Consumables > Wall Patching Compounds & Plaster',
+  [IDS.LUBRICANTS]: 'Hardware > Building Consumables > Lubricants',
+  [IDS.MOISTURE_ABSORBERS]: 'Home & Garden > Household Supplies > Moisture Absorbers',
+  [IDS.TOOLS_CAULKING]: 'Hardware > Tools > Caulking Tools',
+  [IDS.TOOLS_MEASURING]: 'Hardware > Tools > Measuring Tools & Sensors',
+  [IDS.TOOLS_BRUSHES]: 'Hardware > Tools > Paint Tools > Paint Brushes',
+  [IDS.TOOLS_PUTTY_KNIVES]: 'Hardware > Tools > Putty Knives & Scrapers',
+  [IDS.TOOL_ACCESSORIES]: 'Hardware > Tool Accessories',
+  [IDS.GRINDING_WHEELS]: 'Hardware > Tool Accessories > Grinder Accessories > Grinding Wheels & Points',
+  [IDS.SANDING]: 'Hardware > Tool Accessories > Sanding Accessories',
+  [IDS.DRILL_BITS]: 'Hardware > Tool Accessories > Drill & Screwdriver Accessories > Drill & Screwdriver Bits',
+  [IDS.FASTENERS]: 'Hardware > Hardware Accessories > Hardware Fasteners',
+  [IDS.SCREWS]: 'Hardware > Hardware Accessories > Hardware Fasteners > Screws',
+  [IDS.REMESH]: 'Hardware > Building Materials > Rebar & Remesh',
+};
+
+/** Шлях таксономії Google для категорії магазину (Product.category у JSON-LD); null — без атрибута. */
+export function googleProductCategoryPath(slug: string | null, parentSlug: string | null): string | null {
+  const id = googleProductCategoryId(slug, parentSlug);
+  return id ? PATHS[id] ?? null : null;
+}
+
 /** ID категорії Google для категорії магазину; дочірня без запису бере батьківську. */
 export function googleProductCategoryId(slug: string | null, parentSlug: string | null): number | null {
   if (slug && BY_SLUG[slug]) return BY_SLUG[slug];

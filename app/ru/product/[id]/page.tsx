@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 
 import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsLightCached, getProductFaqCached } from '../../../../lib/supabase';
+import { googleProductCategoryPath } from '../../../../lib/google-product-category';
 import { getCategoryNameRu } from '../../../../lib/ru';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { isWholesale } from '../../../../lib/user-role';
@@ -165,12 +166,16 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     : `${BASE}/product/${product.sku}/opengraph-image`;
 
   const descriptionRu = (product as { description_ru?: string | null }).description_ru ?? product.description ?? undefined;
+  // Product.category за таксономією Google — див. app/product/[id]/page.tsx
+  const catRow = (await getCategoriesCached()).find(c => c.slug === product.category_slug);
+  const googleCategory = googleProductCategoryPath(product.category_slug ?? null, catRow?.parent_slug ?? null);
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: productFullName,
     sku: product.sku,
+    ...(googleCategory ? { category: googleCategory } : {}),
     brand: { '@type': 'Brand', name: product.brand },
     description: descriptionRu,
     image: productImage,

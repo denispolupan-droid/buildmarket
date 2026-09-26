@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 
 import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsLightCached, getProductFaqCached } from '../../../lib/supabase';
+import { googleProductCategoryPath } from '../../../lib/google-product-category';
 import { getCategoryMeta } from '../../../lib/category-content';
 import { getPostSlugForSkuCached } from '../../../lib/blog-db';
 import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../lib/seo/meta';
@@ -167,11 +168,16 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const productImage = rawImage
     ? (rawImage.startsWith('http') ? rawImage : `${BASE}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`)
     : `${BASE}/product/${product.sku}/opengraph-image`;
+  // Product.category за таксономією Google (підтримка з липня 2026): явний тип
+  // товару для Shopping, AI Overviews і ШІ-краулерів — той самий, що у фіді.
+  const catRow = (await getCategoriesCached()).find(c => c.slug === product.category_slug);
+  const googleCategory = googleProductCategoryPath(product.category_slug ?? null, catRow?.parent_slug ?? null);
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: productFullName,
     sku: product.sku,
+    ...(googleCategory ? { category: googleCategory } : {}),
     brand: { '@type': 'Brand', name: product.brand },
     // Повний опис, а не короткий тизер: у структурованих даних Google читає саме
     // це поле для товарної картки, і 1800 символів про застосування й обмеження
