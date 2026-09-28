@@ -155,6 +155,14 @@ export async function POST(
     if (o.tracking_number) {
       return NextResponse.json({ error: `${tag}ТТН уже створена: ${o.tracking_number}` }, { status: 409 });
     }
+    // На нове (непідтверджене) замовлення Rozetka накладну не виписує, а помилка
+    // в неї оманлива: «замовлення не існує або вже прив'язана ТТН» (#26091223, 24.09).
+    const cabinetStatus = ((o.rozetka_data ?? {}) as { status?: unknown }).status;
+    if (cabinetStatus === 1) {
+      return NextResponse.json({
+        error: `${tag}Замовлення ще не підтверджене в Rozetka — спочатку натисніть «Підтвердити», потім створюйте накладну`,
+      }, { status: 409 });
+    }
   }
   if (ids.length > 1) {
     // Одна коробка — один покупець на одній точці. Адресу Rozetka бере з
