@@ -35,6 +35,13 @@ describe('setPromTTN — відмова Prom приходить з HTTP 200 у �
       .rejects.toThrow(/Неправильный номер декларации/);
   });
 
+  it('«Этот ЭН уже добавлен к данному заказу» — не помилка, номер уже там (#26091253)', async () => {
+    stubFetch({ error: 'Этот ЭН уже добавлен к данному заказу', errors: null });
+    await expect(setPromTTN(430215362, '20451546607361')).resolves.toBeUndefined();
+    stubFetch({ status: 'error', message: 'Ошибка валидации', errors: { declaration_id: ['Этот ЭН уже добавлен к данному заказу'] } });
+    await expect(setPromTTN(430215362, '20451546607361')).resolves.toBeUndefined();
+  });
+
   it('{"error":"…"} без status — теж помилка', async () => {
     stubFetch({ error: 'В заказе указан другой способ доставки', errors: null });
     await expect(setPromTTN(1, '20450000000000')).rejects.toThrow(/другой способ доставки/);

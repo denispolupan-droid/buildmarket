@@ -276,9 +276,17 @@ async function postPromTTN(promOrderId: number, ttn: string, promType: string): 
     const details = data.errors && typeof data.errors === 'object'
       ? Object.entries(data.errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ')
       : '';
-    throw new Error(`Prom save_declaration_id #${promOrderId} (${promType} ${ttn}): ${data.error ?? data.message ?? 'error'}${details ? ' — ' + details : ''}`);
+    const text = `${data.error ?? data.message ?? 'error'}${details ? ' — ' + details : ''}`;
+    // Той самий номер уже в замовленні — це не відмова, а «вже зроблено».
+    // Повторний пуш (перевідвантаження, допуш кроном) інакше кричав алертом
+    // «ЕН не передана в Prom», хоча в кабінеті номер стояв (#26091253, 28.09.2026).
+    if (PROM_TTN_ALREADY_SET.test(text)) return;
+    throw new Error(`Prom save_declaration_id #${promOrderId} (${promType} ${ttn}): ${text}`);
   }
 }
+
+/** «Этот ЭН уже добавлен к данному заказу» — ідемпотентний успіх, а не помилка. */
+export const PROM_TTN_ALREADY_SET = /уже добавлен|вже додан/i;
 
 /* ── Product list ───────────────────────────────────────────────────────── */
 

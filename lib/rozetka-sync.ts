@@ -7,6 +7,9 @@ import { alertAdmin } from './alert';
 import { itemsDiffer, describeItemsDiff } from './rozetka-items-diff';
 import { rozetkaNeedsTtn, rozetkaStatusLabel } from './rozetka-status';
 
+/** Відмова кабінету на PUT зі статусом+ТТН: {"ttn":["До запитуваного замовлення заборонено прив'язувати ТТН"]} */
+const ROZETKA_TTN_FORBIDDEN = /заборонено прив.?язувати ТТН/i;
+
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -225,6 +228,16 @@ export async function syncRozetkaOrders() {
         continue;
       }
 
+      // Кабінет уже відмовив прив'язувати цей номер («заборонено прив'язувати
+      // ТТН») — так буває з другим замовленням об'єднаної посилки: накладну
+      // в точку видачі Rozetka виписує лише з ОДНОГО замовлення, а чужий RMP-номер
+      // до іншого через API не чіпляється. Повторювати щоп'ять хвилин марно, і
+      // алерт про це вже був. Мітка знімається сама, якщо номер зміниться.
+      if (lagging && storedData._ttn_push_blocked && storedData._ttn_push_blocked === existing.tracking_number) {
+        skipped++;
+        continue;
+      }
+
       if (lagging) {
         try {
           // Chained: Rozetka не дає стрибнути через статус (напр. 1→61) — драбинка 26→61.
@@ -243,12 +256,29 @@ export async function syncRozetkaOrders() {
             await db.from('orders').update({ rozetka_data: rest }).eq('id', existing.id);
           }
         } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (ROZETKA_TTN_FORBIDDEN.test(msg) && existing.tracking_number) {
+            const { data: mates } = await db.from('orders').select('order_number')
+              .eq('tracking_number', existing.tracking_number).neq('id', existing.id).limit(5);
+            const mateList = (mates ?? []).map(m => `№${m.order_number}`).join(', ');
+            alertAdmin(
+              `Rozetka: замовлення ${rzOrder.id} їде чужою накладною — кабінет не приймає`,
+              `Наше №${existing.order_number ?? existing.id} має ТТН ${existing.tracking_number}`
+              + (mateList ? ` спільно з ${mateList}` : '')
+              + `, але Rozetka забороняє прив'язувати її через API: накладна в точку видачі виписується лише з одного замовлення. `
+              + `У кабінеті воно лишиться «${rozetkaStatusLabel(rzOrder.status)}» — закрийте його там вручну. Більше не нагадуватиму, поки номер не зміниться.`,
+            );
+            await db.from('orders')
+              .update({ rozetka_data: { ...storedData, _ttn_push_blocked: existing.tracking_number } })
+              .eq('id', existing.id);
+            skipped++;
+            continue;
+          }
           // Мовчазне падіння тут коштувало трьох діб «обробляється» в кабінеті
           // (замовлення 904417517). Кричимо — тротлінг alertAdmin не дасть спамити.
           alertAdmin(
             `Rozetka: статус замовлення ${rzOrder.id} не доїхав до кабінету`,
-            `Хотіли ${desired} (${rozetkaStatusLabel(desired)}), у кабінеті «${rozetkaStatusLabel(rzOrder.status)}». `
-            + (err instanceof Error ? err.message : String(err)),
+            `Хотіли ${desired} (${rozetkaStatusLabel(desired)}), у кабінеті «${rozetkaStatusLabel(rzOrder.status)}». ${msg}`,
           );
         }
       }
