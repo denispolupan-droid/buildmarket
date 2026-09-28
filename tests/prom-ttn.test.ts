@@ -42,6 +42,11 @@ describe('setPromTTN — відмова Prom приходить з HTTP 200 у �
     await expect(setPromTTN(430215362, '20451546607361')).resolves.toBeUndefined();
   });
 
+  it('«накладная для заказа уже сгенерирована» (PRM-… з кабінету Prom) — теж не помилка (#26091243)', async () => {
+    stubFetch({ error: 'Генерация накладной недоступна так как накладная для заказа уже сгенерирована;', errors: null });
+    await expect(setPromTTN(430109018, 'PRM-587422383', 'rz_delivery')).resolves.toBeUndefined();
+  });
+
   it('{"error":"…"} без status — теж помилка', async () => {
     stubFetch({ error: 'В заказе указан другой способ доставки', errors: null });
     await expect(setPromTTN(1, '20450000000000')).rejects.toThrow(/другой способ доставки/);

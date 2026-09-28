@@ -9,7 +9,7 @@ import { resolveRozetkaDeliveryFee, getRozetkaDeliveryTariff } from '../../../..
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
-import { setPromTTN } from '../../../../../../lib/prom-api';
+import { setPromTTN, promAcceptsTtnFor } from '../../../../../../lib/prom-api';
 import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
 import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
 import { pickupWithTtnError } from '../../../../../../lib/orders/ship-guards';
@@ -159,7 +159,8 @@ export async function POST(
     }).eq('id', id);
 
     const rePromId = order.prom_order_id as number | null;
-    if (rePromId && reTtn) {
+    // «Магазини Rozetka» (PRM-…) Prom веде сам — пуш туди він відхиляє
+    if (rePromId && reTtn && promAcceptsTtnFor(order.delivery_type as string | null)) {
       setPromTTN(rePromId, reTtn, (order.delivery_type as string | null) ?? 'nova_poshta')
         .catch(err => {
           console.warn('[ship] setPromTTN failed (re-ship):', err);
@@ -326,7 +327,11 @@ export async function POST(
   // Push TTN to Prom.ua after successful shipment (fire-and-forget — don't fail the response)
   let ttnPushed = false;
   const promOrderId = order.prom_order_id as number | null;
-  if (promOrderId && effectiveTtn) {
+  // Лише для типів, які save_declaration_id приймає (НП / Укрпошта / Meest).
+  // Декларацію «Магазинів Rozetka» (PRM-…) створює сам кабінет Prom, а наш пуш
+  // того ж номера він відхиляє «накладная уже сгенерирована» (#26091243) — крон
+  // Prom так само пропускає ці типи, тут було розходження.
+  if (promOrderId && effectiveTtn && promAcceptsTtnFor(order.delivery_type as string | null)) {
     const deliveryType = (order.delivery_type as string | null) ?? 'nova_poshta';
     setPromTTN(promOrderId, effectiveTtn, deliveryType).then(() => {
       ttnPushed = true;
