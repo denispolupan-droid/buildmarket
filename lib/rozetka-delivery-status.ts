@@ -51,3 +51,24 @@ export function isRozetkaCarrierAccepted(status: number | null | undefined): boo
   const phase = rozetkaDeliveryPhase(status);
   return phase === 'accepted' || phase === 'delivered' || phase === 'returning';
 }
+
+/**
+ * Об'єднана посилка: накладну «RMP-…» Rozetka виписує лише з ОДНОГО замовлення,
+ * а до решти чіпляти її через API забороняє — вони в кабінеті назавжди
+ * «Обробляється менеджером» (26), хоч фізично їдуть у тій самій коробці
+ * (живий кейс 26091246 + 26091247). Тому рух посилки для всіх замовлень
+ * з одним номером береться з того, чий статус зайшов найдалі.
+ */
+const PHASE_RANK: Record<RozetkaDeliveryPhase, number> = { created: 0, accepted: 1, returning: 2, delivered: 3 };
+
+export function pickLeadingRozetkaInfo<T extends { status: number }>(infos: (T | null | undefined)[]): T | null {
+  let best: T | null = null;
+  let bestRank = -1;
+  for (const info of infos) {
+    if (!info) continue;
+    const phase = rozetkaDeliveryPhase(info.status);
+    const rank = phase ? PHASE_RANK[phase] : -1;
+    if (rank > bestRank) { best = info; bestRank = rank; }
+  }
+  return best;
+}

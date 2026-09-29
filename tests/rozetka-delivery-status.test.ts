@@ -1,5 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { rozetkaDeliveryPhase, isRozetkaCarrierAccepted } from '../lib/rozetka-delivery-status';
+import { rozetkaDeliveryPhase, isRozetkaCarrierAccepted, pickLeadingRozetkaInfo } from '../lib/rozetka-delivery-status';
+
+describe('pickLeadingRozetkaInfo — об’єднана посилка', () => {
+  // Живий кейс 26091246 (20 ₴, у кабінеті вічно 26) + 26091247 (445 ₴, «Доставляється»)
+  // з одним RMP-889472948: рух посилки беремо з того, хто зайшов найдалі.
+  it('бере статус того замовлення, чия посилка вже рухається', () => {
+    const frozen = { status: 26, title: 'Обробляється менеджером' };
+    const moving = { status: 4, title: 'Доставляється' };
+    expect(pickLeadingRozetkaInfo([frozen, moving])).toBe(moving);
+    expect(pickLeadingRozetkaInfo([moving, frozen])).toBe(moving);
+  });
+
+  it('виконано і повернення сильніші за «в дорозі»', () => {
+    const done = { status: 6 }, moving = { status: 4 }, back = { status: 12 };
+    expect(pickLeadingRozetkaInfo([moving, done])).toBe(done);
+    expect(pickLeadingRozetkaInfo([moving, back])).toBe(back);
+  });
+
+  it('одне замовлення — його ж статус; порожньо — null', () => {
+    const only = { status: 26 };
+    expect(pickLeadingRozetkaInfo([only])).toBe(only);
+    expect(pickLeadingRozetkaInfo([null, undefined])).toBeNull();
+    expect(pickLeadingRozetkaInfo([])).toBeNull();
+  });
+});
 
 describe('rozetkaDeliveryPhase', () => {
   // Драбина знята з живого замовлення 901698980 (GET /orders/{id}?expand=order_status_history)

@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import { getPromOrders, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus } from './prom-api';
+import { getPromOrders, getPromOrder, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus, type PromOrder } from './prom-api';
 import { computePromCommission } from './prom-commission';
 import { completeOrderDelivery, allOrderSalesPosted } from './accounting/completion';
+import { promDeliveryPatch, isPromLedDelivery } from './prom-delivery-state';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,16 +19,64 @@ const REPUSH_FROM: Record<PromStatus, string[]> = {
   canceled:  ['pending', 'paid', 'received'],
 };
 
+// Колонки нашого замовлення, потрібні і в основному циклі, і в другому проході
+const SYNCED_COLS = 'id, order_number, status, payment_confirmed, total_price, comment, prom_data, tracking_number, delivery_type, carrier_delivered_at, carrier_accepted_at, carrier_status_text, prom_order_id';
+
+type SyncedOrder = {
+  id: string; order_number: number; status: string; payment_confirmed: boolean; total_price: number;
+  comment: string | null; prom_data: unknown; tracking_number: string | null; delivery_type: string | null;
+  carrier_delivered_at: string | null; carrier_accepted_at: string | null; carrier_status_text: string | null;
+  prom_order_id: number | null;
+};
+
+/**
+ * Рух посилки за даними Prom. Prom трекає свою декларацію сам (unified_status:
+ * on_the_way → in_warehouse → delivered) — для «Магазинів Rozetka» (PRM-…, Meest
+ * за договором Prom) це ЄДИНЕ джерело, наші крони той номер не бачать. Для НП
+ * це резерв: крон НП зробить те саме і перезапише carrier_delivered_at точним
+ * часом вручення. Проводки ідемпотентні; «доставлено» — лише коли всі РН
+ * проведені (як у крона доставки). Проміжні стани дають «прийнято перевізником»
+ * і текст статусу — без них замовлення висіло «До відправки» до самого вручення.
+ */
+async function applyPromDeliveryState(existing: SyncedOrder, promOrder: PromOrder): Promise<{ accepted: boolean; delivered: boolean }> {
+  const now = new Date().toISOString();
+  const { patch, accepted, delivered } = promDeliveryPatch(existing, promOrder.delivery_provider_data, now);
+  if (delivered && !existing.carrier_delivered_at) patch.carrier_delivered_at = now;
+  if (Object.keys(patch).length) {
+    const { error } = await db.from('orders').update(patch).eq('id', existing.id);
+    if (error) {
+      console.error('[prom-sync] delivery state update failed:', existing.order_number, error.message);
+      return { accepted: false, delivered: false };
+    }
+    if (accepted) console.log(`[prom-sync] carrier accepted by Prom status: #${existing.order_number} (${existing.tracking_number ?? promOrder.delivery_provider_data?.declaration_number ?? '—'})`);
+  }
+  if (!delivered) return { accepted, delivered: false };
+
+  const actor = 'cron:prom-sync';
+  try {
+    await completeOrderDelivery(existing.id, actor);
+    if (await allOrderSalesPosted(existing.id)) {
+      await db.from('orders').update({ status: 'delivered', delivered_at: now }).eq('id', existing.id);
+      existing.status = 'delivered';
+      console.log(`[prom-sync] delivered by Prom status: #${existing.order_number} (${existing.tracking_number ?? '—'})`);
+      return { accepted, delivered: true };
+    }
+  } catch (err) {
+    console.error('[prom-sync] delivery by Prom status failed:', existing.order_number, err);
+  }
+  return { accepted, delivered: false };
+}
+
 export async function syncPromOrders() {
   if (!process.env.PROM_API_TOKEN) {
     return { ok: false, error: 'PROM_API_TOKEN not set' };
   }
 
-  // Pull orders from the last 48 hours — covers any gaps between cron runs
+  // Pull orders from the last 48 hours — covers any gaps between cron runs.
+  // Порожній список — не привід виходити: другий прохід нижче працює по НАШИХ
+  // відвантажених замовленнях, яких у цьому вікні вже немає.
   const dateFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const orders   = await getPromOrders({ dateFrom, limit: 100 });
-
-  if (!orders.length) return { ok: true, created: 0, skipped: 0, repushed: 0, ttnRepushed: 0, deliveredFromProm: 0, paidUpdated: 0 };
 
   // Read plan setting once for all orders in this batch
   const { data: planRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
@@ -40,6 +89,7 @@ export async function syncPromOrders() {
   let repushed = 0;
   let ttnRepushed = 0;
   let deliveredFromProm = 0;
+  let carrierAccepted = 0;
 
 
   let paidUpdated = 0;
@@ -47,9 +97,9 @@ export async function syncPromOrders() {
   for (const promOrder of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, order_number, status, payment_confirmed, total_price, comment, prom_data, tracking_number, delivery_type, carrier_delivered_at')
+      .select(SYNCED_COLS)
       .eq('prom_order_id', promOrder.id)
-      .maybeSingle();
+      .maybeSingle<SyncedOrder>();
 
     if (existing) {
       // Пізня оплата. «Пром-оплата» (evopay) в API з'являється зі status=unpaid —
@@ -82,31 +132,10 @@ export async function syncPromOrders() {
         }
       }
 
-      // Вручення за даними Prom. Prom трекає свою декларацію сам (unified_status:
-      // on_the_way → in_warehouse → delivered) — для «Магазинів Rozetka» (PRM-…, Meest
-      // за договором Prom) це ЄДИНЕ джерело, наші крони той номер не бачать. Для НП
-      // це резерв: крон НП зробить те саме і перезапише carrier_delivered_at точним
-      // часом вручення. Проводки ідемпотентні; «доставлено» — лише коли всі РН
-      // проведені (як у крона доставки).
-      const promDelivered = promOrder.delivery_provider_data?.unified_status === 'delivered';
-      if (promDelivered && existing.status === 'shipped') {
-        const actor = 'cron:prom-sync';
-        try {
-          const now = new Date().toISOString();
-          if (!existing.carrier_delivered_at) {
-            await db.from('orders').update({ carrier_delivered_at: now, carrier_status_text: 'Вручено (за даними Prom)', carrier_status_synced_at: now }).eq('id', existing.id);
-          }
-          await completeOrderDelivery(existing.id, actor);
-          if (await allOrderSalesPosted(existing.id)) {
-            await db.from('orders').update({ status: 'delivered', delivered_at: now }).eq('id', existing.id);
-            existing.status = 'delivered';
-            deliveredFromProm++;
-            console.log(`[prom-sync] delivered by Prom status: #${existing.order_number} (${existing.tracking_number ?? '—'})`);
-          }
-        } catch (err) {
-          console.error('[prom-sync] delivery by Prom status failed:', existing.order_number, err);
-        }
-      }
+      // Рух посилки за даними Prom (див. applyPromDeliveryState)
+      const delivery = await applyPromDeliveryState(existing, promOrder);
+      if (delivery.accepted) carrierAccepted++;
+      if (delivery.delivered) deliveredFromProm++;
 
       const desired = ourStatusToPromStatus(existing.status);
       if (desired && REPUSH_FROM[desired].includes(promOrder.status)) {
@@ -213,5 +242,37 @@ export async function syncPromOrders() {
     }
   }
 
-  return { ok: true, created, skipped, repushed, ttnRepushed, deliveredFromProm, paidUpdated, total: orders.length };
+  // ── Другий прохід: відвантажені замовлення, які веде сам Prom, поза вікном ──
+  // /orders/list фільтрує за датою СТВОРЕННЯ, а посилка їде днями: замовлення
+  // від 24.09 (#26091224, Meest) список уже не віддавав, і навіть «вручено» по
+  // ньому ніколи б не спрацювало. Тягнемо адресно — таких одиниці, і лише ті,
+  // чий рух наші крони не бачать (isPromLedDelivery).
+  const seenPromIds = new Set(orders.map(o => Number(o.id)));
+  let staleChecked = 0;
+  const { data: shippedProm, error: shippedErr } = await db
+    .from('orders')
+    .select(SYNCED_COLS)
+    .eq('status', 'shipped')
+    .not('prom_order_id', 'is', null)
+    .order('id')
+    .limit(200)
+    .returns<SyncedOrder[]>();
+  if (shippedErr) console.error('[prom-sync] stale shipped pull failed:', shippedErr.message);
+  for (const o of shippedProm ?? []) {
+    if (!o.prom_order_id || seenPromIds.has(Number(o.prom_order_id)) || !isPromLedDelivery(o)) continue;
+    let promOrder: PromOrder | null = null;
+    try {
+      promOrder = await getPromOrder(Number(o.prom_order_id));
+    } catch (err) {
+      console.error('[prom-sync] stale order fetch failed:', o.order_number, err);
+      continue;
+    }
+    if (!promOrder) continue;
+    staleChecked++;
+    const delivery = await applyPromDeliveryState(o, promOrder);
+    if (delivery.accepted) carrierAccepted++;
+    if (delivery.delivered) deliveredFromProm++;
+  }
+
+  return { ok: true, created, skipped, repushed, ttnRepushed, deliveredFromProm, carrierAccepted, staleChecked, paidUpdated, total: orders.length };
 }

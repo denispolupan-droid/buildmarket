@@ -3,7 +3,7 @@ import { parseNpDateTime } from './np-datetime';
 import { notifyCustomerStatus } from './telegram';
 import { setRozetkaOrderStatus, getRozetkaOrderStatusInfo } from './rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
-import { rozetkaDeliveryPhase } from './rozetka-delivery-status';
+import { rozetkaDeliveryPhase, pickLeadingRozetkaInfo } from './rozetka-delivery-status';
 import { RZ_DELIVERY_TYPE, rzPhase, rzCarrierAccepted } from './rz-delivery';
 import { rzTrackStatuses } from './rz-delivery-api';
 import { groupByTracking } from './delivery-tracking';
@@ -340,25 +340,48 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
   // Назву статусу не вигадуємо — Rozetka віддає її українською в status_data.
   // Штук на день одиниці, тож адресний запит на замовлення дешевший за будь-яку
   // пакетну хитрість. Помилка по одному замовленню не зриває решту.
-  for (const o of rzOrders) {
-    // Доля повернення вже вирішена менеджером («забрав» / «залишив») — питати
-    // Rozetka про цю посилку більше нема сенсу.
+  // Доля повернення вже вирішена менеджером («забрав» / «залишив») — питати
+  // Rozetka про цю посилку більше нема сенсу.
+  const rzSettled = (o: typeof rzOrders[number]) => {
     const flags = (o.flags ?? []) as string[];
-    if (o.status === 'cancelled' && (flags.includes('return_received') || flags.includes('return_abandoned'))) continue;
-
-    let info: Awaited<ReturnType<typeof getRozetkaOrderStatusInfo>> = null;
+    return o.status === 'cancelled' && (flags.includes('return_received') || flags.includes('return_abandoned'));
+  };
+  type RzInfo = NonNullable<Awaited<ReturnType<typeof getRozetkaOrderStatusInfo>>>;
+  const rzInfoByOrder = new Map<string, RzInfo>();
+  for (const o of rzOrders) {
+    if (rzSettled(o) || !o.rozetka_order_id) continue;
     try {
-      info = o.rozetka_order_id ? await getRozetkaOrderStatusInfo(Number(o.rozetka_order_id)) : null;
+      const info = await getRozetkaOrderStatusInfo(Number(o.rozetka_order_id));
+      if (info) rzInfoByOrder.set(o.id, info);
     } catch (err) {
       console.error('[sync-delivery-status] rozetka order fetch failed:', o.rozetka_order_id, err);
     }
-    if (!info) continue;
+  }
+  // Об'єднана посилка (один «RMP-…» на кілька замовлень): рух беремо з того
+  // замовлення, чий статус у кабінеті зайшов найдалі — у решти він заморожений
+  // на «Обробляється менеджером», бо чужу накладну Rozetka через API не чіпляє.
+  const rzLeadByTtn = new Map<string, RzInfo>();
+  for (const o of rzOrders) {
+    const own = rzInfoByOrder.get(o.id);
+    if (!own) continue;
+    const ttn = String(o.tracking_number);
+    rzLeadByTtn.set(ttn, pickLeadingRozetkaInfo([rzLeadByTtn.get(ttn), own]) ?? own);
+  }
 
-    const phase = rozetkaDeliveryPhase(info.status);
-    const carrierAccepted = phase === 'accepted' || phase === 'delivered' || phase === 'returning';
+  for (const o of rzOrders) {
+    if (rzSettled(o)) continue;
+    const own = rzInfoByOrder.get(o.id) ?? null;
+    const lead = rzLeadByTtn.get(String(o.tracking_number)) ?? own;
+    if (!own || !lead) continue;
+
+    // Текст і «прийнято перевізником» — за посилкою (lead); проводки й перехід
+    // у «Доставлено» нижче — як і раніше, за власним статусом замовлення, а
+    // «сусідів» об'єднаної посилки добиває блок siblings.
+    const leadPhase = rozetkaDeliveryPhase(lead.status);
+    const carrierAccepted = leadPhase === 'accepted' || leadPhase === 'delivered' || leadPhase === 'returning';
 
     const patch: Record<string, unknown> = {
-      carrier_status_text:        info.title ?? `Статус ${info.status}`,
+      carrier_status_text:        lead.title ?? `Статус ${lead.status}`,
       carrier_status_synced_at:   new Date().toISOString(),
     };
     if (carrierAccepted && !o.carrier_accepted_at) {
@@ -366,6 +389,9 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       accepted++;
     }
     await serviceClient.from('orders').update(patch).eq('id', o.id);
+
+    const info = own;
+    const phase = rozetkaDeliveryPhase(info.status);
 
     // Для скасованих — тільки текст: посилка їде назад, жодних проводок.
     // Статус у Rozetka тут НЕ пушимо: у цій доставці його веде сама Rozetka.
