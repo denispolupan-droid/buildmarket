@@ -176,17 +176,17 @@ export async function loadProductQueue(): Promise<{ items: QueueItem[]; total: n
     fetchAllRows<SeoStateRow>((f, t) =>
       client.from('product_seo_state').select('*').order('category_slug').order('sku').range(f, t)),
     fetchAllRows<CharRow>((f, t) =>
-      client.from('product_characteristics').select('product_sku, label, value').range(f, t)),
+      client.from('product_characteristics').select('product_sku, label, value').order('id').range(f, t)),
     fetchAllRows<DictRow>((f, t) =>
-      client.from('characteristic_definitions').select('label, aliases, is_multiselect').range(f, t)),
+      client.from('characteristic_definitions').select('label, aliases, is_multiselect').order('id').range(f, t)),
     fetchAllRows<CategoryCharRow>((f, t) =>
       client.from('category_characteristics')
-        .select('category_slug, required, characteristic_definitions(label)').range(f, t)),
+        .select('category_slug, required, characteristic_definitions(label)').order('category_slug').order('definition_id').range(f, t)),
     fetchAllRows<RawValueRow>((f, t) =>
       client.from('characteristic_values')
         .select('value, category_slugs, aliases, characteristic_definitions(label)').order('id').range(f, t)),
     fetchAllRows<CategoryTreeRow>((f, t) =>
-      client.from('categories').select('slug, parent_slug').range(f, t)),
+      client.from('categories').select('slug, parent_slug').order('id').range(f, t)),
   ]);
   const values: ValueRow[] = [];
   for (const r of rawValues) {

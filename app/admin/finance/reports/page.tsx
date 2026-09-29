@@ -44,6 +44,7 @@ export default async function ReportsPage({
     .is('reversal_of', null)
     .gte('doc_date', dateFrom)
     .lte('doc_date', dateTo)
+    .order('id')
     .range(f, t));
   const returns = await fetchAllRows<{ total_amount: number; total_cost: number; channel_code: string | null }>((f, t) => db
     .from('acc_documents')
@@ -53,6 +54,7 @@ export default async function ReportsPage({
     .is('reversal_of', null)
     .gte('doc_date', dateFrom)
     .lte('doc_date', dateTo)
+    .order('id')
     .range(f, t));
   const channelMap: Record<string, { revenue: number; cogs: number }> = {};
   for (const d of (sales ?? [])) {
@@ -74,6 +76,7 @@ export default async function ReportsPage({
     .eq('account_type', 'marketplace_fee')
     .gte('business_date', dateFrom)
     .lte('business_date', dateTo)
+    .order('id')
     .range(f, t));
   const commByChannel: Record<string, number> = {};
   for (const e of (commEntries ?? [])) {
@@ -112,6 +115,7 @@ export default async function ReportsPage({
     .select('amount')
     .in('account_type', CASH_ACCOUNTS)
     .lt('business_date', dateFrom)
+    .order('id')
     .range(f, t));
   const opening = prevCash.reduce((s, e) => s + Number(e.amount), 0);
 
@@ -122,6 +126,7 @@ export default async function ReportsPage({
     .in('account_type', CASH_ACCOUNTS)
     .gte('business_date', dateFrom)
     .lte('business_date', dateTo)
+    .order('id')
     .range(f, t));
 
   // Детальні статті — за doc_type / рахунком.
@@ -180,6 +185,7 @@ export default async function ReportsPage({
     .from('money_entries')
     .select('account_type, amount')
     .in('account_type', ['bank', 'acquiring', 'novapay', 'cash'])
+    .order('id')
     .range(f, t));
   const balances = { monobank: 0, novapay: 0, cash: 0 };
   for (const r of allBal) {

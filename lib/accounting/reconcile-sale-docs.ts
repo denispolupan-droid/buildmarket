@@ -49,6 +49,7 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
       // його з позиціями замовлення безглуздо: хибний алерт по №26071005, 02.09.2026
       .is('reversal_of', null)
       .gte('doc_date', since)
+      .order('id')
       .range(from, to),
   );
 
@@ -61,6 +62,7 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
       .from('acc_document_lines')
       .select('document_id, qty, price')
       .in('document_id', docIds)
+      .order('id')
       .range(from, to),
   );
 
@@ -75,6 +77,7 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
       .from('orders')
       .select('id, order_number, status, items')
       .in('id', orderIds)
+      .order('id')
       .range(from, to),
   );
   const orderMap = new Map(orders.map(o => [o.id, o]));

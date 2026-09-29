@@ -206,7 +206,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
         .in('account_type', PL_ACCOUNTS)
         .gte('business_date', prevStr);
       if (periodTo) q = q.lt('business_date', endStr);
-      return q.range(f, t);
+      return q.order('id').range(f, t);
     }),
     // 2. Замовлення когорти (поточний + попередній період)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
@@ -216,13 +216,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
         .neq('status', 'cancelled')
         .gte('created_at', prevFrom.toISOString());
       if (periodTo) q = q.lt('created_at', periodTo.toISOString());
-      return q.range(f, t);
+      return q.order('id').range(f, t);
     }),
     // 3. Залишки грошових рахунків (за весь час, як у Звітах)
     fetchAllRows<{ account_type: string; amount: number }>((f, t) => db
       .from('money_entries').select('account_type, amount')
       .in('account_type', ['bank', 'acquiring', 'novapay', 'cash'])
-      .range(f, t)),
+      .order('id').range(f, t)),
     // 4. Дебіторка (customer_id потрібен, щоб відсіяти службових дебіторів)
     db.from('ar_balances').select('customer_id, balance').then(r => r.data ?? []),
     // 5. Прострочена дебіторка
@@ -243,7 +243,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .select('business_date, account_type, doc_type, amount')
       .in('account_type', PL_ACCOUNTS)
       .gte('business_date', monthlyFromStr)
-      .range(f, t)),
+      .order('id').range(f, t)),
     // items/channel потрібні для очікуваного прибутку по місяцях (profitEst)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
     fetchAllRows<any>((f, t) => db
@@ -251,7 +251,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .select('id, created_at, total_price, channel_code, items')
       .neq('status', 'cancelled')
       .gte('created_at', monthlyFromIso)
-      .range(f, t)),
+      .order('id').range(f, t)),
     // 9. Оплати клієнтів сьогодні + вчора (кредит рахунку customer)
     db.from('money_entries')
       .select('amount, txn_id, business_date')
@@ -265,7 +265,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .from('orders')
       .select('id, status, total_price, shipped_at, carrier_accepted_at, created_at, channel_code, payment_type')
       .in('status', ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped'])
-      .range(f, t)),
+      .order('id').range(f, t)),
     // 11. Відмови для «викупу»: скасовані ПІСЛЯ відправки замовлення періоду
     fetchAllRows<{ total_price: number; created_at: string }>((f, t) => {
       let q = db.from('orders')
@@ -274,7 +274,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
         .not('shipped_at', 'is', null)
         .gte('created_at', periodFrom.toISOString());
       if (periodTo) q = q.lt('created_at', periodTo.toISOString());
-      return q.range(f, t);
+      return q.order('id').range(f, t);
     }),
   ]);
 
@@ -365,13 +365,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     fetchAllRows<{ counterparty_id: string; order_id: string | null; amount: number }>((f, t) => db
       .from('money_entries').select('counterparty_id, order_id, amount')
       .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:epicentr', 'mp:rozetkapay', 'np:cod'])
-      .range(f, t)),
+      .order('id').range(f, t)),
     // Залишок NovaPay «за випискою» = Σ усіх документів виписки (рахунок відкрито
     // 16.07.2026 з нуля). Виписка віддає день лише після його закриття, а живий
     // залишок оновлюється щогодини — різниця між ними = виплати, що вже прийшли
     // на рахунок, але документа ще немає. На них зменшуємо «НоваПей не виплатила».
     fetchAllRows<{ direction: string; amount: number }>((f, t) => db
-      .from('novapay_txns').select('direction, amount').range(f, t)),
+      .from('novapay_txns').select('direction, amount').order('id').range(f, t)),
     db.from('app_settings').select('value').eq('key', 'novapay_cod_fee_pct').maybeSingle().then(r => r.data?.value ?? null),
   ]);
   const heldMp = { prom: 0, rozetka: 0, receivedUnallocated: 0, npCod: 0 };

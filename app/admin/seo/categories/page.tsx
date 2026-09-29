@@ -19,7 +19,7 @@ const DAYS = 28;
 async function loadDemand(): Promise<Record<string, AuditDemand>> {
   const since = new Date(Date.now() - DAYS * 864e5).toISOString().slice(0, 10);
   const rows = await fetchAllRows<{ page_path: string; impressions: number }>((f, t) =>
-    db.from('gsc_daily').select('page_path, impressions').gte('date', since).like('page_path', '%/shop/%').range(f, t));
+    db.from('gsc_daily').select('page_path, impressions').gte('date', since).like('page_path', '%/shop/%').order('date').order('page_path').range(f, t));
   const out: Record<string, AuditDemand> = {};
   const slugOf = (path: string) => { const m = toLangNeutralPath(path).match(/^\/shop\/([^/]+)$/); return m && m[1] !== 'sale' ? m[1] : null; };
   for (const r of rows) {
@@ -51,11 +51,11 @@ export const dynamic = 'force-dynamic';
 export default async function SeoCategoriesPage() {
   const [products, categories, posts, demand] = await Promise.all([
     fetchAllRows<{ sku: string; category_slug: string | null; brand: string | null }>((f, t) =>
-      db.from('products').select('sku, category_slug, brand').eq('is_active', true).range(f, t)),
+      db.from('products').select('sku, category_slug, brand').eq('is_active', true).order('id').range(f, t)),
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
-      db.from('categories').select('slug, name, parent_slug').range(f, t)),
+      db.from('categories').select('slug, name, parent_slug').order('id').range(f, t)),
     fetchAllRows<{ slug: string }>((f, t) =>
-      db.from('blog_posts').select('slug').eq('is_published', true).range(f, t)),
+      db.from('blog_posts').select('slug').eq('is_published', true).order('id').range(f, t)),
     loadDemand(),
   ]);
   const [metaUa, metaRu] = await Promise.all([getCategoryContentCached('uk'), getCategoryContentCached('ru')]);

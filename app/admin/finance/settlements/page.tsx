@@ -34,6 +34,7 @@ export default async function SettlementsPage({
     .select('counterparty_id')
     .eq('account_type', 'customer')
     .not('counterparty_id', 'is', null)
+    .order('id')
     .range(f, t));
 
   const contractCustomerIds = new Set((contracts ?? []).map(c => c.customer_id).filter(Boolean));

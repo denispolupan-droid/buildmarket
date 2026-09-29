@@ -185,7 +185,7 @@ export default async function AdminPage({
     // Лічильники вкладок — по тому ж зрізу, що й список (пошук/канал/перевізник),
     // інакше вкладка каже «89», а в списку три рядки.
     fetchAllRows<{ status: string; carrier_accepted_at: string | null; total_price: number | null }>((f, t) =>
-      applyOrderFilters(serviceClient.from('orders').select('status, carrier_accepted_at, total_price')).range(f, t),
+      applyOrderFilters(serviceClient.from('orders').select('status, carrier_accepted_at, total_price')).order('id').range(f, t),
     ),
     serviceClient.from('acc_documents')
       .select('id', { count: 'exact', head: true })
@@ -200,7 +200,7 @@ export default async function AdminPage({
       applyStatusFilter(applyOrderFilters(
         serviceClient.from('orders').select('channel_code, delivery_type, payment_method_code'),
         { ignoreFacets: true },
-      )).range(f, t),
+      )).order('id').range(f, t),
     ),
     // Скільки посилок їде назад без рішення — тим самим запитом, що й сам зріз,
     // тому цифра на чіпі завжди дорівнює довжині списку під ним.

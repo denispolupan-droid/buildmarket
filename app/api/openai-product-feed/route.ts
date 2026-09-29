@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       .select('sku, slug, name, name_ru, brand, category_slug, volume, description, description_ru, image, gtin, variant_main_sku')
       .eq('is_active', true).order('sort_order').range(f, t)),
     fetchAllRows<{ sku: string; price_retail: number | null; price_promo: number | null; stock_status: string | null }>((f, t) =>
-      serviceClient.from('product_stock').select('sku, price_retail, price_promo, stock_status').range(f, t)),
+      serviceClient.from('product_stock').select('sku, price_retail, price_promo, stock_status').order('id').range(f, t)),
     serviceClient.from('categories').select('slug, name, parent_slug'),
   ]);
   const stockMap = new Map(stock.map(s => [s.sku, s]));

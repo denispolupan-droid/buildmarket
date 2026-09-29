@@ -11,7 +11,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 **Авторизація роутів.** Кожен новий API-роут перевіряє права через `lib/auth-guard`:
 `requireStaff('admin'[, 'manager'])` для `/api/admin/*`, `requireCustomer('dropship'|'wholesale')` для кабінету. Ніколи не роби ad-hoc `getUser()` + перевірку ролі вручну. Приклад: `app/api/cabinet/products/route.ts`.
 
-**Читання даних.** Будь-яка вибірка списку — через `fetchAllRows` (`lib/db-paginate`) або з явним `.limit()`. Без цього PostgREST мовчки обрізає на 1000 рядків. Вибирай тільки потрібні колонки (`select('a, b')`, не `select('*')`).
+**Читання даних.** Будь-яка вибірка списку — через `fetchAllRows` (`lib/db-paginate`) або з явним `.limit()`. Без цього PostgREST мовчки обрізає на 1000 рядків. Будь-який `.range()` — ТІЛЬКИ з `.order(<унікальна колонка>)` перед ним (зазвичай `.order('id')`): без ORDER BY сторінки віддаються в нестабільному порядку, рядки дублюються й губляться. Вибирай тільки потрібні колонки (`select('a, b')`, не `select('*')`).
 
 **Гроші.** Ціни/суми ЗАВЖДИ перераховуються на сервері з БД; ціні від клієнта не довіряй. Логіку виноси в чисту функцію і покрий тестом (`lib/pricing.ts`, `lib/mono-signature.ts`).
 

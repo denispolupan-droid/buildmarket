@@ -43,7 +43,7 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
   // ручні перекласифікації; сторно rzpay-alloc-undo знімає — замовлення знову кандидат)
   const allocRows = await fetchAllRows<{ order_id: string | null; amount: number }>((f, t) => db
     .from('money_entries').select('order_id, amount').eq('account_type', 'customer').eq('counterparty_id', SALE_DEBTOR.rozetkapay)
-    .not('order_id', 'is', null).range(f, t));
+    .not('order_id', 'is', null).order('id').range(f, t));
   const netByOrder: Record<string, number> = {};
   for (const r of allocRows) netByOrder[r.order_id as string] = Math.round(((netByOrder[r.order_id as string] ?? 0) + Number(r.amount)) * 100) / 100;
   const allocated = new Set(Object.keys(netByOrder).filter(k => netByOrder[k] > 0.005));
@@ -51,7 +51,7 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
   // (ключ ідемпотентності стоїть лише на дебетовому рядку проводки: alloc → дебет mp:rozetkapay,
   // undo → дебет mp:*; тому знак беремо з префікса ключа, а не з рахунку)
   const keyed = await fetchAllRows<{ idempotency_key: string; amount: number }>((f, t) => db
-    .from('money_entries').select('idempotency_key, amount').like('idempotency_key', 'rzpay-alloc%').range(f, t));
+    .from('money_entries').select('idempotency_key, amount').like('idempotency_key', 'rzpay-alloc%').order('id').range(f, t));
   // Ключ: {kind}:{txn}:{order}[:{seq}] — після сторно те саме замовлення може знову
   // потрапити в ту саму виплату, тож повторна проводка отримує наступний seq
   // (інакше вона мовчки впала б у дубль і склад виплати лишився б неповним — кейс 08.09).
@@ -70,13 +70,13 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
     .from('orders')
     .select('id, order_number, channel_code, payment_type, delivery_type, customer_id, status, total_price, delivered_at, carrier_delivered_at, created_at, prom_payment:prom_data->payment_data, rz_payment:rozetka_data->payment')
     .in('channel_code', ['prom', 'rozetka', 'website', 'retail']).neq('status', 'cancelled').gte('created_at', since)
-    .order('created_at', { ascending: true }).range(f, t));
+    .order('created_at', { ascending: true }).order('id').range(f, t));
   // Відкритий борг покупця по рахунках Rozetka (no_cash): може закритись виплатою RozetkaPay
   const invoiceIds = orders.filter(o => o.channel_code === 'rozetka' && o.payment_type === 'invoice').map(o => o.id as string);
   const invoiceOpen: Record<string, number> = {};
   if (invoiceIds.length) {
     const rows = await fetchAllRows<{ order_id: string; counterparty_id: string | null; amount: number }>((f, t) => db
-      .from('money_entries').select('order_id, counterparty_id, amount').eq('account_type', 'customer').in('order_id', invoiceIds).range(f, t));
+      .from('money_entries').select('order_id, counterparty_id, amount').eq('account_type', 'customer').in('order_id', invoiceIds).order('id').range(f, t));
     for (const r of rows) if (!r.counterparty_id?.startsWith('mp:')) invoiceOpen[r.order_id] = Math.round(((invoiceOpen[r.order_id] ?? 0) + Number(r.amount)) * 100) / 100;
   }
   const events = orders

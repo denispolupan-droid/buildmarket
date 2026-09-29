@@ -73,9 +73,9 @@ type Cat = { slug: string; name: string; parent_slug: string | null };
 /** Індекс нашого контенту (статті, FAQ, назви й гайди категорій) → функція «яка сторінка відповідає на фразу». */
 async function buildCoverage(client: ReturnType<typeof db>): Promise<{ cats: Cat[]; coveredBy: (phrase: string) => string | null }> {
   const [cats, posts, content] = await Promise.all([
-    fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) => client.from('categories').select('slug, name, parent_slug').range(f, t)),
-    fetchAllRows<{ slug: string; title: string; title_ru: string | null; faq: { q: string }[] | null; faq_ru: { q: string }[] | null }>((f, t) => client.from('blog_posts').select('slug, title, title_ru, faq, faq_ru').eq('is_published', true).range(f, t)),
-    fetchAllRows<{ slug: string; lang: string; faq: { q: string }[] | null; guide: { title: string; sections: { h: string }[] } | null }>((f, t) => client.from('category_content').select('slug, lang, faq, guide').range(f, t)),
+    fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) => client.from('categories').select('slug, name, parent_slug').order('id').range(f, t)),
+    fetchAllRows<{ slug: string; title: string; title_ru: string | null; faq: { q: string }[] | null; faq_ru: { q: string }[] | null }>((f, t) => client.from('blog_posts').select('slug, title, title_ru, faq, faq_ru').eq('is_published', true).order('id').range(f, t)),
+    fetchAllRows<{ slug: string; lang: string; faq: { q: string }[] | null; guide: { title: string; sections: { h: string }[] } | null }>((f, t) => client.from('category_content').select('slug, lang, faq, guide').order('slug').order('lang').range(f, t)),
   ]);
   // Індекс нашого контенту: набір основ → шлях
   const docs: { path: string; stems: Set<string> }[] = [];
@@ -104,7 +104,7 @@ async function buildCoverage(client: ReturnType<typeof db>): Promise<{ cats: Cat
 export async function refreshCoverage(): Promise<{ rows: number; covered: number; changed: number }> {
   const client = db();
   const { coveredBy } = await buildCoverage(client);
-  const rows = await fetchAllRows<{ phrase: string; lang: 'uk' | 'ru'; covered_path: string | null }>((f, t) => client.from('search_demand').select('phrase, lang, covered_path').range(f, t));
+  const rows = await fetchAllRows<{ phrase: string; lang: 'uk' | 'ru'; covered_path: string | null }>((f, t) => client.from('search_demand').select('phrase, lang, covered_path').order('phrase').order('lang').range(f, t));
   const updates = rows.map(r => ({ ...r, next: coveredBy(r.phrase) })).filter(r => r.next !== r.covered_path);
   for (const u of updates) {
     const { error } = await client.from('search_demand').update({ covered_path: u.next }).eq('phrase', u.phrase).eq('lang', u.lang);
@@ -152,7 +152,7 @@ export async function crawlDemand(opts: { onlySlugs?: string[]; delayMs?: number
 
   // Що вже є в таблиці — щоб порахувати нові й накопичити seen
   const existing = new Map<string, { seen: number }>();
-  for (const r of await fetchAllRows<{ phrase: string; lang: string; seen: number }>((f, t) => client.from('search_demand').select('phrase, lang, seen').range(f, t))) existing.set(`${r.phrase}|${r.lang}`, { seen: r.seen });
+  for (const r of await fetchAllRows<{ phrase: string; lang: string; seen: number }>((f, t) => client.from('search_demand').select('phrase, lang, seen').order('phrase').order('lang').range(f, t))) existing.set(`${r.phrase}|${r.lang}`, { seen: r.seen });
 
   const today = new Date().toISOString().slice(0, 10);
   const rows = [...found.values()].map(r => {

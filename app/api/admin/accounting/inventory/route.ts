@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
     .from('stock_balance')
     .select('sku, qty_total, avg_cost')
     .eq('warehouse_id', warehouseId)
+    .order('warehouse_id').order('sku')
     .range(f, t));
   const planMap = new Map(balances.map(b => [b.sku, { plan: Number(b.qty_total), cost: Number(b.avg_cost ?? 0) }]));
 

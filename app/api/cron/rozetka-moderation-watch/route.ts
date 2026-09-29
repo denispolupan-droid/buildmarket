@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     const stored = await fetchAllRows<StoredState>((from, to) => db
       .from('rozetka_moderation_state')
       .select('sku, change_status, reasons')
+      .order('sku')
       .range(from, to));
 
     const diff = diffModeration(summary, stored);

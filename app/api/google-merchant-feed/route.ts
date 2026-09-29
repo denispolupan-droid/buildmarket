@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
     fetchAllRows((f, t) => serviceClient
       .from('product_stock')
       .select('sku, price_retail, price_promo, price_cost, stock_status')
+      .order('id')
       .range(f, t)),
     serviceClient
       .from('categories')

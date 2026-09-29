@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
     }>((from, to) => serviceClient.from('products')
       .select('sku, name, brand, category_slug, on_rozetka, on_prom, min_price, rozetka_markup_pct, prom_markup_pct, rozetka_smart, product_stock(price_cost, price_retail, price_wholesale)')
       .eq('is_active', true)
+      .order('id')
       .range(from, to)),
     getSmartTariff(),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),

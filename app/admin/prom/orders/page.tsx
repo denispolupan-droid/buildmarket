@@ -27,6 +27,7 @@ export default async function PromOrdersPage() {
       .from('orders')
       .select('status, total_price')
       .eq('channel_code', 'prom')
+      .order('id')
       .range(f, t)),
   ]);
 

@@ -34,8 +34,8 @@ export async function GET() {
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const [rows, cats, last] = await Promise.all([
     fetchAllRows<{ phrase: string; lang: 'uk' | 'ru'; category_slug: string; modifier: string; seen: number; gsc_impressions: number | null; gsc_position: number | null; covered_path: string | null; last_seen: string }>((f, t) =>
-      db.from('search_demand').select('phrase, lang, category_slug, modifier, seen, gsc_impressions, gsc_position, covered_path, last_seen').range(f, t)),
-    fetchAllRows<{ slug: string; name: string }>((f, t) => db.from('categories').select('slug, name').range(f, t)),
+      db.from('search_demand').select('phrase, lang, category_slug, modifier, seen, gsc_impressions, gsc_position, covered_path, last_seen').order('phrase').order('lang').range(f, t)),
+    fetchAllRows<{ slug: string; name: string }>((f, t) => db.from('categories').select('slug, name').order('id').range(f, t)),
     db.from('search_demand').select('last_seen').order('last_seen', { ascending: false }).limit(1).maybeSingle(),
   ]);
   const byCat = new Map<string, HiddenPhrase[]>();

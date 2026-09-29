@@ -55,6 +55,7 @@ async function buildPlans(): Promise<{ plans: Plan[]; posts: Map<number, PostRow
     }>((from, to) => serviceClient.from('products')
       .select('sku, slug, name, name_ru, brand, volume, category_slug, product_stock(price_retail, stock_status, stock_qty)')
       .eq('is_active', true)
+      .order('id')
       .range(from, to)),
   ]);
 

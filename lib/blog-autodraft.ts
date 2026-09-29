@@ -74,11 +74,11 @@ export async function pickTopics(n: number): Promise<{ picks: TopicPick[]; rejec
   const client = db();
   const [phrases, cats, posts, prods] = await Promise.all([
     fetchAllRows<{ phrase: string; lang: string; category_slug: string; seen: number; gsc_impressions: number | null }>((f, t) =>
-      client.from('search_demand').select('phrase, lang, category_slug, seen, gsc_impressions').is('covered_path', null).range(f, t)),
+      client.from('search_demand').select('phrase, lang, category_slug, seen, gsc_impressions').is('covered_path', null).order('phrase').order('lang').range(f, t)),
     client.from('categories').select('slug, name, parent_slug').then(r => r.data ?? []),
     client.from('blog_posts').select('title, is_published').then(r => r.data ?? []),
     fetchAllRows<{ category_slug: string | null; product_type: string | null }>((f, t) =>
-      client.from('products').select('category_slug, product_type').eq('is_active', true).range(f, t)),
+      client.from('products').select('category_slug, product_type').eq('is_active', true).order('id').range(f, t)),
   ]);
   // Що реально є в каталозі: кількість товарів і типи по категоріях (з дітьми) —
   // щоб модель не пропонувала статті про матеріали, яких ми не продаємо
@@ -156,7 +156,7 @@ async function autoPickProducts(postId: number, hub: string): Promise<number> {
     fetchAllRows<{
       sku: string; slug: string | null; name: string; name_ru: string | null; brand: string; volume: string | null; category_slug: string | null;
       product_stock: { price_retail: number | null; stock_status: string | null; stock_qty: number | null } | { price_retail: number | null; stock_status: string | null; stock_qty: number | null }[] | null;
-    }>((f, t) => client.from('products').select('sku, slug, name, name_ru, brand, volume, category_slug, product_stock(price_retail, stock_status, stock_qty)').eq('is_active', true).range(f, t)),
+    }>((f, t) => client.from('products').select('sku, slug, name, name_ru, brand, volume, category_slug, product_stock(price_retail, stock_status, stock_qty)').eq('is_active', true).order('id').range(f, t)),
   ]);
   const childrenOf = new Map<string, string[]>();
   for (const c of cats ?? []) if (c.parent_slug) childrenOf.set(c.parent_slug, [...(childrenOf.get(c.parent_slug) ?? []), c.slug]);

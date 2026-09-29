@@ -82,6 +82,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     .is('reversal_of', null)   // без сторно-документів (їх оригінал 'cancelled' і вже виключений)
     .not('order_id', 'is', null)
     .gte('doc_date', sixAgo.toISOString())
+    .order('id')
     .range(f, t));
 
   // ── Фактичний облік за поточний місяць — з леджера money_entries ──────────
@@ -128,6 +129,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     .in('account_type', ['cogs', 'marketplace_fee'])
     .not('order_id', 'is', null)
     .gte('business_date', sixAgo.toISOString().slice(0, 10))
+    .order('id')
     .range(f, t));
   const cogsByOrder = new Map<string, number>();
   const feeByOrder  = new Map<string, number>();
@@ -145,7 +147,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const accDocIds = accDocs.map(d => d.id as string);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
   const accLines: any[] = accDocIds.length > 0
-    ? await fetchAllRows<any>((f, t) => db.from('acc_document_lines').select('sku, qty, price, cost_price, supplier_id, document_id').in('document_id', accDocIds).range(f, t))
+    ? await fetchAllRows<any>((f, t) => db.from('acc_document_lines').select('sku, qty, price, cost_price, supplier_id, document_id').in('document_id', accDocIds).order('id').range(f, t))
     : [];
 
   // Зважена середня собівартість за SKU з FIFO-даних РН
@@ -280,6 +282,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     .select('account_type, amount, counterparty_id, business_date')
     .in('account_type', ['marketplace_fee', 'revenue'])
     .gte('business_date', sixAgo.toISOString().slice(0, 10))
+    .order('id')
     .range(f, t));
   const feeTrend = months.map(m => {
     const inMonth = feeTrendRows.filter(r => r.business_date.slice(0, 7) === m.key);

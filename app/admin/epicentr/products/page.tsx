@@ -16,7 +16,7 @@ export default async function EpicentrProductsPage() {
       .eq('is_active', true)
       .order('category_slug', { nullsFirst: false }).order('name').range(f, t)),
     fetchAllRows<EpiStock>((f, t) => db.from('product_stock')
-      .select('sku, price_cost, price_retail, stock_status').range(f, t)),
+      .select('sku, price_cost, price_retail, stock_status').order('id').range(f, t)),
     fetchAllRows<EpiCategory>((f, t) => db.from('categories')
       .select('slug, name, epicentr_commission_pct, epicentr_markup_pct, epicentr_category_code')
       .order('sort_order').range(f, t)),

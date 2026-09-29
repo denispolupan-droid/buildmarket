@@ -405,17 +405,28 @@ export const getSitemapProductsCached = unstable_cache(
   { revalidate: 60, tags: ['products'] }
 );
 
+/**
+ * Список брендів рахується з products, тож інвалідувати його має БУДЬ-ЯКА зміна
+ * товарів: раніше тег був лише 'brands', який ставить тільки імпорт, а картка,
+ * заведена через адмінку (revalidateTag('products')), чекала кінця TTL.
+ *
+ * Чому TTL година, а не хвилина: теги вже скидають кеш за фактом зміни
+ * (ціни, промо, імпорт, синк постачальників, прихід, CRUD карток — усі кличуть
+ * revalidateTag). Хвилинний TTL додатково перечитував таблицю просто тому, що
+ * минув час: 2 258 повних вибірок за три доби заради 46 значень. Година —
+ * запобіжник на випадок запису в базу скриптом повз теги.
+ */
 export const getBrandsCached = unstable_cache(
   async () => getBrands(),
   ['brands'],
-  { revalidate: 60, tags: ['brands'] }
+  { revalidate: 3600, tags: ['brands', 'products'] }
 );
 
 // Топ-бренди (за кількістю активних товарів). Легка заміна повного getProducts()
 // у Footer, який рендериться на кожній сторінці — тягнемо тільки колонку brand.
 export async function getTopBrands(minCount = 5, limit = 10): Promise<string[]> {
   const rows = await fetchAllRows<{ brand: string | null }>((f, t) =>
-    supabase.from('products').select('brand').eq('is_active', true).range(f, t));
+    supabase.from('products').select('brand').eq('is_active', true).order('id').range(f, t));
   const counts = new Map<string, number>();
   for (const { brand } of rows) {
     const b = brand?.trim();
@@ -428,22 +439,28 @@ export async function getTopBrands(minCount = 5, limit = 10): Promise<string[]> 
     .map(([b]) => b);
 }
 
+// Футер рендериться на КОЖНІЙ сторінці, а ця функція заради десятки брендів
+// вичитує всі активні товари. Теги ('products' ставлять усі, хто міняє товари)
+// скидають кеш одразу після реальної зміни, тож TTL тут — лише запобіжник.
 export const getTopBrandsCached = unstable_cache(
   async () => getTopBrands(),
   ['top-brands'],
-  { revalidate: 300, tags: ['products', 'brands'] }
+  { revalidate: 3600, tags: ['products', 'brands'] }
 );
 
+// Єдиний, хто пише brand_logos, — /api/admin/brand-logos, і всі три його шляхи
+// (завантаження, показ на головній, видалення) кличуть revalidateTag('brand-logos').
+// Тож TTL тут теж лише запобіжник, а не спосіб побачити зміну.
 export const getBrandLogosCached = unstable_cache(
   async () => getBrandLogos(),
   ['brand-logos'],
-  { revalidate: 60, tags: ['brand-logos'] }
+  { revalidate: 3600, tags: ['brand-logos'] }
 );
 
 export const getVisibleBrandLogosCached = unstable_cache(
   async () => getVisibleBrandLogos(),
   ['visible-brand-logos'],
-  { revalidate: 60, tags: ['brand-logos'] }
+  { revalidate: 3600, tags: ['brand-logos'] }
 );
 
 export const getReviewStatsCached = unstable_cache(

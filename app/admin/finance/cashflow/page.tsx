@@ -48,6 +48,7 @@ export default async function CashflowPage({
     .select('amount, account_type')
     .in('account_type', ['cash', 'bank', 'acquiring'])
     .lt('business_date', from)
+    .order('id')
     .range(f, t));
 
   const openingByAccount = { cash: 0, bank: 0, acquiring: 0 };

@@ -67,13 +67,13 @@ export async function buildGenContext(slug: string): Promise<GenContext> {
   const client = db();
   const [cats, products, posts] = await Promise.all([
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
-      client.from('categories').select('slug, name, parent_slug').range(f, t)),
+      client.from('categories').select('slug, name, parent_slug').order('id').range(f, t)),
     fetchAllRows<ProductRow>((f, t) =>
       client.from('products')
         .select('sku, name, brand, volume, category_slug, stock:product_stock(price_retail, price_promo, stock_status), characteristics:product_characteristics(label, value)')
-        .eq('is_active', true).range(f, t) as unknown as PromiseLike<{ data: ProductRow[] | null; error: unknown }>),
+        .eq('is_active', true).order('id').range(f, t) as unknown as PromiseLike<{ data: ProductRow[] | null; error: unknown }>),
     fetchAllRows<{ slug: string; title: string; title_ru: string | null; related_links: { href: string }[] | null }>((f, t) =>
-      client.from('blog_posts').select('slug, title, title_ru, related_links').eq('is_published', true).range(f, t)),
+      client.from('blog_posts').select('slug, title, title_ru, related_links').eq('is_published', true).order('id').range(f, t)),
   ]);
 
   const cat = cats.find(c => c.slug === slug);

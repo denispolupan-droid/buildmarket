@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
     .select('order_id, account_type, amount, doc_type')
     .in('order_id', ids)
     .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics'])
+    .order('id')
     .range(f, t));
 
   type Fact = { revenue: number; cogs: number; fee: number; delivery: number };

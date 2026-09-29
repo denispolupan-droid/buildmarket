@@ -124,7 +124,7 @@ export async function applyParsedRzPayRegister(register: RzPayRegister, createdB
     // Що вже проведено на цю виплату (alloc − undo) і лічильники ключів для seq
     const keyed = await fetchAllRows<{ idempotency_key: string; amount: number }>((f, t) => db
       .from('money_entries').select('idempotency_key, amount')
-      .or(`idempotency_key.like.rzpay-alloc:${txn}:%,idempotency_key.like.rzpay-alloc-undo:${txn}:%`).range(f, t));
+      .or(`idempotency_key.like.rzpay-alloc:${txn}:%,idempotency_key.like.rzpay-alloc-undo:${txn}:%`).order('id').range(f, t));
     const existingNet: Record<string, number> = {};
     const keyCount: Record<string, number> = {};
     for (const r of keyed) {

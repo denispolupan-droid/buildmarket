@@ -39,6 +39,7 @@ export async function GET() {
         .from('products')
         .select('category_slug, brand, stock:product_stock(price_retail, price_promo)')
         .eq('is_active', true)
+        .order('id')
         .range(from, to),
     ),
     getCategoryContentCached('uk'),

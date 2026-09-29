@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   const [products, stock, { data: categories }] = await Promise.all([
     // paginate past the 1000-row cap so a growing catalog isn't truncated
     fetchAllRows((f, t) => serviceClient.from('products').select('sku, name, brand, category_slug, volume, color, product_type, description, image').eq('is_active', true).order('sort_order').range(f, t)),
-    fetchAllRows((f, t) => serviceClient.from('product_stock').select('sku, price_drop, stock_status').range(f, t)),
+    fetchAllRows((f, t) => serviceClient.from('product_stock').select('sku, price_drop, stock_status').order('id').range(f, t)),
     serviceClient.from('categories').select('id, slug, name, parent_slug, prom_section_url').order('sort_order'),
   ]);
 

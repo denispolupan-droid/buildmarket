@@ -94,7 +94,7 @@ export async function openItems(db: Db, side: Pick<DebtSide, 'account' | 'party'
     .eq('account_type', side.account)
     .eq('counterparty_id', side.party)
     .not('order_id', 'is', null)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true }).order('id')
     .range(f, t));
   const byOrder = new Map<string, SettlementEntry[]>();
   for (const r of rows) (byOrder.get(r.order_id!) ?? byOrder.set(r.order_id!, []).get(r.order_id!)!).push(r);
@@ -102,7 +102,7 @@ export async function openItems(db: Db, side: Pick<DebtSide, 'account' | 'party'
   const ids = [...byOrder.keys()];
   const orders = ids.length
     ? await fetchAllRows<{ id: string; order_number: number; created_at: string; status: string; channel_code: string | null; contact: string | null }>((f, t) => db
-        .from('orders').select('id, order_number, created_at, status, channel_code, contact').in('id', ids).range(f, t))
+        .from('orders').select('id, order_number, created_at, status, channel_code, contact').in('id', ids).order('id').range(f, t))
     : [];
   const meta = new Map(orders.map(o => [o.id, o]));
 

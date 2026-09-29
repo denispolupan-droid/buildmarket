@@ -305,22 +305,22 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     priceLockRows,
     physStockRows,
   ] = await Promise.all([
-    fetchAllRows((f, t) => supabase.from('supplier_sku_map').select('supplier_sku, our_sku').eq('supplier_id', supplierId).range(f, t)),
-    fetchAllRows((f, t) => supabase.from('product_stock').select('sku, supplier_sku').range(f, t)),
-    fetchAllRows((f, t) => supabase.from('products').select('sku, brand').range(f, t)),
+    fetchAllRows((f, t) => supabase.from('supplier_sku_map').select('supplier_sku, our_sku').eq('supplier_id', supplierId).order('supplier_id').order('supplier_sku').range(f, t)),
+    fetchAllRows((f, t) => supabase.from('product_stock').select('sku, supplier_sku').order('id').range(f, t)),
+    fetchAllRows((f, t) => supabase.from('products').select('sku, brand').order('id').range(f, t)),
     fetchAllRows((f, t) => supabase.from('supplier_product_overrides')
       .select('our_sku, markup_retail, markup_wholesale, markup_drop, fixed_retail, fixed_wholesale, fixed_drop')
-      .eq('supplier_id', supplierId).range(f, t)),
+      .eq('supplier_id', supplierId).order('supplier_id').order('our_sku').range(f, t)),
     fetchAllRows((f, t) => supabase.from('supplier_promotions')
       .select('our_sku, brand, promo_type, value, apply_retail, apply_wholesale, apply_drop, starts_at, ends_at')
       .eq('supplier_id', supplierId)
       .eq('is_active', true)
       .or(`starts_at.is.null,starts_at.lte.${now}`)
-      .or(`ends_at.is.null,ends_at.gte.${now}`).range(f, t)),
+      .or(`ends_at.is.null,ends_at.gte.${now}`).order('id').range(f, t)),
     // Заблоковані ціни (встановлені при приході товару)
-    fetchAllRows((f, t) => supabase.from('product_stock').select('sku').eq('price_locked', true).range(f, t)),
+    fetchAllRows((f, t) => supabase.from('product_stock').select('sku').eq('price_locked', true).order('id').range(f, t)),
     // Фізичні залишки на власних складах
-    fetchAllRows((f, t) => supabase.from('stock_balance').select('sku').gt('qty_total', 0).range(f, t)),
+    fetchAllRows((f, t) => supabase.from('stock_balance').select('sku').gt('qty_total', 0).order('warehouse_id').order('sku').range(f, t)),
   ]);
 
   // SKU з заблокованими цінами, які ще є в наявності → не перезаписуємо

@@ -28,7 +28,7 @@ export async function computePL(from: string, to?: string, db = createServiceCli
   const rows = await fetchAllRows<{ account_type: string; doc_type: string | null; amount: number }>((f, t) => {
     let q = db.from('money_entries').select('account_type, doc_type, amount').in('account_type', PL_ACCOUNTS).gte('business_date', from);
     if (to) q = q.lte('business_date', to);
-    return q.range(f, t);
+    return q.order('id').range(f, t);
   });
   return summarizePL(rows);
 }

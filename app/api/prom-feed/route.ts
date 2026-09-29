@@ -265,6 +265,7 @@ export async function GET(request: NextRequest) {
     fetchAllRows<any>((f, t) => serviceClient
       .from('product_stock')
       .select('sku, price_retail, price_unit, price_retail_old, price_old, stock_qty, stock_status, price_wholesale, price_cost')
+      .order('id')
       .range(f, t)),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
     fetchAllRows<any>((f, t) => serviceClient
