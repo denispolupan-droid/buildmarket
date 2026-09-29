@@ -1542,6 +1542,10 @@ export default function AdminOrders({
     if (res.ok) {
       if (data.fully_shipped) {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+        // Список вкладки й лічильники статусів приходять із сервера: без цього
+        // відвантажене замовлення лишалося у «Підтверджених» до перезавантаження,
+        // а в «До відправки» з'являлося лише після F5 (як і після підтвердження).
+        router.refresh();
       }
       if (data.sale_doc_id) {
         setSaleDocMap(prev => ({
@@ -1607,6 +1611,9 @@ export default function AdminOrders({
           setExpandedId(null);
           setFlashId(orderId);
           setTimeout(() => setFlashId(null), 1800);
+          // Перечитати вкладку з сервера — інакше замовлення лишається в поточній
+          // вкладці, а «До відправки» його не бачить до перезавантаження.
+          router.refresh();
         }
         if (data.sale_doc_id) {
           setSaleDocMap(prev => ({
