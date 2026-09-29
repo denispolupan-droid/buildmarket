@@ -77,3 +77,9 @@ supabase/.temp/
 
 # бекапи разових чисток даних (canonicalize-*)
 /scripts/supabase/backups/
+
+# scripts/: бекапи «до запису» разових ремонтів (.<назва>-backup-<дата>.json),
+# вивантаження (.csv, .guides/), архів відпрацьованих tmp-скриптів (.archive/)
+# і самі чернетки tmp-* — слід роботи на одній машині, не джерельний код
+/scripts/.*
+/scripts/tmp-*
