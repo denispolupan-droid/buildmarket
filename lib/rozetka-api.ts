@@ -445,6 +445,8 @@ export function ourStatusToRozetkaStatus(ourStatus: string): number | null {
 
 export interface RozetkaBalanceTxn {
   id: number;
+  /** id рядка журналу балансу — стабільний ключ операції (абонплата тощо) */
+  logId?: number;
   orderId: number;
   operationType: number;
   cost: string | number;

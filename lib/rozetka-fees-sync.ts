@@ -25,7 +25,7 @@
  * по id операції.
  */
 import { createServiceClient } from './supabase';
-import { rozetkaFetch, getRozetkaLogisticOps } from './rozetka-api';
+import { getRozetkaLogisticOps, getRozetkaBalanceTxns } from './rozetka-api';
 import { recordMarketplaceServiceFee } from './accounting/money';
 import { recordTxn } from './accounting/money';
 import { alertAdmin } from './alert';
@@ -44,23 +44,18 @@ type LogisticOp = {
   operation_type_title: string;
 };
 
-/** Рядок основного балансу (машиночитаний аналог виписки з кабінету). */
-type BalanceOp = {
-  logId: number;
-  orderId: number;
-  operationType: number;
-  debit: string | number;
-  credit: string | number;
-  transaction_ts: string;
-};
-
 export const OP_DELIVERY = 34;      // «Доставка відправлення» — логістичний баланс
 export const OP_SUBSCRIPTION = 5;   // «Списання абонплати» — основний баланс
 
 /** Вікно пошуку абонплати: з запасом на пропущені прогони, але без обходу всієї історії. */
 const SUBSCRIPTION_WINDOW_DAYS = 60;
-/** Стеля перебору сторінок — щоб збій пагінації не крутив запити нескінченно. */
-const MAX_PAGES = 20;
+
+// Основний баланс читаємо ТІЛЬКИ через getRozetkaBalanceTxns. До 30.09.2026 тут
+// був свій запит з параметрами date_from/date_to/per_page — API їх мовчки ігнорує
+// (перевірено живим викликом: totalCount = уся історія, perPage = 20), і синк
+// бачив лише останні 400 рядків. Для комісії це означало, що з кількох рядків
+// замовлення у «факт» потрапляв один-два, і уточнення зрізало нашу комісію до
+// однієї позиції (19 доставлених замовлень, −920 ₴ проти кабінету).
 
 const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const dateOf = (ts: string) => String(ts).slice(0, 10);
@@ -223,15 +218,9 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
   try {
     const from = new Date(Date.now() - SUBSCRIPTION_WINDOW_DAYS * 86400_000).toISOString().slice(0, 10);
     const to   = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
-    const fees: BalanceOp[] = [];
-    let page = 1, pages = 1;
-    do {
-      const c = await rozetkaFetch<{ billingLogUserBalances: BalanceOp[]; _meta?: { pageCount?: number } }>(
-        `/balances/search?date_from=${from}&date_to=${to}&per_page=${perPage}&page=${page}`);
-      fees.push(...(c.billingLogUserBalances ?? []).filter(o => o.operationType === OP_SUBSCRIPTION && num(o.debit) > 0));
-      pages = Number(c._meta?.pageCount ?? 1);
-      page++;
-    } while (page <= pages && page <= MAX_PAGES);
+    const fees = (await getRozetkaBalanceTxns({ dateFrom: from, dateTo: to }))
+      .filter(o => o.operationType === OP_SUBSCRIPTION && num(o.debit) > 0)
+      .map(o => ({ ...o, logId: o.logId ?? o.id }));
 
     for (const op of fees) {
       const amount = num(op.debit);
@@ -263,7 +252,7 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
 
   // ── Комісія: доводимо нараховане до фактично списаного ────────────────────
   try {
-    commission = await trueUpCommission(db);
+    commission = await trueUpRozetkaCommission(db);
   } catch (err) {
     errors++;
     console.error('[rozetka-fees] commission true-up failed:', err);
@@ -294,20 +283,15 @@ const COMMISSION_WINDOW_DAYS = 45;
  * нарахування зробить звичайний потік, а наступний прогін синку його уточнить.
  * Інакше ми провели б комісію двічі — своїм ключем і ключем уточнення.
  */
-async function trueUpCommission(db: ReturnType<typeof createServiceClient>): Promise<number> {
-  const from = new Date(Date.now() - COMMISSION_WINDOW_DAYS * 86400_000).toISOString().slice(0, 10);
+export async function trueUpRozetkaCommission(
+  db: ReturnType<typeof createServiceClient>,
+  /** Початок вікна виписки; за замовчуванням — COMMISSION_WINDOW_DAYS назад */
+  fromDate?: string,
+): Promise<number> {
+  const from = fromDate ?? new Date(Date.now() - COMMISSION_WINDOW_DAYS * 86400_000).toISOString().slice(0, 10);
   const to   = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
 
-  const txns: BalanceOp[] = [];
-  let page = 1, pages = 1;
-  do {
-    const c = await rozetkaFetch<{ billingLogUserBalances: BalanceOp[]; _meta?: { pageCount?: number } }>(
-      `/balances/search?date_from=${from}&date_to=${to}&per_page=100&page=${page}`);
-    txns.push(...(c.billingLogUserBalances ?? []));
-    pages = Number(c._meta?.pageCount ?? 1);
-    page++;
-  } while (page <= pages && page <= MAX_PAGES);
-
+  const txns = await getRozetkaBalanceTxns({ dateFrom: from, dateTo: to });
   const actual = rozetkaActualCommission(txns);
   if (!actual.size) return 0;
 
