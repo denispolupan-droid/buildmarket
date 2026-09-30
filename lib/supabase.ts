@@ -358,10 +358,24 @@ export const getCategoriesCached = unstable_cache(
   { revalidate: 300, tags: ['categories'] }
 );
 
+/**
+ * TTL листингів — година, а не хвилина.
+ *
+ * Свіжість тримається на ТЕГУ, не на часі: 'products' скидають усі, хто міняє
+ * товари, ціни чи залишки — ціни (bulk/markup/promo), планові ціни й повернення
+ * промо (крони), синк постачальників (і кроновий, і кнопка в адмінці), прихід,
+ * імпорт, CRUD карток, prom-price. Оформлення замовлення product_stock не
+ * чіпає — резерви живуть в обліку, тож наявність на сайті від продажу не
+ * змінюється.
+ *
+ * Хвилинний TTL перечитував ці вибірки просто тому, що минув час: найважчий
+ * запит бази — саме цей листинг зі stock і характеристиками (1 737 викликів,
+ * 402 с за три доби). Година — запобіжник на випадок запису скриптом повз теги.
+ */
 export const getProductsCached = unstable_cache(
   async (opts?: { category?: string; limit?: number }) => getProducts(opts),
   ['products'],
-  { revalidate: 60, tags: ['products'] }
+  { revalidate: 3600, tags: ['products'] }
 );
 
 // ОКРЕМИЙ ключ кешу — інакше публічна сторінка може отримати з кешу B2B-дані
@@ -369,13 +383,13 @@ export const getProductsCached = unstable_cache(
 export const getProductsB2BCached = unstable_cache(
   async () => getProductsB2B(),
   ['products-b2b'],
-  { revalidate: 60, tags: ['products'] }
+  { revalidate: 3600, tags: ['products'] }
 );
 
 export const getProductsLightCached = unstable_cache(
   async (opts?: { category?: string; limit?: number }) => getProductsLight(opts),
   ['products-light'],
-  { revalidate: 60, tags: ['products'] }
+  { revalidate: 3600, tags: ['products'] }
 );
 
 /**
@@ -402,7 +416,7 @@ export async function getSitemapProducts(): Promise<SitemapProduct[]> {
 export const getSitemapProductsCached = unstable_cache(
   async () => getSitemapProducts(),
   ['products-sitemap'],
-  { revalidate: 60, tags: ['products'] }
+  { revalidate: 3600, tags: ['products'] }
 );
 
 /**
@@ -516,7 +530,7 @@ export async function getRelatedProducts(categorySlug: string, excludeSku: strin
 export const getRelatedProductsCached = unstable_cache(
   async (categorySlug: string, excludeSku: string, limit = 5) => getRelatedProducts(categorySlug, excludeSku, limit),
   ['related-products-v2'],
-  { revalidate: 60, tags: ['products'] }
+  { revalidate: 3600, tags: ['products'] }
 );
 
 export async function getPreviewProducts(categorySlugs: string[], limitPerCategory = 2): Promise<ProductFull[]> {
@@ -558,5 +572,5 @@ export async function getPreviewProducts(categorySlugs: string[], limitPerCatego
 export const getPreviewProductsCached = unstable_cache(
   async (categorySlugs: string[], limitPerCategory = 2) => getPreviewProducts(categorySlugs, limitPerCategory),
   ['preview-products'],
-  { revalidate: 300, tags: ['products'] }
+  { revalidate: 3600, tags: ['products'] }
 );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { syncSupplier } from '../../../../../../lib/supplier-sync';
 
@@ -16,7 +16,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const result = await syncSupplier(Number(id));
-    // Очищаємо ISR-кеш каталогу і сторінок товарів
+    // Синк міняє ціни й залишки — скидаємо І сторінки, І дані.
+    // revalidatePath перебудує сторінку, але unstable_cache тримає вибірки за
+    // ТЕГОМ: без revalidateTag перебудована сторінка читала б ті самі застарілі
+    // дані до кінця TTL. Кроновий синк (sync-suppliers) тег скидає, а ця
+    // кнопка «Синхронізувати зараз» — ні.
+    revalidateTag('products', 'max');
     revalidatePath('/catalog', 'page');
     revalidatePath('/shop', 'page');
     revalidatePath('/', 'page');

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -36,5 +37,8 @@ export async function PATCH(req: NextRequest) {
   if (productRes.error) return NextResponse.json({ error: productRes.error.message }, { status: 500 });
   if (stockRes.error)   return NextResponse.json({ error: stockRes.error.message },   { status: 500 });
 
+  // Роут міняє products і product_stock — те саме, що решта редакторів ціни,
+  // тож і тег той самий. Без нього зміна чекала кінця TTL кешу листингів.
+  revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }
