@@ -51,7 +51,9 @@ export function classifyPromNote(note: string): { kind: PromStatementKind; promO
 
   if (/возврат оплаты за доступ|повернення оплати за доступ/i.test(n)) return { kind: 'commission_refund', promOrderId };
   if (/доступ к онлайн каталогу|доступ до онлайн каталогу|prosale/i.test(n)) return { kind: 'commission', promOrderId };
-  if (/организации перевозки|організації перевезення/i.test(n)) return { kind: 'np_delivery', promOrderId };
+  // «організації перевезення … Новою Поштою» і «організації, пересилці, видачі … в магазини
+  // Rozetka» (з 09.2026) — той самий збір за доставку 10/30 грн, різні перевізники
+  if (/организации перевозки|організації перевезення|пересылке, выдаче|пересиланн\w*, видач|магазины Rozetka|магазини Rozetka/i.test(n)) return { kind: 'np_delivery', promOrderId };
   if (/prom микс|prom мікс|бонусн/i.test(n)) return { kind: 'package', promOrderId };
   if (/пополнение|поповнення/i.test(n)) return { kind: 'topup', promOrderId };
   return { kind: 'other', promOrderId };
