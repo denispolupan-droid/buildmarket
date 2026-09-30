@@ -87,6 +87,7 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
         `Файл за ${d.register.periodFrom}…${d.register.periodTo}: ${d.register.rows} рядків на ${d.register.totalGross} ₴ → переказів ${(d.payouts ?? []).filter((p: { monoTxnId: string | null }) => p.monoTxnId).length}/${(d.payouts ?? []).length}, змінено ${(d.payouts ?? []).filter((p: { changed: boolean }) => p.changed).length}`,
         d.posted.length ? `проведено ${d.posted.length}: ${d.posted.map((p: { orderNumber: number }) => '#' + p.orderNumber).join(' ')}` : '',
         d.undone.length ? `сторновано підбір ${d.undone.length}: ${d.undone.map((p: { orderNumber: number }) => '#' + p.orderNumber).join(' ')}` : '',
+        d.refunded?.length ? `повернення покупцям ${d.refunded.length}: ${d.refunded.map((p: { orderNumber: number }) => '#' + p.orderNumber).join(' ')}` : '',
         d.kept ? `без змін ${d.kept}` : '',
         ...(d.warnings ?? []),
       ].filter(Boolean);

@@ -94,7 +94,7 @@ export function parseRzPayRegister(sheet: unknown[][]): RzPayRegister {
   const col = (re: RegExp) => header.findIndex(h => re.test(h));
   const cPayout = col(/^Дата перерахування/i), cPaidAt = col(/^Дата та час платежу/i), cGross = col(/^Сума платежу/i);
   const cFee = col(/^Сума комісії з отримувача/i), cNet = col(/^Сума перерахованих/i), cProject = col(/^Назва проекту/i), cOrder = col(/^№ замовлення/i);
-  const cPurpose = col(/^Призначення платежу/i);
+  const cPurpose = col(/^Призначення платежу/i), cType = col(/^Тип оплати/i);
   if ([cPayout, cGross, cNet, cProject, cOrder].some(i => i < 0)) throw new Error('У реєстрі бракує колонок (дата перерахування / сума / проект / № замовлення)');
 
   const rows: RzPayRegisterRow[] = [];
@@ -105,12 +105,18 @@ export function parseRzPayRegister(sheet: unknown[][]): RzPayRegister {
     const payoutDate = isoOf(cell(r, cPayout));
     if (!(n > 0) || !payoutDate) continue;
     const project = String(cell(r, cProject)).trim();
+    const gross = r2(num(cell(r, cGross)));
+    // «Повернення» у реєстрі — рядок з від'ємною сумою в тому самому переказі
+    // (14.09.2026: −1 080 по 904826275). До 30.09 kind був завжди 'payment', і
+    // повернення платежу з ПОПЕРЕДНЬОГО переказу не проводилось узагалі —
+    // кліринг лишався завищеним рівно на суму повернення.
+    const isRefund = (cType >= 0 && /^Повернення/i.test(String(cell(r, cType)))) || gross < 0;
     rows.push({
       n, payoutDate, paidAt: String(cell(r, cPaidAt)).trim() || null,
-      gross: r2(num(cell(r, cGross))), fee: r2(Math.abs(num(cell(r, cFee)))), net: r2(num(cell(r, cNet))),
+      gross: isRefund ? -Math.abs(gross) : gross, fee: r2(Math.abs(num(cell(r, cFee)))), net: r2(num(cell(r, cNet))),
       project, marketplace: marketplaceOfProject(project),
       marketplaceOrderId: String(cell(r, cOrder)).trim().replace(/\.0$/, ''),
-      kind: 'payment', ref: cPurpose >= 0 ? refOfPurpose(String(cell(r, cPurpose))) : null,
+      kind: isRefund ? 'refund' : 'payment', ref: cPurpose >= 0 ? refOfPurpose(String(cell(r, cPurpose))) : null,
     });
   }
   if (!rows.length) throw new Error('У реєстрі немає жодного платежу');
@@ -192,8 +198,16 @@ export type RzPayLookup = (marketplace: 'prom' | 'rozetka' | null, marketplaceOr
 export type RzPayApplyPlan = {
   /** проводки «виплата → замовлення», яких ще немає (або сума інша) */
   post: { orderId: string; orderNumber: number; party: string; amount: number; marketplaceOrderId: string }[];
-  /** сторно попереднього (підібраного) складу, якого в реєстрі немає або сума не та */
+  /** сторно попереднього (підібраного) складу, якого в реєстрі немає або сума не та;
+   *  amount < 0 — сторно раніше проведеного ПОВЕРНЕННЯ (гроші знову на замовлення) */
   undo: { orderId: string; orderNumber: number; party: string; amount: number }[];
+  /**
+   * повернення покупцю в цьому переказі більше за оплати того ж замовлення в ньому —
+   * оплата була в попередньому переказі (14.09.2026: #26091000, 1 080 сплачено
+   * 02.09, повернено 12.09). Проводка DR сторона замовлення / CR mp:rozetkapay:
+   * аванс на замовленні знімається, переказ зменшується на суму повернення.
+   */
+  refund: { orderId: string; orderNumber: number; party: string; amount: number; marketplaceOrderId: string }[];
   /** рядки реєстру без нашого замовлення (id площадки невідомий) */
   unknown: { marketplaceOrderId: string; project: string; gross: number }[];
   /** уже рознесено правильно — нічого не робимо */
@@ -225,26 +239,29 @@ export function planRzPayRegisterApply(register: RzPayRegister, lookup: RzPayLoo
     const w = (want[o.id] ??= { order: o, amount: 0, marketplaceOrderId: row.marketplaceOrderId });
     w.amount = r2(w.amount + row.gross);
   }
-  const plan: RzPayApplyPlan = { post: [], undo: [], unknown, keep: 0, zeroed: 0, overpaid: [] };
+  const plan: RzPayApplyPlan = { post: [], undo: [], refund: [], unknown, keep: 0, zeroed: 0, overpaid: [] };
   for (const [orderId, w] of Object.entries(want)) {
-    if (w.amount <= 0.005) { plan.zeroed++; delete want[orderId]; continue; }
+    if (Math.abs(w.amount) <= 0.005) { plan.zeroed++; delete want[orderId]; continue; }
+    if (w.amount < 0) continue;                       // повернення — нижче
     const total = r2(Number(w.order.total ?? 0));
     if (total > 0 && w.amount > total * 1.01 + 1) {
       plan.overpaid.push({ orderNumber: w.order.order_number, amount: w.amount, total, leftover: r2(w.amount - total) });
       w.amount = total;
     }
   }
-  // Що вже стоїть на цій виплаті, але в реєстрі відсутнє чи сума інша — сторно повністю
+  // Що вже стоїть на цій виплаті (зі знаком: оплата +, повернення −), але в
+  // реєстрі відсутнє чи сума інша — сторно повністю, далі проводимо заново
   for (const [orderId, net] of Object.entries(existingNet)) {
-    if (!(net > 0.005)) continue;
+    if (Math.abs(net) <= 0.005) continue;
     const w = want[orderId];
     if (w && Math.abs(w.amount - net) < 0.005) { plan.keep++; continue; }
     plan.undo.push({ orderId, orderNumber: w?.order.order_number ?? 0, party: w?.order.party ?? '', amount: r2(net) });
   }
   for (const [orderId, w] of Object.entries(want)) {
     const net = existingNet[orderId] ?? 0;
-    if (net > 0.005 && Math.abs(w.amount - net) < 0.005) continue;   // keep
-    plan.post.push({ orderId, orderNumber: w.order.order_number, party: w.order.party, amount: w.amount, marketplaceOrderId: w.marketplaceOrderId });
+    if (Math.abs(net) > 0.005 && Math.abs(w.amount - net) < 0.005) continue;   // keep
+    const line = { orderId, orderNumber: w.order.order_number, party: w.order.party, amount: Math.abs(w.amount), marketplaceOrderId: w.marketplaceOrderId };
+    if (w.amount < 0) plan.refund.push(line); else plan.post.push(line);
   }
   return plan;
 }

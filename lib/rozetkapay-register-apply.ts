@@ -24,6 +24,8 @@ export type RzPayRegisterApplyResult = {
   payouts: { payoutDate: string; monoTxnId: string | null; gross: number; net: number | null; rows: number; changed: boolean }[];
   posted: { orderNumber: number; amount: number; payoutDate: string }[];
   undone: { orderNumber: number; amount: number; payoutDate: string }[];
+  /** повернення покупцю в переказі за оплату з попереднього переказу */
+  refunded: { orderNumber: number; amount: number; payoutDate: string }[];
   kept: number;
   unknown: { marketplaceOrderId: string; project: string; gross: number }[];
   warnings: string[];
@@ -81,7 +83,10 @@ async function buildLookup(db: Db, rows: RzPayRegisterRow[]): Promise<RzPayLooku
   const refMap  = new Map(((byRef.data ?? []) as O[]).map(o => [String(o.tracking_number).toUpperCase(), known(o)]));
   return (mp, id, ref) => {
     if (mp === 'prom') return promMap.get(id) ?? (ref ? refMap.get(ref) ?? null : null);
-    if (mp === 'rozetka') return rzMap.get(id) ?? numMap.get(id) ?? (ref ? refMap.get(ref) ?? null : null);
+    // Точки видачі (ПНФП …) приймають і Prom-замовлення з доставкою «Магазини
+    // Rozetka» — тоді «№ замовлення» це id Prom (28.09.2026: 425782942 = #26091055).
+    // Простори id не перетинаються (Prom 4xx…, Rozetka 9xx…), тож fallback безпечний.
+    if (mp === 'rozetka') return rzMap.get(id) ?? numMap.get(id) ?? promMap.get(id) ?? (ref ? refMap.get(ref) ?? null : null);
     return promMap.get(id) ?? rzMap.get(id) ?? numMap.get(id) ?? (ref ? refMap.get(ref) ?? null : null);
   };
 }
@@ -100,7 +105,7 @@ export async function applyParsedRzPayRegister(register: RzPayRegister, createdB
   const dry = !!opts.dryRun;
   const res: RzPayRegisterApplyResult = {
     register: { contract: register.contract, periodFrom: register.periodFrom, periodTo: register.periodTo, rows: register.rows.length, totalGross: register.totalGross, totalNet: register.totalNet, pending: register.pending.length },
-    payouts: [], posted: [], undone: [], kept: 0, unknown: [], warnings: dry ? ['Перегляд без запису'] : [],
+    payouts: [], posted: [], undone: [], refunded: [], kept: 0, unknown: [], warnings: dry ? ['Перегляд без запису'] : [],
   };
   const lookup = await buildLookup(db, register.rows);
 
@@ -124,13 +129,16 @@ export async function applyParsedRzPayRegister(register: RzPayRegister, createdB
     // Що вже проведено на цю виплату (alloc − undo) і лічильники ключів для seq
     const keyed = await fetchAllRows<{ idempotency_key: string; amount: number }>((f, t) => db
       .from('money_entries').select('idempotency_key, amount')
-      .or(`idempotency_key.like.rzpay-alloc:${txn}:%,idempotency_key.like.rzpay-alloc-undo:${txn}:%`).order('id').range(f, t));
+      .or(`idempotency_key.like.rzpay-alloc:${txn}:%,idempotency_key.like.rzpay-alloc-undo:${txn}:%,idempotency_key.like.rzpay-refund:${txn}:%,idempotency_key.like.rzpay-refund-undo:${txn}:%`)
+      .order('id').range(f, t));
+    // Нетто по замовленню: оплата +, її сторно −, повернення −, сторно повернення +
+    const SIGN: Record<string, number> = { 'rzpay-alloc': 1, 'rzpay-alloc-undo': -1, 'rzpay-refund': -1, 'rzpay-refund-undo': 1 };
     const existingNet: Record<string, number> = {};
     const keyCount: Record<string, number> = {};
     for (const r of keyed) {
       const [kind, , order] = r.idempotency_key.split(':');
-      if (!order) continue;
-      existingNet[order] = r2((existingNet[order] ?? 0) + (kind === 'rzpay-alloc-undo' ? -1 : 1) * Math.abs(Number(r.amount)));
+      if (!order || !(kind in SIGN)) continue;
+      existingNet[order] = r2((existingNet[order] ?? 0) + SIGN[kind] * Math.abs(Number(r.amount)));
       keyCount[`${kind}:${order}`] = (keyCount[`${kind}:${order}`] ?? 0) + 1;
     }
 
@@ -140,7 +148,7 @@ export async function applyParsedRzPayRegister(register: RzPayRegister, createdB
     for (const o of plan.overpaid) {
       res.warnings.push(`${payoutDate}: платіж ${o.amount} ₴ на #${o.orderNumber} більший за суму замовлення ${o.total} ₴ — на нього проведено ${o.total} ₴, решта ${o.leftover} ₴ (інші замовлення того ж рахунку) лишається на клірингу`);
     }
-    const changed = plan.post.length > 0 || plan.undo.length > 0;
+    const changed = plan.post.length > 0 || plan.undo.length > 0 || plan.refund.length > 0;
     res.payouts.push({ payoutDate, monoTxnId: txn, gross: found.parsed!.gross, net: Number(found.row.amount), rows: rows.length, changed });
     const period = found.parsed!.periodFrom === found.parsed!.periodTo ? found.parsed!.periodFrom : `${found.parsed!.periodFrom}…${found.parsed!.periodTo}`;
     const businessDate = String(found.row.txn_time).slice(0, 10);
@@ -155,14 +163,37 @@ export async function applyParsedRzPayRegister(register: RzPayRegister, createdB
       }
       res.undone.push({ orderNumber, amount: u.amount, payoutDate });
       if (dry) continue;
-      const seq = (keyCount[`rzpay-alloc-undo:${u.orderId}`] ?? 0) + 1;
+      // Сторно повернення (amount < 0): гроші знову на замовлення, кліринг росте
+      const undoRefund = u.amount < 0;
+      const undoKind = undoRefund ? 'rzpay-refund-undo' : 'rzpay-alloc-undo';
+      const seq = (keyCount[`${undoKind}:${u.orderId}`] ?? 0) + 1;
       try {
         await recordTxn({
-          debitAccount: 'customer', debitParty: party, creditAccount: 'customer', creditParty: SALE_DEBTOR.rozetkapay,
-          amount: u.amount, businessDate, docType: 'payment', orderId: u.orderId,
-          description: `Сторно: #${orderNumber} не входить у виплату RozetkaPay за операції ${period} (за файлом із кабінету)`,
-          idempotencyKey: `rzpay-alloc-undo:${txn}:${u.orderId}${seq > 1 ? ':' + seq : ''}`, createdBy,
+          debitAccount: 'customer', debitParty: undoRefund ? SALE_DEBTOR.rozetkapay : party,
+          creditAccount: 'customer', creditParty: undoRefund ? party : SALE_DEBTOR.rozetkapay,
+          amount: Math.abs(u.amount), businessDate, docType: 'payment', orderId: u.orderId,
+          description: undoRefund
+            ? `Сторно повернення: #${orderNumber} — повернення не входить у переказ RozetkaPay за операції ${period} (за файлом із кабінету)`
+            : `Сторно: #${orderNumber} не входить у виплату RozetkaPay за операції ${period} (за файлом із кабінету)`,
+          idempotencyKey: `${undoKind}:${txn}:${u.orderId}${seq > 1 ? ':' + seq : ''}`, createdBy,
           meta: { mono_txn_id: txn, storno: true, source: 'rzpay-register' },
+        });
+      } catch (err) { if (!isDup(err)) throw err; }
+    }
+
+    // Повернення покупцю з цього переказу за оплату з попереднього: аванс на
+    // замовленні знімається, переказ зменшується (DR сторона / CR кліринг)
+    for (const p of plan.refund) {
+      res.refunded.push({ orderNumber: p.orderNumber, amount: p.amount, payoutDate });
+      if (dry) continue;
+      const seq = (keyCount[`rzpay-refund:${p.orderId}`] ?? 0) + 1;
+      try {
+        await recordTxn({
+          debitAccount: 'customer', debitParty: p.party, creditAccount: 'customer', creditParty: SALE_DEBTOR.rozetkapay,
+          amount: p.amount, businessDate, docType: 'payment', orderId: p.orderId,
+          description: `Повернення покупцю через RozetkaPay у переказі за операції ${period} — замовлення #${p.orderNumber} (файл із кабінету)`,
+          idempotencyKey: `rzpay-refund:${txn}:${p.orderId}${seq > 1 ? ':' + seq : ''}`, createdBy,
+          meta: { mono_txn_id: txn, refund: true, rzpay_period: [found.parsed!.periodFrom, found.parsed!.periodTo], source: 'rzpay-register', marketplace_order_id: p.marketplaceOrderId },
         });
       } catch (err) { if (!isDup(err)) throw err; }
     }

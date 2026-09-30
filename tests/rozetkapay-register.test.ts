@@ -72,6 +72,29 @@ describe('planRzPayRegisterApply — склад виплати за фактом
     expect(plan.unknown).toEqual([{ marketplaceOrderId: '999', project: '[FC_Acquiring] Prom marketplace ФОП Полупан', gross: 498 }]);
   });
 
+  it('«Повернення» у XLSX-реєстрі — від\'ємний рядок, kind refund (кейс 14.09.2026, −1 080 по 904826275)', () => {
+    const s = sheet();
+    s.splice(9, 0, ['3', '09.09.2026', '12.09.2026 09:51:18', -1080, 16.2, 0, -1063.8, '[FC_Acquiring] Rozetka marketplace ФОП', '904826275', '', 'Оплата за товар', 'Повернення', 'GooglePay', '1']);
+    const r = parseRzPayRegister(s);
+    expect(r.rows[1]).toMatchObject({ gross: -1080, kind: 'refund', marketplace: 'rozetka', marketplaceOrderId: '904826275' });
+    expect(r.totalGross).toBe(902 - 1080);
+  });
+
+  it('повернення за оплату з ПОПЕРЕДНЬОГО переказу — окрема проводка refund, а не «нуль»', () => {
+    const s = sheet();
+    s.splice(9, 0, ['3', '09.09.2026', '12.09.2026 09:51:18', -1080, 16.2, 0, -1063.8, 'Rozetka marketplace', '904826275', '', '', 'Повернення', 'GooglePay', '1']);
+    const look = (_mp: 'prom' | 'rozetka' | null, id: string) => id === '904826275' ? { id: 'R', order_number: 26091000, party: 'mp:rozetka' } : orders[id] ?? null;
+    const plan = planRzPayRegisterApply(parseRzPayRegister(s), look, {});
+    expect(plan.refund).toEqual([{ orderId: 'R', orderNumber: 26091000, party: 'mp:rozetka', amount: 1080, marketplaceOrderId: '904826275' }]);
+    expect(plan.post.map(p => p.orderId)).toEqual(['A', 'B']);
+    expect(plan.zeroed).toBe(0);
+    // уже проведене повернення — keep; проведене іншою сумою — сторно (від'ємне) і заново
+    expect(planRzPayRegisterApply(parseRzPayRegister(s), look, { R: -1080, A: 404, B: 498 }).keep).toBe(3);
+    const again = planRzPayRegisterApply(parseRzPayRegister(s), look, { R: -1000 });
+    expect(again.undo).toEqual([{ orderId: 'R', orderNumber: 26091000, party: 'mp:rozetka', amount: -1000 }]);
+    expect(again.refund.map(r => r.amount)).toEqual([1080]);
+  });
+
   it('два платежі одного замовлення в реєстрі — сума складається', () => {
     const s = sheet();
     (s[9] as unknown[])[8] = '425398995';
