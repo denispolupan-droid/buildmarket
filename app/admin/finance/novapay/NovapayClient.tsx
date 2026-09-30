@@ -77,6 +77,18 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
     } catch { setMsg('Помилка запиту'); } finally { setBusy(null); }
   }
 
+  async function importMail() {
+    setBusy('mail'); setMsg(null);
+    try {
+      const res = await fetch('/api/admin/finance/mail-registers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: 7 }) });
+      const d = await res.json();
+      if (!res.ok) { setMsg(`Помилка: ${d.error}`); return; }
+      const lines = (d.processed ?? []).map((p: { kind: string; summary: string }) => `${p.kind === 'np-register' ? 'НоваПей' : 'RozetkaPay'} ${p.summary}`);
+      setMsg(`Листів переглянуто ${d.scanned}, уже оброблених ${d.skipped}${lines.length ? ': ' + lines.join(' · ') : ', нового немає'}${d.errors?.length ? ' · ⚠ ' + d.errors.join(' | ') : ''}`);
+      router.refresh();
+    } catch { setMsg('Помилка запиту'); } finally { setBusy(null); }
+  }
+
   async function post(row: NovapayRow) {
     const category = choice[row.id];
     if (!category) return;
@@ -130,7 +142,11 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
             style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 12px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
             <RefreshCw size={12} style={busy === 'refresh' ? { animation: 'spin 1s linear infinite' } : undefined} /> {busy === 'refresh' ? 'Тягнемо…' : 'Оновити виписку зараз'}
           </button>
-          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Крон оновлює раз на день. NovaPay відповідає до хвилини.</div>
+          <button onClick={importMail} disabled={busy === 'mail'}
+            style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 12px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+            <RefreshCw size={12} style={busy === 'mail' ? { animation: 'spin 1s linear infinite' } : undefined} /> {busy === 'mail' ? 'Читаємо пошту…' : 'Реєстри з пошти (7 днів)'}
+          </button>
+          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Крон оновлює раз на день. NovaPay відповідає до хвилини. Реєстри НоваПей і RozetkaPay крон бере з пошти тричі на день і розносить по ЕН/замовленнях.</div>
         </div>
       </div>
 

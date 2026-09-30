@@ -97,7 +97,13 @@ export async function postNpPayouts(createdBy = 'cron:novapay-statement'): Promi
     const from = new Date(Date.parse(date) - MATCH_WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
     const to   = new Date(Date.parse(date) + 2 * 86400000).toISOString().slice(0, 10);
     const cands = await unsettledNpCodOrders(db, from, to);
-    const hit = matchNpRegister(net, cands.map(c => ({ id: c.id, gross: c.gross })), feePct);
+    // Підбір за сумами лишаємо ТІЛЬКИ для однозначного випадку — один кандидат у
+    // вікні, який точно дає нетто. Будь-який інший склад бере імпорт реєстру з
+    // пошти (lib/mail-registers → novapay-register): підбір із кількох замовлень
+    // плутав однакові суми (27–28.09.2026: три наложки по 660 ₴), а виправляти
+    // потім дорожче, ніж один день потримати виплату «сумою».
+    const single = cands.length === 1 ? matchNpRegister(net, cands.map(c => ({ id: c.id, gross: c.gross })), feePct) : null;
+    const hit = single && single.ids.length === 1 ? single : null;
     let posted = false;
     if (hit) {
       for (const oid of hit.ids) {

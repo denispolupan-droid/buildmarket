@@ -102,6 +102,14 @@ export async function getSendAddresses(): Promise<ZohoSender[]> {
   return list;
 }
 
+/** Бінарна відповідь Zoho (вкладення листа). */
+export async function zohoFetchBinary(path: string): Promise<Buffer> {
+  const token = await getAccessToken();
+  const res = await fetch(`${ZOHO_MAIL}${path}`, { headers: { Authorization: `Zoho-oauthtoken ${token}` } });
+  if (!res.ok) throw new Error(`Zoho API error ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
 export async function zohoFetch(path: string, options: RequestInit = {}) {
   const token = await getAccessToken();
   const res = await fetch(`${ZOHO_MAIL}${path}`, {
