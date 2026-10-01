@@ -71,6 +71,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     .not('status', 'in', '(new,cancelled)')
     .gte('created_at', ordersFromDate.toISOString())
     .order('created_at', { ascending: false })
+    .order('id')   // тайбрейкер: однакові created_at інакше дають нестабільні сторінки
     .range(f, t));
 
   // Підтверджені РН з реальною FIFO-собівартістю, прив'язані до замовлень
@@ -91,15 +92,20 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const monthStartDate = monthStart.slice(0, 10);
   // Вікно: попередній період + поточний — щоб картка «Виручка · факт» мала дельту
   const prevFromDate = prevFrom.toISOString().slice(0, 10);
-  let ledgerQuery = db
-    .from('money_entries')
-    .select('account_type, amount, doc_type, business_date')
-    .in('account_type', PL_ACCOUNTS)
-    .gte('business_date', prevFromDate);
-  if (periodTo) ledgerQuery = ledgerQuery.lt('business_date', periodTo.toISOString().slice(0, 10));
-  const { data: ledgerAllRows } = await ledgerQuery;
-  const ledgerRows     = (ledgerAllRows ?? []).filter(r => r.business_date >= monthStartDate);
-  const ledgerPrevRows = (ledgerAllRows ?? []).filter(r => r.business_date < monthStartDate);
+  // Пагінація обов'язкова: два місяці P&L-проводок — це > 1000 рядків (вересень 2026:
+  // 1637 у вікні), без fetchAllRows PostgREST мовчки віддавав перші 1000 — картки
+  // «Виручка · факт» показували 0, а «Валовий прибуток» −121 746 замість +11 403.
+  const ledgerAllRows = await fetchAllRows<{ account_type: string; amount: number; doc_type: string | null; business_date: string }>((f, t) => {
+    let q = db
+      .from('money_entries')
+      .select('account_type, amount, doc_type, business_date')
+      .in('account_type', PL_ACCOUNTS)
+      .gte('business_date', prevFromDate);
+    if (periodTo) q = q.lt('business_date', periodTo.toISOString().slice(0, 10));
+    return q.order('id').range(f, t);
+  });
+  const ledgerRows     = ledgerAllRows.filter(r => r.business_date >= monthStartDate);
+  const ledgerPrevRows = ledgerAllRows.filter(r => r.business_date < monthStartDate);
 
   // Те саме визначення, що на «Огляді» й у «Звітах» (lib/accounting/profit-rules):
   // валовий = виручка − COGS − витрати угод (комісії МП, еквайринг, доставка/збори
