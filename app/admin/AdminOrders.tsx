@@ -601,7 +601,13 @@ export default function AdminOrders({
   };
   const [orders, setOrders]         = useState<Order[]>(initialOrders);
   // Sync when server re-renders with new sort/filter
-  useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
+  useEffect(() => {
+    setOrders(initialOrders);
+    // Розгорнуте замовлення поїхало з вкладки (відвантажили → router.refresh):
+    // без скидання решта рядків лишалась приглушеною (opacity 0.35 для
+    // «не розгорнутих», поки expandedId вказує на зниклий рядок).
+    setExpandedId(prev => prev && !initialOrders.some(o => o.id === prev) ? null : prev);
+  }, [initialOrders]);
 
   // Повний текст у підказці для БУДЬ-ЯКОГО обрізаного рядка (…): один делегований
   // обробник замість ручного title у кожній комірці — покриває й майбутні поля.
@@ -1138,7 +1144,13 @@ export default function AdminOrders({
   function advanceSupplierQueue() {
     if (!supplierQueue) return;
     const next = supplierQueueIdx + 1;
-    if (next >= supplierQueue.length) { setSupplierQueue(null); }
+    if (next >= supplierQueue.length) {
+      setSupplierQueue(null);
+      // Черга пройдена — панель виділення закривається; невдалі листи вже
+      // показані окремими повідомленнями по ходу черги.
+      showToast(`Розсилку постачальникам завершено (${supplierQueue.length})`, 'success');
+      setSelectedIds(new Set());
+    }
     else { setSupplierQueueIdx(next); setSupplierQueueDone(false); }
   }
 
@@ -1542,6 +1554,8 @@ export default function AdminOrders({
     if (res.ok) {
       if (data.fully_shipped) {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+        // Як і в ручній відгрузці: згорнути картку, бо рядок зараз поїде з вкладки
+        setExpandedId(prev => prev === orderId ? null : prev);
         // Список вкладки й лічильники статусів приходять із сервера: без цього
         // відвантажене замовлення лишалося у «Підтверджених» до перезавантаження,
         // а в «До відправки» з'являлося лише після F5 (як і після підтвердження).
@@ -2023,8 +2037,12 @@ export default function AdminOrders({
     if (added.length && ref) setNpSheetRef(ref);
     setRegistryAdding(null);
     setRegistryBulkLoading(false);
-    if (errors.length) alert(`Додано в реєстр: ${added.length}. Не вдалося: ${errors.length}\n${errors.join('\n')}`);
-    else if (added.length) showToast(`Додано в реєстр: ${added.length}`);
+    if (errors.length) showToast(`Додано в реєстр: ${added.length}. Не вдалося: ${errors.length} — ${errors.join('; ')}`, 'error', 8000);
+    else if (added.length) showToast(`Додано в реєстр: ${added.length}`, 'success');
+    // Групове додавання з панелі виділення (усі позиції — з виділених): після
+    // успіху панель закривається. Одиночне з рядка виділення не чіпає.
+    const fromBulk = items.length > 1 || (items.length === 1 && selectedIds.has(items[0].orderId) && selectedIds.size === 1);
+    if (fromBulk && added.length && !errors.length) setSelectedIds(new Set());
   }
 
   /** Друк реєстру НП офіційною формою (як з кабінету). Після друку НП закриває
@@ -2045,6 +2063,8 @@ export default function AdminOrders({
       }
       if (!ref) { showToast('За сьогодні реєстру НП ще немає — спершу додайте ЕН у реєстр', 'error'); return; }
       window.open(`/api/admin/registers/${ref}/pdf`, '_blank');
+      showToast('Реєстр НП відкрито для друку', 'success');
+      setSelectedIds(new Set());
     } finally {
       setNpSheetPrinting(false);
     }
@@ -2102,6 +2122,7 @@ export default function AdminOrders({
       openPdfBase64(data.label);
       const errs = (data.errors as string[] | undefined) ?? [];
       if (errs.length) showToast(`Частина етикеток не надрукована — ${errs.join('; ')}`, 'error', 8000);
+      else { showToast(`Етикетки відкрито: ${ids.length}`, 'success'); setSelectedIds(new Set()); }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Збій мережі', 'error');
     } finally {
@@ -2253,41 +2274,44 @@ export default function AdminOrders({
 
   return (
     <>
-      {/* Merge bar */}
+      {/* Merge bar — панель масових дій. Світла картка й кнопки .proc-btn
+          (словник «Закупівель»), групи — за ходом роботи: статус → постачальник
+          → накладні → реєстр НП → зняти. Стилі в globals.css (.oc-merge-*). */}
       {selectedIds.size >= 1 && (
-        <div className="oc-merge-bar" style={{
-          position: 'sticky', top: '80px', zIndex: 50,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 20px', marginBottom: '16px',
-          background: 'linear-gradient(135deg, #0F1729 0%, #1A3456 100%)', borderRadius: '12px',
-          boxShadow: '0 4px 20px rgba(15,23,41,0.45)',
-        }}>
-          <span className="oc-merge-title" style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>
-            Вибрано замовлень: {selectedIds.size} · Сума: {orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0).toFixed(2)} грн
+        <div className="oc-merge-bar">
+          <span className="oc-merge-title">
+            Вибрано <b>{selectedIds.size}</b> · <b>{Math.round(orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0)).toLocaleString('uk-UA')} ₴</b>
           </span>
-          <div className="oc-merge-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Bulk status change */}
+          <div className="oc-merge-actions">
+            {/* 1. Статус */}
+            <div className="oc-merge-group">
             <select
-
+              className="proc-btn oc-merge-select"
               defaultValue=""
               onChange={async e => {
                 const newStatus = e.target.value;
                 if (!newStatus) return;
                 e.target.value = '';
                 const ids = [...selectedIds];
-                await Promise.allSettled(ids.map(id => fetch(`/api/admin/orders/${id}`, {
+                const results = await Promise.allSettled(ids.map(id => fetch(`/api/admin/orders/${id}`, {
                   method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ status: newStatus }),
                 })));
+                const ok = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
+                const failed = ids.length - ok;
+                const label = STATUSES.find(s => s.value === newStatus)?.label ?? newStatus;
+                // Панель закривається після дії; невдачі — окремим повідомленням
+                if (failed) showToast(`Статус «${label}»: ${ok} з ${ids.length}, не вдалося ${failed}`, 'error', 6000);
+                else showToast(`Статус «${label}» встановлено: ${ok}`, 'success');
                 setSelectedIds(new Set());
                 router.refresh();
-              }}
-              style={{ height: '34px', padding: '0 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontSize: '13px', cursor: 'pointer' }}>
-              <option value="" disabled style={{ color: '#000' }}>Змінити статус...</option>
+              }}>
+              <option value="" disabled>Змінити статус…</option>
               {STATUSES.filter(s => s.value).map(s => (
-                <option key={s.value} value={s.value} style={{ color: '#000' }}>{s.label}</option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
+            </div>
             {(() => {
               const sel = orders.filter(o => selectedIds.has(o.id));
               const supplierSel = sel.filter(o => o.fulfillment_mode === 'supplier' || o.fulfillment_mode === 'mixed' || (o.status === 'new' && (o.fulfillment_mode == null || o.fulfillment_mode === 'supplier')));
@@ -2295,85 +2319,67 @@ export default function AdminOrders({
               const unsentCount = supplierSel.filter(o => !o.supplier_sent_at).length;
               const ids = supplierSel.map(o => o.id);
               return (
-                <>
-                  <button
-                    onClick={() => startSupplierSend(ids)}
-                    disabled={supplierQueueLoading}
-                    style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                    {supplierQueueLoading ? '⏳' : '📧'} Надіслати постачальнику{unsentCount > 0 ? ` (${unsentCount} нових)` : ''}
+                /* 2. Постачальник. «Усі одразу» — єдина головна кнопка панелі */
+                <div className="oc-merge-group">
+                  <button className="proc-btn" onClick={() => startSupplierSend(ids)} disabled={supplierQueueLoading}
+                    title="Лист постачальнику по кожному замовленню окремо">
+                    <Mail size={14} /> Постачальнику{unsentCount > 0 ? ` (${unsentCount} нових)` : ''}
                   </button>
                   {supplierSel.length > 1 && (
-                    <button
-                      onClick={() => startBulkSupplierSend(ids)}
-                      disabled={supplierQueueLoading}
-                      title="Один лист на постачальника з усіма його замовленнями"
-                      style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: supplierQueueLoading ? 0.6 : 1 }}>
-                      📨 Відправити всі одразу
+                    <button className="proc-btn accent" onClick={() => startBulkSupplierSend(ids)} disabled={supplierQueueLoading}
+                      title="Один лист на постачальника з усіма його замовленнями">
+                      <Send size={14} /> Відправити всі одразу
                     </button>
                   )}
-                </>
+                </div>
               );
             })()}
-            <button onClick={openMergeModal} style={{
-              height: '34px', padding: '0 16px', borderRadius: '8px',
-              border: 'none', background: 'var(--bg-card)', color: 'var(--brand-blue)',
-              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '6px',
-            }}>
-              <Truck size={14} /> Об&apos;єднати в ТТН
-            </button>
-            {(() => {
-              // Друкуємо лише те, на що існує етикетка: НП і обидва типи Rozetka
-              const printable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number
-                && ['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? ''));
-              if (printable.length === 0) return null;
-              return (
-                <button onClick={bulkPrintLabels} disabled={bulkPrinting}
-                  title="Один PDF з етикетками всіх виділених накладних — НП і Rozetka разом"
-                  style={{
-                    height: '34px', padding: '0 16px', borderRadius: '8px',
-                    border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-                    color: '#fff', fontSize: '13px', fontWeight: 600, cursor: bulkPrinting ? 'wait' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '6px', opacity: bulkPrinting ? 0.6 : 1,
-                  }}>
-                  <Printer size={14} /> {bulkPrinting ? 'Готую PDF…' : `Друк ТТН (${printable.length})`}
-                </button>
-              );
-            })()}
+            {/* 3. Накладні: об'єднати → надрукувати */}
+            <div className="oc-merge-group">
+              <button className="proc-btn" onClick={openMergeModal}>
+                <Truck size={14} /> Об&apos;єднати в ТТН
+              </button>
+              {(() => {
+                // Друкуємо лише те, на що існує етикетка: НП і обидва типи Rozetka
+                const printable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number
+                  && ['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? ''));
+                if (printable.length === 0) return null;
+                return (
+                  <button className="proc-btn" onClick={bulkPrintLabels} disabled={bulkPrinting}
+                    title="Один PDF з етикетками всіх виділених накладних — НП і Rozetka разом">
+                    <Printer size={14} /> {bulkPrinting ? 'Готую PDF…' : `Друк ТТН (${printable.length})`}
+                  </button>
+                );
+              })()}
+            </div>
+            {/* 4. Реєстр НП: спершу додати ЕН, потім друкувати — НП закриває
+                реєстр для нових після друку, тому саме такий порядок */}
             {(() => {
               const addable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
               const selCount = orders.filter(o => selectedIds.has(o.id)).length;
-              if (addable.length === 0) return null;
+              const hasNp = orders.some(o => selectedIds.has(o.id) && ['nova', 'nova_poshta'].includes(o.delivery_type ?? ''));
+              if (addable.length === 0 && !hasNp) return null;
               return (
-                <button onClick={bulkAddToRegistry} disabled={registryBulkLoading} style={{
-                  height: '34px', padding: '0 16px', borderRadius: '8px',
-                  border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-                  color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px', opacity: registryBulkLoading ? 0.6 : 1,
-                }}>
-                  <Send size={14} /> {registryBulkLoading ? 'Додаю…' : `Додати в реєстр${addable.length !== selCount ? ` (${addable.length})` : ''}`}
-                </button>
+                <div className="oc-merge-group">
+                  {addable.length > 0 && (
+                    <button className="proc-btn" onClick={bulkAddToRegistry} disabled={registryBulkLoading}>
+                      <ClipboardList size={14} /> {registryBulkLoading ? 'Додаю…' : `Додати в реєстр${addable.length !== selCount ? ` (${addable.length})` : ''}`}
+                    </button>
+                  )}
+                  {hasNp && (
+                    <button className="proc-btn" onClick={printNpRegistry} disabled={npSheetPrinting}
+                      title="Офіційна форма реєстру з кабінету НП. Після друку НП закриває реєстр для нових ЕН — спершу додайте ЕН, потім друкуйте">
+                      <Printer size={14} /> Друк реєстру НП
+                    </button>
+                  )}
+                </div>
               );
             })()}
-            {orders.some(o => selectedIds.has(o.id) && ['nova', 'nova_poshta'].includes(o.delivery_type ?? '')) && (
-              <button onClick={printNpRegistry} disabled={npSheetPrinting}
-                title="Офіційна форма реєстру з кабінету НП. Після друку НП закриває реєстр для нових ЕН — спершу додайте ЕН, потім друкуйте"
-                style={{
-                  height: '34px', padding: '0 16px', borderRadius: '8px',
-                  border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-                  color: '#fff', fontSize: '13px', fontWeight: 600, cursor: npSheetPrinting ? 'wait' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px', opacity: npSheetPrinting ? 0.6 : 1,
-                }}>
-                <Printer size={14} /> Друк реєстру НП
-              </button>
-            )}
-            {/* Скасувати — в кінці, виділено червоним */}
-            <button onClick={() => setSelectedIds(new Set())} style={{
-              height: '34px', padding: '0 16px', borderRadius: '8px',
-              border: '1px solid #FCA5A5', background: 'rgba(239,68,68,0.15)',
-              color: '#FCA5A5', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-            }}>✕ Скасувати</button>
           </div>
+          {/* Зняти виділення — хрестик поза сіткою кнопок, щоб не ламати ряд */}
+          <button className="oc-merge-close" onClick={() => setSelectedIds(new Set())} title="Зняти виділення" aria-label="Зняти виділення">
+            <X size={16} />
+          </button>
         </div>
       )}
 
@@ -5929,7 +5935,14 @@ export default function AdminOrders({
               {/* Footer */}
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', padding: '12px 22px', borderTop: '1px solid var(--border-light)' }}>
                 {bulkResults !== null ? (
-                  <button onClick={() => setBulkGroups(null)}
+                  <button onClick={() => {
+                      setBulkGroups(null);
+                      const sent = bulkResults.filter(r => r.emailed).length;
+                      const failed = bulkResults.length - sent;
+                      if (failed) showToast(`Листи постачальникам: надіслано ${sent}, не вдалося ${failed}`, 'error', 6000);
+                      else showToast(`Листи постачальникам надіслано (${sent})`, 'success');
+                      if (sent) setSelectedIds(new Set());
+                    }}
                     style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                     Готово
                   </button>
@@ -6067,6 +6080,7 @@ export default function AdminOrders({
             ids.forEach(id => setTtnValues(prev => ({ ...prev, [id]: ttn })));
             setSelectedIds(new Set());
             setMergeModal(null);
+            showToast(`ЕН НП створена: ${ttn} (${ids.length} замовлення)`, 'success', 5000);
             void finishTtnFlow(ids);
           }}
         />
