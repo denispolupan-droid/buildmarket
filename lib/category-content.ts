@@ -63,10 +63,16 @@ async function loadAll(lang: 'uk' | 'ru'): Promise<Record<string, CategoryMeta>>
 }
 
 /** Уся мета мовою: slug → CategoryMeta. Кешується 5 хв, скидається тегом. */
+// TTL — година, бо свіжість тримає тег: єдиний шлях запису з інтерфейсу
+// (/api/admin/seo/… → saveCategoryContent) одразу кличе revalidateTag, і текст
+// стає видимим негайно. Година лишається запобіжником для записів скриптом повз
+// теги (seed-category-content) — тоді можна смикнути /api/revalidate вручну.
+// П'ятихвилинний TTL перечитував усі рядки контенту по колу, зокрема посеред
+// збірки, яка довша за нього.
 export const getCategoryContentCached = unstable_cache(
   loadAll,
   ['category-content'],
-  { revalidate: 300, tags: [CATEGORY_CONTENT_TAG] },
+  { revalidate: 3600, tags: [CATEGORY_CONTENT_TAG] },
 );
 
 /** Найсвіжіший updated_at по категорії (обидві мови) — lastmod у sitemap: переписаний гайд має сигналити Google перечитати сторінку. */
@@ -79,7 +85,7 @@ export const getCategoryContentUpdatedCached = unstable_cache(
     return out;
   },
   ['category-content-updated'],
-  { revalidate: 300, tags: [CATEGORY_CONTENT_TAG] },
+  { revalidate: 3600, tags: [CATEGORY_CONTENT_TAG] },
 );
 
 export async function getCategoryMeta(slug: string, lang: 'uk' | 'ru' = 'uk'): Promise<CategoryMeta | null> {

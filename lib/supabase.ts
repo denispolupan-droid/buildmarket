@@ -477,10 +477,15 @@ export const getVisibleBrandLogosCached = unstable_cache(
   { revalidate: 3600, tags: ['brand-logos'] }
 );
 
+// Рейтинг рахується лише по СХВАЛЕНИХ відгуках, а схвалення й видалення є тільки
+// в /api/admin/reviews — і обидві дії кличуть revalidateTag('review-stats').
+// Відгук від покупця лягає з is_approved: false, тобто на рейтинг не впливає.
+// Тож хвилинний TTL тут нічого не додавав до свіжості — лише перечитував усі
+// схвалені відгуки на кожному рендері листингу й картки, зокрема під час збірки.
 export const getReviewStatsCached = unstable_cache(
   async () => getReviewStats(),
   ['review-stats'],
-  { revalidate: 60, tags: ['review-stats'] }
+  { revalidate: 3600, tags: ['review-stats'] }
 );
 
 export const getProductBySkuCached = unstable_cache(
