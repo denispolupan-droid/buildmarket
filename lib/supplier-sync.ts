@@ -488,6 +488,22 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     const rowTime = new Date().toISOString();
 
     // ── product_stock (ціни + публічна наявність) ─────────────────────────────
+    //
+    // УВАГА, НЕОЧЕВИДНЕ: product_stock пишуть ДВОЄ. Цей прямий upsert — і тригер
+    // trg_supplier_stock_to_product, який спрацьовує на запис у supplier_stock
+    // нижче й кличе sync_product_stock_from_suppliers (міграція 124). Функція
+    // бере НАЙКРАЩОГО постачальника за пріоритетом і перезаписує stock_qty,
+    // stock_status, price_unit, price_cost. Решту — price_retail, price_retail_old,
+    // price_drop, price_old — пише тільки цей upsert, тобто дані постачальника,
+    // який синкається ЗАРАЗ.
+    //
+    // Поки один SKU возить один постачальник, різниці немає. Щойно той самий SKU
+    // з'явиться у двох прайсах — роздрібна ціна буде від того, хто синкнувся
+    // останнім, повз пріоритет, тоді як наявність і вхідна ціна будуть від
+    // правильного. Лагодити це треба ДО появи першого спільного товару:
+    // роздрібні ціни мають зберігатися посупроводово в supplier_stock, щоб їх
+    // теж обирала функція-агрегатор. Деталі — у шапці міграції 124.
+    //
     // price_cost: не перезаписуємо якщо є фізичний залишок — реальна собівартість
     //             з приходу (avg_cost) точніша за ціну з прайса постачальника
     const isCostProtected = physStockSet.has(ourSku);
@@ -515,6 +531,11 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
       }, { onConflict: 'sku' });
 
     // ── supplier_stock (наявність per-supplier для multi-supplier логіки) ──────
+    // Пишеться БЕЗУМОВНО, навіть коли значення ті самі: last_synced_at — це пульс,
+    // за яким mark_absent_supplier_stock вирішує, кого постачальник більше не
+    // возить (last_synced_at < syncStartedAt → out_of_stock). Пропустити запис
+    // «бо нічого не змінилось» означає тихо вивести з продажу весь незмінений
+    // асортимент. Якщо колись оптимізуватимеш цей цикл — цей рядок не чіпай.
     await supabase
       .from('supplier_stock')
       .upsert({
