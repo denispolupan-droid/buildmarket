@@ -150,16 +150,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (invoice_as_company !== undefined) update.invoice_as_company = invoice_as_company;
   if (invoice_options    !== undefined) update.invoice_options    = invoice_options;
   if (supplier_confirmed !== undefined) update.supplier_confirmed = supplier_confirmed;
-  if (bodyItems !== undefined)          update.items              = bodyItems;
-  if (bodyTotalPrice !== undefined)     update.total_price         = bodyTotalPrice;
-
-  // Позиції прийшли без підсумку — рахуємо його з рядків самі. Так робить
-  // редактор рахунку: сума в документі не може розійтися з його ж рядками,
-  // навіть якщо клієнтський код колись помилиться в арифметиці.
-  if (bodyItems !== undefined && bodyTotalPrice === undefined) {
+  // Підсумок замовлення рахується ТІЛЬКИ з рядків, на сервері. Ціна рядка —
+  // навмисно довільна (ручна ціна, знижка «зашита» в рядок, бонусна позиція за 0),
+  // це рішення менеджера; а от total_price від клієнта до 03.10.2026 записувався
+  // як є, і сума могла розійтися з рядками, по яких рахуються РН, виручка і
+  // комісія. Редактор рахунку (LinesEditor) суму й так не шле; картка шле —
+  // тепер її значення ігнорується. Сума без рядків сенсу не має → 400.
+  if (bodyItems !== undefined) {
     const parsed = parseSaleLines(bodyItems);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    update.items       = bodyItems;
     update.total_price = parsed.total;
+  } else if (bodyTotalPrice !== undefined) {
+    return NextResponse.json({ error: 'Сума замовлення рахується з позицій — надішліть items' }, { status: 400 });
   }
 
   if (createdAt !== undefined) {

@@ -153,7 +153,16 @@ export async function POST(req: NextRequest) {
   }
 
   const db = createServiceClient();
-  const orderTotal = totalPrice ?? items.reduce((s: number, i: { qty: number; price: number }) => s + i.qty * i.price, 0);
+  // Сума — лише з рядків, на сервері (правило «ціні від клієнта не довіряй»).
+  // Рядок без артикула тут допустимий (вільна позиція з модалки), тому не
+  // parseSaleLines, а пряма сума з приведенням до чисел; бонусні рядки йдуть
+  // із price 0 і суму не змінюють. Клієнтський totalPrice ігнорується.
+  void totalPrice;
+  const orderTotal = Math.round(items.reduce((s: number, i: { qty: unknown; price: unknown }) => {
+    const qty = Number(i.qty), price = Number(i.price);
+    return s + (Number.isFinite(qty) && Number.isFinite(price) ? qty * price : 0);
+  }, 0) * 100) / 100;
+  if (!(orderTotal >= 0)) return NextResponse.json({ error: 'Некоректна сума позицій' }, { status: 400 });
 
   // Find or create customer — this ensures every manual order builds the CRM
   const { customerId: resolvedCustomerId, contractId: resolvedContractId } = await resolveCustomer(db, {
