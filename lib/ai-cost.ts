@@ -12,6 +12,7 @@
 type Price = { input: number; output: number };
 
 const PRICES: Record<string, Price> = {
+  'claude-opus-5-5': { input: 4, output: 20 },
   'claude-opus-5': { input: 5, output: 25 },
   'claude-opus-4-8': { input: 5, output: 25 },
   'claude-sonnet-5': { input: 3, output: 15 },

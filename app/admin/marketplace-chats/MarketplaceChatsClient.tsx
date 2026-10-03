@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { MessagesSquare, RefreshCw, Send, ArrowLeft, ExternalLink } from 'lucide-react';
+import { MessagesSquare, RefreshCw, Send, ArrowLeft, ExternalLink, Sparkles, AlertTriangle } from 'lucide-react';
+import { htmlToText } from '../../../lib/html-to-text';
+import { CATEGORY_LABELS, type DraftCategory } from '../../../lib/marketplace-chat-draft-types';
 
 type ChatItem = {
   mp: 'rozetka' | 'prom';
@@ -23,25 +25,32 @@ type ChatMessage = {
   author: string | null;
 };
 
+/** Чернетка відповіді від ШІ-помічника (/api/admin/marketplace-chats/draft). */
+type Draft = {
+  id: string | null;
+  cached: boolean;
+  category: DraftCategory;
+  summary: string;
+  reply: string;
+  needsHuman: boolean;
+  reason: string | null;
+  costUsd: number;
+};
+
 const MP_STYLE: Record<string, { label: string; color: string; bg: string }> = {
   prom:    { label: 'Prom',    color: '#8B5CF6', bg: '#F5F3FF' },
   rozetka: { label: 'Rozetka', color: '#6366F1', bg: '#EEF2FF' },
 };
 
-// Rozetka шле HTML у body (сервісні повідомлення з <br>, посиланнями) —
-// рендеримо як текст: <br> → перенос, решту тегів прибираємо.
-function htmlToText(html: string): string {
-  return html
-    .replace(/<br\s*\/?\s*>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
+// Чи чекає покупець на відповідь: останнє змістовне повідомлення — його
+// (дзеркало awaitingOurReply на сервері; сервер перевіряє ще раз).
+function buyerWaits(messages: ChatMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (!htmlToText(m.body) || m.author === 'Система') continue;
+    return !m.fromUs;
+  }
+  return false;
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -78,6 +87,38 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  // Чернетка ШІ: просимо автоматично, щойно відкрили тред, де останнє слово за
+  // покупцем. Повторне відкриття того самого треда сервер віддає з кешу — без
+  // нового виклику моделі. Ключ треда захищає від гонки: відповідь на старий
+  // запит не має лягти в інший чат.
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState('');
+  const draftFor = useRef<string>('');
+
+  const chatKey = (item: ChatItem) => `${item.mp}:${item.id}`;
+
+  async function requestDraft(item: ChatItem, force = false) {
+    const key = chatKey(item);
+    draftFor.current = key;
+    setDraftLoading(true); setDraftError('');
+    if (force) setDraft(null);
+    try {
+      const res = await fetch('/api/admin/marketplace-chats/draft', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mp: item.mp, id: item.id, orderNumber: item.orderNumber, ourOrderId: item.ourOrderId, subject: item.subject, force }),
+      });
+      const d = await res.json();
+      if (draftFor.current !== key) return;
+      if (!res.ok) throw new Error(d.error ?? 'Помічник не відповів');
+      setDraft(d.draft ?? null);
+    } catch (e) {
+      if (draftFor.current === key) setDraftError(e instanceof Error ? e.message : String(e));
+    } finally {
+      if (draftFor.current === key) setDraftLoading(false);
+    }
+  }
+
   const loadList = useCallback(async () => {
     setListLoading(true);
     try {
@@ -108,6 +149,7 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
   async function openChat(item: ChatItem) {
     setSelected(item);
     setMessages([]); setThreadError(''); setThreadContact(item.contact); setReceiverId(item.receiverId);
+    setDraft(null); setDraftError(''); setDraftLoading(false); draftFor.current = chatKey(item);
     setThreadLoading(true);
     try {
       // updatedAt передаємо навмисно: сервер запамʼятає САМЕ цю мітку як
@@ -118,12 +160,14 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
         + (item.updatedAt ? `&updatedAt=${encodeURIComponent(item.updatedAt)}` : ''));
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? 'Помилка');
-      setMessages(d.messages ?? []);
+      const loaded: ChatMessage[] = d.messages ?? [];
+      setMessages(loaded);
       if (d.contact) setThreadContact(d.contact);
       if (d.receiverId) setReceiverId(d.receiverId);
       // Локально гасимо лічильник непрочитаних
       setItems(prev => prev.map(i => i.mp === item.mp && i.id === item.id ? { ...i, unread: 0 } : i));
       setTimeout(() => bottomRef.current?.scrollIntoView({ block: 'end' }), 50);
+      if (buyerWaits(loaded)) void requestDraft(item);
     } catch (e) {
       setThreadError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -137,12 +181,13 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
     try {
       const res = await fetch('/api/admin/marketplace-chats/reply', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mp: selected.mp, id: selected.id, receiverId, text: reply.trim() }),
+        body: JSON.stringify({ mp: selected.mp, id: selected.id, receiverId, text: reply.trim(), draftId: draft?.id ?? null }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? 'Не вдалося надіслати');
       setMessages(prev => [...prev, { body: reply.trim(), at: new Date().toISOString(), fromUs: true, author: 'Ми' }]);
       setReply('');
+      setDraft(null); setDraftError('');
       setTimeout(() => bottomRef.current?.scrollIntoView({ block: 'end' }), 50);
     } catch (e) {
       setThreadError(e instanceof Error ? e.message : String(e));
@@ -265,6 +310,55 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
             </div>
             <div ref={bottomRef} />
           </div>
+
+          {/* Чернетка ШІ-помічника: зʼявляється, коли останнє слово за покупцем.
+              Нічого не відправляє сама — лише пропонує текст у поле відповіді. */}
+          {(draft || draftLoading || draftError) && (
+            <div style={{ padding: '10px 16px', background: draft?.needsHuman ? '#FFFBEB' : 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  <Sparkles size={13} /> Чернетка ШІ
+                </span>
+                {draft && (
+                  <span style={{ padding: '1px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EEF2FF' }}>
+                    {CATEGORY_LABELS[draft.category] ?? draft.category}
+                  </span>
+                )}
+                {draft?.needsHuman && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#92400E' }}>
+                    <AlertTriangle size={12} /> Потрібна людина
+                  </span>
+                )}
+                {draftLoading && <span style={{ color: 'var(--text-muted)' }}>Готую…</span>}
+                {draft && !draftLoading && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{draft.cached ? 'з кешу' : `$${draft.costUsd.toFixed(3)}`}</span>
+                )}
+                <span style={{ flex: 1 }} />
+                {draft && !draftLoading && (
+                  <>
+                    <button onClick={() => setReply(draft.reply)}
+                      style={{ height: '26px', padding: '0 10px', borderRadius: '7px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                      Вставити у відповідь
+                    </button>
+                    <button onClick={() => selected && requestDraft(selected, true)}
+                      style={{ height: '26px', padding: '0 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                      Ще раз
+                    </button>
+                  </>
+                )}
+              </div>
+              {draftError && <div style={{ color: '#DC2626', marginTop: '6px' }}>{draftError}</div>}
+              {draft && (
+                <>
+                  <div style={{ color: 'var(--text-secondary)', marginTop: '6px' }}>{draft.summary}</div>
+                  {draft.reason && <div style={{ color: '#92400E', marginTop: '4px' }}>{draft.reason}</div>}
+                  <div style={{ marginTop: '6px', padding: '8px 10px', borderRadius: '8px', background: 'var(--bg-soft)', border: '1px dashed var(--border)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>
+                    {draft.reply}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           <div style={{ padding: '12px 16px', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
             <textarea

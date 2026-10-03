@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { replyRozetkaChat } from '../../../../../lib/rozetka-api';
 import { sendPromChatMessage } from '../../../../../lib/prom-api';
+import { recordDraftOutcome } from '../../../../../lib/marketplace-chat-assistant';
 
 // Відповідь покупцю в чаті маркетплейсу від імені магазину.
 
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const body = await req.json().catch(() => ({})) as {
-    mp?: string; id?: string; receiverId?: number; text?: string;
+    mp?: string; id?: string; receiverId?: number; text?: string; draftId?: string | null;
   };
   const text = (body.text ?? '').trim();
   if ((body.mp !== 'rozetka' && body.mp !== 'prom') || !body.id || !text) {
@@ -26,6 +27,10 @@ export async function POST(req: NextRequest) {
       await replyRozetkaChat({ chatId: Number(body.id), receiverId: body.receiverId, body: text });
     } else {
       await sendPromChatMessage(body.id, text);
+    }
+    // Статистика помічника: чернетка пішла як є чи з правками. Не блокує відповідь.
+    if (typeof body.draftId === 'string' && body.draftId) {
+      void recordDraftOutcome(body.draftId, text);
     }
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {

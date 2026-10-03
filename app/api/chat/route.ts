@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
-import { escapeOrTerm } from '../../../lib/pg-filter';
 import { sendTelegram } from '../../../lib/telegram';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
+import { FIXLINE_FACTS } from '../../../lib/fixline-facts';
+import { searchProductsText, productDetailsText } from '../../../lib/product-lookup';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -14,37 +15,7 @@ const db = createClient(
 
 const SYSTEM_PROMPT = `Ти — AI-помічник FIXLINE, платформи для закупівель будівельної хімії в Україні (fixline.com.ua).
 
-=== КОНТАКТИ ТА ГРАФІК ===
-Телефон: +38 (099) 199-77-88 (також Viber)
-Email: info@fixline.com.ua
-Графік роботи: Пн–Пт з 9:00 до 16:00
-Місцезнаходження: Харків, доставка по всій Україні
-
-=== АСОРТИМЕНТ ===
-Герметики (акрилові, силіконові, поліуретанові, MS-полімерні), монтажна піна, рідкі цвяхи, ґрунтовки, фарби (інтер'єрні, фасадні, алкідні), клеї, замазки для швів, герметизуючі стрічки, свердла та кріплення. Бренди: Lacrysil, Ceresit, Polifarb, Aura, BudMonster, Aqua Protect, Siltek та інші.
-
-=== ФОРМАТИ РОБОТИ ===
-Роздріб: від 1 одиниці, без реєстрації, розділ "Магазин" на сайті
-Опт (B2B): після реєстрації та верифікації — оптові ціни, персональний менеджер, умови оплати. Мінімальна сума замовлення — 3000 грн.
-Дропшип: продаж без свого складу — реєструєшся, поповнюєш баланс (мінімум 500 грн), оформлюєш замовлення, ми відправляємо від свого імені. Мінімальної суми замовлення немає.
-
-=== ДОСТАВКА ===
-Нова Пошта по всій Україні, 1–2 дні
-Точки видачі ROZETKA — альтернатива НП, доступна в кошику для замовлень, що проходять за вагою
-Замовлення до 14:00 — відправка того ж дня
-Для великих оптових партій — адресна доставка по Харкову та регіону
-
-=== ОПЛАТА ===
-Роздріб: накладений платіж (оплата при отриманні у відділенні НП або в точці видачі ROZETKA) або передоплата на картку
-Опт: передоплата на рахунок або через платіжну систему
-Дропшип: баланс-система — поповнюєш баланс, замовлення списується з балансу
-
-=== ПОВЕРНЕННЯ ===
-Повернення протягом 14 днів за умови збереження товарного вигляду та упаковки
-Для оформлення — звертатись до менеджера
-
-=== РЕЄСТРАЦІЯ ДЛЯ ОПТУ ===
-Зареєструватись на сайті → менеджер верифікує → відкриваються оптові ціни та кабінет
+${FIXLINE_FACTS}
 
 === ПРАВИЛА ПОШУКУ ТОВАРІВ ===
 - ЗАВЖДИ перекладай запит українською перед search_products
@@ -88,64 +59,8 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-// ── Tool executors ────────────────────────────────────────────────────────────
-
-async function searchProducts(query: string, category?: string): Promise<string> {
-  // Split into words, search each word separately (implicit AND between words)
-  const words = query.trim().split(/\s+/).filter(w => w.length > 1).slice(0, 4);
-
-  let q = db
-    .from('products')
-    .select(`sku, name, brand, volume, category_slug, description,
-             stock:product_stock(price_retail, price_unit, stock_status)`)
-    .eq('is_active', true)
-    .limit(6);
-
-  for (const word of words) {
-    const term = `%${escapeOrTerm(word)}%`;
-    q = q.or(`name.ilike.${term},brand.ilike.${term},description.ilike.${term},category_slug.ilike.${term}`);
-  }
-
-  if (category) q = q.eq('category_slug', category);
-
-  const { data } = await q;
-  if (!data?.length) return 'Товарів не знайдено.';
-
-  return data.map(p => {
-    const stock  = Array.isArray(p.stock) ? p.stock[0] : p.stock;
-    const retail = stock?.price_retail ? `${stock.price_retail} грн` : '—';
-    const status = stock?.stock_status === 'in_stock' ? 'є в наявності' : 'немає в наявності';
-    const url    = `https://fixline.com.ua/product/${p.sku}`;
-    return `${p.name} — ${retail}, ${status}\n${url}`;
-  }).join('\n\n');
-}
-
-async function getProductDetails(sku: string): Promise<string> {
-  const { data: p } = await db
-    .from('products')
-    .select(`sku, name, brand, volume, description, min_order,
-             stock:product_stock(price_retail, price_unit, price_drop, stock_status, stock_qty)`)
-    .eq('sku', sku)
-    .eq('is_active', true)
-    .maybeSingle();
-
-  if (!p) return `Товар з SKU ${sku} не знайдено.`;
-
-  const stock = Array.isArray(p.stock) ? p.stock[0] : p.stock;
-  const url   = `https://fixline.com.ua/product/${p.sku}`;
-  const lines = [
-    `${p.name}`,
-    `Ціна роздріб: ${stock?.price_retail ? stock.price_retail + ' грн' : '—'}`,
-    stock?.stock_status === 'in_stock' ? 'Є в наявності' : 'Немає в наявності',
-    p.min_order && p.min_order > 1 ? `Мін. замовлення (опт): ${p.min_order} шт` : null,
-    p.description ?? null,
-    url,
-  ].filter(Boolean);
-
-  return lines.join('\n');
-}
-
 // ── Agentic loop ──────────────────────────────────────────────────────────────
+// Інструменти пошуку/картки товару — спільні з помічником чатів МП (lib/product-lookup).
 
 async function runAgent(messages: Anthropic.MessageParam[]): Promise<string> {
   const MAX_ROUNDS = 3;
@@ -180,10 +95,10 @@ async function runAgent(messages: Anthropic.MessageParam[]): Promise<string> {
       let result: string;
       if (block.name === 'search_products') {
         const input = block.input as { query: string; category?: string };
-        result = await searchProducts(input.query, input.category);
+        result = await searchProductsText(input.query, input.category);
       } else if (block.name === 'get_product_details') {
         const input = block.input as { sku: string };
-        result = await getProductDetails(input.sku);
+        result = await productDetailsText(input.sku);
       } else {
         result = 'Невідомий інструмент.';
       }
