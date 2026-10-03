@@ -1,0 +1,33 @@
+name: Generate DB types
+
+# Генерує types/database.types.ts зі схеми ПРОДА (роль backup_reader, лише читання)
+# і віддає артефактом. Запуск руками після серії міграцій; файл комітиться в репо
+# окремим кроком людиною/агентом, щоб у коді був типізований клієнт Supabase
+# (етап 1 плану зростання: запити мають перевірятися проти схеми, а не по пам'яті).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: supabase gen types
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          test -n "$DB_URL" || { echo "::error::SUPABASE_DB_URL secret is not set"; exit 1; }
+          mkdir -p out
+          npx --yes supabase@latest gen types typescript --db-url "$DB_URL" --schema public > out/database.types.ts
+          wc -l out/database.types.ts
+          grep -c "Row: {" out/database.types.ts | xargs echo "tables+views:"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: database-types-${{ github.run_number }}
+          path: out/database.types.ts
+          retention-days: 7
+          if-no-files-found: error
