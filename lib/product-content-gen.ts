@@ -31,6 +31,13 @@ export type GenProduct = {
   brand: string;
   category_slug: string | null;
   description: string | null;
+  /**
+   * Факти, яким текст не може суперечити: характеристики з картки (зокрема з
+   * технічного листа виробника) і нотатки агента заведення. Без них генератор
+   * знав лише назву й писав, наприклад, «для фасадів» про клей тільки для
+   * внутрішніх робіт (1603-021, 03.10.2026).
+   */
+  facts?: string | null;
 };
 
 export type FaqPair = { q: string; a: string };
@@ -205,7 +212,7 @@ ${boost}Згенеруй ПОВНИЙ контент картки товару (
    - переваги перед звичайними аналогами (без назв конкурентів);
    - ПЕРЕДОСТАННІЙ абзац дослівно: "Замовити [тип товару] [назва] можна з доставкою Новою Поштою або в точки видачі ROZETKA по всій Україні — у Київ, Харків, Дніпро, Одесу, Львів та інші міста. Доступна оплата при отриманні або передоплата на зручних для вас умовах.";
    - ОСТАННІЙ абзац дослівно: "Оформлюйте замовлення в інтернет-магазині FIXLINE і отримайте якісний [за потреби країна-прикметник] продукт швидко та без зайвих клопотів.".
-   Не вигадуй точних числових значень, яких не можеш обґрунтувати з назви/категорії.
+   Не вигадуй точних числових значень, яких не можеш обґрунтувати з назви/категорії${product.facts ? ' або з ФАКТІВ нижче' : ''}.
 4. keywords — 12-18 пошукових фраз через кому, малими літерами: бренд, тип товару, синоніми, "купити [назва]", "[назва] ціна", "[назва] оптом", "[назва] Київ".
 5. characteristics — рядки label/value з реальних даних назви (6-16 рядків).${labelsHint}   БЕЗ ДУБЛІВ: кожен параметр рівно один рядок; не вигадуй власних синонімічних ярликів поза списками вище. АЛЕ якщо ярлик є в ОБОВ'ЯЗКОВОМУ списку — заповнюй його завжди, навіть якщо він схожий на інший (напр., «Основа» І «Матеріал» разом, коли обидва обов'язкові). Апостроф скрізь звичайний (Об'єм). Порядок: спочатку специфічні, останніми — Бренд і Країна виробника.
 6. faq — 3-4 пари питання/відповідь під реальні пошукові запити (витрата, як застосовувати, чим відрізняється, скільки сохне). Відповіді 2-3 речення, тільки з наданих/загальновідомих даних.${facetsHint}
@@ -214,7 +221,10 @@ ${boost}Згенеруй ПОВНИЙ контент картки товару (
 Назва: ${product.name}
 Бренд: ${product.brand}
 Категорія: ${categoryName}
-Поточний короткий опис: ${product.description ?? ''}`;
+Поточний короткий опис: ${product.description ?? ''}${product.facts ? `
+
+ФАКТИ ПРО ТОВАР (характеристики з картки / технічний лист виробника). Це джерело правди: опис, FAQ і характеристики НЕ МОЖУТЬ їм суперечити — зокрема щодо сфери застосування (внутрішні/зовнішні роботи), основи, температур, часу висихання. Чого тут немає — не вигадуй, пиши загально.
+${product.facts}` : ''}`;
 }
 
 function parseStructured<T>(msg: Anthropic.Message): T {
@@ -226,6 +236,22 @@ function parseStructured<T>(msg: Anthropic.Message): T {
 
 const ITEM_TIMEOUT_MS = 120_000;
 
+/**
+ * Поля, які мають бути українськими, з російськими літерами. Ознака зриву за
+ * стандартом (docs/CONTENT-STANDARD.md §2): ы/э/ъ/ё в uk-тексті. Інцидент
+ * 04.09.2026 (7 карток) і 03.10.2026 (1603-021: короткий опис двічі російською).
+ */
+export function uaFieldsWithRussian(gen: GeneratedUA): string[] {
+  const ru = /[ыэъё]/i;
+  const out: string[] = [];
+  if (ru.test(gen.description ?? '')) out.push('description');
+  if (ru.test(gen.description_full ?? '')) out.push('description_full');
+  if (ru.test(gen.keywords ?? '')) out.push('keywords');
+  if ((gen.faq ?? []).some(f => ru.test(f.q) || ru.test(f.a))) out.push('faq');
+  if ((gen.characteristics ?? []).some(c => ru.test(c.value))) out.push('characteristics');
+  return out;
+}
+
 /** Основна генерація UA-контенту (Opus, structured output). */
 export async function generateUA(
   product: GenProduct,
@@ -235,17 +261,29 @@ export async function generateUA(
   /** необовʼязковий лічильник витрат — заповнює seo_actions.cost_usd */
   cost?: CostSink,
 ): Promise<GeneratedUA> {
-  const msg = await anthropic.messages.create(
-    {
-      model: 'claude-opus-4-8',
-      max_tokens: 8000,
-      output_config: { format: { type: 'json_schema', schema: uaSchemaFor(categoryLabels.facets) } },
-      messages: [{ role: 'user', content: buildUaPrompt(product, categoryName, categoryLabels, targetQuery) }],
-    },
-    { timeout: ITEM_TIMEOUT_MS },
-  );
-  cost?.add(msg.model, msg.usage);
-  const gen = parseStructured<GeneratedUA>(msg);
+  const prompt = buildUaPrompt(product, categoryName, categoryLabels, targetQuery);
+  let gen: GeneratedUA | null = null;
+  // Мовний страж: до двох спроб; якщо модель і далі зривається в російську —
+  // помилка, а не російський текст у картці (його потім переписують руками).
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const slippedPrev: string[] = gen ? uaFieldsWithRussian(gen) : [];
+    const retryNote: string = attempt === 0 ? '' : `\n\nУВАГА: попередня відповідь містила російську мову в полях, що мають бути УКРАЇНСЬКИМИ (${slippedPrev.join(', ')}). Усі поля, крім name_ru, — тільки українською: жодних літер ы, э, ъ, ё.`;
+    const msg: Anthropic.Message = await anthropic.messages.create(
+      {
+        model: 'claude-opus-4-8',
+        max_tokens: 8000,
+        output_config: { format: { type: 'json_schema', schema: uaSchemaFor(categoryLabels.facets) } },
+        messages: [{ role: 'user', content: prompt + retryNote }],
+      },
+      { timeout: ITEM_TIMEOUT_MS },
+    );
+    cost?.add(msg.model, msg.usage);
+    gen = parseStructured<GeneratedUA>(msg);
+    if (uaFieldsWithRussian(gen).length === 0) break;
+  }
+  if (!gen) throw new Error('generateUA: порожня відповідь');
+  const slipped = uaFieldsWithRussian(gen);
+  if (slipped.length) throw new Error(`Модель двічі написала російською в uk-полях: ${slipped.join(', ')} — картку треба заповнити руками`);
   // Фасети з enum — попереду characteristics (normalizeChars лишає перше входження),
   // дублі тих самих лейблів у вільному списку відкидаємо
   const facetChars = facetsToChars(gen.facets, categoryLabels.facets);

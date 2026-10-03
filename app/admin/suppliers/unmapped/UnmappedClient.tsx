@@ -317,11 +317,16 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
     removeRows(keys);
   }
 
+  // Наш SKU форма згенерує за категорією; код постачальника йде в supplier_sku
+  // (інакше він ставав нашим артикулом), ціна — у price_cost. ai=1 — агент одразу
+  // пропонує картку за назвою з прайсу.
   function addNew(r: UnmappedRow) {
     const params = new URLSearchParams({
-      sku:        r.supplier_sku,
-      name:       r.sample_name ?? '',
-      price_cost: String(r.price_in ?? ''),
+      supplier_id:  String(r.supplier_id),
+      supplier_sku: r.supplier_sku,
+      name:         r.sample_name ?? '',
+      price_cost:   String(r.price_in ?? ''),
+      ai:           '1',
     });
     window.open(`/admin/products/new?${params}`, '_blank');
   }

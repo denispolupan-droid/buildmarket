@@ -73,10 +73,20 @@ async function fillOne(
   force: boolean,
   targetQuery?: string,
   cost?: CostSink,
+  extraFacts?: string,
 ): Promise<void> {
+  // Наявні характеристики — факти для тексту (найважливіше, коли їх не
+  // перегенеровують: вони з технічного листа, а не з назви). Плюс нотатки
+  // агента заведення картки, якщо їх передали.
+  const { data: factRows } = await supabase
+    .from('product_characteristics').select('label, value').eq('product_sku', product.sku).order('sort_order').limit(60);
+  const factLines = (factRows ?? []).map(c => `- ${c.label}: ${c.value}`);
+  if (extraFacts?.trim()) factLines.push(`Нотатки з заведення картки: ${extraFacts.trim()}`);
+
   const gp: GenProduct = {
     sku: product.sku, name: product.name, name_ru: product.name_ru,
     brand: product.brand, category_slug: product.category_slug, description: product.description,
+    facts: factLines.length ? factLines.join('\n') : null,
   };
 
   const ua = await generateUA(gp, categoryName, categoryLabels, targetQuery, cost);
@@ -146,6 +156,8 @@ export async function* fillProducts(
   force = false,
   /** «Дожим»: запит, під який цілиться контент (з розділу SEO) */
   targetQuery?: string,
+  /** Додаткові факти для тексту (нотатки агента заведення картки) — лише для одного SKU */
+  extraFacts?: string,
 ): AsyncGenerator<AiFillEvent> {
   const f = { ...DEFAULT_FIELDS, ...fields };
   const supabase = db();
@@ -193,7 +205,7 @@ export async function* fillProducts(
         // Свій лічильник на кожен товар: воркери йдуть паралельно, спільний
         // накопичувач змішав би витрати різних карток.
         const cost = new CostSink();
-        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? EMPTY_LABEL_SPEC, f, force, targetQuery, cost);
+        await fillOne(supabase, product, categoryName, labelsByCat.get(product.category_slug) ?? EMPTY_LABEL_SPEC, f, force, targetQuery, cost, products!.length === 1 ? extraFacts : undefined);
         done++;
         push({ type: 'result', sku: product.sku, name: product.name, costUsd: cost.usd });
       } catch (err) {

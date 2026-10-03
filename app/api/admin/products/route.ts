@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateProductSlug } from '../../../../lib/seo/slug';
 import { deleteProducts } from '../../../../lib/product-delete';
 import { normalizeCharsDb, type CharInput } from '../../../../lib/characteristics';
+import { generateSku } from '../../../../lib/product-sku';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,68 +16,6 @@ async function checkAdmin() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   return user && user.app_metadata?.role === 'admin';
-}
-
-async function generateSku(categorySlug: string | null): Promise<string> {
-  if (!categorySlug) {
-    const { count } = await serviceClient
-      .from('products')
-      .select('*', { count: 'exact', head: true });
-    return `NEW-${String((count ?? 0) + 1).padStart(3, '0')}`;
-  }
-
-  const { data: categoryProducts } = await serviceClient
-    .from('products')
-    .select('sku')
-    .eq('category_slug', categorySlug);
-
-  if (!categoryProducts || categoryProducts.length === 0) {
-    const { data: allProducts } = await serviceClient
-      .from('products')
-      .select('sku')
-      .order('sku', { ascending: false })
-      .limit(1);
-
-    if (allProducts && allProducts[0]) {
-      const lastPrefix = parseInt(allProducts[0].sku.split('-')[0]) || 1000;
-      return `${lastPrefix + 100}-001`;
-    }
-    return '1000-001';
-  }
-
-  const prefixCounts: Record<string, number> = {};
-  let maxNum = 0;
-  let mostCommonPrefix = '';
-
-  categoryProducts.forEach(p => {
-    const parts = p.sku.split('-');
-    if (parts.length === 2) {
-      const prefix = parts[0];
-      const num = parseInt(parts[1]) || 0;
-      prefixCounts[prefix] = (prefixCounts[prefix] || 0) + 1;
-      if (num > maxNum) maxNum = num;
-      if (!mostCommonPrefix || prefixCounts[prefix] > prefixCounts[mostCommonPrefix]) {
-        mostCommonPrefix = prefix;
-      }
-    }
-  });
-
-  if (!mostCommonPrefix) {
-    return `1000-${String(maxNum + 1).padStart(3, '0')}`;
-  }
-
-  const { data: prefixProducts } = await serviceClient
-    .from('products')
-    .select('sku')
-    .like('sku', `${mostCommonPrefix}-%`);
-
-  let maxInPrefix = 0;
-  prefixProducts?.forEach(p => {
-    const num = parseInt(p.sku.split('-')[1]) || 0;
-    if (num > maxInPrefix) maxInPrefix = num;
-  });
-
-  return `${mostCommonPrefix}-${String(maxInPrefix + 1).padStart(3, '0')}`;
 }
 
 export async function POST(req: NextRequest) {

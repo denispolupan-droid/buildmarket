@@ -2,13 +2,47 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Save, Trash2, Plus, X, Loader2, Wand2, Upload } from 'lucide-react';
+import { Save, Trash2, Plus, X, Loader2, Wand2, Upload, Sparkles, AlertTriangle } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import type { ProductFull, Category, ProductCharacteristic } from '../../../../types';
 import CharValueInput from './CharValueInput';
 import CharLabelInput from './CharLabelInput';
 import { normCharKey } from '../../../../lib/characteristics';
 import FacetValueInput from './FacetValueInput';
+
+/** Чернетка картки від ШІ-агента (POST /api/admin/products/propose). */
+type CardProposal = {
+  brand: string;
+  brandIsNew: boolean;
+  category_slug: string;
+  product_type: string;
+  name: string;
+  name_ru: string;
+  volume: string;
+  pack_qty: number;
+  characteristics: { label: string; value: string }[];
+  img_type: 'tube' | 'canister' | null;
+  sibling_sku: string | null;
+  confidence: 'high' | 'medium' | 'low';
+  notes: string;
+  sources: string[];
+  issues: { field: string; message: string }[];
+  marketplace: { on_prom: boolean; on_rozetka: boolean; on_epicentr: boolean; rozetka_smart: boolean };
+  epicentr: { set: string | null; missingRequired: string[]; unmatched: string[] };
+};
+type CardRun = { proposal: CardProposal; runId: string | null; costUsd: number; durationMs: number };
+type FillEvent =
+  | { type: 'start'; total: number }
+  | { type: 'progress'; sku: string; name: string; done: number; total: number }
+  | { type: 'result'; sku: string; name: string; costUsd: number }
+  | { type: 'error'; sku: string; error: string }
+  | { type: 'done'; done: number; errors: number };
+
+const CONFIDENCE_LABEL: Record<CardProposal['confidence'], { text: string; color: string }> = {
+  high:   { text: 'впевнено',     color: '#16A34A' },
+  medium: { text: 'перевірити',   color: '#CA8A04' },
+  low:    { text: 'сумнівно',     color: '#DC2626' },
+};
 
 type Props = {
   product: ProductFull | null;
@@ -210,7 +244,65 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
   const [stockQty, setStockQty] = useState(product?.stock?.stock_qty ?? 0);
   const [stockStatus, setStockStatus] = useState(product?.stock?.stock_status ?? 'in_stock');
-  const [supplierSku, setSupplierSku] = useState(product?.stock?.supplier_sku ?? '');
+  // З черги «немаплених» приходить код постачальника і закупівельна ціна —
+  // раніше код ставав НАШИМ SKU, а ціна губилась. Тепер код іде в supplier_sku
+  // (синк постачальника його знайде), ціна — у product_stock.price_cost.
+  const [supplierSku, setSupplierSku] = useState(product?.stock?.supplier_sku ?? (isNew ? (searchParams.get('supplier_sku') ?? '') : ''));
+  const priceCostParam = isNew ? Number(searchParams.get('price_cost')) : 0;
+  const priceCostFromQueue = Number.isFinite(priceCostParam) && priceCostParam > 0 ? priceCostParam : null;
+  const supplierIdParam = isNew ? Number(searchParams.get('supplier_id')) : 0;
+  const supplierIdFromQueue = Number.isInteger(supplierIdParam) && supplierIdParam > 0 ? supplierIdParam : null;
+  // Після збереження картки з чернетки: тексти пишуться наявним AI-філером
+  // (описи, FAQ, keywords, MP-опис — обидві мови), менеджер потрапляє на готову картку.
+  const [finishing, setFinishing] = useState<string>('');
+
+  // ШІ-чернетка картки: за назвою постачальника агент пропонує бренд, категорію,
+  // канонічну назву, фасування й характеристики зі словника. Поля форми
+  // заповнюються одразу (їх можна правити), панель показує зауваження й джерела.
+  const [cardRun, setCardRun] = useState<CardRun | null>(null);
+  const [proposing, setProposing] = useState(false);
+  const [proposeError, setProposeError] = useState('');
+  const autoProposed = useRef(false);
+
+  async function proposeCard() {
+    if (!name.trim() || proposing) return;
+    setProposing(true); setProposeError('');
+    try {
+      const res = await fetch('/api/admin/products/propose', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), supplierSku: supplierSku || null, priceCost: priceCostFromQueue, brand: brand.trim() || null }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Агент не відповів');
+      const run = d as CardRun;
+      const p = run.proposal;
+      setCardRun(run);
+      if (p.brand) setBrand(p.brand);
+      if (p.category_slug) setCategorySlug(p.category_slug);
+      if (p.product_type) setProductType(p.product_type);
+      if (p.name) setName(p.name);
+      if (p.name_ru) setNameRu(p.name_ru);
+      if (p.volume) setVolume(p.volume);
+      if (p.pack_qty) setPackQty(p.pack_qty);
+      if (p.img_type) setImgType(p.img_type);
+      if (p.characteristics.length) setChars(p.characteristics);
+      // Ціни ще немає — вона прийде з синку постачальника за supplier_sku.
+      // Активний товар без ціни показувати на сайті не можна (чек-лист 14.09.2026).
+      setIsActive(false);
+    } catch (e) {
+      setProposeError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setProposing(false);
+    }
+  }
+
+  // Прийшли з черги «немаплених» з ?ai=1 — пропонуємо картку одразу, один раз.
+  useEffect(() => {
+    if (!isNew || autoProposed.current || searchParams.get('ai') !== '1' || !name.trim()) return;
+    autoProposed.current = true;
+    void proposeCard();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew]);
 
   const [chars, setChars] = useState<{ label: string; value: string }[]>(
     product?.characteristics?.map(c => ({ label: c.label, value: c.value })) ?? []
@@ -568,12 +660,15 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             keywords: promKeywords || null,
             keywords_ru: promKeywordsRu || null,
             prom_portal_url: promPortalUrl || null,
+            // Прапорці площадок — як у сусідів по категорії (з чернетки агента)
+            ...(isNew && cardRun ? cardRun.proposal.marketplace : {}),
           },
           stock: {
             sku,
             stock_qty: stockQty,
             stock_status: stockStatus,
             supplier_sku: supplierSku || null,
+            ...(isNew && priceCostFromQueue ? { price_cost: priceCostFromQueue } : {}),
           },
           characteristics: (() => {
             const promLabelSet = new Set(promAttrs.map(a => a.name_uk));
@@ -616,6 +711,14 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
       showToast(`Збережено! SKU: ${generatedSku}`, 'success');
       setSaving(false);
 
+      // Картка з чернетки агента: доводимо до стану заведених товарів —
+      // лінійка сусіда, маппінг коду постачальника, тексти філером — і
+      // відкриваємо готову картку на перевірку.
+      if (isNew && cardRun) {
+        await finishProposedCard(generatedSku);
+        return;
+      }
+
       setTimeout(() => {
         router.push(backUrl);
       }, 800);
@@ -623,6 +726,60 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
       showToast('Помилка з\'єднання', 'error');
       setSaving(false);
     }
+  }
+
+  async function finishProposedCard(savedSku: string) {
+    // 1. Лінійка, маппінг постачальника, журнал агента (сервер; помилка не зупиняє тексти)
+    setFinishing('Привʼязую до лінійки і коду постачальника…');
+    try {
+      await fetch('/api/admin/products/propose', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: cardRun?.runId ?? null, outcome: 'applied', sku: savedSku,
+          siblingSku: cardRun?.proposal.sibling_sku ?? null,
+          supplierId: supplierIdFromQueue, supplierSku: supplierSku || null,
+        }),
+      });
+    } catch { /* журнал і привʼязки — не привід не писати тексти */ }
+
+    // 2. Тексти — тим самим філером, що й кнопка «AI заповнення»: опис, повний
+    //    опис, keywords, FAQ, name_ru (якщо порожнє) + MP-опис; обидві мови.
+    //    Характеристики НЕ чіпаємо — вони з технічного листа, а не з генерації.
+    setFinishing('Пишу описи, FAQ, keywords і MP-опис — обидві мови (1–2 хв)…');
+    let fillError = '';
+    try {
+      const res = await fetch('/api/admin/products/ai-fill', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skus: [savedSku],
+          fields: { description: true, description_full: true, keywords: true, characteristics: false, description_mp: true },
+          // Нотатки агента (що знайдено в технічному листі, чого бракує) — факти для тексту
+          facts: cardRun ? `${cardRun.proposal.notes}${cardRun.proposal.sources.length ? `\nДжерела: ${cardRun.proposal.sources.join(', ')}` : ''}` : undefined,
+        }),
+      });
+      if (!res.ok || !res.body) throw new Error(`AI-філер: HTTP ${res.status}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const ev = JSON.parse(line.slice(6)) as FillEvent;
+          if (ev.type === 'error') fillError = ev.error;
+          if (ev.type === 'result') setFinishing(`Тексти готові ($${ev.costUsd.toFixed(2)}). Відкриваю картку…`);
+        }
+      }
+    } catch (e) {
+      fillError = e instanceof Error ? e.message : String(e);
+    }
+    if (fillError) showToast(`Тексти не згенерувались: ${fillError}. Натисніть «AI заповнення» в картці.`, 'error');
+    setFinishing('');
+    router.push(`/admin/products/${encodeURIComponent(savedSku)}`);
   }
 
   async function handleDelete() {
@@ -645,6 +802,71 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
 
   return (
     <div>
+      {/* ШІ-чернетка картки — лише для нового товару */}
+      {isNew && (
+        <div style={{ ...sectionStyle, background: cardRun?.proposal.issues.length ? '#FFFBEB' : 'var(--bg-card)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <Sparkles size={15} /> Чернетка картки від ШІ
+            </span>
+            {cardRun && (
+              <span style={{ fontSize: '11px', fontWeight: 700, color: CONFIDENCE_LABEL[cardRun.proposal.confidence].color }}>
+                {CONFIDENCE_LABEL[cardRun.proposal.confidence].text}
+              </span>
+            )}
+            {cardRun && (
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                ${cardRun.costUsd.toFixed(3)} · {Math.round(cardRun.durationMs / 1000)} с
+              </span>
+            )}
+            <span style={{ flex: 1 }} />
+            <button type="button" onClick={() => proposeCard()} disabled={proposing || !name.trim()}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: proposing || !name.trim() ? 'default' : 'pointer', opacity: proposing || !name.trim() ? 0.6 : 1 }}>
+              {proposing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
+              {proposing ? 'Шукаю лінійку, стандарт і технічний лист…' : cardRun ? 'Запропонувати ще раз' : 'Запропонувати картку'}
+            </button>
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0' }}>
+            Введіть назву з прайсу постачальника вище або нижче в полі «Назва товару» — агент підбере бренд, категорію,
+            назву за стандартом, фасування й характеристики зі словника. Поля далі можна правити; тексти — кнопкою AI після збереження.
+          </p>
+          {proposeError && <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '8px' }}>{proposeError}</div>}
+          {cardRun && (
+            <div style={{ marginTop: '10px', fontSize: '12px', lineHeight: 1.5 }}>
+              {cardRun.proposal.issues.length > 0 && (
+                <div style={{ color: '#92400E', marginBottom: '6px' }}>
+                  {cardRun.proposal.issues.map((i, k) => (
+                    <div key={k} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}><AlertTriangle size={12} style={{ marginTop: '3px', flexShrink: 0 }} />{i.message}</div>
+                  ))}
+                </div>
+              )}
+              {cardRun.proposal.sibling_sku && (
+                <div style={{ color: 'var(--text-secondary)' }}>Лінійка в каталозі: <a href={`/admin/products/${cardRun.proposal.sibling_sku}`} target="_blank" rel="noreferrer" style={{ color: '#1E3A5F', fontWeight: 600 }}>{cardRun.proposal.sibling_sku}</a> — назва й характеристики скопійовані з неї.</div>
+              )}
+              <div style={{ color: 'var(--text-secondary)' }}>
+                Площадки як у сусідів категорії: Prom {cardRun.proposal.marketplace.on_prom ? '✓' : '—'} · Rozetka {cardRun.proposal.marketplace.on_rozetka ? '✓' : '—'}
+                {cardRun.proposal.marketplace.rozetka_smart ? ' (Smart)' : ''} · Епіцентр {cardRun.proposal.marketplace.on_epicentr ? '✓' : '—'}
+                {cardRun.proposal.epicentr.set ? `, набір ${cardRun.proposal.epicentr.set}${cardRun.proposal.epicentr.missingRequired.length ? '' : ', обовʼязкові атрибути закриті'}` : ''}.
+                Націнки — з категорії. Товар буде <b>неактивним</b>, доки синк постачальника не підтягне ціну за кодом «{supplierSku || '—'}».
+              </div>
+              <div style={{ color: 'var(--text-secondary)' }}>
+                Після «Створити товар»: привʼязка до лінійки й коду постачальника, потім описи, FAQ, keywords і MP-опис обома мовами —
+                тим самим AI-філером, що й у решти карток. Фото додайте нижче вручну (з прайсу його немає).
+              </div>
+              {cardRun.proposal.notes && <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', marginTop: '4px' }}>{cardRun.proposal.notes}</div>}
+              {cardRun.proposal.sources.length > 0 && (
+                <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>
+                  Джерела: {cardRun.proposal.sources.map((s, k) => (
+                    <a key={k} href={s} target="_blank" rel="noreferrer" style={{ color: '#1E3A5F', marginRight: '8px', wordBreak: 'break-all' }}>{new URL(s).hostname}</a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+        </div>
+      )}
+
       {/* Basic Info */}
       <div style={sectionStyle}>
         <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px' }}>Основна інформація</h2>
@@ -1292,17 +1514,17 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
         <div style={{ marginLeft: 'auto' }} />
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || !!finishing}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px',
             height: '48px', padding: '0 28px', borderRadius: '10px',
             background: '#1E3A5F', color: '#fff', border: 'none',
-            fontSize: '14px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-            opacity: saving ? 0.7 : 1,
+            fontSize: '14px', fontWeight: 600, cursor: saving || finishing ? 'wait' : 'pointer',
+            opacity: saving || finishing ? 0.7 : 1,
           }}
         >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-          {isNew ? 'Створити товар' : 'Зберегти зміни'}
+          {saving || finishing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+          {finishing || (isNew ? 'Створити товар' : 'Зберегти зміни')}
         </button>
       </div>
     </div>
