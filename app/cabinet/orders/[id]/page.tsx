@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { requireCustomerPage } from '../../../../lib/auth-guard';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
@@ -33,11 +33,10 @@ export default async function CabinetOrderDetailPage({
 }) {
   const { id } = await params;
 
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await requireCustomerPage('dropship');
 
   const { data: customer } = await serviceClient
-    .from('customers').select('id').eq('auth_user_id', user!.id).single();
+    .from('customers').select('id').eq('auth_user_id', user.id).single();
 
   if (!customer) notFound();
 

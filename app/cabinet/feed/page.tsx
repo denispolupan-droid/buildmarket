@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../lib/supabase-server';
+import { requireCustomerPage } from '../../../lib/auth-guard';
 import { Rss } from 'lucide-react';
 
 const serviceClient = createClient(
@@ -8,11 +8,10 @@ const serviceClient = createClient(
 );
 
 export default async function FeedPage() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await requireCustomerPage('dropship');
 
   const { data: customer } = await serviceClient
-    .from('customers').select('id, partner_code').eq('auth_user_id', user!.id).single();
+    .from('customers').select('id, partner_code').eq('auth_user_id', user.id).single();
 
   const token   = customer?.partner_code ?? customer?.id ?? '';
   const feedUrl = token ? `https://fixline.com.ua/api/dropship/feed?token=${token}` : null;

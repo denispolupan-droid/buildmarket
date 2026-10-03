@@ -61,6 +61,28 @@ export async function requireStaffPage(...roles: StaffRole[]): Promise<User> {
 }
 
 /**
+ * Той самий гейт для server-компонентів сторінок кабінету.
+ *
+ * Чому він потрібен, хоча перевірка вже стоїть у layout: у App Router layout і
+ * page рендеряться ПАРАЛЕЛЬНО, тож `redirect()` з layout не встигає зупинити
+ * тіло сторінки. Сторінка з протухлою сесією доходила до `user!.id` і падала
+ * 500-кою замість редіректу на логін (TypeError «Cannot read properties of
+ * null (reading 'id')» на /cabinet). Кожна сторінка мусить гейтити себе сама.
+ *
+ * Адреси редіректів — ті самі, що в app/cabinet/layout.tsx, щоб для живого
+ * користувача поведінка не змінилась.
+ *
+ *   const user = await requireCustomerPage('dropship');
+ */
+export async function requireCustomerPage(...roles: UserRole[]): Promise<User> {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login?next=/cabinet');
+  if (roles.length && !roles.includes(getRole(user))) redirect('/account');
+  return user;
+}
+
+/**
  * Гейт за клієнтським типом (app_metadata.account_type → getRole): dropship / wholesale / retail.
  * Пускає лише автентифікованих користувачів із однією з дозволених ролей.
  */

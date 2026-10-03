@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { requireCustomerPage } from '../../../../lib/auth-guard';
 import { getNpCodFeePct } from '../../../../lib/np-cod-fee';
 import NewOrderClient from './NewOrderClient';
 
@@ -9,14 +9,13 @@ const serviceClient = createClient(
 );
 
 export default async function NewOrderPage() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await requireCustomerPage('dropship');
 
   const [{ data: customer }, codFeePct] = await Promise.all([
     serviceClient
       .from('customers')
       .select('balance, balance_held')
-      .eq('auth_user_id', user!.id)
+      .eq('auth_user_id', user.id)
       .single(),
     getNpCodFeePct(serviceClient),
   ]);

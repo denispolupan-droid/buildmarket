@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../lib/supabase-server';
+import { requireCustomerPage } from '../../../lib/auth-guard';
 import { Wallet, ArrowDownCircle, Package } from 'lucide-react';
 import BalanceClient from './BalanceClient';
 import TopUpSection from './TopUpSection';
@@ -11,13 +11,12 @@ const serviceClient = createClient(
 );
 
 export default async function BalancePage() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await requireCustomerPage('dropship');
 
   const { data: customer } = await serviceClient
     .from('customers')
     .select('id, name, balance, balance_held')
-    .eq('auth_user_id', user!.id)
+    .eq('auth_user_id', user.id)
     .single();
 
   const { data: transactions } = customer ? await serviceClient
