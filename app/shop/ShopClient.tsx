@@ -337,6 +337,10 @@ export default function ShopClient({ products: shippedProducts, categories, revi
       if (!raw) return;
       sessionStorage.removeItem(SHOP_STATE_KEY); // stale state не має пережити наступний свіжий захід
       const s = JSON.parse(raw);
+      // Стан — лише для того списку, з якого пішли на товар. Інакше /shop → товар →
+      // головна → плитка бренду: збережені порожні фільтри перетирали серверний
+      // «Бренд: Metylan», і сторінка бренду показувала весь магазин.
+      if (s.path !== window.location.pathname) return;
       if (s.saleOnly !== undefined) setSaleOnly(s.saleOnly);
       if (s.filterValues) setFilterValues(s.filterValues);
       if (s.filterVolumes) setFilterVolumes(s.filterVolumes);
@@ -453,6 +457,7 @@ export default function ShopClient({ products: shippedProducts, categories, revi
 
   const saveFilterState = useCallback(() => {
     sessionStorage.setItem(SHOP_STATE_KEY, JSON.stringify({
+      path: window.location.pathname,
       filterValues, filterVolumes, filterVolumesKg, filterPlasticGroup, saleOnly, inStockOnly,
     }));
   }, [filterValues, filterVolumes, filterVolumesKg, filterPlasticGroup, saleOnly, inStockOnly]);
