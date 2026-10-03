@@ -22,6 +22,7 @@ import { notifyCustomer } from '../../../../../lib/notify/send';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
 import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';
 import { checkSaleEdit, recordSaleEdit } from '../../../../../lib/accounting/edit-journal';
+import { manualStatusWithoutSaleError } from '../../../../../lib/orders/ship-guards';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -75,9 +76,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Always fetch current order for history tracking + manager backward check
     const { data: current } = await db
       .from('orders')
-      .select('status, status_history')
+      .select('status, status_history, items')
       .eq('id', id)
       .single();
+
+    // «Відправлено»/«Доставлено» руками без жодної РН — продаж не зафіксується
+    // (інваріант I7, кейс #26091195). Сторно не рахуємо: після скасованого
+    // відвантаження замовлення знову без РН.
+    if (status === 'shipped' || status === 'delivered') {
+      const { count: saleDocs } = await db
+        .from('acc_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('order_id', id)
+        .eq('doc_type', 'sale')
+        .neq('status', 'cancelled')
+        .is('reversal_of', null);
+      const noSale = manualStatusWithoutSaleError(status, { items: current?.items }, saleDocs ?? 0);
+      if (noSale) return NextResponse.json({ error: noSale }, { status: 409 });
+    }
 
     // Managers cannot move status backward or cancel non-new orders
     if (role !== 'admin') {
@@ -508,6 +524,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // shipped → косметичний статус (Варіант 3): проводок немає, резерв тримаємо до
   // доставки. РН-чернетки створює /ship; проводяться вони при доставці посилки.
+  // Без жодної РН сюди не дійти — manualStatusWithoutSaleError вище.
 
   // delivered → проводимо всі РН-чернетки замовлення (виручка/COGS/склад + комісія
   // маркетплейсу по позиціях кожної РН); резерв знімається при проведенні. Ручний

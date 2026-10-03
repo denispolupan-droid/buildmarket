@@ -1,5 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { pickupWithTtnError } from '../lib/orders/ship-guards';
+import { pickupWithTtnError, manualStatusWithoutSaleError } from '../lib/orders/ship-guards';
+
+describe('manualStatusWithoutSaleError — «Відправлено»/«Доставлено» руками без РН (#26091195)', () => {
+  const withItems = { items: [{ sku: '1205-021', qty: 1, price: 1050 }] };
+
+  it('shipped без видаткової — блок, із підказкою відвантажити кнопкою', () => {
+    const msg = manualStatusWithoutSaleError('shipped', withItems, 0);
+    expect(msg).toContain('Відправлено');
+    expect(msg).toContain('Відвантажити');
+  });
+
+  it('delivered без видаткової — блок', () => {
+    expect(manualStatusWithoutSaleError('delivered', withItems, 0)).toContain('Доставлено');
+  });
+
+  it('РН уже є (чернетка чи проведена) — можна', () => {
+    expect(manualStatusWithoutSaleError('shipped', withItems, 1)).toBeNull();
+    expect(manualStatusWithoutSaleError('delivered', withItems, 2)).toBeNull();
+  });
+
+  it('замовлення без позицій інваріант не рахує — не чіпаємо', () => {
+    expect(manualStatusWithoutSaleError('shipped', { items: [] }, 0)).toBeNull();
+    expect(manualStatusWithoutSaleError('shipped', { items: null }, 0)).toBeNull();
+    expect(manualStatusWithoutSaleError('shipped', {}, 0)).toBeNull();
+  });
+
+  it('інші статуси — не чіпаємо', () => {
+    for (const s of ['new', 'confirmed', 'picking', 'awaiting_stock', 'cancelled']) {
+      expect(manualStatusWithoutSaleError(s, withItems, 0)).toBeNull();
+    }
+  });
+});
 
 describe('pickupWithTtnError — самовивіз із накладною перевізника', () => {
   it('самовивіз без накладної — можна', () => {

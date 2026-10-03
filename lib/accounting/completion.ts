@@ -387,14 +387,39 @@ export async function syncDraftShipmentTracking(orderId: string, trackingNumber:
     .eq('status', 'draft');
 }
 
-/** Чи всі sale-чернетки замовлення проведені (для переходу замовлення в delivered). */
-export async function allOrderSalesPosted(orderId: string): Promise<boolean> {
+/**
+ * Скільки в замовлення видаткових: проведених (без сторно) і чернеток.
+ * Один запит замість двох — викликається з кронів на кожну доставлену посилку.
+ */
+export async function saleDocCounts(orderId: string): Promise<{ confirmed: number; draft: number }> {
   const db = createServiceClient();
-  const { count } = await db
+  const { data } = await db
     .from('acc_documents')
-    .select('id', { count: 'exact', head: true })
+    .select('status, reversal_of')
     .eq('order_id', orderId)
     .eq('doc_type', 'sale')
-    .eq('status', 'draft');
-  return (count ?? 0) === 0;
+    .in('status', ['draft', 'confirmed'])
+    .limit(100);
+  let confirmed = 0;
+  let draft = 0;
+  for (const d of data ?? []) {
+    if (d.status === 'draft') draft++;
+    else if (d.status === 'confirmed' && !d.reversal_of) confirmed++;
+  }
+  return { confirmed, draft };
+}
+
+/**
+ * Чи можна ставити замовленню «Доставлено»: продаж зафіксовано (є хоча б одна
+ * проведена РН) і жодна посилка не лишилась чернеткою.
+ *
+ * Раніше тут перевірялась лише відсутність чернеток, і замовлення БЕЗ жодної
+ * видаткової вважалось «проведеним». Живий кейс #26091195 (03.10.2026): статус
+ * «Відправлено» поставили селектом у картці, минаючи відгрузку, чернетка не
+ * створилась — і крон доставки спокійно перевів замовлення в «Доставлено» без
+ * виручки, собівартості, боргу постачальнику й комісії (інваріант I7).
+ */
+export async function allOrderSalesPosted(orderId: string): Promise<boolean> {
+  const { confirmed, draft } = await saleDocCounts(orderId);
+  return draft === 0 && confirmed > 0;
 }

@@ -173,8 +173,8 @@ describe('Smoke: доставка закриває замовлення доку
     expect(await completeShipmentByTtn('99999999999999', 'smoke')).toBeNull();
   });
 
-  it('порожній orderId у createSaleDraft не створює документ-сироту', async () => {
+  it('замовлення без жодної РН не вважається проведеним (I7, #26091195)', async () => {
     const fake = randomUUID();
-    expect(await allOrderSalesPosted(fake), 'замовлення без РН не вважається проведеним').toBe(true);
+    expect(await allOrderSalesPosted(fake), 'без видаткової «Доставлено» ставити не можна').toBe(false);
   });
 });

@@ -8,8 +8,9 @@ import { RZ_DELIVERY_TYPE, rzPhase, rzCarrierAccepted } from './rz-delivery';
 import { rzTrackStatuses } from './rz-delivery-api';
 import { groupByTracking } from './delivery-tracking';
 import { pickReturnTtn, buildReturnTracking } from './np-return-tracking';
-import { completeShipmentByTtn, allOrderSalesPosted, settleLegacyCommission } from './accounting/completion';
+import { completeShipmentByTtn, saleDocCounts, settleLegacyCommission } from './accounting/completion';
 import { recordTxn } from './accounting/money';
+import { alertAdmin } from './alert';
 import { notifyParcelEvent } from './notify/parcel';
 import { chargeDropshipReturnFee } from './dropship-return-fee';
 
@@ -36,6 +37,40 @@ const NOT_HANDED_OVER_CODE = '1';
 const ARRIVED_CODE = '7';
 
 export type DeliverySyncResult = { updated: number; accepted: number; checked: number; np: number; rozetka: number; rzOwn: number };
+
+/** Прапорець у orders.flags: про відсутність видаткової вже сповіщено. */
+export const SALE_DOC_MISSING_FLAG = 'sale_doc_missing';
+
+type SalesCheckOrder = { id: string; order_number: number; flags: unknown };
+
+/**
+ * Чи можна ставити «Доставлено»: усі РН замовлення проведені.
+ *
+ * Окремий випадок — видаткової немає ВЗАГАЛІ. Так буває, коли «Відправлено»
+ * поставили селектом у картці, минаючи відгрузку (#26091195, 03.10.2026): фіксувати
+ * продаж нічим, і замовлення лишається «Відвантажено», скільки б перевізник не
+ * казав «вручено». Мовчати тут не можна, але й слати алерт кожну годину (крон)
+ * безглуздо — сповіщаємо один раз і ставимо прапорець у flags.
+ */
+async function salesPostedOrAlert(o: SalesCheckOrder): Promise<boolean> {
+  const { confirmed, draft } = await saleDocCounts(o.id);
+  if (draft === 0 && confirmed > 0) return true;
+  if (confirmed === 0 && draft === 0) {
+    const flags = Array.isArray(o.flags) ? (o.flags as string[]) : [];
+    if (!flags.includes(SALE_DOC_MISSING_FLAG)) {
+      alertAdmin(
+        `Посилка вручена, а видаткової по #${o.order_number} немає — замовлення лишається «Відвантажено»`,
+        'Схоже, статус «Відправлено» поставили вручну, минаючи відгрузку, і РН не створилась. '
+        + 'Полагодити: npx tsx --env-file=.env.local scripts/repair-delivered-without-sale.mts '
+        + `--order=${o.order_number} --apply`,
+      );
+      const next = [...flags, SALE_DOC_MISSING_FLAG];
+      await serviceClient.from('orders').update({ flags: next }).eq('id', o.id);
+      o.flags = next;
+    }
+  }
+  return false;
+}
 
 /** actor — хто ініціював синк (`cron:…` або `admin:email`); іде у created_by проводок. */
 export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncResult> {
@@ -245,7 +280,8 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
         }
         // delivered ставимо ЛИШЕ коли ВСІ РН замовлення проведені — захист від
         // передчасного delivered при відгрузці кількома посилками.
-        if (await allOrderSalesPosted(orderId)) trulyDelivered.push(orderId);
+        const npOrder = chunk.find(o => o.id === orderId);
+        if (npOrder && await salesPostedOrAlert(npOrder)) trulyDelivered.push(orderId);
       }
 
       if (trulyDelivered.length) {
@@ -405,7 +441,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       continue;
     }
     // Збір за видачу вже проведено при відгрузці (rz-delivery-fee:…) — тут витрат немає.
-    if (!(await allOrderSalesPosted(o.id))) continue;
+    if (!(await salesPostedOrAlert(o))) continue;
 
     await serviceClient
       .from('orders')
@@ -421,7 +457,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
     const siblings = rzOrders.filter(s =>
       s.id !== o.id && s.tracking_number === o.tracking_number && !['cancelled', 'delivered'].includes(s.status));
     for (const s of siblings) {
-      if (!(await allOrderSalesPosted(s.id))) continue;
+      if (!(await salesPostedOrAlert(s))) continue;
       await serviceClient
         .from('orders')
         .update({ status: 'delivered', delivered_at: new Date().toISOString() })
@@ -525,7 +561,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
           }
         }
 
-        if (!(await allOrderSalesPosted(o.id))) continue;
+        if (!(await salesPostedOrAlert(o))) continue;
 
         await serviceClient
           .from('orders')

@@ -1486,6 +1486,11 @@ export default function AdminOrders({
     });
     if (res.ok) {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+    } else {
+      // Відмову сервера (нема РН для «Відправлено», кредитний ліміт, права) треба
+      // показати: селект мовчки повертався на старий статус, і менеджер не розумів, чому.
+      const data = await res.json().catch(() => ({})) as { error?: string };
+      showToast(data.error ?? `Статус не змінено (${res.status})`, 'error', 8000);
     }
     setLoading(null);
   }
@@ -2300,8 +2305,13 @@ export default function AdminOrders({
                 const ok = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
                 const failed = ids.length - ok;
                 const label = STATUSES.find(s => s.value === newStatus)?.label ?? newStatus;
-                // Панель закривається після дії; невдачі — окремим повідомленням
-                if (failed) showToast(`Статус «${label}»: ${ok} з ${ids.length}, не вдалося ${failed}`, 'error', 6000);
+                // Панель закривається після дії; невдачі — окремим повідомленням, із
+                // причиною першої відмови (інакше «не вдалося 3» нічого не пояснює).
+                const firstFail = results.find(r => r.status === 'fulfilled' && !r.value.ok);
+                const reason = firstFail && firstFail.status === 'fulfilled'
+                  ? ((await firstFail.value.json().catch(() => ({}))) as { error?: string }).error
+                  : undefined;
+                if (failed) showToast(`Статус «${label}»: ${ok} з ${ids.length}, не вдалося ${failed}${reason ? ` — ${reason}` : ''}`, 'error', 10000);
                 else showToast(`Статус «${label}» встановлено: ${ok}`, 'success');
                 setSelectedIds(new Set());
                 router.refresh();
