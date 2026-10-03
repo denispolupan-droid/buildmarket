@@ -19,28 +19,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Сервер — PostgreSQL 17, а на ubuntu-latest стоїть клієнт 16: pg_dump
+      # відмовляється («server version mismatch»). Ставимо 17 з офіційного
+      # репозиторію PGDG їхнім же скриптом і кличемо бінарники за повним шляхом,
+      # щоб обгортка pg_wrapper не підсунула 16.
       - name: Install PostgreSQL 17 client
         run: |
-          sudo apt-get install -y curl ca-certificates
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-          sudo apt-get update -qq && sudo apt-get install -y postgresql-client-17
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: pg_dump (schema + data, public schema)
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PG: /usr/lib/postgresql/17/bin
         run: |
           test -n "$DB_URL" || { echo "::error::SUPABASE_DB_URL secret is not set"; exit 1; }
           mkdir -p dump
           STAMP=$(date -u +%Y%m%d-%H%M)
-          pg_dump "$DB_URL" --schema=public --no-owner --no-privileges \
+          "$PG/pg_dump" "$DB_URL" --schema=public --no-owner --no-privileges \
             --format=custom --compress=9 --file "dump/fixline-$STAMP.dump"
-          pg_dump "$DB_URL" --schema=public --no-owner --no-privileges \
+          "$PG/pg_dump" "$DB_URL" --schema=public --no-owner --no-privileges \
             --schema-only --file "dump/fixline-$STAMP.schema.sql"
           ls -lh dump/
-          # Санітарна перевірка: у дампі мають бути ключові таблиці
-          pg_restore --list "dump/fixline-$STAMP.dump" | grep -cE "TABLE DATA public (orders|money_entries|acc_documents|product_stock) " | xargs test 4 -eq
+          # Санітарна перевірка: у дампі мають бути ключові таблиці з даними
+          "$PG/pg_restore" --list "dump/fixline-$STAMP.dump" | grep -cE "TABLE DATA public (orders|money_entries|acc_documents|product_stock) " | xargs test 4 -eq
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
