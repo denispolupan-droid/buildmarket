@@ -5,7 +5,7 @@ const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID ?? '';
 
 // Escape user-controlled values before putting them in a parse_mode:'HTML'
 // Telegram message — prevents tag injection and malformed-HTML send failures.
-function escTg(s: unknown): string {
+export function escTg(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 

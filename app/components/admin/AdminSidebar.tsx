@@ -46,6 +46,7 @@ const NAV = [
   // «Залишки» переїхали вкладками у «Закупівлю» — там же, де їх поповнюють.
   { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
   { href: '/admin/chat',                 label: 'Чати',           icon: MessageSquare,  exact: false },
+  { href: '/admin/digest',               label: 'Дайджест',       icon: Sparkles,       exact: false },
   { href: '/admin/mail',                 label: 'Пошта',          icon: Mail,           exact: false },
   { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,           exact: false },
   { href: '/admin/promo',                label: 'Акції та банери', icon: Megaphone,      exact: false },
