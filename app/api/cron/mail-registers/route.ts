@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { importMailRegisters } from '../../../../lib/mail-registers';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Реєстри виплат з пошти (НоваПей по ЕН, RozetkaPay по замовленнях) → облік.
 // Листи приходять уранці наступного дня; крон бере останні 3 дні — необроблені
@@ -9,7 +10,7 @@ import { alertAdmin } from '../../../../lib/alert';
 export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {

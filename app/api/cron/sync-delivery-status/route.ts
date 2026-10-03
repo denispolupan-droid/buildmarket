@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncDeliveryStatuses } from '../../../../lib/delivery-sync';
 import { checkRzBalanceAlert } from '../../../../lib/rz-delivery-api';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Щогодинний синк руху посилок. Сама логіка — у lib/delivery-sync (її ж викликає
 // кнопка «Синхронізувати НП» в адмінці), тут лишається тільки авторизація крона
 // й причеплений до цього ж запуску нагадувач про покинуті кошики.
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

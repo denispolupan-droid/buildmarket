@@ -4,6 +4,7 @@ import { ingestNovapayStatement, postNpPayouts } from '../../../../lib/novapay-i
 import { postNovapayAutoTopups } from '../../../../lib/novapay-autopost';
 import { createServiceClient } from '../../../../lib/supabase';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Оновлення кешу живого балансу NovaPay. Окремим кроном, бо їхній SOAP
 // відповідає по 8–30+ с на виклик — сторінки читають лише кеш.
@@ -20,7 +21,7 @@ const STALE_ALERT_MS = 3 * 60 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

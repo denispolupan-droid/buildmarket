@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Щоденний гейт: чи є публічні SECURITY DEFINER функції, доступні anon/authenticated
 // через /rest/v1/rpc (тобто новостворені функції без REVOKE — саме так у прод потрапили
@@ -14,7 +15,7 @@ const serviceClient = createClient(
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

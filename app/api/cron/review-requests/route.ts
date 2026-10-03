@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Прохання про відгук після доставки (SEO: зірки AggregateRating у видачі).
 // Одне-єдине письмо на замовлення, тільки реальним покупцям, через 5+ днів
@@ -21,7 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type OrderItem = { sku: string; name: string };
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

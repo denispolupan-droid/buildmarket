@@ -4,6 +4,7 @@ import { alertAdmin } from '../../../../lib/alert';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getRozetkaContentChanges, getRozetkaGoods, buildContentSummary } from '../../../../lib/rozetka-content';
 import { diffModeration, buildWatchAlert, type StoredState } from '../../../../lib/rozetka-moderation-watch';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -19,7 +20,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
  * з відмовою від 17.07, яку ми знайшли випадково).
  */
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

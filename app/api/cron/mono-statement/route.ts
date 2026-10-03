@@ -3,6 +3,7 @@ import { createServiceClient } from '../../../../lib/supabase';
 import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '../../../../lib/mono-ingest';
 import { allocateRzPayPayouts } from '../../../../lib/rozetkapay-allocate';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Крон-реконсиляція виписки ФОП Monobank — страховка на випадок пропущеного/
 // вимкненого вебхука. Тягне виписку за останні ~2 доби і прогоняє через той самий
@@ -12,7 +13,7 @@ import { alertAdmin } from '../../../../lib/alert';
 const MONO_STATEMENT_DAYS = 2;
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

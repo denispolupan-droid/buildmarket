@@ -3,10 +3,11 @@ import { syncPromOrders } from '../../../../lib/prom-sync';
 import { watchPromCancellations } from '../../../../lib/marketplace-cancel-watch';
 import { alertPromChatNew } from '../../../../lib/marketplace-chat-alerts';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

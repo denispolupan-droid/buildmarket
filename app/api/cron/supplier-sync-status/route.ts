@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // «Dead man's switch» для синку постачальників: перевіряє, що ціни/залишки нещодавно
 // оновлювались. Синк ходить кожні 2 години (sync-suppliers.yml); якщо останній запуск
@@ -17,7 +18,7 @@ const STALE_HOURS = 6;
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

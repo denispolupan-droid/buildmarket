@@ -35,15 +35,30 @@ export function getAbandonedCartSubject(step: 1 | 2 | 3): string {
   return SUBJECTS[step];
 }
 
+// Позиції кошика приходять із браузера покупця (/api/cart/save) і лягають у лист
+// як є. Без екранування будь-хто міг би надіслати з noreply@fixline.com.ua лист
+// із власним HTML у «назві товару». Числа теж приводимо до чисел, а не вставляємо
+// рядком.
+function esc(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function money(n: unknown): string {
+  const v = Number(n);
+  return Number.isFinite(v) ? v.toFixed(0) : '0';
+}
+
 export function buildAbandonedCartEmail(d: AbandonedCartEmailData): string {
   const itemRows = d.items.map(item => `
     <tr>
       <td style="padding:12px 0;border-bottom:1px solid #F1F5F9;font-size:13px;color:#0F172A;">
-        <div style="font-weight:600;">${item.brand} ${item.name}</div>
-        ${item.volume ? `<div style="font-size:12px;color:#94A3B8;margin-top:2px;">${item.volume}</div>` : ''}
+        <div style="font-weight:600;">${esc(item.brand)} ${esc(item.name)}</div>
+        ${item.volume ? `<div style="font-size:12px;color:#94A3B8;margin-top:2px;">${esc(item.volume)}</div>` : ''}
       </td>
-      <td style="padding:12px 0;border-bottom:1px solid #F1F5F9;font-size:13px;color:#374151;text-align:center;white-space:nowrap;">${item.qty}&nbsp;шт.</td>
-      <td style="padding:12px 0;border-bottom:1px solid #F1F5F9;font-size:13px;color:#0F172A;text-align:right;font-weight:600;white-space:nowrap;">${(item.price * item.qty).toFixed(0)}&nbsp;₴</td>
+      <td style="padding:12px 0;border-bottom:1px solid #F1F5F9;font-size:13px;color:#374151;text-align:center;white-space:nowrap;">${money(item.qty)}&nbsp;шт.</td>
+      <td style="padding:12px 0;border-bottom:1px solid #F1F5F9;font-size:13px;color:#0F172A;text-align:right;font-weight:600;white-space:nowrap;">${money(Number(item.price) * Number(item.qty))}&nbsp;₴</td>
     </tr>`).join('');
 
   return `<!DOCTYPE html>
@@ -76,17 +91,17 @@ export function buildAbandonedCartEmail(d: AbandonedCartEmailData): string {
       <tbody>${itemRows}</tbody>
     </table>
     <div style="text-align:right;padding-top:16px;font-size:16px;font-weight:700;color:#0F172A;border-top:2px solid #E2E8F0;margin-top:4px;">
-      Разом: ${d.totalPrice.toFixed(0)}&nbsp;₴
+      Разом: ${money(d.totalPrice)}&nbsp;₴
     </div>
   </td></tr>
 
   <tr><td style="padding:28px 32px 32px;text-align:center;">
-    <a href="${d.restoreUrl}"
+    <a href="${esc(d.restoreUrl)}"
        style="display:inline-block;background:#1E3A5F;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;padding:14px 40px;border-radius:10px;letter-spacing:0.01em;">
       Завершити замовлення →
     </a>
     <p style="margin:16px 0 0;font-size:12px;color:#94A3B8;">
-      Або перейдіть за посиланням: <a href="${d.restoreUrl}" style="color:#1E3A5F;">${d.restoreUrl}</a>
+      Або перейдіть за посиланням: <a href="${esc(d.restoreUrl)}" style="color:#1E3A5F;">${esc(d.restoreUrl)}</a>
     </p>
   </td></tr>
 

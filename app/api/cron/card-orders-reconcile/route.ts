@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recoverPaidCardOrders } from '../../../../lib/card-order-recovery';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Страховка на карткові оплати: якщо вебхук Monobank не створив замовлення, це
 // зробить звірка з випискою мерчанта. Основний шлях лишається вебхуком (замовлення
@@ -9,7 +10,7 @@ import { recoverPaidCardOrders } from '../../../../lib/card-order-recovery';
 // 04–07.08.2026 через зламану перевірку підпису не створилось жодного карткового
 // замовлення, і дізналися ми про це зі скарги клієнта, а не з моніторингу.
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

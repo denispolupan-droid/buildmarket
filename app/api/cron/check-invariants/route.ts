@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { alertAdmin } from '../../../../lib/alert';
 import { findSaleDivergences, type SaleDivergence } from '../../../../lib/accounting/reconcile-sale-docs';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Перевірка інваріантів обліку на БОЙОВІЙ базі (той самий check_invariants, що ганяється
 // в тестах). Виконується на проді, де вже є service-role креденшели — не потрібно класти
@@ -15,7 +16,7 @@ const serviceClient = createClient(
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

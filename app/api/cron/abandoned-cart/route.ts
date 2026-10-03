@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildAbandonedCartEmail, getAbandonedCartSubject } from '../../../../lib/abandoned-cart-email';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,7 +80,7 @@ function pickOnePerEmail(rows: CartRow[] | null): CartRow[] {
 const COLS = 'id, email, items, total_price, recover_token, last_seen_at';
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

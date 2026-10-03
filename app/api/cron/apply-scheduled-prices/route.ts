@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { markupFromPrice } from '../../../../lib/price-formula';
 import { saveProductMarkups, type ProductMarkup } from '../../../../lib/price-overrides';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,7 @@ type SnapshotRow = {
 };
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

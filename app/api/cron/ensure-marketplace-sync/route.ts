@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Сторож pg_cron-синку маркетплейсів. Живе на Vercel cron (managed — не зникне
 // разом із БД), тому це незалежний зовнішній контроль. Раз на запуск:
@@ -13,7 +14,7 @@ import { alertAdmin } from '../../../../lib/alert';
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

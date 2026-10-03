@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncEpicentrOrders } from '../../../../lib/epicentr-sync';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 // Синк замовлень Епіцентру (Vercel Cron, vercel.json). Скасування покупцем і
 // допуш статусів/ТТН — усередині syncEpicentrOrders (окремого watch-модуля не
 // треба: список /v4/oms/orders повертає і скасовані, і живі статуси разом).
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

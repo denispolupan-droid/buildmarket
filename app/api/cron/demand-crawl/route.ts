@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { crawlDemand } from '../../../../lib/seo/demand-crawl';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export const maxDuration = 800;
  * 120 мс — 5–6 хвилин; перший обхід зайняв 343 с, тому maxDuration 800 (Fluid). Розклад — vercel.json.
  */
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {

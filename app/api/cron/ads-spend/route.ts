@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncAdsSpend, uploadOrderConversions } from '../../../../lib/google-ads';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,7 @@ export const maxDuration = 120;
  * Кроки незалежні: збій одного не блокує інший, обидва звітують окремо.
  */
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));

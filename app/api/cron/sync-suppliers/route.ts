@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { syncSupplier } from '../../../../lib/supplier-sync';
 import { pushPromStock } from '../../../../lib/prom-stock-push';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +14,7 @@ const serviceClient = createClient(
 export async function GET(req: NextRequest) {
   // Vercel cron передає секретний токен через Authorization header
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

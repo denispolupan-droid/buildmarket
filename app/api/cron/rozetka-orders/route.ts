@@ -5,10 +5,11 @@ import { watchRozetkaRefunds } from '../../../../lib/marketplace-returns-watch';
 import { alertRozetkaChatUnread, alertRozetkaReviews } from '../../../../lib/marketplace-chat-alerts';
 import { syncRozetkaFees } from '../../../../lib/rozetka-fees-sync';
 import { alertAdmin } from '../../../../lib/alert';
+import { cronAuthorized } from '../../../../lib/cron-auth';
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
