@@ -67,7 +67,7 @@
     },
     {
       "path": "/api/cron/blog-drafts",
-      "schedule": "10 5 * * 1-6"
+      "schedule": "10 5 1,15 * *"
     },
     {
       "path": "/api/cron/morning-digest",
