@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import { normalizeProductImage } from '../../../../../lib/product-image';
-import { uploadToR2, deleteFromR2 } from '../../../../../lib/r2';
+import { uploadToR2 } from '../../../../../lib/r2';
 import { brandFolder } from '../../../../../lib/seo/slug';
-
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
@@ -34,16 +28,6 @@ export async function POST(req: NextRequest) {
   if (file.size > 10 * 1024 * 1024)
     return NextResponse.json({ error: 'Файл завеликий (макс. 10 МБ)' }, { status: 413 });
 
-  // Look up the product's current photo now, before it's overwritten below, so the old
-  // R2 object can be cleaned up once the new one is safely uploaded — otherwise every
-  // re-upload leaves an orphaned file behind, same as the old Supabase Storage did.
-  const { data: existing } = await serviceClient
-    .from('products')
-    .select('image')
-    .eq('sku', sku)
-    .single();
-  const oldImage = existing?.image ?? null;
-
   const srcBuf = Buffer.from(await file.arrayBuffer());
 
   let webpBuf: Buffer;
@@ -67,17 +51,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Upload failed' }, { status: 500 });
   }
 
-  // Clean up the previous photo now that the new one is safely in place. Only ever
-  // deletes our own /img/products/... keys — a stray external or malformed value in
-  // the DB is left untouched rather than risking a delete on some unrelated URL.
-  if (oldImage && oldImage.startsWith('/img/products/') && oldImage !== imageUrl) {
-    try {
-      await deleteFromR2([oldImage.replace(/^\/img\/products\//, '')]);
-    } catch {
-      // Non-fatal — the new photo already uploaded fine; an orphaned old file just
-      // sits unused in R2 (well within the free tier) rather than breaking the upload.
-    }
-  }
-
+  // Старий файл тут НЕ видаляємо. Раніше видаляли одразу після заливки — і це
+  // лишало биті фото: новий шлях потрапляє в БД лише по «Зберегти» (не зберіг —
+  // старого файлу вже немає), а один файл може ділити кілька товарів (1603-011
+  // посилався на фото 1603-010 і втратив його разом із ним). Прибирання старого
+  // файлу — в PUT /api/admin/products, після запису нового шляху, і тільки якщо
+  // на нього не посилається інший товар (lib/product-image-cleanup).
   return NextResponse.json({ imageUrl });
 }

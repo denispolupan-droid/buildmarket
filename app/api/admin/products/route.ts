@@ -6,6 +6,7 @@ import { generateProductSlug } from '../../../../lib/seo/slug';
 import { deleteProducts } from '../../../../lib/product-delete';
 import { normalizeCharsDb, type CharInput } from '../../../../lib/characteristics';
 import { generateSku } from '../../../../lib/product-sku';
+import { cleanupReplacedImage } from '../../../../lib/product-image-cleanup';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -102,6 +103,12 @@ export async function PUT(req: NextRequest) {
     (c: { label: string; value: string }) => /^колір$/i.test(c.label.trim())
   )?.value?.trim() || null;
 
+  // Поточне фото — щоб після запису нового шляху прибрати старий файл з R2
+  // (upload-image більше не видаляє його сам, див. коментар там)
+  const { data: before } = 'image' in (product ?? {})
+    ? await serviceClient.from('products').select('image').eq('sku', sku).maybeSingle()
+    : { data: null };
+
   const { error: productError } = await serviceClient
     .from('products')
     .update(product)
@@ -110,6 +117,8 @@ export async function PUT(req: NextRequest) {
   if (productError) {
     return NextResponse.json({ error: productError.message }, { status: 500 });
   }
+
+  if (before) await cleanupReplacedImage(serviceClient, sku, before.image, product.image);
 
   if (stock) {
     const { error: stockError } = await serviceClient
