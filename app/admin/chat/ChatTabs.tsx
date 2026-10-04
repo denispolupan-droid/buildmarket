@@ -25,12 +25,14 @@ function timeAgo(dateStr: string) {
 }
 
 export default function ChatTabs({
-  sessions, lastMessages, initialTab, autoOpenOrderId,
+  sessions, lastMessages, initialTab, autoOpenOrderId, autoOpenChatKey,
 }: {
   sessions: SiteChatSession[];
   lastMessages: Record<string, string>;
   initialTab: 'site' | 'mp';
   autoOpenOrderId?: string | null;
+  /** «mp:id» з Telegram-алерту — відкрити саме цей чат МП */
+  autoOpenChatKey?: string | null;
 }) {
   const [tab, setTab] = useState<'site' | 'mp'>(initialTab);
   const siteUnread = sessions.reduce((s, c) => s + (c.unread_count ?? 0), 0);
@@ -79,7 +81,7 @@ export default function ChatTabs({
         borderRadius: '0 12px 12px 12px', overflow: 'hidden',
       }}>
       {tab === 'mp' ? (
-        <MarketplaceChatsClient embedded autoOpenOrderId={autoOpenOrderId} />
+        <MarketplaceChatsClient embedded autoOpenOrderId={autoOpenOrderId} autoOpenChatKey={autoOpenChatKey} />
       ) : (
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
           {!sessions.length ? (

@@ -9,17 +9,69 @@ export function escTg(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export async function sendTelegram(chatId: string | number, text: string): Promise<void> {
-  if (!TOKEN || !chatId) return;
+export type TelegramInlineButton = { text: string; callback_data?: string; url?: string };
+
+/**
+ * Надіслати повідомлення (HTML). Повертає message_id або null, якщо не вийшло —
+ * основний потік (оформлення замовлення, крон) від цього не залежить.
+ * replyMarkup — inline-кнопки (чернетки чатів МП: «Надіслати як є»).
+ */
+export async function sendTelegram(
+  chatId: string | number,
+  text: string,
+  opts?: { replyMarkup?: { inline_keyboard: TelegramInlineButton[][] }; disablePreview?: boolean },
+): Promise<number | null> {
+  if (!TOKEN || !chatId) return null;
   try {
-    await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+      body: JSON.stringify({
+        chat_id: chatId, text, parse_mode: 'HTML',
+        ...(opts?.replyMarkup ? { reply_markup: opts.replyMarkup } : {}),
+        ...(opts?.disablePreview ? { link_preview_options: { is_disabled: true } } : {}),
+      }),
     });
+    const json = await res.json().catch(() => null) as { ok?: boolean; result?: { message_id?: number } } | null;
+    return json?.ok ? (json.result?.message_id ?? null) : null;
   } catch (err) {
     // Не валимо основний потік (оформлення замовлення), але й не ковтаємо помилку мовчки.
     console.error('[telegram] sendMessage failed:', err);
+    return null;
+  }
+}
+
+/** Замінити текст уже надісланого повідомлення (і прибрати кнопки, якщо markup не передано). */
+export async function editTelegramMessage(
+  chatId: string | number, messageId: number, text: string,
+  replyMarkup?: { inline_keyboard: TelegramInlineButton[][] },
+): Promise<void> {
+  if (!TOKEN || !chatId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML',
+        reply_markup: replyMarkup ?? { inline_keyboard: [] },
+      }),
+    });
+  } catch (err) {
+    console.error('[telegram] editMessageText failed:', err);
+  }
+}
+
+/** Відповідь на натискання inline-кнопки — спливашка в Telegram. */
+export async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
+  if (!TOKEN) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackQueryId, ...(text ? { text } : {}) }),
+    });
+  } catch (err) {
+    console.error('[telegram] answerCallbackQuery failed:', err);
   }
 }
 

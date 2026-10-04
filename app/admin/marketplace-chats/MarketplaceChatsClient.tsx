@@ -63,10 +63,12 @@ function timeAgo(dateStr: string | null): string {
   return `${Math.floor(diff / 86400)} дн`;
 }
 
-export default function MarketplaceChatsClient({ embedded = false, autoOpenOrderId }: {
+export default function MarketplaceChatsClient({ embedded = false, autoOpenOrderId, autoOpenChatKey }: {
   embedded?: boolean;
   /** Наш id замовлення: прийшли з картки замовлення — одразу відкриваємо його чат. */
   autoOpenOrderId?: string | null;
+  /** «mp:id» з Telegram-алерту про чернетку — відкрити саме цей діалог. */
+  autoOpenChatKey?: string | null;
 }) {
   const [items, setItems] = useState<ChatItem[]>([]);
   // Відкриваємо лише раз: інакше кожне оновлення списку перекидало б менеджера
@@ -138,13 +140,15 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
   // Перехід із картки замовлення. Шукаємо по нашому id, а не по номеру МП:
   // номер у чата може бути порожній, а id — точний збіг без здогадок.
   useEffect(() => {
-    if (!autoOpenOrderId || autoOpened.current || listLoading) return;
-    const chat = items.find(i => i.ourOrderId === autoOpenOrderId);
+    if ((!autoOpenOrderId && !autoOpenChatKey) || autoOpened.current || listLoading) return;
+    const chat = autoOpenChatKey
+      ? items.find(i => `${i.mp}:${i.id}` === autoOpenChatKey)
+      : items.find(i => i.ourOrderId === autoOpenOrderId);
     autoOpened.current = true;
     if (chat) void openChat(chat);
     else setAutoOpenMiss(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpenOrderId, items, listLoading]);
+  }, [autoOpenOrderId, autoOpenChatKey, items, listLoading]);
 
   async function openChat(item: ChatItem) {
     setSelected(item);

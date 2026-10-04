@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncRozetkaOrders } from '../../../../lib/rozetka-sync';
 import { watchRozetkaCancellations } from '../../../../lib/marketplace-cancel-watch';
 import { watchRozetkaRefunds } from '../../../../lib/marketplace-returns-watch';
-import { alertRozetkaChatUnread, alertRozetkaReviews } from '../../../../lib/marketplace-chat-alerts';
+import { alertRozetkaReviews } from '../../../../lib/marketplace-chat-alerts';
+import { alertMarketplaceChatDrafts } from '../../../../lib/marketplace-chat-telegram';
 import { syncRozetkaFees } from '../../../../lib/rozetka-fees-sync';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
@@ -33,10 +34,11 @@ export async function GET(req: NextRequest) {
       console.error('[rozetka-refund-watch]', err);
     }
 
-    // Нові повідомлення покупців у чаті → Telegram
+    // Нові повідомлення покупців у чаті → Telegram з чернеткою відповіді й
+    // кнопкою «Надіслати як є» (lib/marketplace-chat-telegram)
     let chatWatch: unknown = null;
     try {
-      chatWatch = await alertRozetkaChatUnread();
+      chatWatch = await alertMarketplaceChatDrafts('rozetka');
     } catch (err) {
       console.error('[rozetka-chat-alert]', err);
     }

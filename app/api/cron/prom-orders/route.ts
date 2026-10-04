@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncPromOrders } from '../../../../lib/prom-sync';
 import { watchPromCancellations } from '../../../../lib/marketplace-cancel-watch';
-import { alertPromChatNew } from '../../../../lib/marketplace-chat-alerts';
+import { alertMarketplaceChatDrafts } from '../../../../lib/marketplace-chat-telegram';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 
@@ -22,10 +22,11 @@ export async function GET(req: NextRequest) {
       console.error('[prom-cancel-watch]', err);
     }
 
-    // Нові повідомлення покупців у чаті → Telegram
+    // Нові повідомлення покупців у чаті → Telegram з чернеткою відповіді й
+    // кнопкою «Надіслати як є» (lib/marketplace-chat-telegram)
     let chatWatch: unknown = null;
     try {
-      chatWatch = await alertPromChatNew();
+      chatWatch = await alertMarketplaceChatDrafts('prom');
     } catch (err) {
       console.error('[prom-chat-alert]', err);
     }
