@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { normalizeCharsDb, loadCharDictionary, facetSpecsFor, facetsToChars, normCharKey, FACET_UNKNOWN, type FacetSpec } from './characteristics';
 import { THIN_DESCRIPTION_CHARS } from './seo/thresholds';
 import type { CostSink } from './ai-cost';
+import { languageSlips } from './marketplace-description';
 
 // ЄДИНИЙ рушій генерації контенту картки товару. Обидва входи — розділ SEO
 // (/admin/seo → catalog-enricher) і кнопка в картці (/products → product-ai-filler)
@@ -242,13 +243,16 @@ const ITEM_TIMEOUT_MS = 120_000;
  * 04.09.2026 (7 карток) і 03.10.2026 (1603-021: короткий опис двічі російською).
  */
 export function uaFieldsWithRussian(gen: GeneratedUA): string[] {
-  const ru = /[ыэъё]/i;
+  // Та сама перевірка, що й для MP-описів: чужі літери + російська морфологія
+  // («Самоклеющаяся» не має ы/э/ъ/ё, але це російське слово).
+  const ru = (s: string | null | undefined) => languageSlips(s ?? '', 'uk').length > 0;
   const out: string[] = [];
-  if (ru.test(gen.description ?? '')) out.push('description');
-  if (ru.test(gen.description_full ?? '')) out.push('description_full');
-  if (ru.test(gen.keywords ?? '')) out.push('keywords');
-  if ((gen.faq ?? []).some(f => ru.test(f.q) || ru.test(f.a))) out.push('faq');
-  if ((gen.characteristics ?? []).some(c => ru.test(c.value))) out.push('characteristics');
+  if (ru(gen.description)) out.push('description');
+  if (ru(gen.description_full)) out.push('description_full');
+  // keywords можуть містити російські запити навмисно? Ні — для них є keywords_ru.
+  if (ru(gen.keywords)) out.push('keywords');
+  if ((gen.faq ?? []).some(f => ru(f.q) || ru(f.a))) out.push('faq');
+  if ((gen.characteristics ?? []).some(c => ru(c.value))) out.push('characteristics');
   return out;
 }
 
@@ -267,7 +271,7 @@ export async function generateUA(
   // помилка, а не російський текст у картці (його потім переписують руками).
   for (let attempt = 0; attempt < 2; attempt++) {
     const slippedPrev: string[] = gen ? uaFieldsWithRussian(gen) : [];
-    const retryNote: string = attempt === 0 ? '' : `\n\nУВАГА: попередня відповідь містила російську мову в полях, що мають бути УКРАЇНСЬКИМИ (${slippedPrev.join(', ')}). Усі поля, крім name_ru, — тільки українською: жодних літер ы, э, ъ, ё.`;
+    const retryNote: string = attempt === 0 ? '' : `\n\nУВАГА: попередня відповідь містила російську мову в полях, що мають бути УКРАЇНСЬКИМИ (${slippedPrev.join(', ')}). Усі поля, крім name_ru, — тільки українською: жодних літер ы, э, ъ, ё і російських форм на кшталт «самоклеющаяся», «бутилкаучуковая» (українською — «самоклейна», «бутилкаучукова»).`;
     const msg: Anthropic.Message = await anthropic.messages.create(
       {
         model: 'claude-opus-4-8',

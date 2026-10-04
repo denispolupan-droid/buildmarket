@@ -1,7 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import {
-  mpDescription, mpDescriptionRu, isMpDescriptionClean, languageSlips,
+  mpDescription, mpDescriptionRu, isMpDescriptionClean, languageSlips, looksRussianUk,
 } from '../lib/marketplace-description';
+
+// 04.10.2026: «Самоклеющаяся бутилкаучуковая» в uk-описі проходило перевірку по ы/ъ/э/ё.
+describe('looksRussianUk', () => {
+  it('ловить російську морфологію без чужих літер', () => {
+    expect(looksRussianUk('Самоклеющаяся')).toBe(true);
+    expect(looksRussianUk('бутилкаучуковая')).toBe(true);
+    expect(looksRussianUk('герметизирующая')).toBe(true);
+    expect(languageSlips('Самоклеющаяся стрічка', 'uk')).toEqual(['Самоклеющаяся']);
+  });
+  it('не чіпає українські слова', () => {
+    for (const w of ['самоклейна', 'бутилкаучукова', 'зграя', 'найкращий', 'ящик', 'герметизуюча', 'покрівля', 'надається']) {
+      expect(looksRussianUk(w)).toBe(false);
+    }
+  });
+  it('російський текст перевіряє лише за і/ї/є/ґ', () => {
+    expect(languageSlips('Самоклеящаяся лента', 'ru')).toEqual([]);
+  });
+});
 
 // Опис для маркетплейсу — окремий текст, і вибір «що саме поїде у фід» тепер
 // логіка, а не поле. Тести тримають дві її властивості: пріоритет MP-тексту і

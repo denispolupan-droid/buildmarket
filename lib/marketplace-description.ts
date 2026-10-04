@@ -47,5 +47,18 @@ export function languageSlips(text: string, lang: 'uk' | 'ru', productName = '')
   const alien = lang === 'ru' ? /[іїєґ]/i : /[ыъэё]/i;
   const known = new Set(productName.toLowerCase().split(/[^\p{L}\d'’-]+/u).filter(Boolean));
   const words = text.split(/[^\p{L}'’-]+/u).filter(Boolean);
-  return [...new Set(words.filter(w => alien.test(w) && !known.has(w.toLowerCase())))];
+  return [...new Set(words.filter(w => (alien.test(w) || (lang === 'uk' && looksRussianUk(w))) && !known.has(w.toLowerCase())))];
+}
+
+/**
+ * Російське слово без «чужих» літер: «Самоклеющаяся бутилкаучуковая» в
+ * українському описі (04.10.2026, 5 карток Aqua Protect) проходило перевірку
+ * по ы/ъ/э/ё. Ловимо морфологію, якої в українській немає: дієприкметники на
+ * «-ющ-» (укр. «-юч-») і прикметникові закінчення «-ая/-яя/-ое» у довгих
+ * словах (короткі на кшталт «зграя» — українські).
+ */
+export function looksRussianUk(word: string): boolean {
+  const w = word.toLowerCase();
+  if (/ющ/.test(w)) return true;
+  return w.length >= 7 && /(ая|яя|ое)(ся)?$/.test(w);
 }
