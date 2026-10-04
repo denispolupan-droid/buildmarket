@@ -117,3 +117,21 @@ export function planNpRegisterApply(reg: NpRegister, lookup: NpRegisterLookup, e
   }
   return plan;
 }
+
+/**
+ * Наступний вільний ключ для повторної проводки по тій самій парі (документ, замовлення):
+ * base, base:2, base:3 … RPC record_money_txn при зайнятому ключі МОВЧКИ повертає старий
+ * txn_id (без помилки unique), тому «спробувати і зловити дубль» не працює — 01.10.2026
+ * реєстр 15092123 так втратив проводку 547,25 по #26081076. Вільність ключа визначаємо
+ * по вже існуючих ключах, як у rozetkapay-register-apply.
+ */
+export function nextSeqKey(base: string, existingKeys: Iterable<string>): string {
+  let max = 0;
+  for (const k of existingKeys) {
+    if (k === base) { max = Math.max(max, 1); continue; }
+    if (!k.startsWith(base + ':')) continue;
+    const n = Number(k.slice(base.length + 1));
+    if (Number.isInteger(n) && n > max) max = n;
+  }
+  return max === 0 ? base : `${base}:${max + 1}`;
+}

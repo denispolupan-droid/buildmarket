@@ -17,9 +17,9 @@ import { createServiceClient } from './supabase';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';
 import { fetchAllRows } from './db-paginate';
-import { planNpRegisterApply, type NpRegister, type NpRegisterLookup } from './novapay-register-rules';
+import { planNpRegisterApply, nextSeqKey, type NpRegister, type NpRegisterLookup } from './novapay-register-rules';
 
-export { parseNpMoney, parseNpRegisterSheet, planNpRegisterApply } from './novapay-register-rules';
+export { parseNpMoney, parseNpRegisterSheet, planNpRegisterApply, nextSeqKey } from './novapay-register-rules';
 export type { NpRegister, NpRegisterRow, NpRegisterLookup, NpRegisterPlan, NpKnownOrder } from './novapay-register-rules';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -31,15 +31,22 @@ export type NpRegisterApplyResult = {
 };
 
 type Db = ReturnType<typeof createServiceClient>;
-const isDup = (err: unknown) => /unique|duplicate|23505/.test(String(err instanceof Error ? err.message : err));
 
-/** Проводка з ключем; якщо ключ уже зайнятий — наступний суфікс (:2, :3 …), як у rzpay-register-apply. */
+/**
+ * Проводка з ключем; якщо ключ уже зайнятий — наступний суфікс (:2, :3 …), як у
+ * rzpay-register-apply. Вільний суфікс шукаємо по існуючих ключах: RPC record_money_txn
+ * при зайнятому ключі не кидає помилку, а мовчки повертає старий txn_id (див. nextSeqKey),
+ * тому «спробувати і зловити дубль» тут не працювало і проводка губилась.
+ */
 async function postWithSeq(base: string, input: Omit<Parameters<typeof recordTxn>[0], 'idempotencyKey'>): Promise<string> {
-  for (let seq = 1; seq <= 9; seq++) {
-    try { return await recordTxn({ ...input, idempotencyKey: seq === 1 ? base : `${base}:${seq}` }); }
-    catch (err) { if (!isDup(err)) throw err; }
-  }
-  throw new Error('забагато повторів ключа ' + base);
+  const db = createServiceClient();
+  const { data: rows, error } = await db
+    .from('money_entries').select('idempotency_key')
+    .or(`idempotency_key.eq.${base},idempotency_key.like.${base}:%`)
+    .order('id').limit(50);
+  if (error) throw new Error(`ключі ${base}: ${error.message}`);
+  const key = nextSeqKey(base, (rows ?? []).map(r => String(r.idempotency_key)));
+  return recordTxn({ ...input, idempotencyKey: key });
 }
 
 type O = { id: string; order_number: number; tracking_number: string | null; contact: string | null; total_price: number; delivered_at: string | null; created_at: string; payment_type: string | null; status: string };

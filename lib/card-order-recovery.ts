@@ -1,5 +1,5 @@
 import { createServiceClient } from './supabase';
-import { recordCustomerPayment } from './accounting/money';
+import { recordCardOrderPayment } from './card-order-ledger';
 import { alertAdmin } from './alert';
 import { getMonoAcquiringToken } from './mono-config';
 import { notifyPaidCardOrder } from './card-order-notify';
@@ -100,15 +100,12 @@ export async function recoverPaidCardOrders(opts: { days?: number; notify?: bool
     }
 
     try {
-      await recordCustomerPayment({
-        customerId:     (payload.customer_id as string) ?? `order:${order.id}`,
-        amount:         amountUah,
-        paymentMethod:  'acquiring',
-        businessDate:   (payment.date ?? new Date().toISOString()).slice(0, 10),
-        description:    `Оплата картою — замовлення #${order.order_number}`,
-        createdBy:      opts.createdBy,
-        // Той самий ключ, що й у вебхука — щоб оплата не задвоїлась, якщо він дійде пізніше.
-        idempotencyKey: `mono:payment:${order.id}`,
+      // Той самий помічник і ключ, що й у вебхука — щоб оплата не задвоїлась, якщо він дійде пізніше.
+      await recordCardOrderPayment({
+        orderId:      order.id as string,
+        amount:       amountUah,
+        businessDate: (payment.date ?? new Date().toISOString()).slice(0, 10),
+        createdBy:    opts.createdBy,
       });
     } catch (err) {
       alertAdmin(`Оплату замовлення #${order.order_number} не записано в леджер`, err);

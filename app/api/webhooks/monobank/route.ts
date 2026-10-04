@@ -11,6 +11,7 @@ import { verifyMonoSignature } from '../../../../lib/mono-signature';
 import { alertAdmin } from '../../../../lib/alert';
 import { getMonoAcquiringToken } from '../../../../lib/mono-config';
 import { notifyPaidCardOrder } from '../../../../lib/card-order-notify';
+import { recordCardOrderPayment } from '../../../../lib/card-order-ledger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -227,7 +228,7 @@ export async function POST(req: NextRequest) {
     const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
 
     // Записуємо оплату в AR-леджер
-    await recordOrderPaymentToLedger(order.id, draft.user_id, amountUah, businessDate(body));
+    await recordOrderPaymentToLedger(order.id, amountUah, businessDate(body));
 
     // Листи покупцю й нам — спільною функцією зі звіркою: замовлення, підняте
     // кроном, мусить давати покупцю таке саме підтвердження, як і це.
@@ -325,7 +326,7 @@ export async function POST(req: NextRequest) {
       const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
 
       // Записуємо оплату в AR-леджер
-      await recordOrderPaymentToLedger(order.id, null, amountUah, businessDate(body));
+      await recordOrderPaymentToLedger(order.id, amountUah, businessDate(body));
 
       notifyAdminNewOrder({
         order_number:       order.order_number,
@@ -390,58 +391,16 @@ function businessDate(body: { createdDate?: string; modifiedDate?: string }): st
     : new Date().toISOString().slice(0, 10);
 }
 
-async function recordOrderPaymentToLedger(
-  orderId: string,
-  userId: string | null,
-  amount: number,
-  date: string,
-) {
+// Сторона оплати — та сама, що буде в продажу (customer_id з checkout або guest);
+// раніше для гостя тут була службова сторона order:<id>, і оплачене замовлення
+// висіло боргом клієнта (див. lib/card-order-ledger).
+async function recordOrderPaymentToLedger(orderId: string, amount: number, date: string) {
   try {
-    // Знаходимо замовлення і активний договір клієнта
-    const { data: order } = await serviceClient
-      .from('orders')
-      .select('id, order_number, contact, channel_code')
-      .eq('id', orderId)
-      .single();
-
-    if (!order) return;
-
-    // Шукаємо customer_id через auth_user_id або по email
-    let customerId: string | null = null;
-    let contractId: string | null = null;
-
-    if (userId) {
-      const { data: customer } = await serviceClient
-        .from('customers')
-        .select('id')
-        .eq('auth_user_id', userId)
-        .single();
-      customerId = customer?.id ?? null;
-    }
-
-    if (customerId) {
-      const { data: contract } = await serviceClient
-        .from('customer_contracts')
-        .select('id')
-        .eq('customer_id', customerId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      contractId = contract?.id ?? null;
-    }
-
-    await recordCustomerPayment({
-      customerId:      customerId ?? `order:${orderId}`,
-      contractId:      contractId ?? undefined,
-      amount,
-      paymentMethod:   'acquiring',
-      businessDate:    date,
-      description:     `Оплата картою — замовлення #${order.order_number}`,
-      createdBy:       'monobank_webhook',
-      idempotencyKey:  `mono:payment:${orderId}`,
-    });
+    await recordCardOrderPayment({ orderId, amount, businessDate: date, createdBy: 'monobank_webhook' });
   } catch (err) {
     console.error('[monobank] recordOrderPaymentToLedger failed:', err);
+    alertAdmin('Monobank: оплату замовлення не записано в леджер — внесіть оплату вручну', {
+      orderId, amount, error: err instanceof Error ? err.message : String(err),
+    });
   }
 }

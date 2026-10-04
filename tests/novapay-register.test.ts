@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNpRegisterSheet, parseNpMoney, planNpRegisterApply } from '../lib/novapay-register-rules';
+import { parseNpRegisterSheet, parseNpMoney, planNpRegisterApply, nextSeqKey } from '../lib/novapay-register-rules';
 import { classifyRegisterMail, extractRzPayRegisterLink } from '../lib/mail-registers-rules';
 
 // Живий файл з пошти: «Реєстр платежів контрагента Полупан Д.О. ФОП № 17739656 від 26 вересня 2026 р.XLSX»
@@ -55,6 +55,21 @@ describe('planNpRegisterApply — доводимо проводки до реє�
     const plan = planNpRegisterApply(parseNpRegisterSheet(sheet()), row => orders[row.ttn] ?? null, {});
     expect(plan.unknown.map(u => u.ttn)).toEqual(['59001786325424']);
     expect(plan.post).toHaveLength(2);
+  });
+});
+
+describe('nextSeqKey — повторна проводка по тій самій парі (документ, замовлення)', () => {
+  it('ключ вільний — без суфікса', () => {
+    expect(nextSeqKey('np-payout:52556653:B', [])).toBe('np-payout:52556653:B');
+    expect(nextSeqKey('np-payout:52556653:B', ['np-payout:52556653:A', 'np-payout-undo:52556653:B'])).toBe('np-payout:52556653:B');
+  });
+  it('ключ зайнятий — :2, далі за максимальним суфіксом (кейс 01.10: реєстр 15092123 переписував #26081076)', () => {
+    expect(nextSeqKey('np-payout:52556653:B', ['np-payout:52556653:B'])).toBe('np-payout:52556653:B:2');
+    expect(nextSeqKey('np-payout:52556653:B', ['np-payout:52556653:B', 'np-payout:52556653:B:2', 'np-payout:52556653:B:3'])).toBe('np-payout:52556653:B:4');
+    expect(nextSeqKey('np-payout:52556653:B', ['np-payout:52556653:B:2'])).toBe('np-payout:52556653:B:3');
+  });
+  it('чужі ключі з тим самим префіксом не рахуються', () => {
+    expect(nextSeqKey('np-payout:1:agg', ['np-payout:1:agg-rest', 'np-payout:1:agg-rest:2'])).toBe('np-payout:1:agg');
   });
 });
 
