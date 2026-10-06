@@ -6,9 +6,11 @@ import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '..
 import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';
 import { allocateRzPayPayouts } from '../../../../../lib/rozetkapay-allocate';
 import { recordPartnerBankTopup, recordPartnerBankPayout } from '../../../../../lib/accounting/partner-ledger';
+import { parseIncomeCategory, incomePartyFor } from '../../../../../lib/mono-income-rules';
 
 // Виписка Mono: документи (списання і незіставлені надходження) і категоризація людиною.
 // Списання = DR <витрата | novapay | cash | supplier | owner | taxes> / CR bank;
+// надходження-компенсація (income:<стаття>) = DR bank / CR <стаття>[сторона];
 // ідемпотентно за id документа (mono-txn:{id}).
 
 const EXPENSE_ACCOUNTS: AccountType[] = ['logistics', 'loading', 'customs', 'packaging', 'rent', 'salary', 'marketing', 'opex', 'taxes'];
@@ -100,10 +102,25 @@ export async function POST(req: NextRequest) {
 
   let txnId: string;
   try {
-    if (row.direction === 'in') {
-      // Надходження не за замовленням: переказ з NovaPay / внесення готівки / інше
+    const incomeAccount = row.direction === 'in' ? parseIncomeCategory(category) : null;
+    if (incomeAccount) {
+      // Компенсація / повернення витрати (НП відшкодувала розбитий товар, повернення
+      // переплати тощо): зменшує ту статтю, яку компенсує, — у P&L той самий кошик, що
+      // й сама витрата. Номер замовлення (необов'язково) прив'язує проводку до угоди.
+      let orderId: string | undefined;
+      const orderNumber = parseInt(String(body.orderNumber ?? '').replace(/\D/g, ''), 10);
+      if (orderNumber) {
+        const { data: order } = await db.from('orders').select('id').eq('order_number', orderNumber).maybeSingle();
+        if (!order) return NextResponse.json({ error: `Замовлення #${orderNumber} не знайдено` }, { status: 404 });
+        orderId = order.id;
+      }
+      txnId = await recordTxn({ debitAccount: 'bank', creditAccount: incomeAccount, creditParty: incomePartyFor(incomeAccount, row.counter_name, row.comment),
+        amount, businessDate: date, docType: 'expense', orderId, description: descr || `Компенсація — ${row.counter_name ?? ''}`.trim(),
+        idempotencyKey: `mono-txn:${row.id}`, createdBy: by, meta: { mono_txn_id: row.id, manual: true, compensation: true, counterparty: row.counter_name } });
+    } else if (row.direction === 'in') {
+      // Надходження не за замовленням: переказ з NovaPay / внесення готівки / внесок власника
       const src = category === 'transfer-in:novapay' ? 'novapay' : category === 'transfer-in:cash' ? 'cash' : category === 'transfer-in:owner' ? 'owner' : null;
-      if (!src) return NextResponse.json({ error: 'Для надходження доступні лише переказ з NovaPay, внесення готівки або внесок власника' }, { status: 400 });
+      if (!src) return NextResponse.json({ error: 'Для надходження доступні переказ з NovaPay, внесення готівки, внесок власника або компенсація витрати' }, { status: 400 });
       txnId = await recordTxn({ debitAccount: 'bank', creditAccount: src, amount, businessDate: date, docType: src === 'owner' ? 'owner_contribution' : 'transfer', description: descr || (src === 'owner' ? 'Внесок власника' : descr),
         idempotencyKey: `mono-txn:${row.id}`, createdBy: by, meta: { mono_txn_id: row.id, manual: true, ...(src === 'owner' ? {} : { transfer: true }) } });
     } else if (category in TRANSFER_TARGETS) {

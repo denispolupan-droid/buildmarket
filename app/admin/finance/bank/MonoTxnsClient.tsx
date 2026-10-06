@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
+import { INCOME_ACCOUNTS, INCOME_CATEGORY_LABEL } from '../../../../lib/mono-income-rules';
 
 export type MonoRow = {
   id: string; txn_time: string; amount: number; direction: 'in' | 'out';
@@ -36,6 +37,9 @@ const IN_CATEGORIES: { value: string; label: string }[] = [
   { value: 'transfer-in:owner',   label: '← Внесок власника (особисті гроші в бізнес)' },
   { value: 'transfer-in:novapay', label: '← Переказ з NovaPay' },
   { value: 'transfer-in:cash',    label: '← Внесення готівки' },
+  // Компенсації / повернення витрат: DR bank / CR стаття — зменшують витрату, а не
+  // йдуть у виручку (кейс #26091156: НП відшкодувала розбите відро за претензією)
+  ...INCOME_ACCOUNTS.map(a => ({ value: `income:${a}`, label: INCOME_CATEGORY_LABEL[a] })),
   { value: 'ignore',              label: 'Ігнорувати (не наш рух)' },
 ];
 // Категорія партнера зберігається як «partner-topup:<id>» — показуємо назву і ім'я партнера.
@@ -190,6 +194,9 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
                         </select>
                         {choice[r.id] === 'order' && (
                           <input value={orderNo[r.id] ?? ''} onChange={e => setOrderNo(o => ({ ...o, [r.id]: e.target.value }))} placeholder="Номер замовлення, напр. 26091080" inputMode="numeric" style={inp} />
+                        )}
+                        {choice[r.id]?.startsWith('income:') && (
+                          <input value={orderNo[r.id] ?? ''} onChange={e => setOrderNo(o => ({ ...o, [r.id]: e.target.value }))} placeholder="Номер замовлення (необов'язково) — якщо компенсація по конкретній угоді" inputMode="numeric" style={inp} />
                         )}
                         {choice[r.id] === 'supplier' && (
                           <select value={supplier[r.id] ?? suppliers[0]?.id ?? ''} onChange={e => setSupplier(s => ({ ...s, [r.id]: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
