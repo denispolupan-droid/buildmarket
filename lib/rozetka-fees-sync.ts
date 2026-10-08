@@ -29,7 +29,7 @@ import { getRozetkaLogisticOps, getRozetkaBalanceTxns } from './rozetka-api';
 import { recordMarketplaceServiceFee } from './accounting/money';
 import { recordTxn } from './accounting/money';
 import { alertAdmin } from './alert';
-import { isRozetkaPickupOp, isUnknownLogisticOp, isRozetkaLogisticAdj } from './rozetka-delivery-tariff';
+import { isRozetkaPickupOp, isUnknownLogisticOp, isRozetkaLogisticAdj, isRozetkaReturnDeliveryOp } from './rozetka-delivery-tariff';
 import { rozetkaFeeKind, rozetkaActualCommission } from './rozetka-fee-kind';
 
 /** Операція логістичного балансу. debit від'ємний — це списання. */
@@ -118,6 +118,49 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
       }
     }
 
+    // Доставка невитребуваного відправлення (тип 44): покупець не забрав, Rozetka
+    // повезла посилку за наш рахунок. Окремо від збору за видачу — кожна операція
+    // своєю проводкою за її id, із прив'язкою до замовлення, якщо воно наше.
+    const returns = all.filter(o => isRozetkaReturnDeliveryOp(o.operation_type) && num(o.debit) < 0);
+    if (returns.length) {
+      // order_id тут — або id замовлення Rozetka, або НАШ номер (для накладних
+      // «ROZETKA Доставка», які ми створюємо самі з номером замовлення як посиланням:
+      // операція 43029590 06.10.2026 прийшла з order_id = 26091157).
+      const ids = [...new Set(returns.map(o => Number(o.order_id)).filter(Boolean))];
+      const { data: ours } = ids.length
+        ? await db.from('orders').select('id, order_number, rozetka_order_id').or(`rozetka_order_id.in.(${ids.join(',')}),order_number.in.(${ids.join(',')})`).limit(ids.length * 2)
+        : { data: [] as { id: string; order_number: number; rozetka_order_id: number | null }[] };
+      const byRz = new Map((ours ?? []).filter(o => o.rozetka_order_id).map(o => [Number(o.rozetka_order_id), o]));
+      const byNo = new Map((ours ?? []).map(o => [Number(o.order_number), o]));
+      for (const op of returns) {
+        const order = byRz.get(Number(op.order_id)) ?? byNo.get(Number(op.order_id));
+        try {
+          // meta.kind = rz_return_delivery — rozetkaFeeKind відносить це до «pickup»
+          // (доставка), щоб звірка комісії не прийняла його за комісію й не зрізала.
+          await recordTxn({
+            debitAccount:   'marketplace_fee',
+            debitParty:     'rozetka',
+            creditAccount:  'marketplace_balance',
+            creditParty:    'rozetka',
+            amount:         Math.abs(num(op.debit)),
+            docType:        'commission',
+            orderId:        order?.id,
+            businessDate:   dateOf(op.transaction_ts),
+            description:    `Rozetka Доставка — доставка невитребуваного відправлення за наш рахунок`
+                          + (order ? ` (замовлення #${order.order_number})` : op.order_id ? ` (замовлення Rozetka ${op.order_id})` : '')
+                          + ` (операція ${op.operation_id})`,
+            idempotencyKey: `rz-return-delivery:rozetka:${op.operation_id}`,
+            createdBy:      'sync:rozetka-fees',
+            meta:           { marketplace: 'rozetka', auto: true, kind: 'rz_return_delivery', ttn: op.ttn, operation_id: op.operation_id, operation_type: op.operation_type, rozetka_order_id: op.order_id },
+          });
+          delivery++;
+        } catch (err) {
+          errors++;
+          console.error('[rozetka-fees] return delivery fee failed:', op.operation_id, err);
+        }
+      }
+    }
+
     const charges = all.filter(o => isRozetkaPickupOp(o.operation_type) && num(o.debit) < 0);
 
     if (charges.length) {
@@ -134,10 +177,17 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
         wantByRz.set(rz, cur);
       }
 
+      // order_id операції — id замовлення Rozetka АБО наш номер: накладні «ROZETKA
+      // Доставка» для замовлень сайту/роздрібу ми створюємо самі з номером
+      // замовлення як посиланням, і збір за них (34, 49 ₴ за відправника) до
+      // 08.10.2026 синк пропускав як «не наше» — #26091209, #26091211, #26101040.
+      const keys = [...wantByRz.keys()];
       const { data: ours } = await db.from('orders')
         .select('id, order_number, rozetka_order_id')
-        .in('rozetka_order_id', [...wantByRz.keys()]);
-      const byRz = new Map((ours ?? []).map(o => [Number(o.rozetka_order_id), o]));
+        .or(`rozetka_order_id.in.(${keys.join(',')}),order_number.in.(${keys.join(',')})`)
+        .limit(keys.length * 2);
+      const byRz = new Map((ours ?? []).filter(o => o.rozetka_order_id).map(o => [Number(o.rozetka_order_id), o]));
+      const byNo = new Map((ours ?? []).map(o => [Number(o.order_number), o]));
 
       // Скільки збору вже проведено по цих замовленнях — щоб доводити РІЗНИЦЮ,
       // а не проводити вдруге. Ключ ідемпотентності первинного нарахування
@@ -159,7 +209,7 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
       }
 
       for (const [rz, want] of wantByRz) {
-        const order = byRz.get(rz);
+        const order = byRz.get(rz) ?? byNo.get(rz);
         if (!order) { skipped++; continue; }   // замовлення не наше або ще не імпортоване
         if (!(want.amount > 0)) { skipped++; continue; }
         const have = Math.round((posted.get(order.id) ?? 0) * 100) / 100;

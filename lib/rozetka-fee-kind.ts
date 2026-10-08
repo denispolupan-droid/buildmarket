@@ -16,7 +16,9 @@ export function rozetkaFeeKind(f: {
 }): RozetkaFeeKind {
   const d = String(f.description ?? '');
   if (f.doc_type === 'subscription_fee' || /абонплат/i.test(d)) return 'subscription';
-  if (/організація видачі/i.test(d)) return 'pickup';
+  // Доставка невитребуваного відправлення (логістичний баланс, тип 44) — теж доставка,
+  // а не комісія: інакше звірка комісії прийняла б її за нараховану комісію і зрізала.
+  if (/організація видачі|невитребуван/i.test(d) || (f.meta as Record<string, unknown> | null)?.kind === 'rz_return_delivery') return 'pickup';
   if ((f.meta as Record<string, unknown> | null)?.smart || /Smart/i.test(d)) return 'smart';
   return 'commission';
 }

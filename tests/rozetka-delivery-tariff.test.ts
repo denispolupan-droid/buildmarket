@@ -4,7 +4,28 @@ import {
   resolveRozetkaDeliveryFee,
   parseRozetkaDeliveryTariff,
   DEFAULT_ROZETKA_DELIVERY_TARIFF,
+  isUnknownLogisticOp,
+  isRozetkaPickupOp,
+  isRozetkaReturnDeliveryOp,
 } from '../lib/rozetka-delivery-tariff';
+import { rozetkaFeeKind } from '../lib/rozetka-fee-kind';
+
+describe('типи операцій логістичного балансу', () => {
+  it('44 «Доставка відправлення не витребуваного» — відома витрата, не збір за видачу (кейс 06.10.2026, 49 ₴)', () => {
+    expect(isRozetkaReturnDeliveryOp(44)).toBe(true);
+    expect(isRozetkaPickupOp(44)).toBe(false);
+    expect(isUnknownLogisticOp(44)).toBe(false);
+  });
+  it('збори, коригування і нульові типи — відомі; новий тип — невідомий', () => {
+    for (const t of [34, 55, 106, 107, 35, 36, 42, 43, 68, 73]) expect(isUnknownLogisticOp(t)).toBe(false);
+    expect(isUnknownLogisticOp(999)).toBe(true);
+  });
+  it('проводка доставки невитребуваного — «pickup» для звірки, а не комісія', () => {
+    expect(rozetkaFeeKind({ doc_type: 'commission', description: 'Rozetka Доставка — доставка невитребуваного відправлення за наш рахунок (замовлення #26091157)' })).toBe('pickup');
+    expect(rozetkaFeeKind({ doc_type: 'commission', description: 'щось', meta: { kind: 'rz_return_delivery' } })).toBe('pickup');
+    expect(rozetkaFeeKind({ doc_type: 'commission', description: 'Комісія rozetka 20%' })).toBe('commission');
+  });
+});
 
 describe('resolveRozetkaDeliveryFee', () => {
   // Три живі накладні від 03.08.2026

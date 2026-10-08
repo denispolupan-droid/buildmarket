@@ -75,6 +75,20 @@ export function isRozetkaLogisticAdj(operationType: number): boolean {
 }
 
 /**
+ * Доставка невитребуваного відправлення — 44 «Доставка відправлення не
+ * витребуваного». Покупець не забрав посилку з точки, Rozetka повернула її нам
+ * (або доставила далі) за НАШ рахунок: 06.10.2026 списано 49 ₴. Це реальна
+ * витрата на доставку, але не «організація видачі»: у звірці збору за видачу
+ * вона не бере участі (інакше синк «уточнював» би збір до 35 + 49), проводиться
+ * окремою проводкою на кожну операцію за її id, із прив'язкою до замовлення.
+ */
+export const ROZETKA_RETURN_DELIVERY_OPS = [44] as const;
+
+export function isRozetkaReturnDeliveryOp(operationType: number): boolean {
+  return (ROZETKA_RETURN_DELIVERY_OPS as readonly number[]).includes(operationType);
+}
+
+/**
  * Типи, які ми свідомо НЕ проводимо. Усе, чого немає ні тут, ні в списку зборів
  * чи коригувань — новий тип: про нього треба дізнатись одразу, а не через
  * місяць розбіжності.
@@ -89,6 +103,7 @@ const KNOWN_NON_FEE_OPS = [42, 43, 68, 73] as const;
 export function isUnknownLogisticOp(operationType: number): boolean {
   return !isRozetkaPickupOp(operationType)
     && !isRozetkaLogisticAdj(operationType)
+    && !isRozetkaReturnDeliveryOp(operationType)
     && !(KNOWN_NON_FEE_OPS as readonly number[]).includes(operationType);
 }
 
