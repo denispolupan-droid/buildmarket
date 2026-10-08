@@ -21,7 +21,23 @@ export async function sendTelegram(
   text: string,
   opts?: { replyMarkup?: { inline_keyboard: TelegramInlineButton[][] }; disablePreview?: boolean },
 ): Promise<number | null> {
-  if (!TOKEN || !chatId) return null;
+  return (await sendTelegramResult(chatId, text, opts)).messageId;
+}
+
+export type TelegramSendResult = { messageId: number | null; error: string | null };
+
+/**
+ * Те саме, але з причиною відмови: Telegram відповідає 200 і {ok:false, description}
+ * на зламаний HTML, задовге повідомлення чи чужий chat_id — раніше це губилось,
+ * і ранковий дайджест 4 дні поспіль «відправлявся» в нікуди без жодного сліду.
+ */
+export async function sendTelegramResult(
+  chatId: string | number,
+  text: string,
+  opts?: { replyMarkup?: { inline_keyboard: TelegramInlineButton[][] }; disablePreview?: boolean },
+): Promise<TelegramSendResult> {
+  if (!TOKEN) return { messageId: null, error: 'TELEGRAM_BOT_TOKEN не заданий' };
+  if (!chatId) return { messageId: null, error: 'chat_id порожній' };
   try {
     const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
       method: 'POST',
@@ -32,12 +48,15 @@ export async function sendTelegram(
         ...(opts?.disablePreview ? { link_preview_options: { is_disabled: true } } : {}),
       }),
     });
-    const json = await res.json().catch(() => null) as { ok?: boolean; result?: { message_id?: number } } | null;
-    return json?.ok ? (json.result?.message_id ?? null) : null;
+    const json = await res.json().catch(() => null) as { ok?: boolean; description?: string; result?: { message_id?: number } } | null;
+    if (json?.ok) return { messageId: json.result?.message_id ?? null, error: null };
+    const error = `HTTP ${res.status}: ${json?.description ?? 'без опису'}`;
+    console.error('[telegram] sendMessage rejected:', error);
+    return { messageId: null, error };
   } catch (err) {
     // Не валимо основний потік (оформлення замовлення), але й не ковтаємо помилку мовчки.
     console.error('[telegram] sendMessage failed:', err);
-    return null;
+    return { messageId: null, error: err instanceof Error ? err.message : String(err) };
   }
 }
 

@@ -2,7 +2,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from './supabase';
 import { costOf } from './ai-cost';
 import { logAgentRun } from './ai-agent-runs';
-import { sendTelegram } from './telegram';
+import { sendTelegramResult } from './telegram';
+import { alertAdmin } from './alert';
 import { kyivDayRange, kyivHuman } from './kyiv-date';
 import { unsettledNpCod } from './novapay-ingest';
 import { getRozetkaChats, getRozetkaReviewCounts } from './rozetka-api';
@@ -346,15 +347,22 @@ export async function runOpsDigest(opts: { send: boolean; createdBy?: string | n
   }
   const html = renderDigestHtml(data, text, `${SITE_URL}/admin`);
 
+  // «Відправлено» — лише коли Telegram повернув message_id. До 08.10.2026 прапорець
+  // ставився без перевірки, і відмова Telegram (чи порожній chat_id у проді) не
+  // лишала сліду ні в журналі, ні в алертах.
   let sent = false;
+  let tgError: string | null = null;
+  let tgMessageId: number | null = null;
   if (opts.send) {
     const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-    if (chatId) { await sendTelegram(chatId, html); sent = true; }
+    const r = chatId ? await sendTelegramResult(chatId, html) : { messageId: null, error: 'TELEGRAM_ADMIN_CHAT_ID не заданий' };
+    sent = r.messageId != null; tgError = r.error; tgMessageId = r.messageId;
+    if (!sent) alertAdmin('Ранковий дайджест не надіслано в Telegram', tgError ?? 'без причини');
   }
   const runId = await logAgentRun({
     agent: DIGEST_AGENT,
     input: { send: opts.send, signals: data.signals.map(s => ({ key: s.key, level: s.level, summary: s.summary })) },
-    output: { text, sent },
+    output: { text, sent, tg_message_id: tgMessageId, tg_error: tgError },
     model: DIGEST_MODEL, costUsd,
     inputTokens: (usage?.input_tokens ?? 0) + (usage?.cache_read_input_tokens ?? 0) + (usage?.cache_creation_input_tokens ?? 0),
     outputTokens: usage?.output_tokens ?? 0, toolCalls: 0, durationMs: Date.now() - started,
