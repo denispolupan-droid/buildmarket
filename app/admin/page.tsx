@@ -9,7 +9,7 @@ import NewOrderButton from './orders/NewOrderButton';
 import { SMART_TARIFF_KEY, parseSmartTariff } from '../../lib/rozetka-smart-tariff';
 import { ROZETKA_DELIVERY_TARIFF_KEY, parseRozetkaDeliveryTariff } from '../../lib/rozetka-delivery-tariff';
 import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/prom-delivery-fee';
-import { escapeOrTerm } from '../../lib/pg-filter';
+import { escapeOrTerm, orderNumberFilter } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
@@ -106,10 +106,11 @@ export default async function AdminPage({
       // Телефони лежать у різних форматах ('380…' з Rozetka, '+380…' з Prom,
       // '+38 (066) …' із сайту), тому пробуємо і як ввели, і самі цифри.
       if (digits.length >= 3) ors.push(`phone.ilike.%${digits}%`);
-      // order_number — int4, і будь-яке довге число (ТТН, телефон) валило ВЕСЬ
-      // запит помилкою «out of range for type integer». Тому порівнюємо з ним
-      // лише те, що фізично може бути номером замовлення.
-      if (/^\d{1,10}$/.test(term) && Number(term) <= 2147483647) ors.push(`order_number.eq.${term}`);
+      // Номер замовлення — повний або з початку («261010» → 26101000…26101099),
+      // див. orderNumberFilter. Довге число (ТТН, телефон) туди не потрапляє:
+      // int4 на ньому валив би ВЕСЬ запит «out of range for type integer».
+      const byNumber = orderNumberFilter(term);
+      if (byNumber) ors.push(byNumber);
       // Номер замовлення в кабінеті маркетплейсу — його називають і покупець, і
       // підтримка Prom/Rozetka, а знайти замовлення по ньому досі було нічим.
       // Обидві колонки BIGINT, тож тільки точний збіг і тільки для цифр.

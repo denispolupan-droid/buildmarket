@@ -728,7 +728,20 @@ export default function AdminOrders({
   // базі. Локально тримаємо лише набране в полі, щоб не смикати навігацію на кожну
   // літеру; після паузи стан їде в URL і сторінка перезапитує дані.
   const [searchInput, setSearchInput] = useState(initialSearch);
-  useEffect(() => { setSearchInput(initialSearch); }, [initialSearch]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // Останнє значення, яке МИ відправили в URL. Відповідь сервера на нього — не
+  // новина, і поле чіпати не треба. Раніше поле перезаписувалося на кожну зміну
+  // initialSearch: сервер відповідав на проміжний зріз («261010»), коли в полі
+  // вже було «26101033», і стирав набраний хвіст — набрати номер руками не
+  // виходило, лише вставити. Ззовні (назад/вперед, «Скинути фільтри») URL
+  // підтягуємо, але не поверх живого набору у сфокусованому полі.
+  const pushedSearchRef = useRef(initialSearch);
+  useEffect(() => {
+    if (initialSearch === pushedSearchRef.current) return;
+    pushedSearchRef.current = initialSearch;
+    if (document.activeElement === searchInputRef.current) return;
+    setSearchInput(initialSearch);
+  }, [initialSearch]);
 
   const pushFilters = useCallback((patch: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -741,12 +754,17 @@ export default function AdminOrders({
     router.push(`/admin?${params.toString()}`);
   }, [router, searchParams]);
 
+  const pushSearch = useCallback((value: string) => {
+    if (value === pushedSearchRef.current) return;
+    pushedSearchRef.current = value;
+    pushFilters({ q: value });
+  }, [pushFilters]);
   useEffect(() => {
     const value = searchInput.trim();
     if (value === initialSearch) return;
-    const timer = setTimeout(() => pushFilters({ q: value }), 400);
+    const timer = setTimeout(() => pushSearch(value), 500);
     return () => clearTimeout(timer);
-  }, [searchInput, initialSearch, pushFilters]);
+  }, [searchInput, initialSearch, pushSearch]);
   const [loading, setLoading]       = useState<string | null>(null);
   const [ttnValues, setTtnValues] = useState<Record<string, string>>(
     Object.fromEntries(initialOrders.map(o => [o.id, o.tracking_number ?? '']))
@@ -2665,8 +2683,10 @@ export default function AdminOrders({
           <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
             placeholder="№ замовлення або МП, ФІО, компанія, телефон, ТТН — по всій базі"
+            ref={searchInputRef}
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') pushSearch(searchInput.trim()); }}
             onFocus={e => { e.currentTarget.style.borderColor = 'var(--brand-teal)'; }}
             onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
             style={{
