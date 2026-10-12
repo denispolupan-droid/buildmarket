@@ -31,6 +31,7 @@ import { storageDaysLeft, returnTrackingLabel, type ReturnTracking } from '../..
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { showConfirm } from '../../lib/confirm';
 import { showToast } from '../../lib/toast';
+import { STATUS_RANK as ORDER_STATUS_RANK } from '../../lib/orders/status';
 import SmartDateInput from '../components/SmartDateInput';
 import InvoiceMessengerButtons from '../components/InvoiceMessengerButtons';
 import { stripCityPrefix } from '../../lib/orders/delivery-line';
@@ -193,9 +194,8 @@ const PAYMENT_LABEL: Record<string, string> = {
 // НП, самовивіз ні під що не підпадає) тепер робить сервер: див. applyOrderFilters
 // у app/admin/page.tsx. Клієнтська копія була б другою правдою.
 
-const STATUS_RANK: Record<string, number> = {
-  new: 0, confirmed: 1, awaiting_stock: 2, picking: 3, shipped: 4, delivered: 5,
-};
+// Порядок статусів — з lib/orders/status (те саме джерело, що й у PATCH на сервері).
+const STATUS_RANK = ORDER_STATUS_RANK as Record<string, number>;
 
 /**
  * Знімок статусу в кабінеті Rozetka — його оновлює крон синку замовлень.

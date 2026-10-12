@@ -11,6 +11,18 @@ import { pickReturnTtn, buildReturnTracking } from './np-return-tracking';
 import { completeShipmentByTtn, saleDocCounts, settleLegacyCommission } from './accounting/completion';
 import { recordTxn } from './accounting/money';
 import { alertAdmin } from './alert';
+import { transitionOrder } from './orders/status';
+
+/** «Доставлено» одним шляхом для всіх гілок синку; збій по одному замовленню не зриває батч. */
+async function markDelivered(orderId: string, actor: string): Promise<boolean> {
+  try {
+    await transitionOrder(serviceClient, orderId, 'delivered', actor, 'delivery-sync');
+    return true;
+  } catch (err) {
+    console.error('[sync-delivery-status] delivered transition failed:', orderId, err);
+    return false;
+  }
+}
 import { notifyParcelEvent } from './notify/parcel';
 import { chargeDropshipReturnFee } from './dropship-return-fee';
 
@@ -285,11 +297,9 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       }
 
       if (trulyDelivered.length) {
-        await serviceClient
-          .from('orders')
-          .update({ status: 'delivered', delivered_at: new Date().toISOString() })
-          .in('id', trulyDelivered);
-        updated += trulyDelivered.length;
+        for (const id of trulyDelivered) {
+          if (await markDelivered(id, actor)) updated++;
+        }
       }
 
       // Notify customers via Telegram
@@ -443,10 +453,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
     // Збір за видачу вже проведено при відгрузці (rz-delivery-fee:…) — тут витрат немає.
     if (!(await salesPostedOrAlert(o))) continue;
 
-    await serviceClient
-      .from('orders')
-      .update({ status: 'delivered', delivered_at: new Date().toISOString() })
-      .eq('id', o.id);
+    if (!(await markDelivered(o.id, actor))) continue;
     updated++;
     if (o.telegram_chat_id) notifyCustomerStatus(o.telegram_chat_id, o.order_number, 'delivered');
 
@@ -458,10 +465,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       s.id !== o.id && s.tracking_number === o.tracking_number && !['cancelled', 'delivered'].includes(s.status));
     for (const s of siblings) {
       if (!(await salesPostedOrAlert(s))) continue;
-      await serviceClient
-        .from('orders')
-        .update({ status: 'delivered', delivered_at: new Date().toISOString() })
-        .eq('id', s.id);
+      if (!(await markDelivered(s.id, actor))) continue;
       s.status = 'delivered';
       updated++;
       if (s.telegram_chat_id) notifyCustomerStatus(s.telegram_chat_id, s.order_number, 'delivered');
@@ -563,10 +567,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
 
         if (!(await salesPostedOrAlert(o))) continue;
 
-        await serviceClient
-          .from('orders')
-          .update({ status: 'delivered', delivered_at: new Date().toISOString() })
-          .eq('id', o.id);
+        if (!(await markDelivered(o.id, actor))) continue;
         updated++;
         if (o.telegram_chat_id) notifyCustomerStatus(o.telegram_chat_id, o.order_number, 'delivered');
       }

@@ -18,6 +18,7 @@ import { getPromOrders } from './prom-api';
 import { releaseReservation } from './accounting/reservations';
 import { cancelDocument } from './accounting/documents';
 import { alertAdmin } from './alert';
+import { transitionOrder } from './orders/status';
 
 const LOOKBACK_DAYS = 45;
 
@@ -72,13 +73,8 @@ export async function handleMarketplaceCancelledOrder(
   }
 
   // Не відвантажено — безпечно скасовуємо у нас (маркетплейс уже скасував у себе)
-  const now = new Date().toISOString();
-  const history = Array.isArray(order.status_history) ? order.status_history : [];
-  await db.from('orders').update({
-    status:         'cancelled',
-    cancelled_at:   now,
-    status_history: [...history, { status: 'cancelled', at: now, by: `cron:${marketplace.toLowerCase()}-cancel-watch` }],
-  }).eq('id', order.id);
+  const cancelActor = `cron:${marketplace.toLowerCase()}-cancel-watch`;
+  await transitionOrder(db, order.id, 'cancelled', cancelActor, 'marketplace-cancel-watch');
 
   try {
     await releaseReservation(order.id, 'cancelled');

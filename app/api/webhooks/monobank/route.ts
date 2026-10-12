@@ -12,6 +12,7 @@ import { alertAdmin } from '../../../../lib/alert';
 import { getMonoAcquiringToken } from '../../../../lib/mono-config';
 import { notifyPaidCardOrder } from '../../../../lib/card-order-notify';
 import { recordCardOrderPayment } from '../../../../lib/card-order-ledger';
+import { buildStatusPatch } from '../../../../lib/orders/status';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -314,13 +315,23 @@ export async function POST(req: NextRequest) {
   if (orderMatch) {
     const orderId = orderMatch[1];
 
-    const { data: order } = await serviceClient
+    // Умова status = pending_payment лишається в UPDATE: повторний вебхук або
+    // ручне підтвердження не мають переписати статус удруге.
+    const { data: pending } = await serviceClient
       .from('orders')
-      .update({ status: 'confirmed' })
+      .select('status, status_history, confirmed_at')
       .eq('id', orderId)
       .eq('status', 'pending_payment')
-      .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment')
-      .single();
+      .maybeSingle();
+    const { data: order } = pending
+      ? await serviceClient
+          .from('orders')
+          .update(buildStatusPatch(pending, 'confirmed', 'webhook:monobank', 'monobank-webhook'))
+          .eq('id', orderId)
+          .eq('status', 'pending_payment')
+          .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment')
+          .single()
+      : { data: null };
 
     if (order) {
       const invoiceUrl = `${siteUrl}/invoice/${order.id}`;

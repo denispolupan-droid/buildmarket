@@ -13,6 +13,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Читання даних.** Будь-яка вибірка списку — через `fetchAllRows` (`lib/db-paginate`) або з явним `.limit()`. Без цього PostgREST мовчки обрізає на 1000 рядків. Будь-який `.range()` — ТІЛЬКИ з `.order(<унікальна колонка>)` перед ним (зазвичай `.order('id')`): без ORDER BY сторінки віддаються в нестабільному порядку, рядки дублюються й губляться. Вибирай тільки потрібні колонки (`select('a, b')`, не `select('*')`).
 
+**Статус замовлення.** Ніколи не пиши `orders.status` напряму. Лише `transitionOrder(...)` або `buildStatusPatch(...)` з `lib/orders/status` (мітки часу, `status_history` з джерелом `via`, правила переходів). Нові статуси/переходи — туди ж + `docs/ORDER-LIFECYCLE.md`. Крон/вебхук перед `delivered` перевіряє `allOrderSalesPosted`.
+
 **Гроші.** Ціни/суми ЗАВЖДИ перераховуються на сервері з БД; ціні від клієнта не довіряй. Логіку виноси в чисту функцію і покрий тестом (`lib/pricing.ts`, `lib/mono-signature.ts`).
 
 **Єдині джерела правди** (не копіпасть): `lib/site.ts` (`SITE_URL`, `WHOLESALE_MIN`), `lib/company.ts` (`SELLER` — реквізити), `lib/number-to-words.ts` (сума прописом).

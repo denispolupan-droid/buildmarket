@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getPromOrders, getPromOrder, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus, type PromOrder } from './prom-api';
 import { computePromCommission } from './prom-commission';
 import { completeOrderDelivery, allOrderSalesPosted } from './accounting/completion';
+import { transitionOrder } from './orders/status';
 import { promDeliveryPatch, isPromLedDelivery } from './prom-delivery-state';
 
 const db = createClient(
@@ -56,7 +57,7 @@ async function applyPromDeliveryState(existing: SyncedOrder, promOrder: PromOrde
   try {
     await completeOrderDelivery(existing.id, actor);
     if (await allOrderSalesPosted(existing.id)) {
-      await db.from('orders').update({ status: 'delivered', delivered_at: now }).eq('id', existing.id);
+      await transitionOrder(db, existing.id, 'delivered', actor, 'prom-sync');
       existing.status = 'delivered';
       console.log(`[prom-sync] delivered by Prom status: #${existing.order_number} (${existing.tracking_number ?? '—'})`);
       return { accepted, delivered: true };

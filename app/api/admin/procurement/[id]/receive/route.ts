@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createDocument, confirmDocument, maybeAutoClose } from '../../../../../../lib/accounting/documents';
+import { transitionOrder } from '../../../../../../lib/orders/status';
 
 type OrderRow = { id: string; items: { sku: string; qty: number }[]; status_history: { status: string; at: string; by: string }[] | null };
 
@@ -40,14 +41,12 @@ async function autoPromoteAwaitingOrders(
   const avail: Record<string, number> = {};
   for (const b of balances ?? []) avail[b.sku] = Number(b.qty_available ?? 0);
 
-  const now = new Date().toISOString();
   const toPromote = candidates.filter(o =>
     (o.items ?? []).every(i => (avail[i.sku] ?? 0) >= i.qty)
   );
 
   for (const o of toPromote) {
-    const history = [...(o.status_history ?? []), { status: 'picking', at: now, by: `${by} (авто)` }];
-    await db.from('orders').update({ status: 'picking', status_history: history }).eq('id', o.id);
+    await transitionOrder(db, o.id, 'picking', `${by} (авто)`, 'procurement-receive');
     console.log(`[auto-promote] order ${o.id} → picking`);
   }
 }

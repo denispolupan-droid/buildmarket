@@ -7,6 +7,7 @@ import { createDocument } from '../../../../../../lib/accounting/documents';
 import { notifyCustomerStatus } from '../../../../../../lib/telegram';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../../lib/prom-api';
+import { transitionOrder } from '../../../../../../lib/orders/status';
 
 export async function POST(
   req: NextRequest,
@@ -56,8 +57,9 @@ export async function POST(
   // ── Supplier: чиста відправка, без складських операцій ───────────────────────
   const confirmedAt = new Date().toISOString();
 
+  const actor = user.email ?? 'admin';
   if (fulfillment_mode === 'supplier') {
-    await db.from('orders').update({ status: 'confirmed', fulfillment_mode, confirmed_at: confirmedAt }).eq('id', id);
+    await transitionOrder(db, id, 'confirmed', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt });
 
   // ── Own: резервуємо весь товар зі свого складу ────────────────────────────────
   } else if (fulfillment_mode === 'own') {
@@ -104,7 +106,7 @@ export async function POST(
       );
     }
 
-    await db.from('orders').update({ status: 'confirmed', fulfillment_mode, confirmed_at: confirmedAt }).eq('id', id);
+    await transitionOrder(db, id, 'confirmed', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt });
 
   // ── Mixed: резервуємо своє + purchase_order для постачальника ────────────────
   } else {
@@ -175,7 +177,7 @@ export async function POST(
       }
     }
 
-    await db.from('orders').update({ status: newStatus, fulfillment_mode, confirmed_at: confirmedAt }).eq('id', id);
+    await transitionOrder(db, id, newStatus as 'confirmed' | 'awaiting_stock', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt });
   }
 
   // Telegram клієнту (best-effort): підтвердження йде через цей роут, а не

@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createSaleDraft } from '../../../../../../lib/accounting/dropship';
 import { completeOrderDelivery } from '../../../../../../lib/accounting/completion';
+import { transitionOrder, type OrderStatus } from '../../../../../../lib/orders/status';
 import { recordMarketplaceServiceFee } from '../../../../../../lib/accounting/money';
 import { computeSmartFee, getSmartTariff } from '../../../../../../lib/rozetka-smart';
 import { resolveRozetkaDeliveryFee, getRozetkaDeliveryTariff } from '../../../../../../lib/rozetka-delivery-fee';
@@ -152,11 +153,9 @@ export async function POST(
     const reStatus = reIsPickup ? 'delivered' : 'shipped';
     const reNow = new Date().toISOString();
     if (reIsPickup) await completeOrderDelivery(order.id, user.email ?? 'admin');
-    await db.from('orders').update({
-      status: reStatus,
-      shipped_at: reNow,
-      ...(reIsPickup ? { delivered_at: reNow } : {}),
-    }).eq('id', id);
+    // Самовивіз іде одразу в delivered; shipped_at ставимо явно — як і раніше, бо
+    // transitionOrder для delivered проставляє лише delivered_at.
+    await transitionOrder(db, id, reStatus, user.email ?? 'admin', 'ship', { shipped_at: reNow });
 
     const rePromId = order.prom_order_id as number | null;
     // «Магазини Rozetka» (PRM-…) Prom веде сам — пуш туди він відхиляє
@@ -296,13 +295,14 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const finalStatus = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : order.status;
-  await db.from('orders').update({
-    status: finalStatus,
+  const finalStatus: string = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : order.status;
+  // Часткова відгрузка статус не міняє (transitionOrder при тому самому статусі
+  // пише лише extra). Повна — shipped (або delivered для самовивозу) з міткою
+  // shipped_at, як і раніше.
+  await transitionOrder(db, id, finalStatus as OrderStatus, user.email ?? 'admin', 'ship', {
     ...(fullyShipped ? { shipped_at: now } : {}),
-    ...(fullyShipped && isPickup ? { delivered_at: now } : {}),
     ...(orderContractId ? { contract_id: orderContractId } : {}),
-  }).eq('id', id);
+  });
 
   // Режим виконання за ФАКТОМ, а не за вибором менеджера при підтвердженні:
   // роутер міг перерішити (товар знайшовся на своєму складі), і тоді посилка
