@@ -438,7 +438,10 @@ export const getBrandsCached = unstable_cache(
 
 // Топ-бренди (за кількістю активних товарів). Легка заміна повного getProducts()
 // у Footer, який рендериться на кожній сторінці — тягнемо тільки колонку brand.
-export async function getTopBrands(minCount = 5, limit = 10): Promise<string[]> {
+// Підвал — SEO-перелінковка сторінок /shop/brand/* з кожної сторінки сайту;
+// 13 замість 10 з 12.10.2026, щоб Knauf (20 товарів), Титан (18) і Байріс (15)
+// теж отримували посилання. Список свідомо НЕ збігається з каруселлю на головній.
+export async function getTopBrands(minCount = 5, limit = 13): Promise<string[]> {
   const rows = await fetchAllRows<{ brand: string | null }>((f, t) =>
     supabase.from('products').select('brand').eq('is_active', true).order('id').range(f, t));
   const counts = new Map<string, number>();
