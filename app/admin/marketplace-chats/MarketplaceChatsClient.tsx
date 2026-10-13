@@ -168,8 +168,9 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
       setMessages(loaded);
       if (d.contact) setThreadContact(d.contact);
       if (d.receiverId) setReceiverId(d.receiverId);
-      // Локально гасимо лічильник непрочитаних
+      // Локально гасимо лічильник непрочитаних; сайдбар перепитує бейдж одразу
       setItems(prev => prev.map(i => i.mp === item.mp && i.id === item.id ? { ...i, unread: 0 } : i));
+      window.dispatchEvent(new Event('admin-unread-refresh'));
       setTimeout(() => bottomRef.current?.scrollIntoView({ block: 'end' }), 50);
       if (buyerWaits(loaded)) void requestDraft(item);
     } catch (e) {
@@ -192,6 +193,7 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
       setMessages(prev => [...prev, { body: reply.trim(), at: new Date().toISOString(), fromUs: true, author: 'Ми' }]);
       setReply('');
       setDraft(null); setDraftError('');
+      window.dispatchEvent(new Event('admin-unread-refresh'));
       setTimeout(() => bottomRef.current?.scrollIntoView({ block: 'end' }), 50);
     } catch (e) {
       setThreadError(e instanceof Error ? e.message : String(e));

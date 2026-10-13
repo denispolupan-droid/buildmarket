@@ -1,13 +1,18 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+
+const refreshUnreadBadge = () => window.dispatchEvent(new Event('admin-unread-refresh'));
 
 export default function ReplyBox({ sessionId }: { sessionId: string }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  // Сторінка чату щойно обнулила лічильник на сервері — просимо сайдбар
+  // перечитати бейдж, бо свій він порахував до цього, у тому ж рендері
+  useEffect(() => { refreshUnreadBadge(); }, []);
 
   const send = async () => {
     if (!text.trim() || loading) return;
@@ -19,6 +24,7 @@ export default function ReplyBox({ sessionId }: { sessionId: string }) {
         body: JSON.stringify({ message: text.trim() }),
       });
       setText('');
+      refreshUnreadBadge();
       router.refresh();
     } finally {
       setLoading(false);

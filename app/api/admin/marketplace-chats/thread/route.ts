@@ -4,6 +4,7 @@ import { markRozetkaChatRead } from '../../../../../lib/rozetka-api';
 import { markPromMessageRead } from '../../../../../lib/prom-api';
 import { markChatSeen } from '../../../../../lib/marketplace-chat-seen';
 import { loadMarketplaceThread } from '../../../../../lib/marketplace-chat-thread';
+import { invalidateMarketplaceInboxCache } from '../../../../../lib/marketplace-chat-inbox';
 
 // Тред одного чату (живі дані). Відкриття треда одразу позначає вхідні
 // повідомлення прочитаними на площадці — щоб лічильники не «висіли».
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
     // мітку не передав (прямий виклик) — беремо час найсвіжішого повідомлення.
     const latestMsg = messages.reduce<string | null>((max, m) => (m.at && (!max || m.at > max) ? m.at : max), null);
     await markChatSeen(mp, id, sp.get('updatedAt') ?? latestMsg).catch(() => {});
+    invalidateMarketplaceInboxCache();
 
     return NextResponse.json({ messages, receiverId, contact });
   } catch (err: unknown) {

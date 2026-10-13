@@ -15,7 +15,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  const { error } = await db.from('chat_sessions').update({ status: 'resolved' }).eq('id', id);
+  const { error } = await db.from('chat_sessions').update({ status: 'resolved', unread_count: 0 }).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

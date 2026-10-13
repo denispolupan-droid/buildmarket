@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { replyRozetkaChat } from '../../../../../lib/rozetka-api';
 import { sendPromChatMessage } from '../../../../../lib/prom-api';
 import { recordDraftOutcome } from '../../../../../lib/marketplace-chat-assistant';
+import { invalidateMarketplaceInboxCache } from '../../../../../lib/marketplace-chat-inbox';
 
 // Відповідь покупцю в чаті маркетплейсу від імені магазину.
 
@@ -32,6 +33,8 @@ export async function POST(req: NextRequest) {
     if (typeof body.draftId === 'string' && body.draftId) {
       void recordDraftOutcome(body.draftId, text);
     }
+    // Останнє слово тепер наше — бейдж має погаснути при наступному опитуванні
+    invalidateMarketplaceInboxCache();
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

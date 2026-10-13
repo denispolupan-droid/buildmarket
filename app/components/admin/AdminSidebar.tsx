@@ -75,6 +75,11 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
   const [poDraftCount, setPoDraftCount] = useState(0);
   const [mailUnread,   setMailUnread]   = useState(0);
   const [mpChatUnread, setMpChatUnread] = useState(0);
+  // Стартове значення — з сервера (layout), далі — з опитування: інакше бейдж
+  // чату гас лише після переходу на іншу сторінку, бо layout рахує його один
+  // раз на рендер, паралельно зі сторінкою, яка щойно обнулила лічильник.
+  const [siteChatUnread, setSiteChatUnread] = useState(chatUnreadCount);
+  useEffect(() => { setSiteChatUnread(chatUnreadCount); }, [chatUnreadCount]);
   // Below this width the sidebar becomes an off-canvas drawer instead of
   // squeezing every admin page's content into a sliver — that's what made
   // the admin panel unusable on phones. Lazy-initialized (matching the same
@@ -111,12 +116,18 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
         .catch(() => {});
       fetch('/api/admin/marketplace-chats/unread')
         .then(r => r.json())
-        .then(d => setMpChatUnread(d?.count ?? 0))
+        .then(d => {
+          setMpChatUnread(d?.mp ?? d?.count ?? 0);
+          if (typeof d?.site === 'number') setSiteChatUnread(d.site);
+        })
         .catch(() => {});
     }
     fetchUnread();
     const interval = setInterval(fetchUnread, 60_000);
-    return () => clearInterval(interval);
+    // Відкрили чат або відповіли — екрани чатів шлють цю подію, щоб бейдж
+    // погас одразу, а не за хвилину
+    window.addEventListener('admin-unread-refresh', fetchUnread);
+    return () => { clearInterval(interval); window.removeEventListener('admin-unread-refresh', fetchUnread); };
   }, []);
 
   useEffect(() => {
@@ -237,7 +248,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
           const badgeCount =
             href === '/admin'             && newOrdersCount > 0  ? newOrdersCount  :
             href === '/admin/procurement' && poDraftCount > 0    ? poDraftCount    :
-            href === '/admin/chat'        && chatUnreadCount + mpChatUnread > 0 ? chatUnreadCount + mpChatUnread :
+            href === '/admin/chat'        && siteChatUnread + mpChatUnread > 0 ? siteChatUnread + mpChatUnread :
             href === '/admin/mail'        && mailUnread > 0      ? mailUnread      :
             0;
           const badgeColor = href === '/admin/procurement' ? '#F59E0B' : '#EF4444';

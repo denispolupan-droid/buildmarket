@@ -16,7 +16,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const [{ error: msgErr }] = await Promise.all([
     db.from('chat_messages').insert({ session_id: id, role: 'assistant', content: message.trim() }),
-    db.from('chat_sessions').update({ last_message_at: new Date().toISOString() }).eq('id', id),
+    // Відповіли — отже прочитали: лічильник гасимо тут, а не лише при відкритті
+    db.from('chat_sessions').update({ last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', id),
   ]);
 
   if (msgErr) return NextResponse.json({ error: msgErr.message }, { status: 500 });
