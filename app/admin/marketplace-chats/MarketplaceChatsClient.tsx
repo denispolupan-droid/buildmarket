@@ -1,12 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { MessagesSquare, RefreshCw, Send, ArrowLeft, ExternalLink, Sparkles, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Send, ExternalLink, Sparkles, AlertTriangle } from 'lucide-react';
 import { htmlToText } from '../../../lib/html-to-text';
 import { CATEGORY_LABELS, type DraftCategory } from '../../../lib/marketplace-chat-draft-types';
+import {
+  InboxShell, InboxToolbar, InboxRow, ThreadHead, Bubble, EmptyThread, EmptyList, timeAgo, initials,
+} from '../chat/inbox-ui';
 
-type ChatItem = {
+export type ChatItem = {
   mp: 'rozetka' | 'prom';
   id: string;
   subject: string;
@@ -37,10 +40,7 @@ type Draft = {
   costUsd: number;
 };
 
-const MP_STYLE: Record<string, { label: string; color: string; bg: string }> = {
-  prom:    { label: 'Prom',    color: '#8B5CF6', bg: '#F5F3FF' },
-  rozetka: { label: 'Rozetka', color: '#6366F1', bg: '#EEF2FF' },
-};
+type Filter = 'all' | 'waiting' | 'rozetka' | 'prom';
 
 // Чи чекає покупець на відповідь: останнє змістовне повідомлення — його
 // (дзеркало awaitingOurReply на сервері; сервер перевіряє ще раз).
@@ -53,31 +53,29 @@ function buyerWaits(messages: ChatMessage[]): boolean {
   return false;
 }
 
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const diff = Math.floor((Date.now() - new Date(dateStr.replace(' ', 'T')).getTime()) / 1000);
-  if (Number.isNaN(diff)) return '';
-  if (diff < 60) return 'щойно';
-  if (diff < 3600) return `${Math.floor(diff / 60)} хв`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} год`;
-  return `${Math.floor(diff / 86400)} дн`;
-}
-
-export default function MarketplaceChatsClient({ embedded = false, autoOpenOrderId, autoOpenChatKey }: {
-  embedded?: boolean;
+/**
+ * Вкладка «Маркетплейси» розділу «Чати»: живі діалоги Rozetka/Prom. Список
+ * вантажить батько (ChatInbox) — йому потрібні лічильники для вкладок ще до
+ * того, як сюди зайшли; тут — фільтри, тред, чернетка ШІ і відповідь.
+ */
+export default function MarketplaceChatsClient({ items, setItems, listLoading, listErrors, reload, autoOpenOrderId, autoOpenChatKey }: {
+  items: ChatItem[];
+  setItems: (fn: (prev: ChatItem[]) => ChatItem[]) => void;
+  listLoading: boolean;
+  listErrors: string[];
+  reload: () => void;
   /** Наш id замовлення: прийшли з картки замовлення — одразу відкриваємо його чат. */
   autoOpenOrderId?: string | null;
   /** «mp:id» з Telegram-алерту про чернетку — відкрити саме цей діалог. */
   autoOpenChatKey?: string | null;
 }) {
-  const [items, setItems] = useState<ChatItem[]>([]);
   // Відкриваємо лише раз: інакше кожне оновлення списку перекидало б менеджера
   // назад у цей чат, навіть якби він уже читав інший.
   const autoOpened = useRef(false);
   const [autoOpenMiss, setAutoOpenMiss] = useState(false);
-  const [listLoading, setListLoading] = useState(true);
-  const [listErrors, setListErrors] = useState<string[]>([]);
   const [selected, setSelected] = useState<ChatItem | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
@@ -121,22 +119,6 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
     }
   }
 
-  const loadList = useCallback(async () => {
-    setListLoading(true);
-    try {
-      const res = await fetch('/api/admin/marketplace-chats');
-      const d = await res.json();
-      if (res.ok) { setItems(d.items ?? []); setListErrors(d.errors ?? []); }
-      else setListErrors([d.error ?? 'Помилка завантаження']);
-    } catch (e) {
-      setListErrors([e instanceof Error ? e.message : String(e)]);
-    } finally {
-      setListLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void loadList(); }, [loadList]);
-
   // Перехід із картки замовлення. Шукаємо по нашому id, а не по номеру МП:
   // номер у чата може бути порожній, а id — точний збіг без здогадок.
   useEffect(() => {
@@ -169,7 +151,7 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
       if (d.contact) setThreadContact(d.contact);
       if (d.receiverId) setReceiverId(d.receiverId);
       // Локально гасимо лічильник непрочитаних; сайдбар перепитує бейдж одразу
-      setItems(prev => prev.map(i => i.mp === item.mp && i.id === item.id ? { ...i, unread: 0 } : i));
+      setItems(prev => prev.map(i => i.mp === item.mp && i.id === item.id ? { ...i, unread: 0, contact: d.contact ?? i.contact } : i));
       window.dispatchEvent(new Event('admin-unread-refresh'));
       setTimeout(() => bottomRef.current?.scrollIntoView({ block: 'end' }), 50);
       if (buyerWaits(loaded)) void requestDraft(item);
@@ -202,217 +184,143 @@ export default function MarketplaceChatsClient({ embedded = false, autoOpenOrder
     }
   }
 
-  const listPane = (
-    <div style={{ width: '340px', minWidth: '280px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)' }} className="mpc-list">
-      <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Діалоги</span>
-        <button onClick={() => loadList()} disabled={listLoading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-          <RefreshCw size={12} style={listLoading ? { animation: 'spin 1s linear infinite' } : undefined} /> Оновити
-        </button>
-      </div>
-      <div style={{ overflowY: 'auto', flex: 1 }}>
-        {listLoading && items.length === 0 && (
-          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Завантаження…</div>
-        )}
-        {!listLoading && items.length === 0 && (
-          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Діалогів немає</div>
-        )}
-        {items.map(item => {
-          const s = MP_STYLE[item.mp];
-          const active = selected && selected.mp === item.mp && selected.id === item.id;
-          return (
-            <div key={`${item.mp}-${item.id}`} onClick={() => openChat(item)}
-              style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: active ? 'var(--bg-soft)' : 'transparent' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ padding: '1px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, color: s.color, background: s.bg, flexShrink: 0 }}>{s.label}</span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                  {item.contact ?? item.subject}
-                </span>
-                {item.unread > 0 && (
-                  <span style={{ background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, borderRadius: '9px', padding: '1px 6px', flexShrink: 0 }}>{item.unread}</span>
-                )}
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(item.updatedAt)}</span>
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {item.orderNumber ? `Замовлення №${item.orderNumber} · ` : ''}{item.subject}
-              </div>
-            </div>
-          );
-        })}
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter(i => {
+      if (filter === 'waiting' && i.unread === 0) return false;
+      if ((filter === 'rozetka' || filter === 'prom') && i.mp !== filter) return false;
+      if (q) {
+        const hay = `${i.contact ?? ''} ${i.subject} ${i.orderNumber ?? ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [items, filter, search]);
+
+  const waitingCount = items.filter(i => i.unread > 0).length;
+
+  const list = (
+    <>
+      <InboxToolbar<Filter>
+        pills={[
+          { key: 'all', label: 'Усі' },
+          { key: 'waiting', label: 'Чекають', count: waitingCount },
+          { key: 'rozetka', label: 'Rozetka' },
+          { key: 'prom', label: 'Prom' },
+        ]}
+        active={filter} onPill={setFilter} search={search} onSearch={setSearch}
+        right={
+          <button type="button" className="inbox-btn" onClick={reload} disabled={listLoading} title="Перечитати діалоги з площадок">
+            <RefreshCw size={12} style={listLoading ? { animation: 'spin 1s linear infinite' } : undefined} />
+          </button>
+        }
+      />
+      <div className="inbox-rows">
+        {listLoading && items.length === 0 && <EmptyList text="Завантаження…" />}
+        {!listLoading && visible.length === 0 && <EmptyList text={items.length ? 'Нічого не знайдено' : 'Діалогів немає'} />}
+        {visible.map(item => (
+          <InboxRow key={`${item.mp}-${item.id}`}
+            active={!!selected && selected.mp === item.mp && selected.id === item.id}
+            unread={item.unread > 0} source={item.mp}
+            avatar={initials(item.contact)}
+            title={item.contact ?? item.subject}
+            preview={item.contact ? item.subject : ''}
+            time={timeAgo(item.updatedAt)}
+            state={item.unread > 0 ? 'waiting' : 'answered'}
+            extra={item.orderNumber ? `№${item.orderNumber}` : null}
+            onClick={() => openChat(item)}
+          />
+        ))}
       </div>
       {/* Прийшли з картки, а листування по цьому замовленню ще немає — кажемо
           прямо, інакше екран виглядав би так, ніби кнопка не спрацювала. */}
       {autoOpenMiss && (
-        <div style={{ padding: '8px 14px', fontSize: '11px', color: '#92400E', background: '#FFFBEB', borderTop: '1px solid var(--border)' }}>
+        <div className="inbox-note warn">
           По цьому замовленню листування ще немає. Написати першим не можна:
           Rozetka не дає створити чат через API — діалог заводить лише покупець
           або менеджер у кабінеті маркетплейсу.
         </div>
       )}
-      {listErrors.length > 0 && (
-        <div style={{ padding: '8px 14px', fontSize: '11px', color: '#DC2626', borderTop: '1px solid var(--border)' }}>{listErrors.join(' · ')}</div>
-      )}
-    </div>
+      {listErrors.length > 0 && <div className="inbox-note error">{listErrors.join(' · ')}</div>}
+    </>
   );
 
-  const threadPane = (
-    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-soft)' }}>
-      {!selected ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '13px', gap: '8px' }}>
-          <MessagesSquare size={16} /> Оберіть діалог зліва
-        </div>
-      ) : (
-        <>
-          <div style={{ padding: '10px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={() => setSelected(null)} className="mpc-back"
-              style={{ display: 'none', alignItems: 'center', border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0 }}>
-              <ArrowLeft size={16} />
-            </button>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {threadContact ?? selected.subject}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {MP_STYLE[selected.mp].label}{selected.orderNumber ? ` · Замовлення №${selected.orderNumber}` : ''} · {selected.subject}
-              </div>
-            </div>
-            {selected.ourOrderId && (
-              <Link href={`/admin?expand=${selected.ourOrderId}`} target="_blank"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
-                <ExternalLink size={12} /> №{selected.orderNumber}
-              </Link>
+  const thread = !selected ? <EmptyThread /> : (
+    <>
+      <ThreadHead
+        onBack={() => setSelected(null)}
+        title={threadContact ?? selected.subject}
+        subtitle={`${selected.mp === 'rozetka' ? 'Rozetka' : 'Prom'}${selected.orderNumber ? ` · Замовлення №${selected.orderNumber}` : ''} · ${selected.subject}`}
+        actions={selected.ourOrderId ? (
+          <Link href={`/admin?expand=${selected.ourOrderId}`} target="_blank" className="inbox-btn">
+            <ExternalLink size={12} /> №{selected.orderNumber}
+          </Link>
+        ) : null}
+      />
+
+      <div className="inbox-msgs">
+        {threadLoading && <div className="inbox-empty">Завантаження…</div>}
+        {threadError && <div className="inbox-note error" style={{ borderTop: 'none' }}>{threadError}</div>}
+        {messages.map((m, i) => {
+          const text = htmlToText(m.body);
+          if (!text) return null;
+          const system = !m.fromUs && m.author === 'Система';
+          return <Bubble key={i} ours={m.fromUs} kind={system ? 'system' : 'default'} author={m.author} text={text} at={m.at} />;
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Чернетка ШІ-помічника: зʼявляється, коли останнє слово за покупцем.
+          Нічого не відправляє сама — лише пропонує текст у поле відповіді. */}
+      {(draft || draftLoading || draftError) && (
+        <div className={'inbox-draft' + (draft?.needsHuman ? ' needs-human' : '')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <Sparkles size={13} /> Чернетка ШІ
+            </span>
+            {draft && <span className="inbox-src rozetka">{CATEGORY_LABELS[draft.category] ?? draft.category}</span>}
+            {draft?.needsHuman && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#92400E' }}>
+                <AlertTriangle size={12} /> Потрібна людина
+              </span>
+            )}
+            {draftLoading && <span style={{ color: 'var(--text-muted)' }}>Готую…</span>}
+            {draft && !draftLoading && (
+              <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{draft.cached ? 'з кешу' : `$${draft.costUsd.toFixed(3)}`}</span>
+            )}
+            <span style={{ flex: 1 }} />
+            {draft && !draftLoading && (
+              <>
+                <button type="button" className="inbox-btn primary" onClick={() => setReply(draft.reply)}>Вставити у відповідь</button>
+                <button type="button" className="inbox-btn" onClick={() => selected && requestDraft(selected, true)}>Ще раз</button>
+              </>
             )}
           </div>
-
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-            {threadLoading && <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Завантаження…</div>}
-            {threadError && <div style={{ textAlign: 'center', color: '#DC2626', fontSize: '12px', marginBottom: '10px' }}>{threadError}</div>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {messages.map((m, i) => {
-                const text = htmlToText(m.body);
-                if (!text) return null;
-                const system = !m.fromUs && m.author === 'Система';
-                return (
-                  <div key={i} style={{ display: 'flex', justifyContent: m.fromUs ? 'flex-end' : 'flex-start' }}>
-                    <div style={{
-                      maxWidth: '72%', padding: '8px 12px', borderRadius: '12px', fontSize: '13px', lineHeight: 1.45,
-                      whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                      background: m.fromUs ? '#1E3A5F' : system ? 'var(--bg-soft)' : 'var(--bg-card)',
-                      color: m.fromUs ? '#fff' : system ? 'var(--text-muted)' : 'var(--text-primary)',
-                      border: m.fromUs ? 'none' : '1px solid var(--border)',
-                    }}>
-                      {!m.fromUs && m.author && (
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: system ? 'var(--text-muted)' : '#6366F1', marginBottom: '2px' }}>{m.author}</div>
-                      )}
-                      {text}
-                      <div style={{ fontSize: '10px', color: m.fromUs ? 'rgba(255,255,255,0.55)' : 'var(--text-muted)', marginTop: '3px', textAlign: 'right' }}>
-                        {m.at ? new Date(m.at.replace(' ', 'T')).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Чернетка ШІ-помічника: зʼявляється, коли останнє слово за покупцем.
-              Нічого не відправляє сама — лише пропонує текст у поле відповіді. */}
-          {(draft || draftLoading || draftError) && (
-            <div style={{ padding: '10px 16px', background: draft?.needsHuman ? '#FFFBEB' : 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  <Sparkles size={13} /> Чернетка ШІ
-                </span>
-                {draft && (
-                  <span style={{ padding: '1px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EEF2FF' }}>
-                    {CATEGORY_LABELS[draft.category] ?? draft.category}
-                  </span>
-                )}
-                {draft?.needsHuman && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#92400E' }}>
-                    <AlertTriangle size={12} /> Потрібна людина
-                  </span>
-                )}
-                {draftLoading && <span style={{ color: 'var(--text-muted)' }}>Готую…</span>}
-                {draft && !draftLoading && (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{draft.cached ? 'з кешу' : `$${draft.costUsd.toFixed(3)}`}</span>
-                )}
-                <span style={{ flex: 1 }} />
-                {draft && !draftLoading && (
-                  <>
-                    <button onClick={() => setReply(draft.reply)}
-                      style={{ height: '26px', padding: '0 10px', borderRadius: '7px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
-                      Вставити у відповідь
-                    </button>
-                    <button onClick={() => selected && requestDraft(selected, true)}
-                      style={{ height: '26px', padding: '0 10px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
-                      Ще раз
-                    </button>
-                  </>
-                )}
-              </div>
-              {draftError && <div style={{ color: '#DC2626', marginTop: '6px' }}>{draftError}</div>}
-              {draft && (
-                <>
-                  <div style={{ color: 'var(--text-secondary)', marginTop: '6px' }}>{draft.summary}</div>
-                  {draft.reason && <div style={{ color: '#92400E', marginTop: '4px' }}>{draft.reason}</div>}
-                  <div style={{ marginTop: '6px', padding: '8px 10px', borderRadius: '8px', background: 'var(--bg-soft)', border: '1px dashed var(--border)', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>
-                    {draft.reply}
-                  </div>
-                </>
-              )}
-            </div>
+          {draftError && <div style={{ color: '#DC2626', marginTop: '6px' }}>{draftError}</div>}
+          {draft && (
+            <>
+              <div style={{ color: 'var(--text-secondary)', marginTop: '6px' }}>{draft.summary}</div>
+              {draft.reason && <div style={{ color: '#92400E', marginTop: '4px' }}>{draft.reason}</div>}
+              <div className="inbox-draft-text">{draft.reply}</div>
+            </>
           )}
-
-          <div style={{ padding: '12px 16px', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-            <textarea
-              value={reply}
-              onChange={e => setReply(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendReply(); } }}
-              placeholder="Відповідь покупцю… (Enter — надіслати)"
-              rows={2}
-              style={{ flex: 1, resize: 'none', padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: '10px', fontSize: '13px', outline: 'none', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontFamily: 'inherit' }}
-            />
-            <button onClick={() => sendReply()} disabled={sending || !reply.trim()}
-              style={{ height: '40px', width: '44px', borderRadius: '10px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: sending || !reply.trim() ? 'default' : 'pointer', opacity: sending || !reply.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Send size={16} />
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {!embedded && (
-        <div style={{ padding: '20px 24px 14px' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '9px' }}>
-            <MessagesSquare size={20} /> Чати маркетплейсів
-          </h1>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>
-            Повідомлення покупців з Rozetka та Prom — відповідайте, не заходячи в кабінети
-          </p>
         </div>
       )}
-      <div style={{
-        flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden',
-        border: embedded ? 'none' : '1px solid var(--border)',
-        borderRadius: embedded ? 0 : '14px 14px 0 0',
-        margin: embedded ? 0 : '0 24px',
-      }} className={selected ? 'mpc-has-selected' : ''}>
-        {listPane}
-        {threadPane}
+
+      <div className="inbox-reply">
+        <textarea
+          value={reply}
+          onChange={e => setReply(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendReply(); } }}
+          placeholder="Відповідь покупцю… (Enter — надіслати)"
+          rows={2}
+        />
+        <button type="button" className="inbox-send" onClick={() => sendReply()} disabled={sending || !reply.trim()} aria-label="Надіслати">
+          <Send size={16} />
+        </button>
       </div>
-      <style>{`
-        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @media (max-width: 760px) {
-          .mpc-has-selected .mpc-list { display: none !important; }
-          .mpc-back { display: inline-flex !important; }
-        }
-      `}</style>
-    </div>
+    </>
   );
+
+  return <InboxShell hasSelected={!!selected} list={list} thread={thread} />;
 }
