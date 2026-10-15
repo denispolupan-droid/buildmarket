@@ -209,7 +209,10 @@ export async function runAutodraft(opts: { dry?: boolean } = {}): Promise<Autodr
 
   for (const t of picks) {
     try {
-      const post = await generateBlogPost(t.topic, { focusQuery: t.focusQuery, mustLink: { href: `/shop/${t.hub}`, label: t.hub } });
+      // Підпис посилання — назва категорії, не слаг: інакше в тексті стояло
+      // «shpaklivky» (стаття «Штукатурка vs шпаклівка», 15.10.2026)
+      const { data: hubRow } = await db().from('categories').select('name').eq('slug', t.hub).maybeSingle();
+      const post = await generateBlogPost(t.topic, { focusQuery: t.focusQuery, mustLink: { href: `/shop/${t.hub}`, label: hubRow?.name ?? t.hub } });
       await logSeoAction({
         page: `/blog/${post.slug}`, action: 'article_new', query: t.focusQuery,
         meta: { title: post.title, mustLink: `/shop/${t.hub}`, batch: BATCH_TAG, why: t.why }, by: 'autodraft', cost: post.costUsd,
