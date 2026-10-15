@@ -18,6 +18,7 @@ type ProductMarkupRow = {
 import { showToast } from '../../../lib/toast';
 import PricesLog from './PricesLog';
 import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin, type PromPlan } from '../../../lib/marketplace-pricing';
+import { formatPricelistPrice, pricelistCategoryMatch } from '../../../lib/pricelist-rules';
 import type { SmartBracket } from '../../../lib/rozetka-smart-tariff';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -648,11 +649,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 
     const printRows = allRows.filter(r => {
       if (!plIncludeOutOfStock && r.s?.stock_status !== 'in_stock') return false;
-      if (!plAllCats && r.p.category_slug) {
-        const directMatch = plCategories.has(r.p.category_slug);
-        const parentMatch = r.cat?.parent_slug ? plCategories.has(r.cat.parent_slug) : false;
-        if (!directMatch && !parentMatch) return false;
-      }
+      if (!pricelistCategoryMatch(r.p.category_slug, plAllCats ? null : plCategories, r.cat?.parent_slug)) return false;
       if (!plAllBrands && !plFilterBrands.has(r.p.brand ?? '')) return false;
       if (plFilterSearch) {
         const q = plFilterSearch.toLowerCase();
@@ -686,13 +683,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     };
     const xlsxParamsJSON = JSON.stringify(xlsxParamsObj).replace(/</g, '\\u003c');
 
-    // Build category rows HTML
-    // Cost prices come straight from purchase invoices and land at all sorts of
-    // precisions (641.4, 1169.13, 705) — force a consistent 2-decimal look there.
-    // Other price types keep their existing (integer-typical) formatting untouched.
-    const fmtPrice = (v: number) => plPriceType === 'price_cost'
-      ? v.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : v.toLocaleString('uk-UA');
+    // Build category rows HTML — усі ціни з двома знаками (lib/pricelist-rules)
+    const fmtPrice = formatPricelistPrice;
 
     const catBlocks = [...grouped2.entries()].map(([slug, catRows]) => {
       const catName = catRows[0]?.cat?.name ?? slug;

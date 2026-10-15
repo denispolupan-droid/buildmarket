@@ -57,6 +57,11 @@ export type Product = {
   prom_portal_url: string | null;
   keywords: string | null;
   keywords_ru: string | null;
+  /** Площадки: чи йде товар у фід/синк (у БД nullable; null = вимкнено) */
+  on_prom?: boolean | null;
+  on_rozetka?: boolean | null;
+  rozetka_smart?: boolean | null;
+  on_epicentr?: boolean | null;
   created_at: string;
   updated_at: string;
 };

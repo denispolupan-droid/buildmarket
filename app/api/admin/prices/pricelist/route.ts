@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
 import { promPrice, promCommissionOf, type PromPlan } from '../../../../../lib/marketplace-pricing';
+import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -84,15 +85,15 @@ export async function GET(req: NextRequest) {
       const s = stockMap.get(prod.sku);
       if (!s) continue;
       if (!includeOutOfStock && s.stock_status !== 'in_stock') continue;
-      if (selectedCats && prod.category_slug && !selectedCats.has(prod.category_slug)) continue;
+      const slug = prod.category_slug ?? '__other__';
+      const cat  = catMap.get(slug);
+      if (!pricelistCategoryMatch(prod.category_slug, selectedCats, cat?.parent_slug)) continue;
       if (filterBrands && !filterBrands.has(prod.brand ?? '')) continue;
       if (filterSearch) {
         const q = filterSearch.toLowerCase();
         if (!prod.name?.toLowerCase().includes(q) && !prod.sku?.toLowerCase().includes(q)) continue;
       }
 
-      const slug = prod.category_slug ?? '__other__';
-      const cat  = catMap.get(slug);
       let price: number | null;
       if (priceType === 'price_prom') {
         // ЄДИНА формула фіда Prom (lib/marketplace-pricing): від ціни входу + override
@@ -128,7 +129,7 @@ export async function GET(req: NextRequest) {
 
     const pdfBuffer = await buildPdf(
       grouped,
-      { showBrand, showDescriptions, showImages, priceLabel, headerVariant, isCostPrice: priceType === 'price_cost' },
+      { showBrand, showDescriptions, showImages, priceLabel, headerVariant },
       imageBuffers,
     );
 
@@ -174,15 +175,15 @@ export async function GET(req: NextRequest) {
     const s = stockMap.get(p.sku);
     if (!s) continue;
     if (!includeOutOfStock && s.stock_status !== 'in_stock') continue;
-    if (selectedCats && p.category_slug && !selectedCats.has(p.category_slug)) continue;
+    const catSlug = p.category_slug ?? '__other__';
+    const cat     = catMap.get(catSlug);
+    if (!pricelistCategoryMatch(p.category_slug, selectedCats, cat?.parent_slug)) continue;
     if (filterBrands && !filterBrands.has(p.brand ?? '')) continue;
     if (filterSearch) {
       const q = filterSearch.toLowerCase();
       if (!p.name?.toLowerCase().includes(q) && !p.sku?.toLowerCase().includes(q)) continue;
     }
 
-    const catSlug = p.category_slug ?? '__other__';
-    const cat     = catMap.get(catSlug);
     const catName = catSlug !== '__other__' ? (cat?.name ?? catSlug) : 'Інше';
     let price: number | null;
     if (priceType === 'price_prom') {
@@ -240,15 +241,14 @@ export async function GET(req: NextRequest) {
   const titleCell = ws['A1'];
   if (titleCell) titleCell.s = { font: { bold: true, sz: 14 } };
 
-  // Cost prices come straight from purchase invoices at all sorts of precisions
-  // (641.4, 1169.13, 705) — force a consistent 2-decimal display for that price
-  // type only, via the cell's number format (keeps the underlying value numeric).
-  if (priceType === 'price_cost') {
+  // Усі ціни з двома знаками через числовий формат комірки (значення лишається
+  // числом): 722.5 і 705 в одному прайсі мають виглядати однаково.
+  {
     const priceCol = showBrand ? 3 : 2;
     const range = XLSX.utils.decode_range(ws['!ref']!);
     for (let r = range.s.r; r <= range.e.r; r++) {
       const cell = ws[XLSX.utils.encode_cell({ r, c: priceCol })];
-      if (cell && cell.t === 'n') cell.z = '0.00';
+      if (cell && cell.t === 'n') cell.z = '#,##0.00';
     }
   }
 

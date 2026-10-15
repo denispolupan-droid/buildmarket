@@ -4,6 +4,7 @@ import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { Resend } from 'resend';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
+import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
 
 const db     = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -71,7 +72,9 @@ export async function POST(req: NextRequest) {
       const s = stockMap.get(prod.sku);
       if (!s) continue;
       if (!includeOOS && s.stock_status !== 'in_stock') continue;
-      if (selectedCats && prod.category_slug && !selectedCats.has(prod.category_slug)) continue;
+      const slug  = prod.category_slug ?? '__other__';
+      const cat   = catMap.get(slug);
+      if (!pricelistCategoryMatch(prod.category_slug, selectedCats, cat?.parent_slug)) continue;
       if (filterBrands && !filterBrands.has(prod.brand ?? '')) continue;
       if (filterSearch) {
         const q = filterSearch.toLowerCase();
@@ -79,8 +82,6 @@ export async function POST(req: NextRequest) {
       }
 
       const price = Number(s[priceType]) || null;
-      const slug  = prod.category_slug ?? '__other__';
-      const cat   = catMap.get(slug);
 
       if (!grouped.has(slug)) {
         grouped.set(slug, { catName: cat?.name ?? slug, description: cat?.description ?? '', rows: [] });
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     const pdfBuffer = await buildPdf(
       grouped,
-      { showBrand, showDescriptions, showImages, priceLabel, headerVariant, isCostPrice: priceType === 'price_cost' },
+      { showBrand, showDescriptions, showImages, priceLabel, headerVariant },
       imageBuffers,
     );
 
