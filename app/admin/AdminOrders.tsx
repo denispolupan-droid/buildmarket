@@ -8,6 +8,15 @@ import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Tra
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
+/** Історія клієнта для картки — /api/admin/orders/[id]/customer-orders */
+type CustomerHistory = {
+  count: number;
+  total: number;
+  orders: { id: string; order_number: number; created_at: string; channel_code: string | null; status: string; total_price: number; items: { sku: string; name: string; qty: number }[] }[];
+  more: boolean;
+  bought: Record<string, { qty: number; orders: number; last: string }>;
+};
+
 type EnrichedFulfillmentSource = FulfillmentSource & {
   available_own: number;
   supplier_in_stock: boolean;
@@ -1299,14 +1308,21 @@ export default function AdminOrders({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
-  // Статистика клієнта (скільки замовлень + сума) — при розкритті
-  const [custStats, setCustStats] = useState<Record<string, { count: number; total: number }>>({});
+  // Історія клієнта (скільки замовлень + сума, попередні замовлення, що з
+  // поточного складу вже брав) — при розкритті
+  const [custStats, setCustStats] = useState<Record<string, CustomerHistory>>({});
+  const [histOpenId, setHistOpenId] = useState<string | null>(null);
   useEffect(() => {
     if (!expandedId || custStats[expandedId]) return;
     (async () => {
       try {
         const res = await fetch(`/api/admin/orders/${expandedId}/customer-orders`);
-        if (res.ok) { const d = await res.json(); setCustStats(prev => ({ ...prev, [expandedId]: { count: d.count ?? 0, total: d.total ?? 0 } })); }
+        if (res.ok) {
+          const d = await res.json();
+          setCustStats(prev => ({ ...prev, [expandedId]: {
+            count: d.count ?? 0, total: d.total ?? 0, orders: d.orders ?? [], more: !!d.more, bought: d.bought ?? {},
+          } }));
+        }
       } catch { /* ignore */ }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3854,6 +3870,18 @@ export default function AdminOrders({
                                                 style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.006em', textDecoration: 'none' }}
                                                 onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand-blue)'; e.currentTarget.style.textDecoration = 'underline'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.textDecoration = 'none'; }}>{item.name}</a>
+                                              {(() => {
+                                                // Клієнт уже купував цей артикул — для «як минулого разу»
+                                                const b = custStats[order.id]?.bought?.[item.sku];
+                                                if (!b) return null;
+                                                const last = new Date(b.last).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: '2-digit' });
+                                                return (
+                                                  <div title={`Клієнт уже купував цей товар: ${b.qty} шт у ${b.orders} замовл., востаннє ${last}`}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', fontSize: '11px', fontWeight: 600, color: '#0E7490' }}>
+                                                    <RotateCcw size={10} /> брав {b.qty} шт · {last}
+                                                  </div>
+                                                );
+                                              })()}
                                             </div>
                                           </div>
                                         </td>
@@ -4516,13 +4544,20 @@ export default function AdminOrders({
                           {/* Скільки клієнт у нас купував — у рядку з ПІБ і коротко:
                               значок, кількість і сума. Слово «замовлень» з'їдало рядок,
                               а сам факт постійного клієнта важливо бачити біля імені. */}
-                          {custStats[order.id] && custStats[order.id].count > 1 && (
-                            <span title={`${custStats[order.id].count} замовлень цього клієнта на ${custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴ (разом із цим)`}
-                              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                              <ShoppingCart size={13} color="#64748B" />
-                              {custStats[order.id].count} · {custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
-                            </span>
-                          )}
+                          {custStats[order.id] && custStats[order.id].count > 1 && (() => {
+                            const open = histOpenId === order.id;
+                            return (
+                              <button onClick={() => setHistOpenId(open ? null : order.id)} aria-expanded={open}
+                                title={`${custStats[order.id].count} замовлень цього клієнта на ${custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴ (разом із цим) — ${open ? 'сховати' : 'показати попередні'}`}
+                                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0, fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
+                                  padding: '2px 6px', borderRadius: '6px', border: '1px solid transparent',
+                                  color: open ? 'var(--brand-blue)' : 'var(--text-secondary)', background: open ? '#EFF4FF' : 'none' }}>
+                                <ShoppingCart size={13} color={open ? 'var(--brand-blue)' : '#64748B'} />
+                                {custStats[order.id].count} · {custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                                {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              </button>
+                            );
+                          })()}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <a href={`tel:${order.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13.5px', color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
@@ -4593,6 +4628,50 @@ export default function AdminOrders({
                         })()}
                         </div>
                       </div>
+                      {/* Попередні замовлення клієнта — розкриваються з бейджа біля імені.
+                          Свіжі зверху; номер відкриває замовлення в новій вкладці, щоб
+                          не загубити поточне. Скасовані показуємо приглушено: це теж
+                          історія (клієнт, що часто скасовує, — сигнал). */}
+                      {histOpenId === order.id && custStats[order.id] && (() => {
+                        const h = custStats[order.id];
+                        return (
+                          <div style={{ marginTop: '10px', borderTop: '1px solid var(--border-light)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '260px', overflowY: 'auto' }}>
+                            {h.orders.length === 0 && (
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Інших замовлень не знайдено</div>
+                            )}
+                            {h.orders.map(o => {
+                              const st = STATUSES.find(s => s.value === o.status);
+                              const ch = CHANNEL_LABEL[o.channel_code ?? 'website'] ?? CHANNEL_LABEL.website;
+                              const cancelled = o.status === 'cancelled';
+                              const goods = o.items.map(i => `${i.name} ×${i.qty}`).join(', ');
+                              return (
+                                <div key={o.id} style={{ display: 'grid', gridTemplateColumns: 'auto auto 1fr auto', alignItems: 'baseline', columnGap: '8px', padding: '4px 0', fontSize: '12px', opacity: cancelled ? 0.55 : 1 }}>
+                                  <a href={`/admin?q=${o.order_number}&expand=${o.id}`} target="_blank" rel="noopener noreferrer"
+                                    title="Відкрити замовлення в новій вкладці"
+                                    style={{ fontWeight: 700, color: 'var(--brand-blue)', textDecoration: 'none', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                                    #{o.order_number}
+                                  </a>
+                                  <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                                    {new Date(o.created_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                  </span>
+                                  <span title={goods} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                                    <span style={{ color: ch.color, fontWeight: 600 }}>{ch.label}</span>
+                                    {' · '}
+                                    <span style={{ color: st?.color ?? 'var(--text-muted)', fontWeight: 600 }}>{st?.label ?? o.status}</span>
+                                    {goods && <> · {goods}</>}
+                                  </span>
+                                  <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textDecoration: cancelled ? 'line-through' : 'none' }}>
+                                    {o.total_price.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            {h.more && (
+                              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', paddingTop: '2px' }}>Показано {h.orders.length} останніх</div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       </div>{/* /oc-card-body */}
                       {/* Оплата — притиснута до низу картки; спільна висота з блоком ТТН (.oc-card-footer) тримає розділювачі обох карток на одній лінії */}
                       <div className="oc-card-footer">
