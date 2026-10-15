@@ -24,7 +24,7 @@ describe('googleProductCategoryId', () => {
       'plastyfikatory', 'zamazky-dlya-shviv', 'vologopoglinachi', 'instrumenty', 'kriplennya', 'strichky',
       'vidrizni-dysky', 'bury-ta-sverdla', 'shlifuvalny', 'shpateli', 'kysti-ta-valy', 'vymiriuvalny', 'pistolety',
       'shurupy-ta-samorizy', 'sklopolotno', 'laky', 'rozchynnyky', 'mastyla', 'koloranty', 'grunty', 'antygrybok',
-      'shpaklivky', 'izolyatsiyni-strichky', 'ochysnyky', 'pina-klei', 'klei-dlya-plytky', 'zakhysni-pokryttya']) {
+      'shpaklivky', 'izolyatsiyni-strichky', 'ochysnyky', 'pina-klei', 'klei-dlya-plytky']) {
       expect(googleProductCategoryPath(r, null), r).not.toBeNull();
     }
   });

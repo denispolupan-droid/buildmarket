@@ -217,7 +217,7 @@ export const HYDRO_CATS = ['bitumni-mastyky', 'hidroizolyatsiyni-mastyky', 'prai
 export const HYDRO_MASTIC_CATS = ['bitumni-mastyky', 'hidroizolyatsiyni-mastyky', 'praimery'];
 
 // Захист дерева
-export const WOOD_CATS = ['morylky', 'antyseptyki', 'zakhysni-pokryttya'];
+export const WOOD_CATS = ['morylky', 'antyseptyki']; // 15.10.2026: zakhysni-pokryttya злито в antyseptyki
 
 // Клеї
 export const GLUE_CATS = ['montazhnyi-klei', 'ridki-tsvyakhy', 'kontaktnyi-klei', 'pva-ta-stolyarnyi', 'super-klei', 'epoksydni-klei', 'klei-dlya-plytky', 'klei-dlya-shpaler'];
@@ -570,7 +570,6 @@ const wood = (def) => ({ req: [...WOOD_CORE, 'Країна виробника'],
 const WOOD_STANDARDS = {
   'morylky':           wood({ 'Призначення': 'Декоративне тонування деревини', 'Ступінь блиску': 'Напівматовий' }),
   'antyseptyki':       wood({ 'Призначення': 'Антисептичний захист деревини', 'Колір': 'Прозорий' }),
-  'zakhysni-pokryttya': wood({ 'Призначення': 'Захисне просочення деревини', 'Колір': 'Прозорий' }),
 };
 
 // Стандарти родини «Гідроізоляція» (етап 9): Призначення — закритий список,

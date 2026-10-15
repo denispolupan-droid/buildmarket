@@ -42,8 +42,7 @@ const toAdd = [
 
   // ── Нова батьківська: Захист дерева ──────────────────────────────────────
   { slug: 'zakhyst-derevyny',         name: 'Захист дерева',                     parent_slug: null,          sort_order: 45 },
-  { slug: 'antyseptyki',              name: 'Антисептики для дерева',            parent_slug: 'zakhyst-derevyny', sort_order: 451 },
-  { slug: 'zakhysni-pokryttya',       name: 'Захисні покриття',                  parent_slug: 'zakhyst-derevyny', sort_order: 452 },
+  { slug: 'antyseptyki',              name: 'Антисептики та біозахист для дерева', parent_slug: 'zakhyst-derevyny', sort_order: 451 },
   { slug: 'morylky',                  name: 'Морилки та тонуючі засоби',         parent_slug: 'zakhyst-derevyny', sort_order: 453 },
 
   // ── Нова батьківська: Стрічки ─────────────────────────────────────────────

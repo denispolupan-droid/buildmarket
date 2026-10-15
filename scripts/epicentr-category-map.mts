@@ -28,7 +28,7 @@ export const EPICENTR_CATEGORY_MAP: Record<string, string> = {
   // Затирки
   'zamazky-tsementni': '2326', 'zamazky-epoksydni': '2326',
   // Лакофарбові
-  'antyseptyki': '3206', 'zakhysni-pokryttya': '3206', 'morylky': '3206', 'laky': '3199', 'koloranty': '3203', 'rozchynnyky': '3207',
+  'antyseptyki': '3206', 'morylky': '3206', 'laky': '3199', 'koloranty': '3203', 'rozchynnyky': '3207',
   'farby-3v1-alkidni': '3198', 'farby-3v1-akrylovi': '3198', 'moltkovi-farby': '3198', 'alkidni-farby': '3198',
   'vodoemiulsiyni-interierni': '3198', 'farby-dlya-pidlohy': '3198', 'vodoemiulsiyni-fasadni': '3198', 'farby-dlya-radiatoriv': '3198',
   // Стрічки, сітки

@@ -107,8 +107,7 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
   'laky':                       'Для внутрішніх і зовнішніх робіт',
   'morylky':                    'Для внутрішніх і зовнішніх робіт',
   'zakhyst-derevyny':           'Для внутрішніх і зовнішніх робіт',
-  'antyseptiky':                'Для внутрішніх і зовнішніх робіт',
-  'zakhysni-pokryttya':         'Для внутрішніх і зовнішніх робіт',
+  'antyseptyki':                'Для внутрішніх і зовнішніх робіт',
   'antygrybok':                 'Для внутрішніх і зовнішніх робіт',
   'gruntivky':                  'Для внутрішніх і зовнішніх робіт',
   'grunty':                     'Для внутрішніх і зовнішніх робіт',
@@ -220,6 +219,13 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [isHit, setIsHit] = useState(product?.is_hit ?? false);
   const [isNewBadge, setIsNewBadge] = useState(product?.is_new ?? false);
   const [sortOrder, setSortOrder] = useState(product?.sort_order ?? 0);
+  // Площадки. Раніше прапорці жили лише в розділах Prom/Rozetka/Епіцентр, і з
+  // картки не було видно, куди товар вивантажується. Для нового товару їх
+  // виставляє чернетка агента (як у сусідів категорії), тут — ручне керування.
+  const [onProm, setOnProm] = useState<boolean>(product?.on_prom ?? false);
+  const [onRozetka, setOnRozetka] = useState<boolean>(product?.on_rozetka ?? false);
+  const [rozetkaSmart, setRozetkaSmart] = useState<boolean>(product?.rozetka_smart ?? false);
+  const [onEpicentr, setOnEpicentr] = useState<boolean>(product?.on_epicentr ?? false);
 
   const [imgType, setImgType] = useState<'tube' | 'canister'>(product?.img_type ?? 'tube');
   const [bc, setBc] = useState(product?.bc ?? '#FFFFFF');
@@ -660,8 +666,11 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             keywords: promKeywords || null,
             keywords_ru: promKeywordsRu || null,
             prom_portal_url: promPortalUrl || null,
-            // Прапорці площадок — як у сусідів по категорії (з чернетки агента)
-            ...(isNew && cardRun ? cardRun.proposal.marketplace : {}),
+            // Прапорці площадок: новий товар — як у сусідів по категорії (з чернетки
+            // агента), існуючий — з чекбоксів «Площадки» нижче
+            ...(isNew
+              ? (cardRun ? cardRun.proposal.marketplace : {})
+              : { on_prom: onProm, on_rozetka: onRozetka, rozetka_smart: rozetkaSmart, on_epicentr: onEpicentr }),
           },
           stock: {
             sku,
@@ -1057,6 +1066,23 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Сортування:</label>
             <input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} style={{ ...inputStyle, width: '80px' }} />
           </div>
+          {!isNew && (
+            <div style={{ flexBasis: '100%', display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>Площадки:</span>
+              {([
+                ['Prom', onProm, setOnProm],
+                ['Rozetka', onRozetka, setOnRozetka],
+                ['Rozetka Smart', rozetkaSmart, setRozetkaSmart],
+                ['Епіцентр', onEpicentr, setOnEpicentr],
+              ] as const).map(([label, on, set]) => (
+                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={on} onChange={e => set(e.target.checked)} />
+                  <span style={{ fontSize: '13px', fontWeight: on ? 600 : 400, color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{label}</span>
+                </label>
+              ))}
+              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>У фіди потрапляє лише активний товар з увімкненою площадкою</span>
+            </div>
+          )}
         </div>
       </div>
 

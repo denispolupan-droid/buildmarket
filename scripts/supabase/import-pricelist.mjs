@@ -94,7 +94,7 @@ function detectCategory(name, subsection) {
   if (n.includes('пластифікатор')) return 'plastyfikatory-dlya-betonu';
 
   // Захист дерева
-  if (n.includes('вогнебіозахист') || n.includes('біозахист') || n.includes('захист деревини')) return 'zakhysni-pokryttya';
+  if (n.includes('вогнебіозахист') || n.includes('біозахист') || n.includes('захист деревини')) return 'antyseptyki';
 
   // Рідке скло
   if (n.includes('рідке скло')) return 'gruntivky-gotovi';

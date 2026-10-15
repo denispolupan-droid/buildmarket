@@ -83,6 +83,9 @@ const nextConfig: NextConfig = {
       },
       { source: '/shop/ridki-tsvyakhy', destination: '/shop/klei-dlya-plytky', permanent: true },
       { source: '/ru/shop/ridki-tsvyakhy', destination: '/ru/shop/klei-dlya-plytky', permanent: true },
+      // 15.10.2026: «Захисні покриття» злито в «Антисептики та біозахист для дерева»
+      { source: '/shop/zakhysni-pokryttya', destination: '/shop/antyseptyki', permanent: true },
+      { source: '/ru/shop/zakhysni-pokryttya', destination: '/ru/shop/antyseptyki', permanent: true },
 
       // Залишки переїхали з «Обліку» в «Закупівлю» — це одна робота: подивився,
       // чого бракує → замовив → оприходував. Адреси лишаємо робочими заради

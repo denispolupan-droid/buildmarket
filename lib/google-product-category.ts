@@ -72,7 +72,6 @@ const BY_SLUG: Record<string, number> = {
   rozchynnyky: IDS.SOLVENTS,
   // Захист дерева
   'zakhyst-derevyny': IDS.SEALANTS,
-  'zakhysni-pokryttya': IDS.VARNISHES,
   morylky: IDS.STAINS,
   // Інше
   plastyfikatory: IDS.MASONRY,

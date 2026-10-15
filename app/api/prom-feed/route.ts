@@ -53,7 +53,6 @@ const CATEGORY_USAGE_TYPE: Record<string, string> = {
   'morylky':                    'Для внутрішніх і зовнішніх робіт',
   'zakhyst-derevyny':           'Для внутрішніх і зовнішніх робіт',
   'antyseptyki':                'Для внутрішніх і зовнішніх робіт',
-  'zakhysni-pokryttya':         'Для внутрішніх і зовнішніх робіт',
   'antygrybok':                 'Для внутрішніх і зовнішніх робіт',
   'gruntivky':                  'Для внутрішніх і зовнішніх робіт',
   'grunty':                     'Для внутрішніх і зовнішніх робіт',

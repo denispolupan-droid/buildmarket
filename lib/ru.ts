@@ -46,9 +46,8 @@ export const CATEGORY_NAMES_RU: Record<string, string> = {
 
   // Защита дерева
   'zakhyst-derevyny':  'Защита дерева',
-  'antyseptyki':       'Антисептики',
+  'antyseptyki':       'Антисептики и биозащита для дерева',
   'morylky':           'Морилки',
-  'zakhysni-pokryttya':'Защитные покрытия',
   'laky':              'Лаки и пропитки',
 
   // Влагопоглотители
