@@ -63,10 +63,23 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (!db) return;
-  if (created.length) await db.from('orders').delete().in('id', created);
+  // reset_accounting_test_data відмовляє, якщо є документи без meta.test=true, і
+  // TRUNCATE-ить леджер (append-only тригери інакше не дають видалити). Тому:
+  // позначити наші РН → скинути облік → видалити замовлення (FK на order_id
+  // не дасть видалити їх раніше, поки на них є документи й проводки).
+  if (created.length) {
+    const { data: docs } = await db.from('acc_documents').select('id, meta').in('order_id', created);
+    for (const d of docs ?? []) {
+      await db.from('acc_documents').update({ meta: { ...((d.meta as object) ?? {}), test: true } }).eq('id', d.id);
+    }
+  }
+  const { data: reset, error } = await db.rpc('reset_accounting_test_data');
+  if (error || String(reset).startsWith('REFUSED')) console.error('cleanup reset:', error?.message ?? reset);
+  if (created.length) {
+    const { error: delErr } = await db.from('orders').delete().in('id', created);
+    if (delErr) console.error('cleanup orders:', delErr.message);
+  }
   await db.from('supplier_sku_map').delete().eq('supplier_sku', MAP_SKU);
-  const { error } = await db.rpc('reset_accounting_test_data');
-  if (error) console.error('cleanup:', error.message);
 });
 
 test('підтвердити → відвантажити → доставити: статуси, мітки, РН і виручка', async ({ request }) => {
