@@ -61,3 +61,29 @@ export async function loadFixtures(db: SupabaseClient): Promise<Fixtures> {
 
   throw new Error(`Фікстури не завантажились за ${ATTEMPTS} спроби — ${lastError}`);
 }
+
+// ── Справжні замовлення для тестів ───────────────────────────────────────────
+// З міграції 129 (15.10.2026) acc_documents / money_entries / stock_reservations
+// тримають FK на orders(id): документ чи резерв із вигаданим randomUUID() замість
+// замовлення база відхиляє — як і має бути в проді. Тести створюють мінімальне
+// замовлення тут і прибирають його в afterAll ПІСЛЯ reset_accounting_test_data
+// (FK RESTRICT не дасть видалити замовлення, поки на ньому є документи).
+
+const createdOrders: string[] = [];
+
+export async function createTestOrder(db: SupabaseClient, sku = 'TEST', qty = 1, price = 100): Promise<string> {
+  const { data, error } = await db.from('orders').insert({
+    contact: '[TEST] accounting', phone: '+380000000000', email: 'test@fixline.test',
+    status: 'new', total_price: qty * price, channel_code: 'website', delivery_type: 'nova', payment_type: 'cod',
+    items: [{ sku, name: 'test', brand: 'test', qty, price }],
+  }).select('id').single();
+  if (error) throw new Error('createTestOrder: ' + error.message);
+  createdOrders.push(data.id as string);
+  return data.id as string;
+}
+
+export async function deleteTestOrders(db: SupabaseClient): Promise<void> {
+  if (!createdOrders.length) return;
+  const { error } = await db.from('orders').delete().in('id', createdOrders.splice(0));
+  if (error) console.error('deleteTestOrders:', error.message);
+}

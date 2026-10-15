@@ -15,11 +15,10 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { randomUUID } from 'node:crypto';
 import { createDocument, confirmDocument } from '../../lib/accounting/documents';
 import { createReservation, hasActiveReservation } from '../../lib/accounting/reservations';
 import { createSaleDraft } from '../../lib/accounting/dropship';
-import { loadFixtures } from './fixtures';
+import { loadFixtures, createTestOrder, deleteTestOrders } from './fixtures';
 import { applyCompletionEffects, completeShipmentByTtn, allOrderSalesPosted } from '../../lib/accounting/completion';
 
 let db: SupabaseClient;
@@ -77,11 +76,13 @@ afterAll(async () => {
   if (!db) return;
   const { error } = await db.rpc('reset_accounting_test_data');
   if (error) console.error('Cleanup error:', error.message);
+  // Після скидання обліку (FK RESTRICT з міграції 129 не дає видалити раніше)
+  await deleteTestOrders(db);
 });
 
 describe('Варіант 3 — продаж при доставці', () => {
   it('createSaleDraft: РН-чернетка, БЕЗ проводок, резерв тримається; applyCompletionEffects: проводить + знімає резерв; ідемпотентно', async () => {
-    const orderId = randomUUID();
+    const orderId = await createTestOrder(db, testSku);
     const items = [{ sku: testSku, name: 'test', brand: 'test', qty: 2, price: 100 }];
 
     // Резерв (як після підтвердження замовлення)
@@ -124,7 +125,7 @@ describe('Варіант 3 — продаж при доставці', () => {
     // роутер при відгрузці взяв товар зі свого складу. Резерву не було, РН — ще
     // чернетка, тож списання не відбулось: залишок показував «доступно» на
     // коробку, яка вже їхала до покупця, і той самий товар можна було продати вдруге.
-    const orderId = randomUUID();
+    const orderId = await createTestOrder(db, testSku);
     const items = [{ sku: testSku, name: 'test', brand: 'test', qty: 1, price: 100 }];
 
     // Тестова база не має правил маршрутизації взагалі, тож роутер завжди
@@ -165,7 +166,7 @@ describe('Варіант 3 — продаж при доставці', () => {
   }, 30000);
 
   it('часткова відгрузка: 2 посилки = 2 чернетки, проводяться окремо за своєю ТТН', async () => {
-    const orderId = randomUUID();
+    const orderId = await createTestOrder(db, testSku);
     const line = { sku: testSku, name: 'test', brand: 'test', price: 100 };
 
     const resv = await createReservation({ order_id: orderId, warehouse_id: warehouseId, items: [{ sku: testSku, qty: 4 }] });
@@ -205,8 +206,8 @@ describe('Варіант 3 — продаж при доставці', () => {
   // 20451502111156; через maybeSingle() по ній не проводилось нічого, і обидва
   // замовлення лишились доставленими з чернеткою РН (інваріант I7).
   it('одна посилка на два замовлення: проводяться обидві чернетки', async () => {
-    const orderA = randomUUID();
-    const orderB = randomUUID();
+    const orderA = await createTestOrder(db, testSku);
+    const orderB = await createTestOrder(db, testSku);
     const line = { sku: testSku, name: 'test', brand: 'test', price: 100 };
     const TTN = '59TESTMERGED01';
 

@@ -17,7 +17,7 @@ import { createDocument, confirmDocument, cancelDocument } from '../../lib/accou
 import { createReservation, releaseReservation } from '../../lib/accounting/reservations';
 import { recordSupplierPayment, recordCOGS, recordTxn } from '../../lib/accounting/money';
 import { reverseDropshipLedgerExtras } from '../../lib/accounting/dropship';
-import { loadFixtures } from './fixtures';
+import { loadFixtures, createTestOrder, deleteTestOrders } from './fixtures';
 
 // ── Фікстури (знаходяться динамічно в beforeAll) ──────────────────────────────
 
@@ -95,6 +95,8 @@ afterAll(async () => {
   const { data, error } = await db.rpc('reset_accounting_test_data');
   if (error) console.error('Cleanup error:', error.message);
   else       console.log('Cleanup:', data);
+  // Після скидання обліку (FK RESTRICT з міграції 129 не дає видалити раніше)
+  await deleteTestOrders(db);
 });
 
 // ── Тести ─────────────────────────────────────────────────────────────────────
@@ -290,7 +292,7 @@ describe('Storno — відміна підтвердженого докумен�
 // the exact entries recordDropshipSale() would have posted, to test the reversal in isolation.
 describe('Dropship cancel — reverses COGS and supplier payable left outside the document flow', () => {
   it('reverseDropshipLedgerExtras nets the cogs and supplier entries to zero', async () => {
-    const testOrderId = crypto.randomUUID();
+    const testOrderId = await createTestOrder(db, testSku);
 
     const doc = await createDocument({
       doc_type:     'sale',
@@ -364,7 +366,7 @@ describe('Reservations', () => {
   });
 
   it('reserves 7 units: qty_reserved=7, qty_available=13', async () => {
-    reservationOrderId = crypto.randomUUID();
+    reservationOrderId = await createTestOrder(db, testSku, 7);
 
     const result = await createReservation({
       order_id:     reservationOrderId,
@@ -385,7 +387,7 @@ describe('Reservations', () => {
 
   it('refuses oversell: request 15 with only 13 available', async () => {
     const result = await createReservation({
-      order_id:     crypto.randomUUID(),
+      order_id:     await createTestOrder(db, testSku, 15),
       warehouse_id: warehouseId,
       items:        [{ sku: testSku, qty: 15 }],
     });
@@ -436,7 +438,7 @@ describe('Reservations', () => {
   });
 
   it('cancel reservation: qty_available restored without stock movement', async () => {
-    const orderId = crypto.randomUUID();
+    const orderId = await createTestOrder(db, testSku, 3);
     await createReservation({
       order_id: orderId, warehouse_id: warehouseId, items: [{ sku: testSku, qty: 3 }],
     });
