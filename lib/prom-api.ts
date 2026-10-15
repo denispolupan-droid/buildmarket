@@ -23,16 +23,45 @@ async function headers() {
   };
 }
 
+/**
+ * У Prom бувають короткі 5xx і обриви: 12.10.2026 `/orders/list?status=canceled`
+ * двічі поспіль віддав HTML-сторінку «500 Internal Server Error», і крон
+ * скасувань просто впав алертом. Одна спроба через півсекунди такі моменти
+ * перекриває.
+ *
+ * Повторюємо ТІЛЬКИ GET: решта викликів Prom — пуш статусу, прив'язка
+ * накладної, правка товарів. Там 500 не означає «не застосувалось», і сліпий
+ * повтор здатен зробити дію двічі.
+ */
+const PROM_GET_RETRIES = 2;
+const PROM_RETRY_BACKOFF = [500, 1500];
+
 async function promFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${PROM_BASE}${path}`, {
-    ...init,
-    headers: { ...(await headers()), ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Prom API ${path}: ${res.status} — ${text.slice(0, 300)}`);
+  const isGet = !init?.method || init.method.toUpperCase() === 'GET';
+  for (let attempt = 0; ; attempt++) {
+    const canRetry = isGet && attempt < PROM_GET_RETRIES;
+    let res: Response;
+    try {
+      res = await fetch(`${PROM_BASE}${path}`, {
+        ...init,
+        headers: { ...(await headers()), ...(init?.headers ?? {}) },
+      });
+    } catch (err) {
+      // Мережевий обрив (ECONNRESET, таймаут) — те саме, що 5xx
+      if (canRetry) { await new Promise(r => setTimeout(r, PROM_RETRY_BACKOFF[attempt])); continue; }
+      throw err;
+    }
+    if (!res.ok) {
+      // 4xx — наша помилка (токен, параметри), повторювати нема сенсу
+      if (res.status >= 500 && canRetry) {
+        await new Promise(r => setTimeout(r, PROM_RETRY_BACKOFF[attempt]));
+        continue;
+      }
+      const text = await res.text();
+      throw new Error(`Prom API ${path}: ${res.status} — ${text.slice(0, 300)}`);
+    }
+    return res.json() as Promise<T>;
   }
-  return res.json() as Promise<T>;
 }
 
 /* ── Types (Prom.ua API shapes) ─────────────────────────────────────────── */
