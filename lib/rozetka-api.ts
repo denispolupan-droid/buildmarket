@@ -200,6 +200,7 @@ export interface RozetkaOrder {
   amount: string;
   cost: string;
   cost_with_discount: string;
+  amount_with_discount?: string;
   comment: string | null;
   // expand-поле: замовлення в програмі Smart (безкоштовна доставка за наш рахунок —
   // Rozetka списує компенсацію 12/18/30 грн при передачі перевізникові)
@@ -793,7 +794,11 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
     price: Number(p.price_with_discount ?? p.price) || 0,
   }));
 
-  const totalPrice = Number(order.cost_with_discount ?? order.cost ?? order.amount) || 0;
+  // Лише товари (amount), БЕЗ delivery.cost: з 05.10.2026 покупець платить
+  // 49 ₴ за доставку в точку видачі ROZETKA (замовлення до 1000 ₴), і ці гроші
+  // йдуть Rozetka, не нам. cost/cost_with_discount = товари + доставка — з них
+  // замовлення виставлялось покупцю на 49 ₴ більше (живий кейс #26101086).
+  const totalPrice = Number(order.amount_with_discount ?? order.amount ?? order.cost_with_discount) || 0;
 
   return {
     contact,
