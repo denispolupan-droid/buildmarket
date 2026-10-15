@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractOrderNumber, classifyMonoTxn, isAcquiringSettlement, extractAcquiringGross } from '../lib/mono-statement';
+import { extractOrderNumber, classifyMonoTxn, isAcquiringSettlement, extractAcquiringGross, orderLookupPlan, PG_INT4_MAX } from '../lib/mono-statement';
 
 describe('extractOrderNumber — номер замовлення з призначення платежу', () => {
   it('реальний comment ФОП: «згідно рахунку №26071021»', () => {
@@ -129,5 +129,40 @@ describe('classifyMonoTxn — еквайринг з номером замовл�
   it('звичайна оплата з номером лишається order', () => {
     const r = classifyMonoTxn({ ...row, comment: 'Оплата за замовлення №26091002' });
     expect(r?.kind).toBe('order');
+  });
+});
+
+describe('orderLookupPlan — де шукати замовлення за числом із призначення', () => {
+  const cols = (n: number) => orderLookupPlan(n).map(s => s.column);
+
+  it('наш номер пробуємо першим, далі кабінети МП', () => {
+    expect(cols(26091287)).toEqual(['order_number', 'rozetka_order_id', 'prom_order_id', 'epicentr_order_id']);
+  });
+
+  // 05.10.2026: покупець Rozetka заплатив «Оплата замовлення 907455298» — це номер
+  // кабінету, не наш. Пошук лише по order_number лишив 895 ₴ незарахованими.
+  it('номер кабінету Rozetka входить у план пошуку', () => {
+    const plan = orderLookupPlan(907455298);
+    expect(plan).toContainEqual({ column: 'rozetka_order_id', value: 907455298 });
+  });
+
+  // orders.order_number — int4; з 14-значною ТТН Postgres валить ВЕСЬ запит.
+  it('довге число (ТТН) не шукаємо в int4-колонці', () => {
+    expect(cols(59001797934459)).toEqual(['rozetka_order_id', 'prom_order_id', 'epicentr_order_id']);
+  });
+
+  it('межа int4 включно', () => {
+    expect(cols(PG_INT4_MAX)).toContain('order_number');
+    expect(cols(PG_INT4_MAX + 1)).not.toContain('order_number');
+  });
+
+  it('epicentr_order_id — текстова колонка, значення рядком', () => {
+    expect(orderLookupPlan(123456789).find(s => s.column === 'epicentr_order_id')?.value).toBe('123456789');
+  });
+
+  it('сміття не дає плану', () => {
+    expect(orderLookupPlan(0)).toEqual([]);
+    expect(orderLookupPlan(-5)).toEqual([]);
+    expect(orderLookupPlan(1.5)).toEqual([]);
   });
 });

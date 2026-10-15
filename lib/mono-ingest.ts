@@ -1,5 +1,5 @@
 import { createServiceClient } from './supabase';
-import { classifyMonoTxn, type MonoStatementItem } from './mono-statement';
+import { classifyMonoTxn, orderLookupPlan, LOOKUP_SOURCE_LABEL, PG_INT4_MAX, type MonoStatementItem, type OrderLookup } from './mono-statement';
 import { parseRzPayPayout, postRzPayPayout } from './rozetkapay-payout';
 import { recordTxn } from './accounting/money';
 import { applyOrderPayment } from './accounting/order-payment';
@@ -134,11 +134,18 @@ export async function ingestMonoTxn(
 
   // Є номер замовлення в призначенні → пробуємо зарахувати оплату
   if (m.kind === 'order') {
-    const { data: order } = await db
-      .from('orders')
-      .select('id, status, order_number')
-      .eq('order_number', m.orderNumber)
-      .maybeSingle();
+    // Число з призначення може бути як нашим номером, так і номером кабінету
+    // маркетплейсу — перебираємо обидва варіанти (див. orderLookupPlan).
+    let order: { id: string; status: string; order_number: number } | null = null;
+    let foundBy: OrderLookup['column'] | null = null;
+    for (const step of orderLookupPlan(m.orderNumber)) {
+      const { data } = await db
+        .from('orders')
+        .select('id, status, order_number')
+        .eq(step.column, step.value)
+        .maybeSingle();
+      if (data) { order = data; foundBy = step.column; break; }
+    }
 
     if (order && order.status !== 'cancelled') {
       const res = await applyOrderPayment(db, {
@@ -153,16 +160,21 @@ export async function ingestMonoTxn(
           .update({ status: 'matched', matched_order_id: order.id, order_payment_id: res.paymentId ?? null })
           .eq('id', item.id);
         alertAdmin(
-          `💳 Оплата ${m.amount.toFixed(2)} ₴ зарахована до замовлення #${m.orderNumber}`,
-          `${res.isFullyPaid ? 'Оплачено повністю' : 'Часткова оплата'}. Платник: ${item.counterName ?? '—'}`,
+          `💳 Оплата ${m.amount.toFixed(2)} ₴ зарахована до замовлення #${order.order_number}`,
+          `${res.isFullyPaid ? 'Оплачено повністю' : 'Часткова оплата'}. Платник: ${item.counterName ?? '—'}`
+          + (foundBy && foundBy !== 'order_number' ? `. У призначенні був ${LOOKUP_SOURCE_LABEL[foundBy]} — ${m.orderNumber}` : ''),
         );
-        return { status: 'matched', orderNumber: m.orderNumber, amount: m.amount };
+        return { status: 'matched', orderNumber: order.order_number, amount: m.amount };
       }
     }
-    // Номер є, але замовлення немає / скасоване / не вдалось провести
+    // Номер є, але замовлення немає / скасоване / не вдалось провести.
+    // Текст різний, бо дії різні: скасоване — це питання «повернути чи зарахувати»,
+    // а «не знайдено» — шукати, за що взагалі заплатили.
     alertAdmin(
       `⚠ Оплата ${m.amount.toFixed(2)} ₴ з №${m.orderNumber}, але замовлення не зараховано`,
-      `Перевір вручну (замовлення відсутнє, скасоване або помилка проведення). Платник: ${item.counterName ?? '—'}`,
+      order
+        ? `Замовлення #${order.order_number} СКАСОВАНЕ (знайдено за «${LOOKUP_SOURCE_LABEL[foundBy!]}»). Рішення за людиною: повернути покупцю чи зарахувати. Платник: ${item.counterName ?? '—'}`
+        : `Замовлення з таким номером немає — ні серед наших, ні серед номерів кабінетів Prom/Rozetka/Епіцентру. Платник: ${item.counterName ?? '—'}`,
     );
     return { status: 'unmatched', amount: m.amount, orderNumber: m.orderNumber };
   }
@@ -175,7 +187,9 @@ export async function ingestMonoTxn(
   if (m.kind === 'acquiring') {
     const gross = m.gross;
     let covered = false;
-    if (m.orderNumber) {
+    // order_number — int4: з довгим числом (ТТН із призначення) Postgres валить
+    // весь запит «out of range for type integer», тож навіть не питаємо.
+    if (m.orderNumber && m.orderNumber <= PG_INT4_MAX) {
       const { data: order } = await db
         .from('orders')
         .select('order_number, total_price, payment_confirmed')

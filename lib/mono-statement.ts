@@ -60,6 +60,40 @@ export function extractAcquiringGross(comment?: string | null): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
+// ── Де шукати замовлення за числом із призначення ───────────────────────────
+//
+// У призначенні буває не наш номер, а номер замовлення В КАБІНЕТІ маркетплейсу:
+// покупець Rozetka платить за рахунком, де стоїть 907455298, і такий платіж
+// нікуди не зараховувався — пошук ішов лише по orders.order_number (05.10.2026
+// так зависли 895 ₴ по #26091287). Пошук в адмінці вміє обидва варіанти вже
+// давно — тут повторюємо ту саму логіку.
+//
+// orders.order_number — int4, тож довге число (ТТН на 14 цифр з призначення)
+// у ньому шукати НЕ МОЖНА: Postgres валить весь запит помилкою «out of range
+// for type integer». Маркетплейсні колонки — bigint/text, їм усе одно.
+export const PG_INT4_MAX = 2147483647;
+
+export type OrderLookup = { column: 'order_number' | 'rozetka_order_id' | 'prom_order_id' | 'epicentr_order_id'; value: number | string };
+
+/** Порядок пошуку замовлення за числом із призначення: спершу наш номер, далі кабінети МП. */
+export function orderLookupPlan(num: number): OrderLookup[] {
+  if (!Number.isInteger(num) || num <= 0) return [];
+  const plan: OrderLookup[] = [];
+  if (num <= PG_INT4_MAX) plan.push({ column: 'order_number', value: num });
+  plan.push({ column: 'rozetka_order_id', value: num });
+  plan.push({ column: 'prom_order_id', value: num });
+  plan.push({ column: 'epicentr_order_id', value: String(num) });
+  return plan;
+}
+
+/** Людська назва джерела номера — для тексту алерта. */
+export const LOOKUP_SOURCE_LABEL: Record<OrderLookup['column'], string> = {
+  order_number:      'наш номер',
+  rozetka_order_id:  'номер кабінету Rozetka',
+  prom_order_id:     'номер кабінету Prom',
+  epicentr_order_id: 'номер кабінету Епіцентру',
+};
+
 export type MonoMatch =
   | { kind: 'order'; orderNumber: number; amount: number }   // знайдено №заказу → авто
   | { kind: 'acquiring'; amount: number; orderNumber?: number; gross: number }  // покриття еквайрингу — НЕ оплата
