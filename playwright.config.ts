@@ -7,6 +7,10 @@ const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Адмінські сценарії — окремий конфіг (tests/e2e/admin/admin.config.ts) проти
+  // ТЕСТОВОЇ бази: вони створюють і проводять замовлення, під цим конфігом (dev на
+  // проді) запускатися не мають.
+  testIgnore: ['**/admin/**'],
   // These specs assert on timing (a late RSC payload racing the user's scroll), so they run
   // one at a time — parallel workers sharing one dev server skew exactly what's measured.
   workers: 1,

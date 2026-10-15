@@ -24,7 +24,8 @@
     "rz:sla": "tsx --env-file=.env.local scripts/rozetka/sla-report.mts",
     "db:migrate": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs",
     "db:migrate:dry": "node --env-file=.env.local scripts/apply-accounting-migrations.mjs --dry-run",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "test:e2e:admin": "playwright test -c tests/e2e/admin/admin.config.ts"
   },
   "simple-git-hooks": {
     "pre-commit": "npx tsc --noEmit",

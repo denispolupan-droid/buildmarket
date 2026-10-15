@@ -87,6 +87,30 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
         run: npm run test:integration
 
+      # ── E2E адмінки: підтвердити → відвантажити → доставити, правка позицій,
+      # скасування, запобіжник «Відправлено без РН» — через справжні роути під
+      # сесією e2e-адміна тестової бази. Той самий job, бо база спільна з
+      # інтеграційними (concurrency group вище).
+      - name: Install Playwright (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E admin
+        env:
+          NEXT_PUBLIC_SUPABASE_URL:      ${{ secrets.TEST_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY:     ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          E2E_ADMIN_PASSWORD:            ${{ secrets.E2E_ADMIN_PASSWORD }}
+          RESEND_API_KEY: re_dummy_ci_build_only
+        run: npm run test:e2e:admin
+
+      - name: Upload admin e2e report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-admin
+          path: playwright-report-admin/
+          retention-days: 7
+
       - name: Verify DB invariants
         if: always()
         env:
