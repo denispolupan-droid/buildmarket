@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   }
   const { data, error } = await serviceClient
     .from('blog_posts')
-    .select('id, slug, title, description, category, is_published, published_at, created_at, read_time')
+    .select('id, slug, title, description, category, is_published, noindex, published_at, created_at, read_time')
     .order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);
@@ -91,6 +91,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json() as {
     id: number;
     is_published?: boolean;
+    noindex?: boolean;
     title?: string; title_ru?: string;
     description?: string; description_ru?: string;
     content_html?: string; content_html_ru?: string;
@@ -103,6 +104,9 @@ export async function PATCH(req: NextRequest) {
   }
   if (body.content_html !== undefined) update.content_html = sanitizeArticleHtml(body.content_html);
   if (body.content_html_ru !== undefined) update.content_html_ru = sanitizeArticleHtml(body.content_html_ru);
+  // noindex — не редагування змісту: updated_at не чіпаємо, щоб lastmod/dateModified
+  // не брехали Google про «оновлення» статті.
+  if (body.noindex !== undefined) { update.noindex = body.noindex; delete update.updated_at; }
   if (body.is_published !== undefined) {
     update.is_published = body.is_published;
     if (body.is_published) {

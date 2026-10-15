@@ -37,10 +37,21 @@ export type BlogPost = {
   /** Артикули товарів для блоку «Чим це зробити» — ціни беруться на рендері */
   product_skus: string[];
   is_published: boolean;
+  /**
+   * Закрита від пошуку (robots noindex,follow; не в sitemap / RSS / llms.txt), але
+   * відкрита на сайті. Міграція 129, 15.10.2026: тонкі ШІ-гайди без показів після
+   * Google Spam Update — не видаляємо, щоб не ламати внутрішні посилання.
+   */
+  noindex: boolean;
   published_at: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** Статті, які можна показувати пошуку й агрегаторам (sitemap, RSS, llms.txt). */
+export function indexablePosts<T extends { noindex?: boolean | null }>(posts: T[]): T[] {
+  return posts.filter(p => !p.noindex);
+}
 
 // Defense-in-depth: чистимо content_html на межі читання, тож будь-який
 // рендер (через dangerouslySetInnerHTML) отримує вже безпечний HTML —

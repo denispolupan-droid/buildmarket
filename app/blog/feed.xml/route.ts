@@ -1,4 +1,4 @@
-import { getPublishedPostsCached } from '../../../lib/blog-db';
+import { getPublishedPostsCached, indexablePosts } from '../../../lib/blog-db';
 import { SITE_URL } from '../../../lib/site';
 
 /**
@@ -12,7 +12,7 @@ function x(s: string): string {
 }
 
 export async function GET() {
-  const posts = (await getPublishedPostsCached())
+  const posts = indexablePosts(await getPublishedPostsCached())
     .filter(p => p.published_at)
     .sort((a, b) => (b.published_at! > a.published_at! ? 1 : -1))
     .slice(0, 50);

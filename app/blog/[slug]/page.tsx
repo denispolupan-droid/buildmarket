@@ -23,6 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: post.title,
     description: post.description,
     keywords: post.keywords,
+    // Закрита від пошуку стаття: noindex, але follow — посилання на товари й сусідні
+    // статті далі передають вагу (міграція 129).
+    ...(post.noindex ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: `${BASE}/blog/${slug}`, languages: { 'uk': `${BASE}/blog/${slug}`, 'ru': `${BASE}/ru/blog/${slug}`, 'x-default': `${BASE}/blog/${slug}` } },
     openGraph: {
       title: post.title,

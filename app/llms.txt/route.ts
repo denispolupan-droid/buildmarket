@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCategoriesCached, getSupabase } from '../../lib/supabase';
-import { getPublishedPostsCached } from '../../lib/blog-db';
+import { getPublishedPostsCached, indexablePosts } from '../../lib/blog-db';
 import { getCategoryContentCached } from '../../lib/category-content';
 import { fetchAllRows } from '../../lib/db-paginate';
 import { llmsTxt, type LlmsTxtInput } from '../../lib/llms-md';
@@ -33,7 +33,7 @@ export async function GET() {
   // лічильниками й обрізаним діапазоном цін, які ніхто б не помітив.
   const [categories, posts, rows, content] = await Promise.all([
     getCategoriesCached(),
-    getPublishedPostsCached(),
+    getPublishedPostsCached().then(indexablePosts),
     fetchAllRows<Row>((from, to) =>
       supabase
         .from('products')

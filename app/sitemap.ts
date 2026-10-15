@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 import { getSitemapProductsCached, getCategoriesCached } from '../lib/supabase';
-import { getPublishedPostsCached } from '../lib/blog-db';
+import { getPublishedPostsCached, indexablePosts } from '../lib/blog-db';
 import { getCategoryContentUpdatedCached } from '../lib/category-content';
 import { isNonCanonicalVariant } from '../lib/seo/variants';
 import { categoriesWithProducts, duplicateOfParent } from '../lib/seo/meta';
@@ -74,7 +74,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/returns`,     lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
   ];
 
-  const blogRoutes: MetadataRoute.Sitemap = dbPosts.map(p => ({
+  // noindex-статті в sitemap не йдуть: суперечливий сигнал «індексуй / не індексуй»
+  const blogRoutes: MetadataRoute.Sitemap = indexablePosts(dbPosts).map(p => ({
     url: `${BASE}/blog/${p.slug}`,
     lastModified: new Date(p.updated_at),
     changeFrequency: 'monthly' as const,
@@ -162,7 +163,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/ru/returns`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
   ];
 
-  const ruBlogRoutes: MetadataRoute.Sitemap = dbPosts.map(p => ({
+  const ruBlogRoutes: MetadataRoute.Sitemap = indexablePosts(dbPosts).map(p => ({
     url: `${BASE}/ru/blog/${p.slug}`,
     lastModified: new Date(p.updated_at),
     changeFrequency: 'monthly' as const,

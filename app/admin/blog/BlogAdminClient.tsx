@@ -11,6 +11,7 @@ type PostRow = {
   title: string;
   description: string;
   is_published: boolean;
+  noindex: boolean;
   published_at: string | null;
   created_at: string;
   read_time: number;
@@ -125,6 +126,17 @@ export default function BlogAdminClient() {
     } finally {
       setSaving(false);
     }
+  }
+
+  // Закрити/відкрити для пошуку (robots noindex,follow + поза sitemap/RSS); стаття
+  // лишається на сайті. Для тонких статей без показів після Spam Update 09–10.2026.
+  async function toggleNoindex(p: PostRow) {
+    await fetch('/api/admin/blog', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: p.id, noindex: !p.noindex }),
+    });
+    await load();
   }
 
   async function togglePublish(p: PostRow) {
@@ -484,6 +496,11 @@ export default function BlogAdminClient() {
             <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: p.is_published ? '#10B98118' : '#F59E0B18', color: p.is_published ? '#10B981' : '#F59E0B' }}>
               {p.is_published ? 'опубліковано' : 'чернетка'}
             </span>
+            {p.noindex && (
+              <span title="robots noindex,follow; не в sitemap/RSS/llms.txt — на сайті відкрита" style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: '#64748B18', color: '#475569' }}>
+                поза пошуком
+              </span>
+            )}
             <div style={{ flex: 1, minWidth: 240 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{p.title}</div>
               <div style={{ fontSize: 12, color: '#64748B' }}>{p.slug} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</div>
@@ -503,6 +520,11 @@ export default function BlogAdminClient() {
             <button onClick={() => togglePublish(p)} style={{ ...btn, color: p.is_published ? '#F59E0B' : '#10B981' }}>
               {p.is_published ? 'Зняти з публікації' : 'Опублікувати'}
             </button>
+            {p.is_published && (
+              <button onClick={() => toggleNoindex(p)} title="Стаття лишається на сайті; змінюється лише індексація пошуком" style={{ ...btn, color: p.noindex ? '#10B981' : '#64748B' }}>
+                {p.noindex ? 'Повернути в пошук' : 'Закрити від пошуку'}
+              </button>
+            )}
             <button onClick={() => remove(p)} style={{ ...btn, color: '#EF4444' }}>Видалити</button>
           </div>
         ))}
