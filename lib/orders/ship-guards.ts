@@ -34,6 +34,34 @@ export function manualStatusWithoutSaleError(
     + 'РН створиться сама, а «Доставлено» поставить синк перевізника.';
 }
 
+const STATUS_UA: Record<string, string> = {
+  new: 'нове', confirmed: 'підтверджене', picking: 'в комплектації', awaiting_stock: 'чекає товар',
+  shipped: 'відправлене', delivered: 'доставлене', cancelled: 'скасоване',
+};
+
+/**
+ * ЕН, яка вже прив'язана до іншого замовлення. Живий кейс 15.10.2026 (#26101011 →
+ * #26101063): покупець не забрав посилку, її переадресували іншому покупцю, і в
+ * новому замовленні натиснули «Відвантажити» з тією самою ЕН. Для системи це
+ * нове відвантаження від постачальника — створилась друга РН і другий борг
+ * 318,50 за один фізичний товар. Тому чужа ЕН без явного «це переадресація»
+ * блокується; з підтвердженням (redirect) відгрузка йде, а борг переноситься зі
+ * старого замовлення (lib/accounting/transit → redirectTransit).
+ */
+export function ttnReuseError(
+  ttn: string | null | undefined,
+  other: { order_number: number; status: string } | null | undefined,
+  redirect: boolean,
+): string | null {
+  const t = (ttn ?? '').trim();
+  if (!t || !other || redirect) return null;
+  const status = STATUS_UA[other.status] ?? other.status;
+  return `ЕН №${t} вже прив'язана до замовлення #${other.order_number} (${status}). `
+    + 'Відвантаження з чужою накладною створить другий борг перед постачальником за той самий товар. '
+    + 'Якщо це переадресація тієї самої посилки — підтвердіть, і борг перенесеться зі старого замовлення; '
+    + 'якщо ні — внесіть нову ЕН.';
+}
+
 export type ShipGuardOrder = {
   delivery_type?: string | null;
   tracking_number?: string | null;

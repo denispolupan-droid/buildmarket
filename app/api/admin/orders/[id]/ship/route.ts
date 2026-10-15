@@ -13,7 +13,8 @@ import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard'
 import { setPromTTN, promAcceptsTtnFor } from '../../../../../../lib/prom-api';
 import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
 import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
-import { pickupWithTtnError } from '../../../../../../lib/orders/ship-guards';
+import { pickupWithTtnError, ttnReuseError } from '../../../../../../lib/orders/ship-guards';
+import { redirectTransit } from '../../../../../../lib/accounting/transit';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
 
 export async function POST(
@@ -58,9 +59,12 @@ export async function POST(
   const body = await req.json().catch(() => ({})) as {
     items?: { sku: string; qty: number }[];
     ttn?: string;
+    /** Підтверджена переадресація: та сама ЕН їде з іншого замовлення іншому покупцю */
+    redirect?: boolean;
   };
   const partialItems = body.items; // undefined = ship everything
   const bodyTtn = body.ttn?.trim() || null;
+  const isRedirect = body.redirect === true;
 
   const { data: order, error } = await db
     .from('orders')
@@ -85,6 +89,31 @@ export async function POST(
   const pickupConflict = pickupWithTtnError(order, bodyTtn);
   if (pickupConflict) {
     return NextResponse.json({ error: pickupConflict }, { status: 409 });
+  }
+
+  // ЕН іншого замовлення (переадресація посилки, #26101011 → #26101063): без явного
+  // підтвердження не відвантажуємо — інакше за один товар буде два борги перед
+  // постачальником. З підтвердженням борг старого замовлення знімається нижче.
+  const guardTtn = bodyTtn ?? (order.tracking_number as string | null) ?? null;
+  type RedirectFrom = { id: string; order_number: number; status: string };
+  let redirectFrom: RedirectFrom | null = null;
+  if (guardTtn) {
+    const { data: other } = await db
+      .from('orders')
+      .select('id, order_number, status')
+      .eq('tracking_number', guardTtn)
+      .neq('id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    redirectFrom = (other as RedirectFrom | null) ?? null;
+    const reuseError = ttnReuseError(guardTtn, redirectFrom, isRedirect);
+    if (reuseError) {
+      return NextResponse.json({
+        error: reuseError,
+        ttn_conflict: { order_id: redirectFrom!.id, order_number: redirectFrom!.order_number, status: redirectFrom!.status },
+      }, { status: 409 });
+    }
   }
 
   // Determine which items to ship (full or partial)
@@ -220,6 +249,27 @@ export async function POST(
     shipping_supplier_id: (order as { shipping_supplier_id?: number | null }).shipping_supplier_id ?? null,
     tracking_number:      effectiveTtn,
   });
+
+  // Переадресація: нова РН уже нарахувала борг за товар, а він фізично один —
+  // знімаємо транзит і борг старого замовлення. Невдача не валить відгрузку
+  // (посилка вже поїхала), але менеджер має про неї дізнатись одразу.
+  let redirectWarning: string | null = null;
+  if (isRedirect && redirectFrom) {
+    try {
+      const moved = await redirectTransit({
+        fromOrderId:   redirectFrom.id,
+        toOrderNumber: order.order_number as number,
+        toDocId:       saleDocId,
+        createdBy:     user.email ?? 'admin',
+      });
+      if (!moved.docIds.length) {
+        redirectWarning = `У замовлення #${redirectFrom.order_number} товар у дорозі вже не висів — борг не переносився, перевірте «Борги» постачальника`;
+      }
+    } catch (err) {
+      redirectWarning = `Борг зі старого замовлення #${redirectFrom.order_number} не перенесено: ${err instanceof Error ? err.message : String(err)}`;
+      alertAdmin(`Переадресація ЕН ${effectiveTtn}: борг з #${redirectFrom.order_number} не перенесено на #${order.order_number}`, err);
+    }
+  }
 
   // Компенсація Rozetka Smart: площадка списує збір з балансу при передачі посилки
   // перевізникові — проводимо одразу при відгрузці за чинним тарифом (адмінка →
@@ -395,6 +445,7 @@ export async function POST(
     status:          finalStatus,
     ttn_pushed:      ttnPushed,
     rozetka_warning: rozetkaWarning,
+    redirect_warning: redirectWarning,
   });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message

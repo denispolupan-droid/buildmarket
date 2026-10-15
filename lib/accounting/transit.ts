@@ -128,6 +128,143 @@ export async function pendingTransitDecisions(): Promise<PendingTransit[]> {
 }
 
 /**
+ * Зняти борг перед постачальником по РН тим самим розкладом, яким його
+ * нараховували: DR supplier / CR inventory_transit, і одразу рознести сторно на
+ * ту саму накладну — інакше борг лишився б у списку «неоплачені», а сторно
+ * висіло б зайвим авансом. Спільне для «повернули постачальнику» і для
+ * переадресації посилки в інше замовлення. Ідемпотентно за ключем
+ * `${keyPrefix}:${docId}:${supplierId}`.
+ */
+async function releaseTransitToSupplier(params: {
+  docId:       string;
+  orderId:     string | null;
+  keyPrefix:   string;
+  description: string;
+  createdBy:   string;
+}): Promise<number> {
+  const db = createServiceClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const by = params.createdBy;
+
+  const { data: supEntries } = await db
+    .from('money_entries')
+    .select('id, counterparty_id, amount, business_date')
+    .eq('doc_id', params.docId)
+    .eq('account_type', 'supplier')
+    .limit(1000);
+
+  const owed = new Map<string, number>();
+  for (const e of supEntries ?? []) {
+    const k = String(e.counterparty_id);
+    owed.set(k, (owed.get(k) ?? 0) - Number(e.amount));
+  }
+
+  let released = 0;
+  for (const [supplierId, amount] of owed) {
+    if (amount <= 0.005) continue;
+    const key = `${params.keyPrefix}:${params.docId}:${supplierId}`;
+    await recordTxn({
+      debitAccount:   'supplier',
+      debitParty:     supplierId,
+      creditAccount:  'inventory_transit',
+      amount,
+      businessDate:   today,
+      docId:          params.docId,
+      docType:        'dropship_cancel',
+      orderId:        params.orderId ?? undefined,
+      description:    params.description,
+      idempotencyKey: key,
+      createdBy:      by,
+    });
+    released += amount;
+
+    // recordTxn віддає txn_id, а рознесення прив'язується до КОНКРЕТНОЇ
+    // проводки — знаходимо її за тим самим ідемпотентним ключем.
+    const { data: reversalEntry } = await db
+      .from('money_entries')
+      .select('id')
+      .eq('idempotency_key', key)
+      .eq('account_type', 'supplier')
+      .maybeSingle();
+
+    const charges = (supEntries ?? [])
+      .filter(e => String(e.counterparty_id) === supplierId && Number(e.amount) < 0)
+      .map(e => ({ id: e.id as string, date: String(e.business_date ?? today), remaining: Math.abs(Number(e.amount)) }));
+    const { data: existing } = await db
+      .from('supplier_payment_allocations')
+      .select('charge_entry_id, amount')
+      .in('charge_entry_id', charges.map(c => c.id));
+    const used = new Map<string, number>();
+    for (const a of existing ?? []) {
+      used.set(a.charge_entry_id as string, (used.get(a.charge_entry_id as string) ?? 0) + Number(a.amount));
+    }
+    const open = charges
+      .map(c => ({ ...c, remaining: Math.round((c.remaining - (used.get(c.id) ?? 0)) * 100) / 100 }))
+      .filter(c => c.remaining > 0);
+
+    const plan = planAllocation(open, amount, 'oldest');
+    if (plan.lines.length && reversalEntry) {
+      await db.from('supplier_payment_allocations').insert(
+        plan.lines.map(l => ({
+          payment_entry_id: reversalEntry.id,
+          charge_entry_id:  l.chargeId,
+          amount:           l.amount,
+          created_by:       by,
+        })),
+      );
+    }
+  }
+  return Math.round(released * 100) / 100;
+}
+
+/**
+ * Переадресація посилки: та сама ЕН їде іншому покупцю з іншого замовлення.
+ * Нова РН нового замовлення вже нарахувала борг перед постачальником за товар,
+ * а він фізично один — тому транзит і борг старого замовлення знімаємо (живий
+ * кейс 15.10.2026, #26101011 → #26101063: без цього висів подвійний борг 318,50).
+ * Стару РН-чернетку скасовуємо: посилка в тому замовленні вже не відбудеться.
+ */
+export async function redirectTransit(params: {
+  fromOrderId:   string;
+  toOrderNumber: number;
+  toDocId:       string;
+  createdBy?:    string;
+}): Promise<{ released: number; docIds: string[] }> {
+  const db = createServiceClient();
+  const by = params.createdBy ?? 'admin';
+
+  const { data: entries } = await db
+    .from('money_entries')
+    .select('doc_id, amount')
+    .eq('order_id', params.fromOrderId)
+    .eq('account_type', 'inventory_transit')
+    .not('doc_id', 'is', null)
+    .limit(1000);
+  const netByDoc = new Map<string, number>();
+  for (const e of entries ?? []) {
+    const k = String(e.doc_id);
+    netByDoc.set(k, (netByDoc.get(k) ?? 0) + Number(e.amount));
+  }
+  const docIds = [...netByDoc.entries()].filter(([, net]) => net > 0.005).map(([id]) => id);
+
+  let released = 0;
+  for (const docId of docIds) {
+    released += await releaseTransitToSupplier({
+      docId,
+      orderId:     params.fromOrderId,
+      keyPrefix:   `transit-redirect:${params.toDocId}`,
+      description: `Переадресація посилки в замовлення #${params.toOrderNumber}: борг переноситься на нову РН`,
+      createdBy:   by,
+    });
+    const { data: doc } = await db.from('acc_documents').select('status').eq('id', docId).maybeSingle();
+    if (doc?.status === 'draft') {
+      await cancelDocument(docId, by, `Посилку переадресовано в замовлення #${params.toOrderNumber}`);
+    }
+  }
+  return { released: Math.round(released * 100) / 100, docIds };
+}
+
+/**
  * Провести рішення по посилці, що повернулась.
  *
  *   to_supplier — товар поїхав назад постачальнику: DR supplier / CR inventory_transit.
@@ -168,75 +305,13 @@ export async function resolveTransit(params: {
   const today = new Date().toISOString().slice(0, 10);
 
   if (params.decision === 'to_supplier') {
-    // Знімаємо борг тим самим розкладом по постачальниках, яким його нараховували
-    const { data: supEntries } = await db
-      .from('money_entries')
-      .select('id, counterparty_id, amount, business_date')
-      .eq('doc_id', params.docId)
-      .eq('account_type', 'supplier')
-      .limit(1000);
-
-    const owed = new Map<string, number>();
-    for (const e of supEntries ?? []) {
-      const k = String(e.counterparty_id);
-      owed.set(k, (owed.get(k) ?? 0) - Number(e.amount));
-    }
-
-    for (const [supplierId, amount] of owed) {
-      if (amount <= 0.005) continue;
-      const key = `transit-return:${params.docId}:${supplierId}`;
-      await recordTxn({
-        debitAccount:   'supplier',
-        debitParty:     supplierId,
-        creditAccount:  'inventory_transit',
-        amount,
-        businessDate:   today,
-        docId:          params.docId,
-        docType:        'dropship_cancel',
-        orderId:        doc.order_id ?? undefined,
-        description:    'Товар повернувся постачальнику: зняття боргу',
-        idempotencyKey: key,
-        createdBy:      by,
-      });
-
-      // recordTxn віддає txn_id, а рознесення прив'язується до КОНКРЕТНОЇ
-      // проводки — знаходимо її за тим самим ідемпотентним ключем.
-      const { data: reversalEntry } = await db
-        .from('money_entries')
-        .select('id')
-        .eq('idempotency_key', key)
-        .eq('account_type', 'supplier')
-        .maybeSingle();
-
-      // Гасимо саме ті накладні, які цим сторно закриваються: інакше борг
-      // лишиться в списку «неоплачені», а сторно висітиме як зайвий аванс.
-      const charges = (supEntries ?? [])
-        .filter(e => String(e.counterparty_id) === supplierId && Number(e.amount) < 0)
-        .map(e => ({ id: e.id as string, date: String(e.business_date ?? today), remaining: Math.abs(Number(e.amount)) }));
-      const { data: existing } = await db
-        .from('supplier_payment_allocations')
-        .select('charge_entry_id, amount')
-        .in('charge_entry_id', charges.map(c => c.id));
-      const used = new Map<string, number>();
-      for (const a of existing ?? []) {
-        used.set(a.charge_entry_id as string, (used.get(a.charge_entry_id as string) ?? 0) + Number(a.amount));
-      }
-      const open = charges
-        .map(c => ({ ...c, remaining: Math.round((c.remaining - (used.get(c.id) ?? 0)) * 100) / 100 }))
-        .filter(c => c.remaining > 0);
-
-      const plan = planAllocation(open, amount, 'oldest');
-      if (plan.lines.length && reversalEntry) {
-        await db.from('supplier_payment_allocations').insert(
-          plan.lines.map(l => ({
-            payment_entry_id: reversalEntry.id,
-            charge_entry_id:  l.chargeId,
-            amount:           l.amount,
-            created_by:       by,
-          })),
-        );
-      }
-    }
+    await releaseTransitToSupplier({
+      docId:       params.docId,
+      orderId:     doc.order_id ?? null,
+      keyPrefix:   'transit-return',
+      description: 'Товар повернувся постачальнику: зняття боргу',
+      createdBy:   by,
+    });
   } else {
     // Товар лишається в нас: спершу оприбуткування (створить FIFO-партію),
     // потім перенос вартості з транзиту на склад.

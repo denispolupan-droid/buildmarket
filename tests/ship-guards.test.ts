@@ -1,5 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { pickupWithTtnError, manualStatusWithoutSaleError } from '../lib/orders/ship-guards';
+import { pickupWithTtnError, manualStatusWithoutSaleError, ttnReuseError } from '../lib/orders/ship-guards';
+
+describe('ttnReuseError — ЕН уже в іншому замовленні (#26101011 → #26101063, 15.10.2026)', () => {
+  const other = { order_number: 26101011, status: 'cancelled' };
+
+  it('чужа ЕН без підтвердження — блок із номером замовлення і підказкою про переадресацію', () => {
+    const msg = ttnReuseError('20451552188672', other, false);
+    expect(msg).toContain('№20451552188672');
+    expect(msg).toContain('#26101011');
+    expect(msg).toContain('скасоване');
+    expect(msg).toContain('переадресація');
+  });
+
+  it('підтверджена переадресація — можна', () => {
+    expect(ttnReuseError('20451552188672', other, true)).toBeNull();
+  });
+
+  it('ЕН ні в кого / порожня — можна', () => {
+    expect(ttnReuseError('20451552188672', null, false)).toBeNull();
+    expect(ttnReuseError('  ', other, false)).toBeNull();
+    expect(ttnReuseError(undefined, other, false)).toBeNull();
+  });
+
+  it('невідомий статус показується як є', () => {
+    expect(ttnReuseError('1', { order_number: 1, status: 'weird' }, false)).toContain('(weird)');
+  });
+});
 
 describe('manualStatusWithoutSaleError — «Відправлено»/«Доставлено» руками без РН (#26091195)', () => {
   const withItems = { items: [{ sku: '1205-021', qty: 1, price: 1050 }] };

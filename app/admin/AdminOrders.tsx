@@ -1587,10 +1587,21 @@ export default function AdminOrders({
     setSavingPaymentType(false);
   }
 
-  async function autoShipDropship(orderId: string) {
-    const res = await fetch(`/api/admin/orders/${orderId}/ship`, { method: 'POST' });
+  async function autoShipDropship(orderId: string, redirect = false) {
+    const res = await fetch(`/api/admin/orders/${orderId}/ship`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(redirect ? { redirect: true } : {}),
+    });
     const data = await res.json();
+    if (!res.ok && data.ttn_conflict && !redirect) {
+      if (confirm(`${data.error}\n\nЦе переадресація тієї самої посилки з #${data.ttn_conflict.order_number}?`)) {
+        return autoShipDropship(orderId, true);
+      }
+      return;
+    }
     if (res.ok) {
+      if (data.redirect_warning) showToast(data.redirect_warning, 'error', 12000);
       if (data.fully_shipped) {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
         // Як і в ручній відгрузці: згорнути картку, бо рядок зараз поїде з вкладки
@@ -1645,7 +1656,7 @@ export default function AdminOrders({
     });
   }
 
-  async function executeShip(orderId: string, items: { sku: string; shipQty: number }[], ttn?: string) {
+  async function executeShip(orderId: string, items: { sku: string; shipQty: number }[], ttn?: string, redirect = false) {
     setShipModal(null);
     setShipping(orderId);
     try {
@@ -1655,10 +1666,21 @@ export default function AdminOrders({
         body: JSON.stringify({
           items: items.map(i => ({ sku: i.sku, qty: i.shipQty })),
           ...(ttn ? { ttn } : {}),
+          ...(redirect ? { redirect: true } : {}),
         }),
       });
       const data = await res.json();
+      // ЕН уже в іншому замовленні: сервер відмовив, бо без підтвердження це
+      // подвійний борг перед постачальником. Переадресація тієї самої посилки —
+      // підтверджуємо, і борг переноситься зі старого замовлення.
+      if (!res.ok && data.ttn_conflict && !redirect) {
+        if (confirm(`${data.error}\n\nЦе переадресація тієї самої посилки з #${data.ttn_conflict.order_number}?`)) {
+          return executeShip(orderId, items, ttn, true);
+        }
+        return;
+      }
       if (res.ok) {
+        if (data.redirect_warning) showToast(data.redirect_warning, 'error', 12000);
         if (data.fully_shipped) {
           setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: data.status } : o));
           setExpandedId(null);
