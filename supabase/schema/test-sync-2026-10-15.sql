@@ -41,5 +41,6 @@ CREATE TABLE IF NOT EXISTS public.prom_commissions_ref (
 );
 ALTER TABLE public.prom_commissions_ref ENABLE ROW LEVEL SECURITY;
 
--- 17.10: колонка suppliers.sheet_name була лише в тесті (у проді й коді її немає) — прибрано.
-ALTER TABLE public.suppliers DROP COLUMN IF EXISTS sheet_name;
+-- 17.10: suppliers.sheet_name спершу прибрали як «лише в тесті», але це міграція 004,
+-- яка не дійшла до ПРОДА (функція вибору аркуша Excel там не працювала). Колонку
+-- повернуто в тест і додано в прод, 004 записано в schema_migrations обох баз.
