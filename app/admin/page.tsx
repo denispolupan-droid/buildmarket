@@ -13,6 +13,7 @@ import { escapeOrTerm, orderNumberFilter } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
+import { kyivBounds, statusDateOrFilter } from '../../lib/orders/date-filter';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,7 +39,7 @@ const STATUS_TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string; q?: string; channel?: string; carrier?: string; pay?: string; ret?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string; q?: string; channel?: string; carrier?: string; pay?: string; ret?: string; sent?: string }>;
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -48,18 +49,26 @@ export default async function AdminPage({
   const {
     page: pageStr, status: statusParam, expand: expandOrderId, dateFrom, dateTo,
     sortBy: sortByParam, sortDir: sortDirParam, q: qParam, channel: channelParam, carrier: carrierParam,
-    pay: payParam, ret: retParam,
+    pay: payParam, ret: retParam, sent: sentParam,
   } = await searchParams;
   const search  = (qParam ?? '').trim();
   const channel = channelParam ?? '';
   const carrier = carrierParam ?? '';
+  // Чи надіслано постачальнику (orders.supplier_sent_at): фільтр колонки «Відпр.»
+  const sent = sentParam === 'sent' || sentParam === 'unsent' ? sentParam : '';
   // Форма оплати — код із generated-колонки orders.payment_method_code
   // (див. міграцію 099). Фільтрувати по payment_type не можна: у частини
   // замовлень маркетплейсів він розходиться з фактичним способом оплати.
   const pay = PAYMENT_METHOD_ORDER.includes(payParam as PaymentMethodCode) ? payParam! : '';
   // Зріз «повернення без рішення» (див. applyReturnPendingFilter нижче)
   const ret = retParam === 'pending' ? 'pending' : '';
-  const SORT_COLS: Record<string, string> = { created_at: 'created_at', total_price: 'total_price', order_number: 'order_number' };
+  // Сортування — кліком по заголовку колонки журналу (15.10.2026); тут — білий
+  // список колонок, бо значення приходить з адресного рядка.
+  const SORT_COLS: Record<string, string> = {
+    created_at: 'created_at', total_price: 'total_price', order_number: 'order_number',
+    contact: 'contact', delivery_type: 'delivery_type', status: 'status',
+    channel_code: 'channel_code', payment_method_code: 'payment_method_code', fulfillment_mode: 'fulfillment_mode',
+  };
   const sortBy  = SORT_COLS[sortByParam ?? ''] ?? 'created_at';
   const sortAsc = sortDirParam === 'asc';
   // Якщо відкриваємо конкретне замовлення — показуємо всі статуси.
@@ -79,8 +88,10 @@ export default async function AdminPage({
   function applyOrderFilters<T>(query: T, opts?: { ignoreFacets?: boolean }): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = query as any;
-    if (dateFrom) q = q.gte('created_at', `${dateFrom}T00:00:00`);
-    if (dateTo)   q = q.lte('created_at', `${dateTo}T23:59:59`);
+    // Період — за датою події статусу (доставлено → delivered_at тощо) і за
+    // київським днем; див. lib/orders/date-filter
+    const dateOr = statusDateOrFilter(kyivBounds(dateFrom, dateTo));
+    if (dateOr) q = q.or(dateOr);
     if (!opts?.ignoreFacets) {
       // Замовлення з сайту історично лежать і як 'website', і як NULL
       if (channel === 'website') q = q.or('channel_code.is.null,channel_code.eq.website');
@@ -92,6 +103,8 @@ export default async function AdminPage({
       if (carrier === 'rozetka')   q = q.in('delivery_type', [ROZETKA_DELIVERY_TYPE, RZ_DELIVERY_TYPE]);
       else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${ROZETKA_DELIVERY_TYPE},${RZ_DELIVERY_TYPE},pickup)`);
       if (pay) q = q.eq('payment_method_code', pay);
+      if (sent === 'sent')        q = q.not('supplier_sent_at', 'is', null);
+      else if (sent === 'unsent') q = q.is('supplier_sent_at', null);
     }
     if (search) {
       const term = escapeOrTerm(search);
@@ -197,9 +210,9 @@ export default async function AdminPage({
     // статусу (і по даті/пошуку), але БЕЗ фільтрів самих чіпів — класична
     // фасетна логіка: інакше, ставши на «Rozetka», всі інші канали показали б
     // нуль і перемкнутися між ними було б неможливо.
-    fetchAllRows<{ channel_code: string | null; delivery_type: string | null; payment_method_code: string | null }>((f, t) =>
+    fetchAllRows<{ channel_code: string | null; delivery_type: string | null; payment_method_code: string | null; supplier_sent_at: string | null }>((f, t) =>
       applyStatusFilter(applyOrderFilters(
-        serviceClient.from('orders').select('channel_code, delivery_type, payment_method_code'),
+        serviceClient.from('orders').select('channel_code, delivery_type, payment_method_code, supplier_sent_at'),
         { ignoreFacets: true },
       )).order('id').range(f, t),
     ),
@@ -338,6 +351,12 @@ export default async function AdminPage({
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
+  // Надіслано постачальнику / ще ні — для меню колонки «Відпр.»
+  const sentCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
+    const key = r.supplier_sent_at ? 'sent' : 'unsent';
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
 
   // Count orders per status
   const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
@@ -361,119 +380,60 @@ export default async function AdminPage({
   const curStatus = status;
 
   return (
-    <div className="admin-orders-page" style={{ padding: '28px 32px 64px' }}>
+    <div className="admin-orders-page" style={{ padding: '20px 16px 64px' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Замовлення
         </h1>
-        <NewOrderButton />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Реєстр НП — рідко потрібен, тож живе тут, а не в панелі фільтрів */}
+          <Link href="/admin/dispatch" className="admin-np-link" title="Реєстри відправлень Нової Пошти">
+            Реєстр НП
+          </Link>
+          <NewOrderButton />
+        </div>
       </div>
 
-      {/* Status tabs + Відправлення — закріплені зверху для швидкого переходу між типами при прокрутці */}
-      <div className="admin-status-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 60, background: 'var(--bg-page)', padding: '20px 0 12px', marginBottom: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+      {/* Вкладки статусів — як у «Фінансах» (.fin-tab): підкреслення замість
+          плиток, лічильник у рядку з назвою. Сума активної вкладки — рядком
+          нижче, великим числом (редизайн 15.10.2026, варіант A). Закріплені
+          зверху для швидкого переходу між статусами при прокрутці. */}
+      <div className="admin-status-bar" style={{ position: 'sticky', top: 0, zIndex: 60, background: 'var(--bg-page)', padding: '12px 0 0', marginBottom: '12px' }}>
+        <nav aria-label="Статуси" className="admin-status-tabs">
           {STATUS_TABS.map(tab => {
             // Поки активний зріз повернень, список не відповідає жодній вкладці —
             // підсвічувати одну з них означало б збрехати про те, що на екрані.
             const isActive = !ret && curStatus === tab.value;
             const cnt = tab.value === '' ? totalCount : (statusCounts[tab.value] ?? 0);
             const isNew = tab.value === 'new';
+            // Невирішені відмови (посилки їдуть назад — треба забрати з пошти
+            // або відмовитись) — окреме попередження біля «Скасовано».
+            const returnsChip = tab.value === 'cancelled' && pendingReturns > 0 && (
+              <span className="admin-status-returns" title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити». Усі одразу — фільтр «↩ Повернення без рішення» під вкладками`}>↩ {pendingReturns}</span>
+            );
             return (
               <Link
                 key={tab.value}
-                className="admin-status-card"
+                className={`admin-status-tab${isActive ? ' active' : ''}${cnt === 0 && tab.value ? ' empty' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
                 href={`/admin?status=${tab.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
-                style={{
-                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'flex-start', gap: '5px', padding: '9px 12px', borderRadius: '12px',
-                  textDecoration: 'none', flex: '1 1 0', minWidth: '112px', height: '62px', boxSizing: 'border-box',
-                  background: isActive ? '#D8E6F5' : 'var(--bg-card)',
-                  border: isActive ? '1.5px solid #1E3A5F' : '1px solid var(--border-light)',
-                  boxShadow: isActive ? '0 2px 8px rgba(30,58,95,0.12)' : '0 1px 2px rgba(15,23,42,0.05)',
-                  transition: 'all 0.15s', textAlign: 'center',
-                }}
               >
-                {/* Рядок 1: назва + лічильник інлайн (чип завжди в одному рядку з назвою). */}
-                {/* height 22 + flexShrink 0, а не 30: при 30 рядок УМІЩАВСЯ лише там,
-                    де під ним є сума — flexbox стискав його до 22. На картках без суми
-                    («Скасовано», «Очікує оплати») він лишався 30, і назва сиділа на 4px
-                    нижче, ніж у сусідів. 22 + 5 + 15 = 42 влазить у 44px контент-бокса,
-                    тож тепер висота однакова в обох випадках. */}
-                {(() => {
-                  const amount = tab.value === '' ? totalAmount : (statusAmounts[tab.value] ?? 0);
-                  const hasAmount = amount > 0;
-                  // Лічильник замовлень — завжди в рядку з назвою: він читається як
-                  // частина заголовка («Скасовано 15»), а не як окреме значення.
-                  const countChip = cnt > 0 && (
-                    <span style={{
-                      flexShrink: 0,
-                      fontSize: '10px', fontWeight: 700, lineHeight: '15px',
-                      padding: '0 5px', borderRadius: '7px',
-                      background: isNew ? '#EF4444' : isActive ? '#D5E4F4' : '#E0ECF8',
-                      color: isNew ? '#fff' : isActive ? '#1E3A5F' : '#3B6EA5',
-                    }}>{cnt}</span>
-                  );
-                  // Невирішені відмови (посилки їдуть назад — треба забрати з пошти
-                  // або відмовитись). Окреме попередження, не частина заголовка, тож
-                  // стоїть нижче — там, де в інших картках сума.
-                  const returnsChip = tab.value === 'cancelled' && pendingReturns > 0 && (
-                    <span title={`Посилок у дорозі назад без рішення: ${pendingReturns} — відкрийте замовлення і виберіть «забрати з пошти» чи «залишити». Усі одразу — фільтр «↩ Повернення без рішення» під вкладками`} style={{
-                      flexShrink: 0,
-                      fontSize: '10px', fontWeight: 700, lineHeight: '15px',
-                      padding: '0 5px', borderRadius: '7px',
-                      background: '#FFEDD5',
-                      color: '#C2410C',
-                    }}>↩ {pendingReturns}</span>
-                  );
-                  return (
-                    <>
-                      {/* Рядок 1: назва + лічильник замовлень. Разом вони вміщаються
-                          скрізь; не вміщалося тільки коли сюди ж додавався чип відмов —
-                          його й винесено на другий рядок. */}
-                      <div style={{ height: '22px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
-                        {/* inline-flex, а не звичайний inline: чипи вирівнювались через
-                            vertical-align, і на «Скасовано» — де їх ДВА — рядок ставав
-                            вищим за решту, через що назва зʼїжджала відносно сусідів. */}
-                        <span className="oc-tab-label" style={{
-                          display: 'inline-flex', alignItems: 'center', gap: '4px',
-                          fontSize: '11.5px', fontWeight: 600, lineHeight: 1.15, letterSpacing: '0px', whiteSpace: 'nowrap',
-                          color: isActive ? '#1E3A5F' : 'var(--text-muted)',
-                        }}>
-                          {tab.label}
-                          {countChip}
-                        </span>
-                      </div>
-                      {/* Рядок 2: сума — головний акцент. Якщо суми немає, тут стоїть
-                          попередження про невирішені відмови (лише «Скасовано»). */}
-                      {hasAmount ? (
-                        <span style={{
-                          fontSize: '15px', fontWeight: 800, lineHeight: 1,
-                          color: '#15803D',
-                          whiteSpace: 'nowrap', letterSpacing: '-0.2px',
-                        }}>
-                          {amount.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
-                        </span>
-                      ) : returnsChip ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center' }}>{returnsChip}</span>
-                      ) : null}
-                    </>
-                  );
-                })()}
+                {tab.label}
+                {cnt > 0 && <span className={`admin-status-count${isNew ? ' alert' : ''}`}>{cnt}</span>}
+                {returnsChip}
               </Link>
             );
           })}
-        </div>
+        </nav>
       </div>
 
-      {/* Subtitle */}
-      <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 16px' }}>
-        Всього: {count ?? 0}
-        {totalPages > 1 && ` · Стор. ${page} / ${totalPages}`}
-      </p>
+      {/* Підсумок активної вкладки (сума, кількість, середній чек) малює
+          AdminOrders — в одному рядку з фільтром періоду. Для зрізу повернень
+          вкладки немає, тож суми не передаємо. */}
 
-      <AdminOrders key={`${curStatus}|${ret}`} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} retFilter={ret} pendingReturns={pendingReturns} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={ret ? '' : curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
+      <AdminOrders key={`${curStatus}|${ret}`} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} sentFilter={sent} sentCounts={sentCounts} retFilter={ret} pendingReturns={pendingReturns} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} summaryAmount={ret ? 0 : (curStatus === '' ? totalAmount : (statusAmounts[curStatus] ?? 0))} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={ret ? '' : curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
     </div>
   );
 }

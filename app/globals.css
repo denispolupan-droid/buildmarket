@@ -1142,7 +1142,7 @@ input, select { font-family: inherit; }
 .oc-tl-step.now  { --tl: #4880B8; }
 .oc-tl-step.back { --tl: #F59E0B; }
 .oc-tl-line {
-  position: absolute; top: 15px; height: 2px; background: var(--border); border-radius: 2px;
+  position: absolute; top: 24px; height: 2px; background: var(--border); border-radius: 2px;
 }
 .oc-tl-line.left  { left: 0;  width: 50%; }
 .oc-tl-line.right { right: 0; width: 50%; }
@@ -1151,13 +1151,18 @@ input, select { font-family: inherit; }
 /* Пройдений шлях підсвічений, майбутній лишається сірим */
 .oc-tl-step.done .oc-tl-line, .oc-tl-step.now .oc-tl-line.left { background: var(--tl); }
 .oc-tl-step.back .oc-tl-line.left { background: #FCD34D; }
+/* Кружок кроку з лінійною іконкою (раніше — точка 11px). Центр на 25px —
+   по ньому йде рейка .oc-tl-line */
 .oc-tl-dot {
-  position: relative; z-index: 1; width: 11px; height: 11px; border-radius: 50%;
-  background: var(--tl); box-shadow: 0 0 0 4px var(--bg-card);
+  position: relative; z-index: 1; width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--tl); color: #fff; box-shadow: 0 0 0 4px var(--bg-card);
 }
+/* Майбутні / сірі кроки — іконка сіра на світлому */
+.oc-tl-step:not(.done):not(.now):not(.back) .oc-tl-dot { background: var(--bg-soft); color: var(--text-muted); border: 1px solid var(--border); }
 .oc-tl-step.now .oc-tl-dot { box-shadow: 0 0 0 4px var(--bg-card), 0 0 0 7px color-mix(in srgb, var(--tl) 22%, transparent); }
 .oc-tl-label {
-  margin-top: 11px; font-size: 12px; font-weight: 600; color: var(--text-secondary); line-height: 1.25;
+  margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); line-height: 1.25;
 }
 .oc-tl-step.now .oc-tl-label { color: var(--text-primary); font-weight: 700; }
 .oc-tl-at {
@@ -2315,7 +2320,7 @@ input, select { font-family: inherit; }
      (.admin-status-bar → position:static вище), тож зарезервовані 80px були
      порожнім місцем, і панель дій починалася з середини екрана — під нею не
      лишалось видимих замовлень, щоб добрати ще кілька. */
-  .oc-merge-bar { top: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px; padding: 10px !important; }
+  .oc-merge-bar { bottom: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px; padding: 10px !important; }
   .oc-merge-title { font-size: 13px !important; line-height: 1.35; padding-right: 40px; }
   /* Одна колонка кнопок на всю ширину, без роздільника від підпису;
      хрестик — у правому верхньому куті панелі, поруч із підписом */
@@ -2962,28 +2967,31 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
    кнопки — .proc-btn, групи за ходом роботи розділені тонкою лінією.
    Підпис «Вибрано N · сума» не переноситься — flex-shrink: 0. */
 .oc-merge-bar {
-  position: sticky; top: 80px; z-index: 50;
+  /* Під списком і липне до НИЖНЬОГО краю: виділені рядки лишаються перед
+     очима, панель не перекриває шапку (редизайн 15.10.2026). */
+  position: sticky; bottom: 12px; z-index: 50;
   display: flex; align-items: center; gap: 4px;
-  padding: 10px 16px; margin-bottom: 16px;
-  /* Режим «є виділення» має читатися, але не кричати: легка синьо-сіра
-     підкладка (білі кнопки на ній контрастніші), рамка в тон і тонка
-     темно-синя лінія ліворуч — та сама мова, що в картці замовлення. */
-  background: #EEF3FA; border: 1px solid #C9D6E8; border-radius: 12px;
-  box-shadow: inset 3px 0 0 #1E3A5F, 0 6px 24px rgba(15,23,41,0.12);
+  padding: 10px 16px; margin-top: 16px;
+  /* Панель липне знизу поверх списку, і світла підкладка зливалась із
+     виділеними рядками (17.10.2026). Тому темно-синя, як головні кнопки
+     адмінки: білі кнопки на ній читаються одразу, і видно, що це режим дій,
+     а не ще один рядок. */
+  background: #1E3A5F; border: 1px solid #1E3A5F; border-radius: 12px;
+  box-shadow: 0 -10px 30px rgba(15,23,42,0.22), 0 12px 32px rgba(15,23,42,0.35);
 }
 .oc-merge-title {
   display: inline-flex; align-items: baseline; gap: 5px;
   flex-shrink: 0; white-space: nowrap; padding-right: 12px;
-  font-size: 13px; color: var(--text-muted);
+  font-size: 13px; color: #C9D6E8;
 }
-.oc-merge-title b { font-size: 15px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.oc-merge-title b { font-size: 15px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
 /* Кнопки — сітка однакових комірок: рівна ширина, текст по центру, другий
    ряд стає рівно під першим. Групи в JSX лишаються для порядку, але в
    розмітці сітки розчиняються (display: contents). */
 .oc-merge-actions {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 8px; flex: 1; min-width: 0; margin-left: 12px; padding-left: 14px;
-  border-left: 1px solid #C9D6E8;
+  border-left: 1px solid rgba(255,255,255,0.18);
 }
 .oc-merge-group { display: contents; }
 .oc-merge-actions .proc-btn { width: 100%; min-width: 0; justify-content: center; }
@@ -2992,15 +3000,292 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .oc-merge-close {
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   width: 34px; height: 34px; margin-left: 12px; border-radius: 9px;
-  border: 1px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer;
+  border: 1px solid transparent; background: transparent; color: #C9D6E8; cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.oc-merge-close:hover { background: var(--bg-card); border-color: #C9D6E8; color: var(--text-primary); }
+.oc-merge-close:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); color: #fff; }
 /* <select> у вигляді кнопки: свій вигляд системи прибираємо, стрілку малюємо самі */
 .oc-merge-select {
   appearance: none; -webkit-appearance: none; padding-right: 30px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 10px center;
+}
+
+/* ── Журнал замовлень: редизайн 15.10.2026 (варіант A) ─────────────────────
+   Вкладки статусів як .fin-tab, підсумок активної вкладки, аркуш з рядками в
+   одній картці, чипи обраних фільтрів. Мобільні картки не чіпаємо: аркуш
+   діє лише від 769px. */
+.admin-status-tabs {
+  display: flex; gap: 2px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+/* Вкладки рівномірно на всю ширину сторінки (flex: 1, текст по центру) і
+   трохи більшим кеглем */
+.admin-status-tab {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  flex: 1 1 auto;
+  padding: 10px 12px; margin-bottom: -1px;
+  font-size: 14.5px; font-weight: 600; white-space: nowrap;
+  color: var(--text-secondary); text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.admin-status-tab:hover { color: var(--text-primary); }
+.admin-status-tab.empty { color: var(--text-muted); }
+.admin-status-tab.active { color: var(--brand-blue); font-weight: 700; border-bottom-color: var(--brand-blue); }
+.admin-status-count {
+  font-size: 11px; font-weight: 700; line-height: 17px; padding: 0 7px;
+  border-radius: 999px; background: var(--bg-soft); color: #64748B;
+  font-variant-numeric: tabular-nums;
+}
+.admin-status-tab.active .admin-status-count { background: var(--brand-blue); color: #fff; }
+.admin-status-count.alert { background: #DC2626; color: #fff; }
+.admin-status-returns {
+  font-size: 11px; font-weight: 700; line-height: 16px; padding: 0 7px;
+  border-radius: 999px; background: #FFF7ED; color: #C2410C; border: 1px solid #FDBA74;
+}
+/* Панель інструментів журналу — одна картка, два ряди по 34 px, шрифт 12.5 */
+.oc-toolbar {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px; border-radius: 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+/* Рядок підсумку активної вкладки + період + пошук */
+/* padding-left 12px — сума починається на одній лінії з текстом вкладок
+   (у них такий самий відступ), а не на краю картки аркуша */
+.oc-summary-row { display: flex; align-items: center; justify-content: flex-start; gap: 12px; flex-wrap: wrap; padding-left: 12px; }
+.oc-summary { flex: 0 0 auto; min-width: 200px; }
+/* Пошук у рядку підсумку: тягнеться до правого краю, помітний — біле поле з
+   синьою лупою, рамка темніша за решту пігулок, при фокусі синє кільце */
+.oc-search-compact { flex: 1 1 320px; min-width: 240px; }
+.oc-search-input {
+  border: 1.5px solid #B9C9DF; background: var(--bg-card);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.06);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.oc-search-input::placeholder { color: var(--text-secondary); }
+.oc-search-input:hover { border-color: var(--brand-blue); }
+.oc-search-input:focus { border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgba(72,128,184,0.18); }
+
+/* «Реєстр НП» у шапці сторінки — тиха кнопка-посилання поруч із головною */
+.admin-np-link {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 14px;
+  border-radius: 10px; border: 1.5px solid var(--border); background: var(--bg-card);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary); text-decoration: none; white-space: nowrap;
+}
+.admin-np-link:hover { color: var(--text-primary); border-color: #C9D6E8; }
+.oc-summary { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+.oc-summary-amount {
+  font-size: 24px; font-weight: 800; letter-spacing: -0.4px; line-height: 1;
+  color: var(--brand-blue); font-variant-numeric: tabular-nums;
+}
+/* Кількість і середній чек — стовпчиком, дрібно й сіро, під висоту суми */
+.oc-summary-stats { display: inline-flex; flex-direction: column; gap: 1px; line-height: 1.2; align-self: center; }
+.oc-summary-stat { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+.oc-summary-stat b { color: var(--text-secondary); font-weight: 700; font-variant-numeric: tabular-nums; }
+.oc-summary-page { color: var(--text-muted); }
+
+/* Період — пігулка-сегмент у мові фільтрів: пресети + два поля в одній рамці */
+.oc-period {
+  display: inline-flex; align-items: center; gap: 2px; padding: 3px; height: 34px; box-sizing: border-box;
+  border-radius: 999px; background: var(--bg-soft); border: 1px solid var(--border-light);
+}
+.oc-period-btn {
+  height: 26px; padding: 0 12px; border-radius: 999px; border: none; background: transparent;
+  font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s;
+}
+.oc-period-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+.oc-period-btn.active { background: #1E3A5F; color: #fff; }
+.oc-period-range { display: flex; align-items: center; gap: 2px; padding-left: 6px; margin-left: 4px; border-left: 1px solid var(--border); }
+.oc-period-range input:focus { background: var(--bg-soft) !important; }
+.oc-period-clear {
+  height: 26px; padding: 0 10px; border-radius: 999px; border: none;
+  background: #FEF2F2; color: #DC2626; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+
+/* Смуга фільтрів: одна м'яка підкладка на всю ширину панелі, поділена рисками
+   на секції «Канал · Доставка · Оплата»; секції тягнуться пропорційно, тож
+   смуга доходить до правого краю рівно під пошуком */
+.oc-filter-bar {
+  display: flex; align-items: center; width: 100%; min-height: 34px; box-sizing: border-box;
+  padding: 3px; border-radius: 999px;
+  background: var(--bg-soft); border: 1px solid var(--border-light);
+}
+.oc-filter-group {
+  display: flex; align-items: center; gap: 1px; flex: 1 1 0; min-width: 0; flex-wrap: wrap;
+  padding: 0 4px 0 10px;
+  border-left: 1px solid var(--border);
+}
+.oc-filter-group:first-child { border-left: none; }
+/* Чип «Повернення без рішення» (лише на «Скасовано») — крайня секція смуги */
+.oc-filter-bar > button { margin-left: 6px; flex-shrink: 0; height: 28px !important; }
+/* Підпис групи — кнопка: згортає/розгортає значення групи вправо */
+.oc-filter-grp {
+  display: inline-flex; align-items: center; gap: 3px; height: 28px; padding: 0 4px 0 0;
+  border: none; background: none; font-family: inherit; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  color: var(--text-muted); margin-right: 2px; white-space: nowrap;
+}
+.oc-filter-grp:hover { color: var(--text-primary); }
+.oc-filter-grp svg { transition: transform 0.15s; color: var(--text-muted); }
+.oc-filter-group.open .oc-filter-grp svg { transform: rotate(180deg); }
+.oc-filter-group.open .oc-filter-grp { color: var(--text-primary); }
+/* Пігулки всередині групи — без власних рамок (сегмент на спільній підкладці),
+   компактні, щоб усі три групи вмістились в один рядок */
+/* Один розмір шрифту на всю панель фільтрів — 12 px: підписи груп, значення
+   й лічильники; різниця лише кольором (підпис і лічильник сірі) */
+.oc-filter-group > button {
+  height: 28px !important; padding: 0 10px !important; font-size: 12.5px !important;
+  border-color: transparent !important;
+}
+.oc-filter-group > button > span { margin-left: 4px !important; font-size: 12px !important; opacity: 0.75 !important; color: var(--text-muted); font-weight: 500; }
+.oc-filter-group > button:hover { border-color: var(--border) !important; }
+
+
+/* Заголовки колонок аркуша — кнопки сортування */
+.oc-th {
+  display: inline-flex; align-items: center; gap: 3px; padding: 0; border: none; background: none;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+  cursor: pointer; white-space: nowrap; max-width: 100%;
+}
+.oc-th:hover { color: var(--text-primary); }
+.oc-th.active { color: var(--brand-blue); }
+.oc-th-arrow { font-size: 10px; min-width: 7px; }
+
+/* Лійка-фільтр у заголовку колонки + меню значень */
+/* Лійка притиснута до правого краю комірки поверх міжколонкового проміжку:
+   вузькі колонки («Канал» 64px, «Опл.» 46px) не вміщали її в потік і текст
+   наїжджав на сусідній заголовок */
+/* Лійка одразу після слова, завжди помітна: блакитна плашка з синьою іконкою;
+   активний фільтр — залита синім. Вузькі колонки («Канал», «Опл.») на кілька
+   пікселів заходять у міжколонковий проміжок — текст сусіда не чіпають. */
+.oc-th-cell { display: inline-flex; align-items: center; gap: 5px; overflow: visible; }
+.oc-th-cell.filtered .oc-th { color: var(--brand-blue); }
+.oc-th-filter { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; }
+.oc-th-funnel {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 4px; padding: 0; border: none;
+  background: #E3EDF8; color: var(--brand-blue);
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.oc-th-funnel:hover, .oc-th-funnel.open { background: #CFE0F3; }
+.oc-th-funnel.active { background: var(--brand-blue); color: #fff; }
+.oc-th-menu {
+  /* Компактна смужка значень на одній лінії з заголовком: розкривається вліво
+     від лійки поверх сусідніх заголовків (колонки з фільтром стоять біля
+     правого краю аркуша, вправо місця немає) */
+  position: absolute; top: 50%; right: 22px; transform: translateY(-50%); z-index: 40;
+  display: flex; align-items: center; gap: 3px; padding: 3px; white-space: nowrap;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(15,23,42,0.16);
+  text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500;
+}
+.oc-th-menu-item {
+  display: inline-flex; align-items: center; gap: 5px; height: 24px;
+  padding: 0 9px; border-radius: 999px; border: none; background: none;
+  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+}
+.oc-th-menu-item:hover { background: var(--bg-soft); color: var(--text-primary); }
+.oc-th-menu-item.active { background: #1E3A5F; color: #fff; }
+.oc-th-menu-n { color: var(--text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.oc-th-menu-item.active .oc-th-menu-n { color: rgba(255,255,255,0.75); }
+
+/* Чипи обраних фільтрів */
+.oc-active-filters { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.oc-active-filters-lbl { color: var(--text-muted); font-weight: 600; margin-right: 2px; }
+.oc-filter-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px;
+  padding: 0 6px 0 10px; border-radius: 999px;
+  background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8; font-weight: 600;
+}
+.oc-filter-chip > button {
+  width: 18px; height: 18px; border-radius: 50%; border: none; padding: 0;
+  background: rgba(29,78,216,0.12); color: #1D4ED8; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; line-height: 1; font-family: inherit;
+}
+.oc-filter-chip > button:hover { background: rgba(29,78,216,0.22); }
+.oc-active-filters-clear {
+  height: 26px; padding: 0 8px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-secondary);
+}
+.oc-active-filters-clear:hover { color: var(--text-primary); text-decoration: underline; }
+.oc-active-filters-found { margin-left: auto; color: var(--text-muted); }
+.oc-active-filters-found strong { color: var(--text-primary); }
+
+/* Аркуш — лише на десктопі; на телефоні лишаються окремі картки */
+@media (min-width: 769px) {
+  .oc-sheet {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .oc-sheet-head {
+    padding: 10px 17px !important; margin-bottom: 0 !important;
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border) !important;
+    font-size: 10.5px !important;
+  }
+  .oc-sheet-list { gap: 0 !important; }
+  /* Рядок: без власної рамки, радіуса й тіні — лише роздільник зверху.
+     Лівий акцент (виділений, терміновий, проблемний) лишається інлайновим. */
+  .oc-sheet-row {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-top-color: var(--border-light) !important;
+  }
+  .oc-sheet-row:first-child { border-top: 0 !important; }
+  .oc-sheet-row:not(.is-open):not(.is-picked) > .order-compact-row:hover { background: var(--bg-soft) !important; }
+  /* Розгорнутий запис — власна картка всередині аркуша: відступи від країв,
+     синьо-сіра рамка й тінь, щоб не зливався з сусідніми рядками */
+  .oc-sheet-row.is-open {
+    border-top: 2px solid var(--brand-blue) !important;
+    box-shadow: inset 0 0 0 1px #C9D6E8, 0 12px 32px -14px rgba(15,23,42,0.35) !important;
+    position: relative; z-index: 1;
+  }
+  .oc-sheet-row.is-open + .oc-sheet-row { border-top: 2px solid #C9D6E8 !important; }
+  /* Шапка розгорнутого запису — світло-блакитна смуга з лінією знизу замість
+     темного затемнення; вміст лише трохи приглушений */
+  .oc-sheet-row.is-open > .order-compact-row.is-open {
+    background-image: linear-gradient(0deg, rgba(72,128,184,0.08), rgba(72,128,184,0.08)) !important;
+    box-shadow: inset 0 -1px 0 #D5E0EE;
+  }
+  .oc-sheet-row.is-open > .order-compact-row.is-open > * { opacity: .72; filter: saturate(.6); }
+  .oc-sheet-row.is-open > .order-compact-row.is-open:hover > * { opacity: 1; filter: none; }
+  /* …і стає тонкою ручкою в один рядок: уся коротка інформація лишається
+     (номер, дата, ПІБ, сума, перевізник, статус, канал, відправка, оплата,
+     дзвінок), ховаються лише другі рядки комірок — фото, телефон, товар,
+     адреса й ТТН, стан перевізника. Якір у списку й масовий вибір збережені. */
+  .oc-sheet-row.is-open > .order-compact-row.is-open { min-height: 40px !important; padding: 6px 16px !important; }
+  .oc-sheet-row.is-open > .order-compact-row.is-open > .oc-thumbs-d,
+  .oc-sheet-row.is-open > .order-compact-row.is-open .oc-phone,
+  .oc-sheet-row.is-open > .order-compact-row.is-open .oc-itemline,
+  .oc-sheet-row.is-open > .order-compact-row.is-open > .oc-deliv > div:not(:first-child),
+  .oc-sheet-row.is-open > .order-compact-row.is-open > .oc-status > *:not(:first-child) { display: none !important; }
+  /* Номер і дата — в один рядок */
+  .oc-sheet-row.is-open > .order-compact-row.is-open > .oc-num { display: flex; align-items: baseline; gap: 6px; width: auto !important; min-width: 92px; }
+  .oc-sheet-row.is-open > .order-compact-row.is-open > .oc-num .oc-date { margin-top: 0 !important; }
+  /* Клієнт займає місце, що звільнили фото */
+  .oc-sheet-row.is-open > .order-compact-row.is-open > .oc-cust { flex: 0 1 calc(50% - 180px) !important; }
+}
+@media (max-width: 768px) {
+  /* Вкладки статусів — одна стрічка з горизонтальним скролом замість трьох рядів */
+  .admin-status-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .admin-status-tabs::-webkit-scrollbar { display: none; }
+  .admin-status-tab { padding: 9px 10px; font-size: 13px; flex: 0 0 auto; }
+  .oc-summary-amount { font-size: 20px; }
+  /* Період стоїть у рядку підсумку — без роздільника групи зверху */
+  .oc-summary-row .oc-filter-dates { border-top: none !important; padding-top: 3px !important; margin-top: 0 !important; width: 100%; }
+  .oc-summary-row .oc-search-compact { border-top: none !important; padding-top: 0 !important; margin-top: 0 !important; flex: 1 1 100%; }
+  /* Смуга фільтрів на телефоні — секції одна під одною, пігулки переносяться */
+  .oc-filter-bar { flex-wrap: wrap; border-radius: 12px; padding: 4px 6px; }
+  .oc-filter-group { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--border); padding: 4px 2px; }
+  .oc-filter-group:first-child { border-top: none; }
+  .oc-filter-grp { flex-basis: 100%; margin: 0 0 2px !important; }
+  .oc-toolbar { padding: 8px; }
+  .oc-summary { min-width: 0; }
 }
 
 /* ── «Усі товари розділу»: покажчик, згрупований за брендом ─────────────────

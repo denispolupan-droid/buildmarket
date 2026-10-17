@@ -215,7 +215,7 @@ export async function POST(
   }
 
   if (results.some(r => r.emailed)) {
-    const update: Record<string, unknown> = { supplier_sent_at: new Date().toISOString() };
+    const update: Record<string, unknown> = { supplier_sent_at: new Date().toISOString(), supplier_sent_by: user.email ?? 'admin' };
     // Заявку відправлено рівно одному реальному постачальнику → фіксуємо його як
     // фактичного постачальника відвантаження (якщо менеджер ще не обрав вручну).
     const emailedIds = [...bySupplier.keys()].filter(sid => sid > 0);

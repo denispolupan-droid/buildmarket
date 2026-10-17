@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff, Clock } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff, Clock, FileText, House, RefreshCw } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -115,6 +114,8 @@ type Order = {
   invoice_as_company: boolean | null;
   invoice_options:    Record<string, boolean> | null;
   supplier_sent_at:   string | null;
+  /** хто надіслав (міграція 131); null — надіслано до 18.10.2026 */
+  supplier_sent_by?:  string | null;
   channel_code:       string | null;
   prom_order_id:      string | number | null;
   rozetka_order_id:   string | number | null;
@@ -557,6 +558,9 @@ interface AdminOrdersProps {
   payFilter?: string;
   /** 'pending' — показані лише повернення без рішення (зріз перекриває вкладку статусу) */
   retFilter?: string;
+  /** 'sent' | 'unsent' — чи надіслано постачальнику (колонка «Відпр.»); '' — без фільтра */
+  sentFilter?: string;
+  sentCounts?: Record<string, number>;
   /** скільки посилок їде назад без рішення «забрати з пошти / залишити» */
   pendingReturns?: number;
   channelCounts?: Record<string, number>;
@@ -565,6 +569,8 @@ interface AdminOrdersProps {
   payCounts?: Record<string, number>;
   /** Скільки замовлень підпадає під чинний зріз у всій базі (не на сторінці) */
   totalFound?: number;
+  /** Сума замовлень активної вкладки статусу (0 — не показувати) */
+  summaryAmount?: number;
   /** sku першої позиції → шлях до фото, для мініатюри в рядку */
   productThumbs?: Record<string, string>;
   sortBy?: string;
@@ -585,9 +591,10 @@ export default function AdminOrders({
   hasRecentReceipts = false, expandOrderId, dateFrom, dateTo,
   statusCounts = {}, currentStatus = '',
   initialSearch = '', channelFilter = '', carrierFilter = '', payFilter = '', retFilter = '',
+  sentFilter = '', sentCounts = {},
   pendingReturns = 0,
   channelCounts = {}, carrierCounts = {}, payCounts = {},
-  totalFound = 0, productThumbs = {},
+  totalFound = 0, summaryAmount = 0, productThumbs = {},
   sortBy = 'created_at', sortDir = 'desc',
   promCommissionPct = 3,
   rozetkaCommissionPct = 15,
@@ -732,6 +739,28 @@ export default function AdminOrders({
   // Єдиний фільтр, що лишився клієнтським: ознака рахується з rozetka_data вже в
   // браузері, окремої колонки в базі під неї немає.
   const [cabinetAheadOnly, setCabinetAheadOnly] = useState(false);
+  // Групи фільтрів (канал / доставка / оплата): клік по підпису згортає групу
+  // до підпису й обраного значення, повторний — розгортає вправо. За
+  // замовчуванням усі розгорнуті (рішення власника 17.10.2026).
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['channel', 'carrier', 'pay']));
+  // На десктопі фільтри каналу / перевізника / оплати живуть у шапці аркуша —
+  // лійка в заголовку колонки відкриває меню значень (варіант 2, 18.10.2026).
+  // Відкрите меню закривається кліком поза ним або Escape.
+  const [hdrMenu, setHdrMenu] = useState<null | 'channel' | 'carrier' | 'pay' | 'sent'>(null);
+  useEffect(() => {
+    if (!hdrMenu) return;
+    const onDown = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest?.('.oc-th-filter')) setHdrMenu(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setHdrMenu(null); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [hdrMenu]);
+  const grpOpen = (g: string) => openGroups.has(g);
+  const toggleGroup = (g: string) => setOpenGroups(prev => {
+    const next = new Set(prev);
+    if (next.has(g)) next.delete(g); else next.add(g);
+    return next;
+  });
 
   // Пошук і фільтри каналу/перевізника живуть в URL, застосовує їх сервер по всій
   // базі. Локально тримаємо лише набране в полі, щоб не смикати навігацію на кожну
@@ -1412,6 +1441,45 @@ export default function AdminOrders({
       setItemProducts(prev => ({ ...prev, [expandedId]: map }));
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedId]);
+
+  // Розгорнутий запис завжди піднімаємо вгору: його ручка стає одразу під
+  // липкою панеллю статусів, а сам запис займає екран (рішення власника
+  // 17.10.2026). Інакше запис із середини екрана розкривався вниз, і де його
+  // початок — доводилось шукати очима.
+  useEffect(() => {
+    if (!expandedId) return;
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(`order-${expandedId}`);
+      if (!el) return;
+      const bar = document.querySelector<HTMLElement>('.admin-status-bar');
+      const barH = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().height : 0;
+      // Прокручуємо найближчий контейнер зі скролом (у шелі адмінки це не
+      // вікно) своєю анімацією: вбудований smooth-скрол надто різкий і не
+      // має тривалості, а тут потрібно плавно, ~700 мс.
+      let box: HTMLElement | null = el.parentElement;
+      while (box && box !== document.body) {
+        const ov = getComputedStyle(box).overflowY;
+        if ((ov === 'auto' || ov === 'scroll') && box.scrollHeight > box.clientHeight) break;
+        box = box.parentElement;
+      }
+      const scroller: HTMLElement = box && box !== document.body ? box : (document.scrollingElement as HTMLElement);
+      const boxTop = scroller === document.scrollingElement ? 0 : scroller.getBoundingClientRect().top;
+      const from = scroller.scrollTop;
+      const maxTop = scroller.scrollHeight - scroller.clientHeight;
+      const to = Math.max(0, Math.min(maxTop, from + el.getBoundingClientRect().top - boxTop - barH - 4));
+      if (Math.abs(to - from) < 2) return;
+      const duration = 700;
+      const t0 = performance.now();
+      const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / duration);
+        scroller.scrollTop = from + (to - from) * ease(p);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [expandedId]);
 
   // Відкриваємо замовлення з пропу expandOrderId (передається через ?expand= з page.tsx)
@@ -2335,130 +2403,132 @@ export default function AdminOrders({
 
   return (
     <>
-      {/* Merge bar — панель масових дій. Світла картка й кнопки .proc-btn
-          (словник «Закупівель»), групи — за ходом роботи: статус → постачальник
-          → накладні → реєстр НП → зняти. Стилі в globals.css (.oc-merge-*). */}
-      {selectedIds.size >= 1 && (
-        <div className="oc-merge-bar">
-          <span className="oc-merge-title">
-            Вибрано <b>{selectedIds.size}</b> · <b>{Math.round(orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0)).toLocaleString('uk-UA')} ₴</b>
-          </span>
-          <div className="oc-merge-actions">
-            {/* 1. Статус */}
-            <div className="oc-merge-group">
-            <select
-              className="proc-btn oc-merge-select"
-              defaultValue=""
-              onChange={async e => {
-                const newStatus = e.target.value;
-                if (!newStatus) return;
-                e.target.value = '';
-                const ids = [...selectedIds];
-                const results = await Promise.allSettled(ids.map(id => fetch(`/api/admin/orders/${id}`, {
-                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ status: newStatus }),
-                })));
-                const ok = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
-                const failed = ids.length - ok;
-                const label = STATUSES.find(s => s.value === newStatus)?.label ?? newStatus;
-                // Панель закривається після дії; невдачі — окремим повідомленням, із
-                // причиною першої відмови (інакше «не вдалося 3» нічого не пояснює).
-                const firstFail = results.find(r => r.status === 'fulfilled' && !r.value.ok);
-                const reason = firstFail && firstFail.status === 'fulfilled'
-                  ? ((await firstFail.value.json().catch(() => ({}))) as { error?: string }).error
-                  : undefined;
-                if (failed) showToast(`Статус «${label}»: ${ok} з ${ids.length}, не вдалося ${failed}${reason ? ` — ${reason}` : ''}`, 'error', 10000);
-                else showToast(`Статус «${label}» встановлено: ${ok}`, 'success');
-                setSelectedIds(new Set());
-                router.refresh();
-              }}>
-              <option value="" disabled>Змінити статус…</option>
-              {STATUSES.filter(s => s.value).map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-            </div>
-            {(() => {
-              const sel = orders.filter(o => selectedIds.has(o.id));
-              const supplierSel = sel.filter(o => o.fulfillment_mode === 'supplier' || o.fulfillment_mode === 'mixed' || (o.status === 'new' && (o.fulfillment_mode == null || o.fulfillment_mode === 'supplier')));
-              if (supplierSel.length === 0) return null;
-              const unsentCount = supplierSel.filter(o => !o.supplier_sent_at).length;
-              const ids = supplierSel.map(o => o.id);
-              return (
-                /* 2. Постачальник. «Усі одразу» — єдина головна кнопка панелі */
-                <div className="oc-merge-group">
-                  <button className="proc-btn" onClick={() => startSupplierSend(ids)} disabled={supplierQueueLoading}
-                    title="Лист постачальнику по кожному замовленню окремо">
-                    <Mail size={14} /> Постачальнику{unsentCount > 0 ? ` (${unsentCount} нових)` : ''}
-                  </button>
-                  {supplierSel.length > 1 && (
-                    <button className="proc-btn accent" onClick={() => startBulkSupplierSend(ids)} disabled={supplierQueueLoading}
-                      title="Один лист на постачальника з усіма його замовленнями">
-                      <Send size={14} /> Відправити всі одразу
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
-            {/* 3. Накладні: об'єднати → надрукувати */}
-            <div className="oc-merge-group">
-              <button className="proc-btn" onClick={openMergeModal}>
-                <Truck size={14} /> Об&apos;єднати в ТТН
-              </button>
-              {(() => {
-                // Друкуємо лише те, на що існує етикетка: НП і обидва типи Rozetka
-                const printable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number
-                  && ['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? ''));
-                if (printable.length === 0) return null;
-                return (
-                  <button className="proc-btn" onClick={bulkPrintLabels} disabled={bulkPrinting}
-                    title="Один PDF з етикетками всіх виділених накладних — НП і Rozetka разом">
-                    <Printer size={14} /> {bulkPrinting ? 'Готую PDF…' : `Друк ТТН (${printable.length})`}
-                  </button>
-                );
-              })()}
-            </div>
-            {/* 4. Реєстр НП: спершу додати ЕН, потім друкувати — НП закриває
-                реєстр для нових після друку, тому саме такий порядок */}
-            {(() => {
-              const addable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
-              const selCount = orders.filter(o => selectedIds.has(o.id)).length;
-              const hasNp = orders.some(o => selectedIds.has(o.id) && ['nova', 'nova_poshta'].includes(o.delivery_type ?? ''));
-              if (addable.length === 0 && !hasNp) return null;
-              return (
-                <div className="oc-merge-group">
-                  {addable.length > 0 && (
-                    <button className="proc-btn" onClick={bulkAddToRegistry} disabled={registryBulkLoading}>
-                      <ClipboardList size={14} /> {registryBulkLoading ? 'Додаю…' : `Додати в реєстр${addable.length !== selCount ? ` (${addable.length})` : ''}`}
-                    </button>
-                  )}
-                  {hasNp && (
-                    <button className="proc-btn" onClick={printNpRegistry} disabled={npSheetPrinting}
-                      title="Офіційна форма реєстру з кабінету НП. Після друку НП закриває реєстр для нових ЕН — спершу додайте ЕН, потім друкуйте">
-                      <Printer size={14} /> Друк реєстру НП
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-          {/* Зняти виділення — хрестик поза сіткою кнопок, щоб не ламати ряд */}
-          <button className="oc-merge-close" onClick={() => setSelectedIds(new Set())} title="Зняти виділення" aria-label="Зняти виділення">
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
+      {/* Панель масових дій тепер унизу, під списком (липне до нижнього краю,
+          див. .oc-merge-bar у globals.css): рядок, який щойно виділили, лишається
+          перед очима, а не ховається за панеллю зверху. */}
       {/* Register panel */}
 
       {/* Filters + search */}
       <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-        {/* Row 1: Channel filter + sync */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+        {/* Панель інструментів — один ряд: підсумок · період · пошук. Фільтри
+            каналу / перевізника / оплати на десктопі — лійками в шапці аркуша,
+            на телефоні — рядком пігулок нижче (варіант 2, 18.10.2026). */}
+        <div>
+        {/* Row 0: підсумок активної вкладки + період + пошук. Сума — головний
+            акцент, поруч кількість і середній чек стовпчиком. */}
+        {(() => {
+          // Дати пресетів — за Києвом: toISOString() дає UTC, і після опівночі
+          // до 03:00 «Сьогодні» було ще вчорашнім днем
+          const kyivYmd = (ms: number) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+          const today = kyivYmd(Date.now());
+          const weekAgo = kyivYmd(Date.now() - 7 * 86400000);
+          const monthStart = `${today.slice(0, 7)}-01`;
+          const applyDate = (from: string, to: string) => pushFilters({ dateFrom: from, dateTo: to });
+          const hasDateFilter = !!(dateFrom || dateTo);
+          const fmt = (v: number) => v.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
+          const cnt = totalFound;
+          const avg = cnt > 0 && summaryAmount > 0 ? Math.round(summaryAmount / cnt) : 0;
+          const noun = cnt % 10 === 1 && cnt % 100 !== 11 ? 'замовлення' : 'замовлень';
+          // Текст зліва: з вирівнюванням по центру курсор стояв посередині поля
+          const inpStyle: React.CSSProperties = { height: '26px', width: '92px', padding: '0 8px', border: 'none', borderRadius: '999px', fontSize: '12.5px', outline: 'none', background: 'transparent', color: 'var(--text-primary)', textAlign: 'left' };
+          return (
+            <div className="oc-summary-row">
+              <div className="oc-summary">
+                {summaryAmount > 0 && <span className="oc-summary-amount">{fmt(summaryAmount)} ₴</span>}
+                {/* Кількість і середній чек — стовпчиком дрібним сірим: економить
+                    ширину рядка під період і реєстр */}
+                <span className="oc-summary-stats">
+                  <span className="oc-summary-stat"><b>{cnt}</b> {noun}{totalPages > 1 && <span className="oc-summary-page"> · стор. {currentPage}/{totalPages}</span>}</span>
+                  {avg > 0 && <span className="oc-summary-stat">середній чек <b>{fmt(avg)} ₴</b></span>}
+                </span>
+              </div>
+              <div className="oc-filter-dates oc-period" role="group" aria-label="Період">
+                {[
+                  { label: 'Сьогодні', from: today,      to: today },
+                  { label: '7 днів',   from: weekAgo,    to: today },
+                  { label: 'Місяць',   from: monthStart, to: today },
+                ].map(p => {
+                  const active = dateFrom === p.from && dateTo === p.to;
+                  return (
+                    <button key={p.label} type="button" className={`oc-period-btn${active ? ' active' : ''}`} onClick={() => applyDate(p.from, p.to)}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+                <div className="oc-period-range">
+                  {/* Межі незалежні: заповнена лише «з» — фільтр «від дати й далі»,
+                      друге поле лишається порожнім, поки його не заповнять самі */}
+                  <SmartDateInput value={dateFrom ?? ''} onChange={v => applyDate(v, dateTo ?? '')} style={inpStyle} withPicker />
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
+                  <SmartDateInput value={dateTo ?? ''} onChange={v => applyDate(dateFrom ?? '', v)} style={inpStyle} withPicker />
+                </div>
+                {hasDateFilter && (
+                  <button type="button" onClick={() => pushFilters({ dateFrom: '', dateTo: '' })} title="Скинути період" aria-label="Скинути період" className="oc-date-clear oc-period-clear">✕</button>
+                )}
+              </div>
+              {/* Пошук — компактне поле в тому ж рядку, у мові пігулок. Внутрішня
+                  обгортка з position: relative — точка відліку для лупи й хрестика
+                  (на телефоні .oc-filter-search має власний верхній відступ). */}
+              <div className="oc-filter-search oc-search-compact">
+              <div style={{ position: 'relative' }}>
+                <Search size={15} color="var(--brand-blue)" style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                <input
+                  className="oc-search-input"
+                  placeholder="Пошук: №, ПІБ, телефон, ТТН"
+                  title="№ замовлення або МП, ПІБ, компанія, телефон, ТТН — пошук по всій базі"
+                  ref={searchInputRef}
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') pushSearch(searchInput.trim()); }}
+                  style={{
+                    width: '100%', height: '34px', paddingLeft: '36px', paddingRight: searchInput ? '30px' : '14px',
+                    borderRadius: '999px', fontSize: '13px',
+                    outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)',
+                  }}
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => setSearchInput('')}
+                    aria-label="Очистити пошук"
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+              </div>
+              {/* «Реєстр НП» — у шапці сторінки поруч із «Нове замовлення»
+                  (page.tsx); Excel прибрано, вивантаження лишилось за адресою
+                  /api/admin/orders/export */}
+              {/* Повернення без рішення — лише на «Скасовано» (або поки зріз
+                  увімкнений); на десктопі тут, бо рядок пігулок нижче мобільний */}
+              {((currentStatus === 'cancelled' && pendingReturns > 0) || retFilter === 'pending') && (() => {
+                const active = retFilter === 'pending';
+                return (
+                  <button type="button" className="oc-hide-m" onClick={() => pushFilters({ ret: active ? '' : 'pending' })}
+                    title="Посилки, які їдуть назад, і рішення по них ще немає: забрати з пошти чи залишити. Показує всі статуси одразу."
+                    style={{ height: '34px', padding: '0 12px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
+                      // Блідо-червона підсвітка (палітра --bg-danger / --color-danger):
+                      // це робота, що висить, а не звичайний фільтр
+                      border: `1.5px solid ${active ? 'var(--color-danger)' : '#FECACA'}`, background: active ? '#FEE2E2' : 'var(--bg-danger)', color: active ? '#991B1B' : '#B91C1C' }}>
+                    ↩ Повернення без рішення <span style={{ marginLeft: '4px', opacity: 0.75 }}>{pendingReturns}</span>
+                  </button>
+                );
+              })()}
+            </div>
+          );
+        })()}
+
+        {/* Row 1 (лише телефон): смуга фільтрів Канал · Доставка · Оплата
+            пігулками — на десктопі ці фільтри в шапці аркуша. Клік по підпису
+            секції згортає її до підпису й обраного значення. */}
+        <div className="oc-filter-row oc-only-m" style={{ display: 'none' }}>
+          <div className="oc-filter-bar">
+            <div className={`oc-filter-group${grpOpen('channel') ? ' open' : ''}`}>
+            <button type="button" className="oc-filter-grp" onClick={() => toggleGroup('channel')} aria-expanded={grpOpen('channel')} title={grpOpen('channel') ? 'Згорнути' : 'Фільтр за каналом'}>Канал <ChevronDown size={11} /></button>
             {[
-              { value: '',         label: 'Всі канали' },
+              { value: '',         label: 'Всі' },
               { value: 'website',  label: 'Магазин' },
               { value: 'b2b',      label: 'Опт' },
               { value: 'dropship', label: 'Дроп' },
@@ -2477,6 +2547,8 @@ export default function AdminOrders({
               // переносились на другий рядок. Перемикатись туди все одно нема
               // на що. «Всі канали» і вибраний чіп лишаються завжди.
               if (ch.value && !n && !active) return null;
+              // Згорнута група показує лише обраний канал («Всі канали» — не фільтр)
+              if (!grpOpen('channel') && !(active && ch.value)) return null;
               return (
                 <button
                   key={ch.value}
@@ -2494,12 +2566,12 @@ export default function AdminOrders({
                 </button>
               );
             })}
+            </div>
             {/* Перевізник. Окремий ряд кнопок був би зайвим рядком у щільній
-                панелі, тож стоять тут же, відділені вертикальною рискою.
-                На телефоні кнопки й так переносяться, і вертикальна риска губилась
-                у кінці рядка — там та сама риска розтягується на всю ширину і
-                відбиває групи горизонтально (див. .oc-filter-sep у globals.css). */}
-            <span aria-hidden className="oc-filter-sep" style={{ width: '1px', alignSelf: 'stretch', margin: '0 2px', background: 'var(--border)' }} />
+                панелі, тож стоять тут же, своєю групою з підписом (.oc-filter-group):
+                підпис і пігулки на спільній підкладці читаються одним блоком. */}
+            <div className={`oc-filter-group${grpOpen('carrier') ? ' open' : ''}`}>
+            <button type="button" className="oc-filter-grp" onClick={() => toggleGroup('carrier')} aria-expanded={grpOpen('carrier')} title={grpOpen('carrier') ? 'Згорнути' : 'Фільтр за перевізником'}>Доставка <ChevronDown size={11} /></button>
             {[
               { value: 'nova',    label: 'НП',      color: '#7C2D12', bg: '#FFF7ED', border: '#FDBA74' },
               { value: 'rozetka', label: 'Rozetka Доставка', color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
@@ -2507,6 +2579,7 @@ export default function AdminOrders({
               const active = carrierFilter === c.value;
               const n = carrierCounts[c.value] ?? 0;
               if (!n && !active) return null;
+              if (!grpOpen('carrier') && !active) return null;
               return (
                 <button
                   key={c.value}
@@ -2528,8 +2601,10 @@ export default function AdminOrders({
             {/* Форма оплати. Показуємо лише ті, що реально є в поточному зрізі
                 (плюс активну) — інакше і без того щільний ряд фільтрів обріс би
                 порожніми «Готівка 0 · Відстрочка 0». */}
-            <span aria-hidden className="oc-filter-sep" style={{ width: '1px', alignSelf: 'stretch', margin: '0 2px', background: 'var(--border)' }} />
-            {PAYMENT_METHOD_ORDER.filter(code => (payCounts[code] ?? 0) > 0 || payFilter === code).map(code => {
+            </div>
+            <div className={`oc-filter-group${grpOpen('pay') ? ' open' : ''}`}>
+            <button type="button" className="oc-filter-grp" onClick={() => toggleGroup('pay')} aria-expanded={grpOpen('pay')} title={grpOpen('pay') ? 'Згорнути' : 'Фільтр за формою оплати'}>Оплата <ChevronDown size={11} /></button>
+            {PAYMENT_METHOD_ORDER.filter(code => ((payCounts[code] ?? 0) > 0 || payFilter === code) && (grpOpen('pay') || payFilter === code)).map(code => {
               const active = payFilter === code;
               return (
                 <button
@@ -2549,13 +2624,17 @@ export default function AdminOrders({
                 </button>
               );
             })}
+            </div>
             {/* Повернення без рішення. Це не стан замовлення, а робота, яка
                 висить: посилка їде назад, а забирати її з пошти чи залишити —
                 ще ніхто не сказав. Серед десятків скасованих такі рядки
                 губилися, а зберігання на відділенні з якогось дня стає платним.
                 Зріз рахує і фільтрує сервер, тому чіп видно на будь-якій
                 вкладці, і він перекриває вкладку статусу. */}
-            {(pendingReturns > 0 || retFilter === 'pending') && (() => {
+            {/* Чип лише на вкладці «Скасовано» (там живуть ці посилки) або поки
+                зріз увімкнений — щоб було чим його зняти; з інших вкладок на нього
+                веде бейдж «↩ N» на самій вкладці */}
+            {((currentStatus === 'cancelled' && pendingReturns > 0) || retFilter === 'pending') && (() => {
               const active = retFilter === 'pending';
               return (
                 <button
@@ -2597,165 +2676,45 @@ export default function AdminOrders({
               );
             })()}
           </div>
-          <div className="oc-toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-            <a
-              href={`/api/admin/orders/export?${(() => { const p = new URLSearchParams(); if (currentStatus) p.set('status', currentStatus); if (dateFrom) p.set('dateFrom', dateFrom); if (dateTo) p.set('dateTo', dateTo); return p.toString(); })()}`}
-              download
-              className="oc-hide-m"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }}
-            >
-              ↓ Excel
-            </a>
-            <Link href="/admin/dispatch" className="oc-np-btn" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 500, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
-              <Send size={13} /> Реєстр НП
-            </Link>
-          </div>
+        </div>
         </div>
 
-        {/* Row 2: Date filter */}
+        {/* Період — у рядку підсумку вище (Row 0); сортування — кліком по
+            заголовках колонок у шапці аркуша. */}
+
+        {/* Пошук — у рядку підсумку поруч із періодом (Row 0) */}
+
+        {/* Обрані фільтри — чипами з хрестиком: видно, що саме звужує список, і
+            кожен знімається окремо, а не всі разом. Лічильник — по всій базі,
+            а не по цій сторінці. */}
         {(() => {
-          const today = new Date().toISOString().slice(0, 10);
-          const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-          const monthStart = `${today.slice(0, 7)}-01`;
-
-          function applyDate(from: string, to: string) {
-            const params = new URLSearchParams(window.location.search);
-            params.set('dateFrom', from);
-            params.set('dateTo', to);
-            params.delete('page');
-            router.push(`/admin?${params.toString()}`);
-          }
-          function clearDate() {
-            const params = new URLSearchParams(window.location.search);
-            params.delete('dateFrom');
-            params.delete('dateTo');
-            params.delete('page');
-            router.push(`/admin?${params.toString()}`);
-          }
-
-          const hasDateFilter = !!(dateFrom || dateTo);
-          const inpStyle: React.CSSProperties = { height: '32px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', background: 'var(--bg-card)', color: 'var(--text-primary)' };
-
+          const fmtD = (d: string) => d.length >= 10 ? `${d.slice(8, 10)}.${d.slice(5, 7)}` : d;
+          const chips: { key: string; label: string; clear: () => void }[] = [];
+          if (initialSearch) chips.push({ key: 'q', label: `Пошук: «${initialSearch}»`, clear: () => { setSearchInput(''); pushFilters({ q: '' }); } });
+          if (channelFilter) chips.push({ key: 'channel', label: `Канал: ${CHANNEL_LABEL[channelFilter]?.label ?? channelFilter}`, clear: () => pushFilters({ channel: '' }) });
+          if (carrierFilter) chips.push({ key: 'carrier', label: `Доставка: ${carrierFilter === 'nova' ? 'Нова Пошта' : 'Rozetka Доставка'}`, clear: () => pushFilters({ carrier: '' }) });
+          if (payFilter) chips.push({ key: 'pay', label: `Оплата: ${(PAYMENT_METHOD_LABEL as Record<string, string>)[payFilter] ?? payFilter}`, clear: () => pushFilters({ pay: '' }) });
+          if (retFilter === 'pending') chips.push({ key: 'ret', label: 'Повернення без рішення', clear: () => pushFilters({ ret: '' }) });
+          if (sentFilter) chips.push({ key: 'sent', label: sentFilter === 'sent' ? 'Постачальнику: надіслано' : 'Постачальнику: ще не надіслано', clear: () => pushFilters({ sent: '' }) });
+          if (dateFrom || dateTo) chips.push({ key: 'date', label: `Період: ${dateFrom ? fmtD(dateFrom) : '…'} — ${dateTo ? fmtD(dateTo) : '…'}`, clear: () => pushFilters({ dateFrom: '', dateTo: '' }) });
+          if (!chips.length) return null;
           return (
-            <div className="oc-filter-dates" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              {/* Quick presets */}
-              {[
-                { label: 'Сьогодні', from: today,      to: today },
-                { label: '7 днів',   from: weekAgo,    to: today },
-                { label: 'Місяць',   from: monthStart,  to: today },
-              ].map(p => {
-                const active = dateFrom === p.from && dateTo === p.to;
-                return (
-                  <button key={p.label} onClick={() => applyDate(p.from, p.to)}
-                    style={{ height: '32px', padding: '0 12px', borderRadius: '7px', border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`, background: active ? '#1E3A5F' : 'var(--bg-card)', color: active ? '#fff' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {p.label}
-                  </button>
-                );
-              })}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <SmartDateInput
-                  value={dateFrom ?? ''}
-                  onChange={v => applyDate(v, dateTo ?? today)}
-                  style={{ height: '32px', ...inpStyle }}
-                />
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
-                <SmartDateInput
-                  value={dateTo ?? ''}
-                  onChange={v => applyDate(dateFrom ?? monthStart, v)}
-                  style={{ height: '32px', ...inpStyle }}
-                />
-              </div>
-              {hasDateFilter && (
-                <button onClick={clearDate} title="Скинути дату" className="oc-date-clear"
-                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-                  {/* На телефоні лишається сам хрестик: підпис «Скинути дату» з'їдав
-                      стільки місця, що поля дат стискались до «0'» і «д». */}
-                  ✕<span className="oc-hide-m"> Скинути дату</span>
-                </button>
-              )}
-
-              {/* Сортування — праворуч, на одному рівні з датами. Раніше стрілки жили
-                  в шапці таблиці над колонками: губилися серед лейблів і працювали
-                  лише для трьох колонок із десяти. */}
-              <div className="oc-hide-m" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Сортування
+            <div className="oc-active-filters">
+              <span className="oc-active-filters-lbl">Обрано:</span>
+              {chips.map(c => (
+                <span key={c.key} className="oc-filter-chip">
+                  {c.label}
+                  <button type="button" onClick={c.clear} aria-label={`Зняти фільтр: ${c.label}`} title="Зняти">×</button>
                 </span>
-                {[
-                  { key: 'created_at',   label: 'Дата' },
-                  { key: 'order_number', label: '№' },
-                  { key: 'total_price',  label: 'Сума' },
-                ].map(s => {
-                  const active = sortBy === s.key;
-                  const nextDir = active && sortDir === 'desc' ? 'asc' : 'desc';
-                  return (
-                    <button key={s.key}
-                      onClick={() => pushFilters({ sortBy: s.key, sortDir: nextDir })}
-                      title={active
-                        ? (sortDir === 'desc' ? 'Спочатку більші — натисніть для зворотного порядку' : 'Спочатку менші — натисніть для зворотного порядку')
-                        : `Сортувати за: ${s.label}`}
-                      style={{
-                        height: '32px', padding: '0 10px', borderRadius: '7px', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                        border: `1.5px solid ${active ? 'var(--brand-blue)' : 'var(--border)'}`,
-                        background: active ? 'var(--brand-blue-light)' : 'var(--bg-card)',
-                        color: active ? 'var(--brand-blue)' : 'var(--text-secondary)',
-                        fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                      }}>
-                      {s.label}
-                      <span style={{ fontSize: '10px' }}>{active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              ))}
+              <button type="button" className="oc-active-filters-clear"
+                onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '', pay: '', ret: '', sent: '', dateFrom: '', dateTo: '' }); }}>
+                Очистити
+              </button>
+              <span className="oc-active-filters-found">знайдено <strong>{totalFound}</strong> у всій базі</span>
             </div>
           );
         })()}
-
-        {/* Row 3: Search */}
-        {/* Внутрішня обгортка потрібна саме тут: на телефоні .oc-filter-search має
-            padding-top 14px (роздільник груп фільтрів), і лупа, позиційована від
-            зовнішнього блоку, рахувала свої 50% разом із цим відступом — тому
-            «прилипала» до верхньої межі поля. Тепер точка відліку — саме поле. */}
-        <div className="oc-filter-search">
-        <div style={{ position: 'relative' }}>
-          <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          <input
-            placeholder="№ замовлення або МП, ФІО, компанія, телефон, ТТН — по всій базі"
-            ref={searchInputRef}
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') pushSearch(searchInput.trim()); }}
-            onFocus={e => { e.currentTarget.style.borderColor = 'var(--brand-teal)'; }}
-            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
-            style={{
-              width: '100%', height: '34px', paddingLeft: '32px', paddingRight: searchInput ? '30px' : '10px',
-              border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px',
-              outline: 'none', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)',
-              transition: 'border-color 0.15s',
-            }}
-          />
-          {searchInput && (
-            <button
-              onClick={() => setSearchInput('')}
-              style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}
-            >
-              <X size={13} />
-            </button>
-          )}
-        </div>
-        </div>
-
-        {/* Скільки знайшлося — по всій базі, а не на цій сторінці */}
-        {(initialSearch || channelFilter || carrierFilter || payFilter || retFilter) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            <span>Знайдено: <strong style={{ color: 'var(--brand-blue)' }}>{totalFound}</strong> у всій базі</span>
-            <button
-              onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '', pay: '', ret: '' }); }}
-              style={{ height: '24px', padding: '0 10px', borderRadius: '20px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer' }}>
-              Скинути фільтри
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Awaiting stock alert — показується тільки якщо сьогодні провели прихід */}
@@ -2796,9 +2755,13 @@ export default function AdminOrders({
         );
       })()}
 
+      {/* Аркуш: на десктопі шапка і всі рядки лежать в одній білій картці з
+          тонкими роздільниками (.oc-sheet у globals.css), а не окремими
+          плитками з тінями. На телефоні картки лишаються як були. */}
+      <div className={filtered.length > 0 ? 'oc-sheet' : undefined}>
       {/* Table header */}
       {filtered.length > 0 && (
-        <div className="oc-hide-m" style={{
+        <div className="oc-hide-m oc-sheet-head" style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           // 17px = 16px падінгу картки + її 1px рамка, щоб колонки шапки стояли
           // рівно над вмістом рядка, а не на два пікселі лівіше
@@ -2818,26 +2781,101 @@ export default function AdminOrders({
             style={{ width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer', border: `2px solid ${filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--border)'}`, background: filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) ? '#3DBFB8' : 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {filtered.length > 0 && filtered.every(o => selectedIds.has(o.id)) && <Check size={9} color="#fff" strokeWidth={3} />}
           </div>
-          {/* Заголовки колонок — просто підписи: сортування переїхало в панель
-              фільтрів, до вибору дати */}
-          <div style={{ width: '92px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
-            <span>№</span>
-            <span>Дата</span>
-          </div>
-          {/* Порожня комірка під мініатюру товару — щоб заголовки не з'їхали з колонок */}
-          {/* 94px = дві плитки по 44 + 6 проміжку */}
-          <span style={{ width: '94px', flexShrink: 0, marginLeft: '8px' }}>Товар</span>
-          <span style={{ flex: '0 1 calc(50% - 266px)', minWidth: 0 }}>Клієнт</span>
-          <span style={{ width: '84px', flexShrink: 0, textAlign: 'right', paddingRight: '24px', boxSizing: 'border-box' }}>Сума</span>
-          <span style={{ flex: 1, minWidth: '200px', overflow: 'hidden', whiteSpace: 'nowrap' }}>Доставка</span>
-          {/* 118px — рівно як у комірки статусу в рядку (.oc-status). Було 104,
-              і заголовок стояв на 14px правіше за плашку під ним. */}
-          <span style={{ width: '118px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Статус</span>
-          <span style={{ width: '64px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Канал</span>
-          <span style={{ width: '64px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Відпр.</span>
-          <span style={{ width: '46px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>Опл.</span>
-          <span style={{ width: '34px', flexShrink: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>Дзв.</span>
-          <div style={{ width: '14px', flexShrink: 0 }} />
+          {/* Заголовки колонок — кнопки сортування: клік по колонці сортує по
+              ній, повторний клік міняє напрямок (стрілка показує активну).
+              Список колонок узгоджено з SORT_COLS у page.tsx. */}
+          {(() => {
+            // Лійка в заголовку колонки: меню значень із лічильниками поточного
+            // зрізу; активний фільтр — заповнена лійка й синій заголовок.
+            const funnel = (filled: boolean) => (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
+            );
+            const flt = (key: 'channel' | 'carrier' | 'pay' | 'sent', label: string, current: string, options: { value: string; label: string; n: number }[], apply: (v: string) => void) => {
+              const active = !!current;
+              const open = hdrMenu === key;
+              return (
+                <span className="oc-th-filter">
+                  <button type="button" className={`oc-th-funnel${active ? ' active' : ''}${open ? ' open' : ''}`}
+                    onClick={e => { e.stopPropagation(); setHdrMenu(open ? null : key); }}
+                    aria-haspopup="menu" aria-expanded={open} title={`Фільтр: ${label}`}>
+                    {funnel(active)}
+                  </button>
+                  {open && (
+                    <div role="menu" className="oc-th-menu">
+                      {options.map(o => (
+                        <button type="button" role="menuitemradio" aria-checked={current === o.value} key={o.value || '_all'}
+                          className={`oc-th-menu-item${current === o.value ? ' active' : ''}`}
+                          onClick={() => { setHdrMenu(null); apply(o.value); }}>
+                          <span>{o.label}</span><span className="oc-th-menu-n">{o.n}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </span>
+              );
+            };
+            const sum = (m: Record<string, number>) => Object.values(m).reduce((s, c) => s + c, 0);
+            const channelOpts = [
+              { value: '', label: 'Всі', n: sum(channelCounts) },
+              ...Object.entries(CHANNEL_LABEL)
+                .filter(([v]) => (channelCounts[v] ?? 0) > 0 || channelFilter === v)
+                .map(([v, c]) => ({ value: v, label: c.label, n: channelCounts[v] ?? 0 })),
+            ];
+            const carrierOpts = [
+              { value: '', label: 'Всі', n: sum(carrierCounts) },
+              { value: 'nova', label: 'Нова Пошта', n: carrierCounts.nova ?? 0 },
+              { value: 'rozetka', label: 'Rozetka Доставка', n: carrierCounts.rozetka ?? 0 },
+            ].filter(o => !o.value || o.n > 0 || carrierFilter === o.value);
+            const sentOpts = [
+              { value: '', label: 'Всі', n: sum(sentCounts) },
+              { value: 'sent', label: 'Надіслано постачальнику', n: sentCounts.sent ?? 0 },
+              { value: 'unsent', label: 'Ще не надіслано', n: sentCounts.unsent ?? 0 },
+            ];
+            const payOpts = [
+              { value: '', label: 'Всі', n: sum(payCounts) },
+              ...PAYMENT_METHOD_ORDER
+                .filter(code => (payCounts[code] ?? 0) > 0 || payFilter === code)
+                .map(code => ({ value: code, label: PAYMENT_METHOD_LABEL[code], n: payCounts[code] ?? 0 })),
+            ];
+            const th = (key: string, label: string, style?: React.CSSProperties) => {
+              const active = sortBy === key;
+              const nextDir = active && sortDir === 'desc' ? 'asc' : 'desc';
+              return (
+                <button type="button" className={`oc-th${active ? ' active' : ''}`} style={style}
+                  onClick={() => pushFilters({ sortBy: key, sortDir: nextDir })}
+                  title={active
+                    ? (sortDir === 'desc' ? 'За спаданням — натисніть для зворотного порядку' : 'За зростанням — натисніть для зворотного порядку')
+                    : `Сортувати за: ${label}`}>
+                  {label}<span className="oc-th-arrow" aria-hidden>{active ? (sortDir === 'desc' ? '↓' : '↑') : ''}</span>
+                </button>
+              );
+            };
+            return (
+              <>
+                <div style={{ width: '92px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                  {th('order_number', '№')}
+                  {th('created_at', 'Дата')}
+                </div>
+                {/* Порожня комірка під мініатюру товару — щоб заголовки не з'їхали з колонок */}
+                {/* 94px = дві плитки по 44 + 6 проміжку */}
+                <span style={{ width: '94px', flexShrink: 0, marginLeft: '8px' }}>Товар</span>
+                <span style={{ flex: '0 1 calc(50% - 266px)', minWidth: 0 }}>{th('contact', 'Клієнт')}</span>
+                <span style={{ width: '84px', flexShrink: 0, textAlign: 'right', paddingRight: '24px', boxSizing: 'border-box' }}>{th('total_price', 'Сума')}</span>
+                {/* Колонки з лійкою — без overflow: hidden, інакше меню обрізалось би */}
+                <span className={carrierFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ flex: 1, minWidth: '200px', whiteSpace: 'nowrap' }}>{th('delivery_type', 'Доставка')}{flt('carrier', 'доставка', carrierFilter, carrierOpts, v => pushFilters({ carrier: v }))}</span>
+                {/* 118px — рівно як у комірки статусу в рядку (.oc-status). Було 104,
+                    і заголовок стояв на 14px правіше за плашку під ним. */}
+                <span style={{ width: '118px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>{th('status', 'Статус')}</span>
+                {/* 76 і 58 px — ширше за «Відпр.», бо в цих двох є лійка; комірки
+                    рядка нижче мають ті самі ширини */}
+                <span className={channelFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '76px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('channel_code', 'Канал')}{flt('channel', 'канал', channelFilter, channelOpts, v => pushFilters({ channel: v }))}</span>
+                <span className={sentFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '80px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('fulfillment_mode', 'Відпр.')}{flt('sent', 'надіслано постачальнику', sentFilter, sentOpts, v => pushFilters({ sent: v }))}</span>
+                <span className={payFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '58px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('payment_method_code', 'Опл.')}{flt('pay', 'оплата', payFilter, payOpts, v => pushFilters({ pay: v }))}</span>
+                <span style={{ width: '34px', flexShrink: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>Дзв.</span>
+                <div style={{ width: '14px', flexShrink: 0 }} />
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -2906,7 +2944,7 @@ export default function AdminOrders({
           })()}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="oc-sheet-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {filtered.map(order => {
             const isExpanded = expandedId === order.id;
             let status = STATUSES.find(s => s.value === order.status) ?? STATUSES[0];
@@ -3118,7 +3156,7 @@ export default function AdminOrders({
                   : null;
 
             return (
-              <div key={order.id} id={`order-${order.id}`} style={{
+              <div key={order.id} id={`order-${order.id}`} className={`oc-sheet-row${isExpanded ? ' is-open' : ''}${isPicked ? ' is-picked' : ''}`} style={{
                 background: isFlashing ? '#F0FDF4' : isPicked ? 'var(--brand-teal-light)' : rowTone?.bg ?? 'var(--bg-card)',
                 // Відкрита картка виділяється висотою, а не кольором: синій контур
                 // читався як «виділено мишею», хоча це просто розгорнутий запис.
@@ -3228,7 +3266,7 @@ export default function AdminOrders({
                     )}
                   </span>
 
-                  <ItemThumbs className="oc-hide-m" items={order.items} thumbs={productThumbs}
+                  <ItemThumbs className="oc-hide-m oc-thumbs-d" items={order.items} thumbs={productThumbs}
                     size={44} max={2} pad style={{ marginLeft: '8px' }} />
 
                   {/* Клієнт: ПІБ із мітками замовлення, під ним телефон із кнопкою
@@ -3367,7 +3405,7 @@ export default function AdminOrders({
                       рядки, перевізник читався лише з кольору плашки, а повна адреса
                       з'їдала колонку, хоча для впізнавання досить номера відділення.
                       На телефоні цю інформацію показує блок oc-ship вище. */}
-                  <div className="oc-hide-m" style={{ flex: 1, minWidth: '200px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div className="oc-hide-m oc-deliv" style={{ flex: 1, minWidth: '200px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
                       <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {carrierLabel}{order.delivery_subtype === 'courier' ? ' · кур.' : ''}
@@ -3429,15 +3467,15 @@ export default function AdminOrders({
                     {carrierNote}
                   </div>
 
-                  {/* Канал */}
-                  <div className="oc-hide-m" style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                  {/* Канал (76px — як заголовок із лійкою в шапці) */}
+                  <div className="oc-hide-m" style={{ width: '76px', flexShrink: 0, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
                       {channel.label}
                     </span>
                   </div>
 
-                  {/* Відправка */}
-                  <div className="oc-hide-m" style={{ width: '64px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {/* Відправка (80px — як заголовок зі стрілкою сортування й лійкою) */}
+                  <div className="oc-hide-m" style={{ width: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {order.fulfillment_mode && (
                       <span
                         title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
@@ -3455,8 +3493,8 @@ export default function AdminOrders({
                     )}
                   </div>
 
-                  {/* Оплата */}
-                  <div className="oc-hide-m" style={{ width: '46px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                  {/* Оплата (58px — як заголовок із лійкою в шапці) */}
+                  <div className="oc-hide-m" style={{ width: '58px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                     {(() => {
                       const label = order.payment_type === 'cod' ? 'НП'
                         : order.payment_type === 'card' ? 'Кар.'
@@ -5611,7 +5649,10 @@ export default function AdminOrders({
                       confirmed:      { icon: '✅', label: 'Підтверджено' },
                       awaiting_stock: { icon: '⏳', label: 'Очікуємо товар' },
                       picking:        { icon: '📋', label: 'Збирається' },
-                      shipped:        { icon: '📦', label: 'Відправлено' },
+                      // Статус shipped ставить відвантаження (найчастіше — разом зі
+                      // створенням накладної), а не перевізник. «Відправлено» в
+                      // таймлайні — окрема подія carrier_accepted_at нижче.
+                      shipped:        { icon: '🧾', label: 'Створено ТТН' },
                       delivered:      { icon: '🏠', label: 'Доставлено' },
                       cancelled:      { icon: '❌', label: 'Скасовано' },
                       // Не статус замовлення, а подія в його житті: накладну
@@ -5647,9 +5688,22 @@ export default function AdminOrders({
                     if (order.supplier_sent_at) {
                       const sentAt = order.supplier_sent_at;
                       const insertAt = evs.findIndex(e => e.at > sentAt);
-                      const sentEv: Ev = { icon: '📧', label: 'Постачальнику', at: sentAt };
+                      const sentEv: Ev = { icon: '📧', label: 'Надіслано постачальнику', at: sentAt, by: order.supplier_sent_by ?? undefined };
                       if (insertAt === -1) evs.push(sentEv);
                       else evs.splice(insertAt, 0, sentEv);
+                    }
+
+                    // Справжнє «Відправлено» — перевізник прийняв посилку
+                    // (carrier_accepted_at ставить синк НП / Rozetka)
+                    if (order.carrier_accepted_at) {
+                      const accAt = order.carrier_accepted_at;
+                      const accEv: Ev = {
+                        icon: '🚚', label: 'Відправлено', at: accAt,
+                        sub: `передано ${isRozetkaPoint ? 'Rozetka Доставці' : 'Новій Пошті'}`,
+                      };
+                      const insertAt = evs.findIndex(e => e.at > accAt);
+                      if (insertAt === -1) evs.push(accEv);
+                      else evs.splice(insertAt, 0, accEv);
                     }
 
                     // Insert linked PO events
@@ -5699,7 +5753,21 @@ export default function AdminOrders({
                                       за крайні кроки. */}
                                   <span className="oc-tl-line left" aria-hidden="true" />
                                   <span className="oc-tl-line right" aria-hidden="true" />
-                                  <span className="oc-tl-dot" aria-hidden="true" />
+                                  {/* Лінійна іконка кроку замість однакової точки: шість-сім
+                                      кроків інакше розрізнялись лише підписом */}
+                                  {(() => {
+                                    const TL_ICON: Record<string, typeof Check> = {
+                                      '🛒': ShoppingCart, '✅': Check, '⏳': Clock, '📋': ClipboardList,
+                                      '🧾': FileText, '🏠': House, '❌': X, '🔁': RefreshCw,
+                                      '📧': Mail, '🚚': Truck, '📦': Package,
+                                    };
+                                    const Icon = TL_ICON[ev.icon];
+                                    return (
+                                      <span className="oc-tl-dot" aria-hidden="true">
+                                        {Icon && <Icon size={13} strokeWidth={2.2} />}
+                                      </span>
+                                    );
+                                  })()}
                                   <span className="oc-tl-label">{ev.label}</span>
                                   <span className="oc-tl-at">
                                     {new Date(ev.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
@@ -5725,6 +5793,7 @@ export default function AdminOrders({
           })}
         </div>
       )}
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -5751,6 +5820,122 @@ export default function AdminOrders({
               border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
             }}>Наступна →</a>
           )}
+        </div>
+      )}
+
+      {/* Merge bar — панель масових дій. Світла картка й кнопки .proc-btn
+          (словник «Закупівель»), групи — за ходом роботи: статус → постачальник
+          → накладні → реєстр НП → зняти. Стоїть під списком і липне до нижнього
+          краю екрана (.oc-merge-* у globals.css), тож виділені рядки лишаються
+          перед очима. */}
+      {selectedIds.size >= 1 && (
+        <div className="oc-merge-bar">
+          <span className="oc-merge-title">
+            Вибрано <b>{selectedIds.size}</b> · <b>{Math.round(orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0)).toLocaleString('uk-UA')} ₴</b>
+          </span>
+          <div className="oc-merge-actions">
+            {/* 1. Статус */}
+            <div className="oc-merge-group">
+            <select
+              className="proc-btn oc-merge-select"
+              defaultValue=""
+              onChange={async e => {
+                const newStatus = e.target.value;
+                if (!newStatus) return;
+                e.target.value = '';
+                const ids = [...selectedIds];
+                const results = await Promise.allSettled(ids.map(id => fetch(`/api/admin/orders/${id}`, {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: newStatus }),
+                })));
+                const ok = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
+                const failed = ids.length - ok;
+                const label = STATUSES.find(s => s.value === newStatus)?.label ?? newStatus;
+                // Панель закривається після дії; невдачі — окремим повідомленням, із
+                // причиною першої відмови (інакше «не вдалося 3» нічого не пояснює).
+                const firstFail = results.find(r => r.status === 'fulfilled' && !r.value.ok);
+                const reason = firstFail && firstFail.status === 'fulfilled'
+                  ? ((await firstFail.value.json().catch(() => ({}))) as { error?: string }).error
+                  : undefined;
+                if (failed) showToast(`Статус «${label}»: ${ok} з ${ids.length}, не вдалося ${failed}${reason ? ` — ${reason}` : ''}`, 'error', 10000);
+                else showToast(`Статус «${label}» встановлено: ${ok}`, 'success');
+                setSelectedIds(new Set());
+                router.refresh();
+              }}>
+              <option value="" disabled>Змінити статус…</option>
+              {STATUSES.filter(s => s.value).map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            </div>
+            {(() => {
+              const sel = orders.filter(o => selectedIds.has(o.id));
+              const supplierSel = sel.filter(o => o.fulfillment_mode === 'supplier' || o.fulfillment_mode === 'mixed' || (o.status === 'new' && (o.fulfillment_mode == null || o.fulfillment_mode === 'supplier')));
+              if (supplierSel.length === 0) return null;
+              const unsentCount = supplierSel.filter(o => !o.supplier_sent_at).length;
+              const ids = supplierSel.map(o => o.id);
+              return (
+                /* 2. Постачальник. «Усі одразу» — єдина головна кнопка панелі */
+                <div className="oc-merge-group">
+                  <button className="proc-btn" onClick={() => startSupplierSend(ids)} disabled={supplierQueueLoading}
+                    title="Лист постачальнику по кожному замовленню окремо">
+                    <Mail size={14} /> Постачальнику{unsentCount > 0 ? ` (${unsentCount} нових)` : ''}
+                  </button>
+                  {supplierSel.length > 1 && (
+                    <button className="proc-btn accent" onClick={() => startBulkSupplierSend(ids)} disabled={supplierQueueLoading}
+                      title="Один лист на постачальника з усіма його замовленнями">
+                      <Send size={14} /> Відправити всі одразу
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+            {/* 3. Накладні: об'єднати → надрукувати */}
+            <div className="oc-merge-group">
+              <button className="proc-btn" onClick={openMergeModal}>
+                <Truck size={14} /> Об&apos;єднати в ТТН
+              </button>
+              {(() => {
+                // Друкуємо лише те, на що існує етикетка: НП і обидва типи Rozetka
+                const printable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number
+                  && ['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? ''));
+                if (printable.length === 0) return null;
+                return (
+                  <button className="proc-btn" onClick={bulkPrintLabels} disabled={bulkPrinting}
+                    title="Один PDF з етикетками всіх виділених накладних — НП і Rozetka разом">
+                    <Printer size={14} /> {bulkPrinting ? 'Готую PDF…' : `Друк ТТН (${printable.length})`}
+                  </button>
+                );
+              })()}
+            </div>
+            {/* 4. Реєстр НП: спершу додати ЕН, потім друкувати — НП закриває
+                реєстр для нових після друку, тому саме такий порядок */}
+            {(() => {
+              const addable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number && !registryAdded.has(o.tracking_number));
+              const selCount = orders.filter(o => selectedIds.has(o.id)).length;
+              const hasNp = orders.some(o => selectedIds.has(o.id) && ['nova', 'nova_poshta'].includes(o.delivery_type ?? ''));
+              if (addable.length === 0 && !hasNp) return null;
+              return (
+                <div className="oc-merge-group">
+                  {addable.length > 0 && (
+                    <button className="proc-btn" onClick={bulkAddToRegistry} disabled={registryBulkLoading}>
+                      <ClipboardList size={14} /> {registryBulkLoading ? 'Додаю…' : `Додати в реєстр${addable.length !== selCount ? ` (${addable.length})` : ''}`}
+                    </button>
+                  )}
+                  {hasNp && (
+                    <button className="proc-btn" onClick={printNpRegistry} disabled={npSheetPrinting}
+                      title="Офіційна форма реєстру з кабінету НП. Після друку НП закриває реєстр для нових ЕН — спершу додайте ЕН, потім друкуйте">
+                      <Printer size={14} /> Друк реєстру НП
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+          {/* Зняти виділення — хрестик поза сіткою кнопок, щоб не ламати ряд */}
+          <button className="oc-merge-close" onClick={() => setSelectedIds(new Set())} title="Зняти виділення" aria-label="Зняти виділення">
+            <X size={16} />
+          </button>
         </div>
       )}
 

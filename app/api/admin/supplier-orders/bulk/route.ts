@@ -255,7 +255,7 @@ export async function POST(req: NextRequest) {
   });
   await Promise.all(sentOrders.map(o => {
     const sids = [...(orderSuppliers.get(o.id) ?? [])].filter(sid => emailedSupplierIds.has(sid));
-    const update: Record<string, unknown> = { supplier_sent_at: sentAt };
+    const update: Record<string, unknown> = { supplier_sent_at: sentAt, supplier_sent_by: user.email ?? 'admin' };
     if (sids.length === 1 && !o.shipping_supplier_id) update.shipping_supplier_id = sids[0];
     return db.from('orders').update(update).eq('id', o.id);
   }));
