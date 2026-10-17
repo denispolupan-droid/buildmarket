@@ -9,6 +9,7 @@ import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getStoredUtm, clearUtm } from '../../lib/utm';
+import { GCR_STORAGE_KEY } from '../components/GoogleCustomerReviewsOptIn';
 import { phoneInputDigits as getLocalDigits, phoneInputFormat as formatPhone } from '../../lib/notify/phone';
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import ProductImage from '../components/ProductImage';
@@ -462,6 +463,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
+      // Для вікна «Google Отзывы клиентов» на сторінці успіху — пошта й номер,
+      // не через URL (див. app/components/GoogleCustomerReviewsOptIn)
+      try { sessionStorage.setItem(GCR_STORAGE_KEY, JSON.stringify({ email, num: data.orderNumber })); } catch {}
       if (payment === 'card' && data.pageUrl) {
         clearUtm();
         window.location.href = data.pageUrl;

@@ -5,7 +5,9 @@ const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? '';
 // 'unsafe-eval' потрібен лише dev-режиму (HMR); у production прибираємо його, щоб
 // не послаблювати захист CSP від XSS.
 const isDev = process.env.NODE_ENV === 'development';
-const scriptSrc = `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`;
+// apis.google.com — вікно «Google Отзывы клиентов» на сторінці успішного
+// замовлення (app/components/GoogleCustomerReviewsOptIn); саме вікно — iframe з google.com.
+const scriptSrc = `script-src 'self' 'unsafe-inline' https://apis.google.com${isDev ? " 'unsafe-eval'" : ''}`;
 
 const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control',  value: 'on' },
@@ -26,7 +28,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.novaposhta.ua",
-      "frame-src blob: 'self'",
+      "frame-src blob: 'self' https://www.google.com",
       "frame-ancestors 'none'",
     ].join('; '),
   },

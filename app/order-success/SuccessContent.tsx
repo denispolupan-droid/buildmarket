@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../lib/cart';
+import GoogleCustomerReviewsOptIn from '../components/GoogleCustomerReviewsOptIn';
 
 export default function SuccessContent() {
   const params      = useSearchParams();
@@ -29,6 +30,7 @@ export default function SuccessContent() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '40px 16px',
     }}>
+      <GoogleCustomerReviewsOptIn />
       <div style={{
         background: '#fff', borderRadius: '20px', border: '1px solid #E2E8F0',
         padding: '48px 40px', maxWidth: '480px', width: '100%', textAlign: 'center',
