@@ -40,3 +40,6 @@ CREATE TABLE IF NOT EXISTS public.prom_commissions_ref (
     commission_turbo numeric(6,3)
 );
 ALTER TABLE public.prom_commissions_ref ENABLE ROW LEVEL SECURITY;
+
+-- 17.10: колонка suppliers.sheet_name була лише в тесті (у проді й коді її немає) — прибрано.
+ALTER TABLE public.suppliers DROP COLUMN IF EXISTS sheet_name;
