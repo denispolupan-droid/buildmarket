@@ -52,6 +52,30 @@ export default function BlogAdminClient() {
   }
   useEffect(() => { load(); }, []);
 
+  // Автопілот чернеток (крон 1-го і 15-го): вимикач + коли була остання чернетка
+  const [autopilot, setAutopilot] = useState<{ enabled: boolean; lastDraft: { at: string; page: string; title: string | null } | null } | null>(null);
+  const [autopilotSaving, setAutopilotSaving] = useState(false);
+  useEffect(() => {
+    fetch('/api/admin/blog/autopilot').then(r => r.ok ? r.json() : null).then(d => d && setAutopilot(d)).catch(() => {});
+  }, []);
+  async function toggleAutopilot() {
+    if (!autopilot) return;
+    setAutopilotSaving(true);
+    try {
+      const res = await fetch('/api/admin/blog/autopilot', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !autopilot.enabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAutopilot(a => a && { ...a, enabled: data.enabled });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAutopilotSaving(false);
+    }
+  }
+
   async function generate() {
     if (!topic.trim()) return;
     setGenerating(true);
@@ -277,6 +301,35 @@ export default function BlogAdminClient() {
         Генерація статті — двома мовами одразу, з FAQ і посиланнями на категорії (≈ ${COST_PER_ARTICLE.toFixed(2)}).
         Стаття створюється чернеткою — на сайт потрапляє тільки після вашої публікації.
       </p>
+
+      {/* Автопілот чернеток — вимикач */}
+      {autopilot && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, marginBottom: 20, maxWidth: 900 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B' }}>
+              🤖 Автопілот статей —{' '}
+              <span style={{ color: autopilot.enabled ? '#15803D' : '#B45309' }}>{autopilot.enabled ? 'увімкнено' : 'на паузі'}</span>
+            </div>
+            <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
+              1-го і 15-го числа о 08:10 сам обирає тему з «Невидимого попиту» й пише одну чернетку (≈ ${COST_PER_ARTICLE.toFixed(2)}). Публікуєте ви.
+              {autopilot.lastDraft && (
+                <> Остання чернетка: {new Date(autopilot.lastDraft.at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}
+                  {autopilot.lastDraft.title && <> — «{autopilot.lastDraft.title}»</>}.</>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={toggleAutopilot}
+            disabled={autopilotSaving}
+            role="switch" aria-checked={autopilot.enabled}
+            title={autopilot.enabled ? 'Поставити автопілот на паузу' : 'Увімкнути автопілот'}
+            style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: autopilotSaving ? 0.6 : 1,
+              background: autopilot.enabled ? '#fff' : '#3DBFB8', color: autopilot.enabled ? '#475569' : '#fff', border: autopilot.enabled ? '1px solid #CBD5E1' : 'none' }}
+          >
+            {autopilotSaving ? '…' : autopilot.enabled ? '⏸ Поставити на паузу' : '▶ Увімкнути'}
+          </button>
+        </div>
+      )}
 
       {/* Генерація */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 24, maxWidth: 720 }}>
