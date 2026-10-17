@@ -3,6 +3,7 @@ import { refreshNovapayBalance, getNovapayLiveBalance, refreshNovapayRegisters }
 import { ingestNovapayStatement, postNpPayouts } from '../../../../lib/novapay-ingest';
 import { postNovapayAutoTopups } from '../../../../lib/novapay-autopost';
 import { createServiceClient } from '../../../../lib/supabase';
+import { loadNpCodOrders, unsettledNpCod, formatUnsettledAlert } from '../../../../lib/novapay-cod-watch';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 
@@ -41,18 +42,17 @@ export async function GET(req: NextRequest) {
     console.error('[novapay-statement]', err instanceof Error ? err.message : err);
     ingest = { error: err instanceof Error ? err.message : String(err) };
   }
-  // Тиша — не успіх: якщо два дні жодної виплати при вручених наложках, виписка
-  // або інтеграція зламались, а np:cod тихо росте.
+  // Тиша — не успіх: якщо гроші за врученою наложкою не дійшли, np:cod тихо
+  // росте. Питаємо саме про це, по кожному замовленню (lib/novapay-cod-watch);
+  // попередня перевірка порівнювала два вікна різної довжини й сипала хибними
+  // тривогами в дні, коли НП-наложок просто не вручали.
   try {
     const db = createServiceClient();
-    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
-    const [{ count: payouts }, { count: delivered }] = await Promise.all([
-      db.from('novapay_txns').select('id', { count: 'exact', head: true }).eq('kind', 'cod_payout').gte('txn_date', twoDaysAgo),
-      db.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'delivered').eq('payment_type', 'cod')
-        .in('delivery_type', ['nova', 'nova_poshta']).gte('delivered_at', new Date(Date.now() - 4 * 86400000).toISOString()),
-    ]);
-    if ((payouts ?? 0) === 0 && (delivered ?? 0) > 0) {
-      alertAdmin('НоваПей: два дні без виплат наложки', `За 4 дні вручено ${delivered} наложок, а у виписці NovaPay з ${twoDaysAgo} жодної виплати за реєстром. Перевір виписку/інтеграцію — np:cod росте.`);
+    const now = new Date();
+    const stuck = unsettledNpCod(await loadNpCodOrders(db), now);
+    if (stuck.length) {
+      const { title, body } = formatUnsettledAlert(stuck, now);
+      alertAdmin(title, body);
     }
   } catch { /* лише сигнал */ }
 
