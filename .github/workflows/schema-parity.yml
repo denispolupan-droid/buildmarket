@@ -1,0 +1,62 @@
+name: Schema parity prod vs test
+
+# Тестова база має збігатися з продом по таблицях і колонках, інакше тести
+# перевіряють не те, що працює в проді: 15.10.2026 тест відставав на 14 колонок
+# і таблицю, /admin на тесті падав, а інтеграційні тести були зелені.
+# Порівнюємо information_schema.columns обох проєктів через Management API
+# (секрет SUPABASE_ACCESS_TOKEN) і падаємо з переліком розбіжностей.
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # щодня 05:00 за Києвом
+  workflow_dispatch:
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PROD_REF: boaztnparrdoeknajprn
+      TEST_REF: mdrextghmuzkyelpqsgp
+    steps:
+      - name: Compare columns
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          test -n "$TOKEN" || { echo "::error::SUPABASE_ACCESS_TOKEN secret is not set"; exit 1; }
+          Q='{"query":"SELECT table_name, column_name, udt_name, is_nullable FROM information_schema.columns WHERE table_schema='"'"'public'"'"' ORDER BY 1,2"}'
+          for ref in "$PROD_REF" "$TEST_REF"; do
+            curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$Q" > "cols-$ref.json"
+          done
+          node - <<'EOF'
+          const fs = require('fs');
+          const prod = JSON.parse(fs.readFileSync(`cols-${process.env.PROD_REF}.json`));
+          const test = JSON.parse(fs.readFileSync(`cols-${process.env.TEST_REF}.json`));
+          const key = c => `${c.table_name}.${c.column_name}`;
+          const sig = c => `${c.udt_name}${c.is_nullable === 'NO' ? ' NOT NULL' : ''}`;
+          const P = new Map(prod.map(c => [key(c), sig(c)])), T = new Map(test.map(c => [key(c), sig(c)]));
+          const missing = [...P.keys()].filter(k => !T.has(k));
+          const extra   = [...T.keys()].filter(k => !P.has(k));
+          const typed   = [...P.keys()].filter(k => T.has(k) && T.get(k) !== P.get(k));
+          console.log(`prod: ${prod.length} columns, test: ${test.length} columns`);
+          const report = [
+            ...missing.map(k => `missing in test: ${k} (${P.get(k)})`),
+            ...typed.map(k => `type differs: ${k} prod=${P.get(k)} test=${T.get(k)}`),
+            ...extra.map(k => `only in test: ${k}`),
+          ];
+          if (report.length) {
+            for (const r of report) console.log('::error::' + r);
+            process.exit(1);
+          }
+          console.log('✓ schemas match');
+          EOF
+
+      - name: Alert on drift
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT:  ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+        run: |
+          [ -n "$TG_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            -d chat_id="$TG_CHAT" -d text="⚠️ Схема тестової бази розійшлась із продом: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true

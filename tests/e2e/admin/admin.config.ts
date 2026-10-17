@@ -28,6 +28,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: process.env.CI ? [['github'], ['html', { open: 'never', outputFolder: 'playwright-report-admin' }]] : [['list']],
   globalSetup: path.resolve(__dirname, 'setup.ts'),
+  globalTeardown: path.resolve(__dirname, 'teardown.ts'),
   use: {
     baseURL: BASE_URL,
     storageState: ADMIN_AUTH_FILE,

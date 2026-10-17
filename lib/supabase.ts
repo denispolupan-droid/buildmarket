@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../types/database.types';
 import { unstable_cache } from 'next/cache';
 import { env } from './env';
 import { escapeOrTerm } from './pg-filter';
@@ -45,6 +46,24 @@ export function createServiceClient() {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
   }
   return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+}
+
+/**
+ * Той самий service-клієнт, але з типами схеми (types/database.types.ts):
+ * назви таблиць і колонок, типи Row/Insert/Update перевіряє tsc.
+ *
+ * Чому окремо, а не замість createServiceClient: типізація всього клієнта одразу
+ * дає 161 помилку в 30 файлах (вимір 17.10.2026) — здебільшого там, де код
+ * покладається на `any`. Новий код пише через цю фабрику; наявні модулі
+ * переводяться по одному, починаючи з lib/accounting (етап 1 плану зростання).
+ */
+export function createTypedServiceClient() {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
+  }
+  return createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
 }

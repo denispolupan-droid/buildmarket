@@ -7,6 +7,8 @@ export default defineConfig({
     globals: true,
     include: ['tests/accounting/**/*.test.ts'],
     setupFiles: ['./tests/accounting/setup.ts'],
+    // Один прогін на спільну тестову базу за раз (замок у app_settings) — див. tests/shared/db-lock
+    globalSetup: ['./tests/accounting/global-setup.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     // Тести залежать від СПІЛЬНОГО стану БД — виконуємо послідовно і в межах файлу

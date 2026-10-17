@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ADMIN_AUTH_FILE } from './admin.config';
+import { acquireTestDbLock } from '../../shared/db-lock';
 
 export const E2E_ADMIN_EMAIL = 'e2e-admin@fixline.test';
 const PROD_REF = 'boaztnparrdoeknajprn';
@@ -32,6 +33,10 @@ export default async function adminGlobalSetup() {
   if (!url || !serviceKey) throw new Error('E2E admin: немає NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (.env.test або секрети TEST_*)');
   if (url.includes(PROD_REF)) throw new Error('E2E admin: відмова — це ПРОДОВА база. Сценарії створюють і проводять замовлення; запускати лише проти тестової.');
   if (!password) throw new Error('E2E admin: задай E2E_ADMIN_PASSWORD (.env.test локально, секрет у CI)');
+
+  // Та сама тестова база, що й в інтеграційних тестів: один прогін за раз
+  // (reset_accounting_test_data TRUNCATE-ить облік). Звільнення — teardown.ts.
+  await acquireTestDbLock('e2e-admin');
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
