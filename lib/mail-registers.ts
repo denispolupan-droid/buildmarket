@@ -17,10 +17,10 @@ import { zohoFetch, zohoFetchBinary, getAccountId } from './zoho-mail';
 import { parseNpRegisterSheet, applyNpRegister, type NpRegisterApplyResult } from './novapay-register';
 import { applyRzPayRegisterFile, type RzPayRegisterApplyResult } from './rozetkapay-register-apply';
 import { ingestNovapayStatement } from './novapay-ingest';
-import { classifyRegisterMail, extractRzPayRegisterLink, type MailKind } from './mail-registers-rules';
+import { classifyRegisterMail, extractRzPayRegisterLink, shouldReprocessMail, type MailKind, type PrevMailImport } from './mail-registers-rules';
 
-export { classifyRegisterMail, extractRzPayRegisterLink } from './mail-registers-rules';
-export type { MailKind } from './mail-registers-rules';
+export { classifyRegisterMail, extractRzPayRegisterLink, shouldReprocessMail, RETRY_UNKNOWN_DAYS } from './mail-registers-rules';
+export type { MailKind, PrevMailImport } from './mail-registers-rules';
 
 type ZohoMsg = { messageId: string; fromAddress: string; subject: string; receivedTime: string; hasAttachment?: string | boolean };
 
@@ -61,8 +61,9 @@ export async function importMailRegisters(opts: { days?: number; createdBy: stri
   }
   res.scanned = msgs.length;
   const ids = msgs.map(m => m.messageId);
-  const { data: doneRows } = ids.length ? await db.from('mail_register_imports').select('message_id, status').in('message_id', ids).limit(ids.length) : { data: [] };
-  const done = new Map((doneRows ?? []).map(r => [String(r.message_id), r.status as string]));
+  const { data: doneRows } = ids.length ? await db.from('mail_register_imports').select('message_id, status, result, received_at').in('message_id', ids).limit(ids.length) : { data: [] };
+  const done = new Map((doneRows ?? []).map(r => [String(r.message_id), r as PrevMailImport]));
+  const now = new Date();
 
   // Виписка NovaPay могла ще не підтягнутись за сьогодні — освіжаємо один раз до обробки
   let ingested = false;
@@ -70,8 +71,7 @@ export async function importMailRegisters(opts: { days?: number; createdBy: stri
   for (const m of msgs.sort((a, b) => Number(a.receivedTime) - Number(b.receivedTime))) {
     const cls = classifyRegisterMail(String(m.fromAddress ?? ''), String(m.subject ?? ''));
     if (!cls.source || cls.kind === 'other') continue;
-    const prev = done.get(m.messageId);
-    if (prev && prev !== 'no-doc' && prev !== 'error') { res.skipped++; continue; }
+    if (!shouldReprocessMail(done.get(m.messageId), cls.kind, now)) { res.skipped++; continue; }
     const receivedAt = new Date(Number(m.receivedTime)).toISOString();
     const save = async (status: 'done' | 'skipped' | 'no-doc' | 'error', result: unknown, error?: string) => {
       if (opts.dryRun) return;

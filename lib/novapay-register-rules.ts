@@ -79,6 +79,28 @@ export function parseNpRegisterSheet(sheet: unknown[][]): NpRegister {
   return { registerNo, date, rows, totalGross: r2(rows.reduce((s, x) => s + x.gross, 0)), totalNet: r2(rows.reduce((s, x) => s + x.net, 0)) };
 }
 
+/**
+ * Чи одна й та сама людина — ПІБ з реєстру і контакт у замовленні.
+ *
+ * Порядок слів різний: НоваПей дає «Прізвище Ім'я По-батькові», а в замовленні
+ * з маркетплейсу зазвичай «Ім'я Прізвище». Порівняння за ПЕРШИМ словом, яке тут
+ * було, мовчки не знаходило нікого («Помінчук Володимир Іванович» проти
+ * «Володимир Помінчук»), і виплата лишалась без замовлення.
+ *
+ * Правило: всі слова коротшого імені мають бути в довшому — і збігів має бути
+ * щонайменше два. Це строгіше за «однакове перше слово»: один лише спільний
+ * «Петров» уже не зчепить різних людей.
+ */
+export function personNamesMatch(a: string, b: string): boolean {
+  const words = (s: string) => new Set(
+    s.toLowerCase().replace(/[^\p{L}\s'’-]/gu, ' ').split(/\s+/).filter(w => w.length > 1),
+  );
+  const x = words(a), y = words(b);
+  const [small, big] = x.size <= y.size ? [x, y] : [y, x];
+  if (small.size < 2) return false;
+  return [...small].every(w => big.has(w));
+}
+
 export type NpKnownOrder = { id: string; order_number: number };
 export type NpRegisterLookup = (row: NpRegisterRow) => NpKnownOrder | null;
 export type NpRegisterPlan = {

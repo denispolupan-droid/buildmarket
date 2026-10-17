@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNpRegisterSheet, parseNpMoney, planNpRegisterApply, nextSeqKey } from '../lib/novapay-register-rules';
+import { parseNpRegisterSheet, parseNpMoney, planNpRegisterApply, nextSeqKey, personNamesMatch } from '../lib/novapay-register-rules';
 import { classifyRegisterMail, extractRzPayRegisterLink } from '../lib/mail-registers-rules';
 
 // Живий файл з пошти: «Реєстр платежів контрагента Полупан Д.О. ФОП № 17739656 від 26 вересня 2026 р.XLSX»
@@ -84,5 +84,34 @@ describe('листи з реєстрами', () => {
     const html = '<a href="https://storage.googleapis.com/settlements-service-registers-epprd/settlements2/%D0%A0.xlsx?Expires=1&amp;GoogleAccessId=x&amp;Signature=y">Завантажити реєстр</a><a href="https://www.youtube.com/watch?v=1">відео</a>';
     expect(extractRzPayRegisterLink(html)).toBe('https://storage.googleapis.com/settlements-service-registers-epprd/settlements2/%D0%A0.xlsx?Expires=1&GoogleAccessId=x&Signature=y');
     expect(extractRzPayRegisterLink('<p>нема</p>')).toBeNull();
+  });
+});
+
+describe('personNamesMatch — ПІБ з реєстру проти контакту в замовленні', () => {
+  // 11.10.2026: «Помінчук Володимир Іванович» у реєстрі проти «Володимир Помінчук»
+  // у замовленні — порівняння за першим словом не знаходило нікого.
+  it('інший порядок слів і по-батькові зверху — це та сама людина', () => {
+    expect(personNamesMatch('Володимир Помінчук', 'Помінчук Володимир Іванович')).toBe(true);
+  });
+
+  it('регістр і зайві пробіли не заважають', () => {
+    expect(personNamesMatch('  чабан   ніна ', 'Чабан Ніна Володимирівна')).toBe(true);
+  });
+
+  it('спільне лише прізвище — не зчіплюємо різних людей', () => {
+    expect(personNamesMatch('Петров Іван', 'Петров Сергій Миколайович')).toBe(false);
+  });
+
+  it('спільне лише імʼя — теж ні', () => {
+    expect(personNamesMatch('Іван Коваль', 'Іван Шевченко')).toBe(false);
+  });
+
+  it('одне слово ні з чим не зіставляємо', () => {
+    expect(personNamesMatch('Помінчук', 'Помінчук Володимир Іванович')).toBe(false);
+    expect(personNamesMatch('', 'Помінчук Володимир')).toBe(false);
+  });
+
+  it('апостроф і дефіс — частина прізвища', () => {
+    expect(personNamesMatch("Мар'яненко-Білик Ольга", "Мар'яненко-Білик Ольга Петрівна")).toBe(true);
   });
 });

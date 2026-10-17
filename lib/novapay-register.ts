@@ -17,9 +17,9 @@ import { createServiceClient } from './supabase';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';
 import { fetchAllRows } from './db-paginate';
-import { planNpRegisterApply, nextSeqKey, type NpRegister, type NpRegisterLookup } from './novapay-register-rules';
+import { planNpRegisterApply, nextSeqKey, personNamesMatch, type NpRegister, type NpRegisterLookup } from './novapay-register-rules';
 
-export { parseNpMoney, parseNpRegisterSheet, planNpRegisterApply, nextSeqKey } from './novapay-register-rules';
+export { parseNpMoney, parseNpRegisterSheet, planNpRegisterApply, nextSeqKey, personNamesMatch } from './novapay-register-rules';
 export type { NpRegister, NpRegisterRow, NpRegisterLookup, NpRegisterPlan, NpKnownOrder } from './novapay-register-rules';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -52,9 +52,19 @@ async function postWithSeq(base: string, input: Omit<Parameters<typeof recordTxn
 type O = { id: string; order_number: number; tracking_number: string | null; contact: string | null; total_price: number; delivered_at: string | null; created_at: string; payment_type: string | null; status: string };
 const SEL = 'id, order_number, tracking_number, contact, total_price, delivered_at, created_at, payment_type, status';
 
-/** Наше замовлення для рядка реєстру: за ЕН, за нашим номером у «Номер замовлення», для платежів НоваПей — за прізвищем покупця і сумою. */
+/**
+ * Наше замовлення для рядка реєстру: за ЕН, за нашим номером у «Номер замовлення»,
+ * для платежів НоваПей — за ПІБ покупця і сумою.
+ *
+ * ЕН шукаємо по ВСІХ рядках, а не лише по тих, що не схожі на платіж. Ознака
+ * «номер починається з 59 — це платіж, а не накладна» (parseNpRegisterSheet) —
+ * здогад за формою номера, і для 14-значних ЕН серії 59 він хибний: 11.10.2026
+ * виплата 388,05 ₴ по ЕН 59001797934459 (#26101021) пішла в «без замовлення»,
+ * хоча накладна лежала в базі. Вирішують дані: якщо такий tracking_number у нас
+ * є — це ЕН; підбір за ПІБ лишається тільки для решти.
+ */
 export async function buildNpRegisterLookup(db: Db, reg: NpRegister): Promise<NpRegisterLookup> {
-  const ttns = reg.rows.filter(r => !r.isNpPayment).map(r => r.ttn);
+  const ttns = reg.rows.map(r => r.ttn);
   const refs = reg.rows.map(r => r.orderRef).filter((x): x is string => !!x && /^\d{8}$/.test(x)).map(Number);
   const [byTtn, byRef] = await Promise.all([
     ttns.length ? db.from('orders').select(SEL).in('tracking_number', ttns).limit(ttns.length * 3) : Promise.resolve({ data: [] as O[] }),
@@ -65,17 +75,18 @@ export async function buildNpRegisterLookup(db: Db, reg: NpRegister): Promise<Np
   const ranked = ((byTtn.data ?? []) as O[]).sort((a, b) => (a.status === 'cancelled' ? 1 : 0) - (b.status === 'cancelled' ? 1 : 0) || b.created_at.localeCompare(a.created_at));
   for (const o of ranked) { const k = String(o.tracking_number).replace(/\s/g, ''); if (!ttnMap.has(k)) ttnMap.set(k, o); }
   const refMap = new Map(((byRef.data ?? []) as O[]).map(o => [String(o.order_number), o]));
-  // Платежі НоваПей: замовлення-наложки за прізвищем покупця за останні 60 днів
+  // Платежі НоваПей: замовлення-наложки за ПІБ покупця за останні 60 днів
   let byName: O[] = [];
-  if (reg.rows.some(r => r.isNpPayment)) {
+  if (reg.rows.some(r => r.isNpPayment && !ttnMap.has(r.ttn))) {
     const since = new Date(Date.now() - 60 * 86400000).toISOString();
     byName = await fetchAllRows<O>((f, t) => db.from('orders').select(SEL).eq('payment_type', 'cod').neq('status', 'cancelled').gte('created_at', since).order('id').range(f, t));
   }
-  const surname = (s: string) => s.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
   return (row) => {
     if (row.orderRef && refMap.has(row.orderRef)) { const o = refMap.get(row.orderRef)!; return { id: o.id, order_number: o.order_number }; }
-    if (!row.isNpPayment) { const o = ttnMap.get(row.ttn); return o ? { id: o.id, order_number: o.order_number } : null; }
-    const cand = byName.filter(o => o.contact && surname(o.contact) === surname(row.buyer) && Number(o.total_price) + 0.005 >= row.gross);
+    const byEn = ttnMap.get(row.ttn);
+    if (byEn) return { id: byEn.id, order_number: byEn.order_number };
+    if (!row.isNpPayment) return null;
+    const cand = byName.filter(o => o.contact && personNamesMatch(o.contact, row.buyer) && Number(o.total_price) + 0.005 >= row.gross);
     if (!cand.length) return null;
     const exact = cand.find(o => Math.abs(Number(o.total_price) - row.gross) < 0.005);
     const o = exact ?? cand.sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
