@@ -72,6 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/dropship`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/delivery`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${BASE}/returns`,     lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${BASE}/privacy`,     lastModified: SITE_UPDATED, changeFrequency: 'yearly',  priority: 0.3 },
   ];
 
   // noindex-статті в sitemap не йдуть: суперечливий сигнал «індексуй / не індексуй»
@@ -161,6 +162,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/ru/dropship`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${BASE}/ru/delivery`,   lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
     { url: `${BASE}/ru/returns`,    lastModified: SITE_UPDATED, changeFrequency: 'monthly', priority: 0.2 },
+    { url: `${BASE}/ru/privacy`,    lastModified: SITE_UPDATED, changeFrequency: 'yearly',  priority: 0.2 },
   ];
 
   const ruBlogRoutes: MetadataRoute.Sitemap = indexablePosts(dbPosts).map(p => ({
