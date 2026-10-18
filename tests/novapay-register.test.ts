@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNpRegisterSheet, parseNpMoney, planNpRegisterApply, nextSeqKey, personNamesMatch } from '../lib/novapay-register-rules';
+import { parseNpRegisterSheet, parseNpMoney, planNpRegisterApply, nextSeqKey, personNamesMatch, splitRowAcrossOrders, type NpRegisterRow } from '../lib/novapay-register-rules';
 import { classifyRegisterMail, extractRzPayRegisterLink } from '../lib/mail-registers-rules';
 
 // Живий файл з пошти: «Реєстр платежів контрагента Полупан Д.О. ФОП № 17739656 від 26 вересня 2026 р.XLSX»
@@ -37,7 +37,10 @@ describe('parseNpRegisterSheet — реєстр переказів НоваПе�
 
 describe('planNpRegisterApply — доводимо проводки до реєстру', () => {
   const orders: Record<string, { id: string; order_number: number }> = { '20451541620716': { id: 'A', order_number: 26091199 }, '20451543029880': { id: 'B', order_number: 26091206 } };
-  const lookup = (row: { ttn: string; buyer: string; gross: number }) => orders[row.ttn] ?? (row.buyer.startsWith('Чабан') ? { id: 'C', order_number: 26091174 } : null);
+  const one = (o: { id: string; order_number: number } | undefined, row: { gross: number; net: number }) =>
+    o ? [{ ...o, gross: row.gross, net: row.net }] : [];
+  const lookup = (row: NpRegisterRow) =>
+    one(orders[row.ttn] ?? (row.buyer.startsWith('Чабан') ? { id: 'C', order_number: 26091174 } : undefined), row);
 
   it('нічого не проведено — проводимо всі три', () => {
     const plan = planNpRegisterApply(parseNpRegisterSheet(sheet()), lookup, {});
@@ -52,9 +55,60 @@ describe('planNpRegisterApply — доводимо проводки до реє�
     expect(plan.post.map(p => p.orderId)).toEqual(['C']);
   });
   it('рядок без нашого замовлення — у список unknown, решта проводиться', () => {
-    const plan = planNpRegisterApply(parseNpRegisterSheet(sheet()), row => orders[row.ttn] ?? null, {});
+    const plan = planNpRegisterApply(parseNpRegisterSheet(sheet()), row => one(orders[row.ttn], row), {});
     expect(plan.unknown.map(u => u.ttn)).toEqual(['59001786325424']);
     expect(plan.post).toHaveLength(2);
+  });
+
+  // Одна ЕН на двох замовленнях: рядок має лягти на обидва, а не на одне з них.
+  it('посилка на два замовлення — рядок ділиться між ними', () => {
+    const split = (row: NpRegisterRow) => row.ttn === '20451541620716'
+      ? splitRowAcrossOrders(row, [{ id: 'A', order_number: 26091199, total: 200 }, { id: 'D', order_number: 26091200, total: 460 }])
+      : one(orders[row.ttn], row);
+    const plan = planNpRegisterApply(parseNpRegisterSheet(sheet()), split, {});
+    expect(plan.post.map(p => [p.orderId, p.gross, p.net])).toEqual([['A', 200, 199], ['D', 460, 457.7], ['B', 630, 626.85]]);
+  });
+});
+
+describe('splitRowAcrossOrders — одна ЕН, кілька замовлень', () => {
+  const row = { gross: 420, net: 417.9 };   // #26081005 (100) + #26081006 (320), серпень
+  it('суми замовлень дають брутто — ділимо пропорційно, як воно й стоїть у книгах', () => {
+    expect(splitRowAcrossOrders(row, [
+      { id: 'a', order_number: 26081005, total: 100 },
+      { id: 'b', order_number: 26081006, total: 320 },
+    ])).toEqual([
+      { id: 'a', order_number: 26081005, gross: 100, net: 99.5 },
+      { id: 'b', order_number: 26081006, gross: 320, net: 318.4 },
+    ]);
+  });
+  it('одне замовлення — весь рядок йому', () => {
+    expect(splitRowAcrossOrders(row, [{ id: 'a', order_number: 1, total: 420 }]))
+      .toEqual([{ id: 'a', order_number: 1, gross: 420, net: 417.9 }]);
+  });
+  it('суми не сходяться — це збіг ЕН, а не посилка на двох: беремо те, що дорівнює рядку', () => {
+    expect(splitRowAcrossOrders(row, [
+      { id: 'a', order_number: 1, total: 999 },
+      { id: 'b', order_number: 2, total: 420 },
+    ])).toEqual([{ id: 'b', order_number: 2, gross: 420, net: 417.9 }]);
+  });
+  it('суми не сходяться і рівного немає — перше за рангом, рядок не дробимо', () => {
+    const r = splitRowAcrossOrders(row, [
+      { id: 'a', order_number: 1, total: 999 },
+      { id: 'b', order_number: 2, total: 888 },
+    ]);
+    expect(r).toEqual([{ id: 'a', order_number: 1, gross: 420, net: 417.9 }]);
+  });
+  it('копійки заокруглення дістаються останньому — сума часток дорівнює рядку', () => {
+    const r = splitRowAcrossOrders({ gross: 300, net: 298.5 }, [
+      { id: 'a', order_number: 1, total: 100 },
+      { id: 'b', order_number: 2, total: 100 },
+      { id: 'c', order_number: 3, total: 100 },
+    ]);
+    expect(r.reduce((s, x) => s + x.net, 0)).toBeCloseTo(298.5, 10);
+    expect(r.reduce((s, x) => s + x.gross, 0)).toBe(300);
+  });
+  it('кандидатів немає — рядок невпізнаний', () => {
+    expect(splitRowAcrossOrders(row, [])).toEqual([]);
   });
 });
 

@@ -102,7 +102,46 @@ export function personNamesMatch(a: string, b: string): boolean {
 }
 
 export type NpKnownOrder = { id: string; order_number: number };
-export type NpRegisterLookup = (row: NpRegisterRow) => NpKnownOrder | null;
+/** Частка рядка реєстру, що припадає на одне замовлення. */
+export type NpRowShare = NpKnownOrder & { gross: number; net: number };
+/** Порожній масив — рядок не впізнано. */
+export type NpRegisterLookup = (row: NpRegisterRow) => NpRowShare[];
+
+export type NpOrderTotal = NpKnownOrder & { total: number };
+
+/**
+ * Рознести рядок реєстру по замовленнях, що їдуть під однією ЕН.
+ *
+ * Дві замовлення в одній посилці — звичайна річ: покупець докупив, менеджер
+ * доклав у ту саму коробку. НоваПей бачить одну ЕН і платить одним рядком, а в
+ * нас це два борги по наложці. Брати «якесь одне замовлення на цю ЕН» не можна:
+ * одне лишиться з непогашеним боргом, друге отримає зайве (так у серпні було б
+ * з #26081001/#26081002, #26081005/#26081006, #26081028/#26081029).
+ *
+ * Ділимо пропорційно сумам замовлень — але лише тоді, коли вони в сумі дають
+ * брутто рядка. Якщо не дають, це не «посилка на двох», а збіг ЕН (скасоване +
+ * перевиписане): тоді беремо те, чия сума дорівнює рядку, інакше перше за
+ * рангом від виклику.
+ */
+export function splitRowAcrossOrders(row: { gross: number; net: number }, cands: NpOrderTotal[]): NpRowShare[] {
+  const whole = (o: NpKnownOrder): NpRowShare[] => [{ id: o.id, order_number: o.order_number, gross: row.gross, net: row.net }];
+  if (!cands.length) return [];
+  if (cands.length === 1) return whole(cands[0]);
+  const sum = r2(cands.reduce((s, o) => s + o.total, 0));
+  if (Math.abs(sum - row.gross) > 0.01 || !(row.gross > 0)) {
+    return whole(cands.find(o => Math.abs(o.total - row.gross) < 0.005) ?? cands[0]);
+  }
+  const out: NpRowShare[] = [];
+  let grossLeft = row.gross, netLeft = row.net;
+  cands.forEach((o, i) => {
+    const last = i === cands.length - 1;
+    const gross = last ? r2(grossLeft) : r2(o.total);
+    const net = last ? r2(netLeft) : r2(row.net * o.total / row.gross);
+    grossLeft = r2(grossLeft - gross); netLeft = r2(netLeft - net);
+    out.push({ id: o.id, order_number: o.order_number, gross, net });
+  });
+  return out;
+}
 export type NpRegisterPlan = {
   post: { orderId: string; orderNumber: number; gross: number; net: number; ttn: string }[];
   undo: { orderId: string; net: number }[];
@@ -120,10 +159,12 @@ export function planNpRegisterApply(reg: NpRegister, lookup: NpRegisterLookup, e
   const want = new Map<string, { orderNumber: number; gross: number; net: number; ttn: string }>();
   const unknown: NpRegisterRow[] = [];
   for (const row of reg.rows) {
-    const o = lookup(row);
-    if (!o) { unknown.push(row); continue; }
-    const w = want.get(o.id) ?? { orderNumber: o.order_number, gross: 0, net: 0, ttn: row.ttn };
-    w.gross = r2(w.gross + row.gross); w.net = r2(w.net + row.net); want.set(o.id, w);
+    const shares = lookup(row);
+    if (!shares.length) { unknown.push(row); continue; }
+    for (const s of shares) {
+      const w = want.get(s.id) ?? { orderNumber: s.order_number, gross: 0, net: 0, ttn: row.ttn };
+      w.gross = r2(w.gross + s.gross); w.net = r2(w.net + s.net); want.set(s.id, w);
+    }
   }
   const plan: NpRegisterPlan = { post: [], undo: [], keep: 0, unknown };
   for (const [orderId, net] of Object.entries(existingNet)) {

@@ -17,10 +17,10 @@ import { createServiceClient } from './supabase';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';
 import { fetchAllRows } from './db-paginate';
-import { planNpRegisterApply, nextSeqKey, personNamesMatch, type NpRegister, type NpRegisterLookup } from './novapay-register-rules';
+import { planNpRegisterApply, nextSeqKey, personNamesMatch, splitRowAcrossOrders, type NpRegister, type NpRegisterLookup } from './novapay-register-rules';
 
-export { parseNpMoney, parseNpRegisterSheet, planNpRegisterApply, nextSeqKey, personNamesMatch } from './novapay-register-rules';
-export type { NpRegister, NpRegisterRow, NpRegisterLookup, NpRegisterPlan, NpKnownOrder } from './novapay-register-rules';
+export { parseNpMoney, parseNpRegisterSheet, planNpRegisterApply, nextSeqKey, personNamesMatch, splitRowAcrossOrders } from './novapay-register-rules';
+export type { NpRegister, NpRegisterRow, NpRegisterLookup, NpRegisterPlan, NpKnownOrder, NpRowShare } from './novapay-register-rules';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -70,10 +70,15 @@ export async function buildNpRegisterLookup(db: Db, reg: NpRegister): Promise<Np
     ttns.length ? db.from('orders').select(SEL).in('tracking_number', ttns).limit(ttns.length * 3) : Promise.resolve({ data: [] as O[] }),
     refs.length ? db.from('orders').select(SEL).in('order_number', refs).limit(refs.length) : Promise.resolve({ data: [] as O[] }),
   ]);
-  // Одна ЕН може стояти на двох замовленнях (скасоване + перевиписане): беремо не скасоване, потім свіжіше
-  const ttnMap = new Map<string, O>();
+  // Одна ЕН може стояти на кількох замовленнях: або посилка на двох (обидва живі —
+  // ділимо рядок), або скасоване + перевиписане (живе витісняє скасоване).
+  const ttnMap = new Map<string, O[]>();
   const ranked = ((byTtn.data ?? []) as O[]).sort((a, b) => (a.status === 'cancelled' ? 1 : 0) - (b.status === 'cancelled' ? 1 : 0) || b.created_at.localeCompare(a.created_at));
-  for (const o of ranked) { const k = String(o.tracking_number).replace(/\s/g, ''); if (!ttnMap.has(k)) ttnMap.set(k, o); }
+  for (const o of ranked) { const k = String(o.tracking_number).replace(/\s/g, ''); ttnMap.set(k, [...(ttnMap.get(k) ?? []), o]); }
+  for (const [k, list] of ttnMap) {
+    const live = list.filter(o => o.status !== 'cancelled');
+    ttnMap.set(k, (live.length ? live : [list[0]]).sort((a, b) => a.order_number - b.order_number));
+  }
   const refMap = new Map(((byRef.data ?? []) as O[]).map(o => [String(o.order_number), o]));
   // Платежі НоваПей: замовлення-наложки за ПІБ покупця за останні 60 днів
   let byName: O[] = [];
@@ -82,15 +87,15 @@ export async function buildNpRegisterLookup(db: Db, reg: NpRegister): Promise<Np
     byName = await fetchAllRows<O>((f, t) => db.from('orders').select(SEL).eq('payment_type', 'cod').neq('status', 'cancelled').gte('created_at', since).order('id').range(f, t));
   }
   return (row) => {
-    if (row.orderRef && refMap.has(row.orderRef)) { const o = refMap.get(row.orderRef)!; return { id: o.id, order_number: o.order_number }; }
+    if (row.orderRef && refMap.has(row.orderRef)) { const o = refMap.get(row.orderRef)!; return [{ id: o.id, order_number: o.order_number, gross: row.gross, net: row.net }]; }
     const byEn = ttnMap.get(row.ttn);
-    if (byEn) return { id: byEn.id, order_number: byEn.order_number };
-    if (!row.isNpPayment) return null;
+    if (byEn?.length) return splitRowAcrossOrders(row, byEn.map(o => ({ id: o.id, order_number: o.order_number, total: Number(o.total_price) })));
+    if (!row.isNpPayment) return [];
     const cand = byName.filter(o => o.contact && personNamesMatch(o.contact, row.buyer) && Number(o.total_price) + 0.005 >= row.gross);
-    if (!cand.length) return null;
+    if (!cand.length) return [];
     const exact = cand.find(o => Math.abs(Number(o.total_price) - row.gross) < 0.005);
     const o = exact ?? cand.sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-    return { id: o.id, order_number: o.order_number };
+    return [{ id: o.id, order_number: o.order_number, gross: row.gross, net: row.net }];
   };
 }
 
@@ -169,7 +174,7 @@ export async function applyNpRegister(reg: NpRegister, createdBy: string, opts: 
     res.aggregateRest = restNet;
   }
   if (!dry) {
-    const known = [...new Set(reg.rows.map(r => lookup(r)?.order_number).filter((n): n is number => !!n))];
+    const known = [...new Set(reg.rows.flatMap(r => lookup(r).map(s => s.order_number)))];
     await db.from('novapay_txns').update({
       status: 'posted', category: known.length ? 'cod_payout' : 'cod_payout_aggregate', posted_by: createdBy, posted_at: new Date().toISOString(),
       note: `Реєстр з пошти № ${reg.registerNo}: ${known.map(n => '#' + n).join(', ') || '—'}${plan.unknown.length ? `; без замовлення: ${plan.unknown.map(u => `${u.ttn} ${u.gross} ₴ ${u.buyer}`).join(', ')}` : ''}`,
