@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../../lib/invoice-email';
-import { notifyAdminNewOrder } from '../../../../lib/telegram';
+import { notifyAdminNewOrder, sendTelegram, escTg } from '../../../../lib/telegram';
 import { recordCustomerPayment } from '../../../../lib/accounting/money';
 import { resolveSaleDebitParty } from '../../../../lib/accounting/documents';
 import { recordPartnerCardTopup } from '../../../../lib/accounting/partner-ledger';
@@ -104,13 +104,13 @@ export async function POST(req: NextRequest) {
     const customerId = topupMatch[1];
 
     const { data: customer } = await serviceClient
-      .from('customers').select('id').eq('id', customerId).single();
+      .from('customers').select('id, name').eq('id', customerId).single();
 
     if (customer) {
       // Idempotent on the Monobank invoiceId: a retried webhook no longer
       // double-credits the balance (unique index on external_ref).
       const extRef = `mono:topup:${body.invoiceId ?? reference}`;
-      const { error: topupErr } = await serviceClient
+      const { data: inserted, error: topupErr } = await serviceClient
         .from('partner_balance_transactions')
         .upsert({
           customer_id:  customerId,
@@ -119,7 +119,8 @@ export async function POST(req: NextRequest) {
           description:  `Поповнення карткою онлайн — ${amountUah.toFixed(2)} ₴`,
           created_by:   'monobank_webhook',
           external_ref: extRef,
-        }, { onConflict: 'external_ref', ignoreDuplicates: true });
+        }, { onConflict: 'external_ref', ignoreDuplicates: true })
+        .select('id');
       if (topupErr) {
         alertAdmin('Monobank: не зараховано поповнення балансу партнера', {
           customerId, amount: amountUah, reference, error: topupErr.message,
@@ -134,6 +135,21 @@ export async function POST(req: NextRequest) {
         alertAdmin('Monobank: поповнення партнера зараховано на баланс, але не проведено в облік', {
           customerId, amount: amountUah, reference, error: err instanceof Error ? err.message : String(err),
         });
+      }
+      // Сповіщення лише на перше зарахування (повтор вебхука повертає порожній inserted).
+      // Банк про це не сповістить: еквайринг падає на мерчант-рахунок, у застосунок
+      // приходить лише добова виплата однією сумою. Чекаємо відправки, бо після
+      // відповіді serverless-функцію можуть заморозити.
+      if (inserted?.length) {
+        const text = `💳 <b>Поповнення балансу партнера</b>\n👤 ${escTg(customer.name)}\n💰 ${amountUah.toFixed(2)} ₴`;
+        await Promise.all([
+          sendTelegram(process.env.TELEGRAM_ADMIN_CHAT_ID ?? '', text),
+          resend.emails.send({
+            from: FROM, to: ADMIN_EMAIL,
+            subject: `💳 Поповнення балансу — ${customer.name}, ${amountUah.toFixed(2)} ₴`,
+            html: `<p>Партнер <strong>${escTg(customer.name)}</strong> поповнив баланс карткою онлайн на <strong>${amountUah.toFixed(2)} ₴</strong>.</p>`,
+          }).catch(() => {}),
+        ]);
       }
     } else {
       // Гроші з картки вже списані — мовчати не можна, зарахувати треба вручну.
