@@ -4,6 +4,7 @@ import { productDisplayName, variantBaseName } from '../../../lib/seo/meta';
 import { getCategoryNameRu } from '../../../lib/ru';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { googleProductCategoryId } from '../../../lib/google-product-category';
+import { shippingWeightKg } from '../../../lib/shipping-weight';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -133,6 +134,11 @@ export async function GET(request: NextRequest) {
       const productType = categoryPath(p.category_slug);
       const cat = p.category_slug ? catMap.get(p.category_slug) : null;
       const googleCategory = googleProductCategoryId(p.category_slug, cat?.parent_slug ?? null);
+      // Вага для правила доставки «Нова Пошта» (за вагою) у Merchant Center —
+      // корінь родини потрібен для щільності рідин (lib/shipping-weight)
+      let root = cat;
+      while (root?.parent_slug && catMap.get(root.parent_slug)) root = catMap.get(root.parent_slug)!;
+      const weightKg = shippingWeightKg(p.volume, p.category_slug, root?.slug ?? null);
 
       // Мітка придатності до реклами: кампанія в Google Ads фільтрується саме за
       // custom_label, тож без неї довелось би вручну перелічувати артикули і
@@ -159,6 +165,7 @@ export async function GET(request: NextRequest) {
       ${gid ? `<g:item_group_id>${x(gid)}</g:item_group_id>` : ''}
       ${productType ? `<g:product_type>${x(productType)}</g:product_type>` : ''}
       ${googleCategory ? `<g:google_product_category>${googleCategory}</g:google_product_category>` : ''}
+      <g:shipping_weight>${weightKg.toFixed(2)} kg</g:shipping_weight>
       <g:custom_label_0>${adsLabel}</g:custom_label_0>
     </item>`;
     })
