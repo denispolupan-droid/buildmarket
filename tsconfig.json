@@ -44,7 +44,9 @@
     ".next-devcheck/types/**/*.ts",
     ".next-devcheck/dev/types/**/*.ts",
     ".next-gate/types/**/*.ts",
-    ".next-gate/dev/types/**/*.ts"
+    ".next-gate/dev/types/**/*.ts",
+    ".next-e2e-admin/types/**/*.ts",
+    ".next-e2e-admin/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

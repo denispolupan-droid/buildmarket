@@ -7,8 +7,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
   globalIgnores([
     ".next/**",
-    ".next-build/**",
-    ".next-devcheck/**",
+    ".next-*/**",   // .next-build, .next-devcheck, .next-gate, .next-e2e-admin — збірки, не наш код
     "out/**",
     "build/**",
     "next-env.d.ts",
