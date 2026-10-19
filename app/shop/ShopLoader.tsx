@@ -2,8 +2,8 @@ import ShopClient from './ShopClient';
 import { getProductsCached, getCategoriesCached, getReviewStatsCached } from '../../lib/supabase';
 import { getShowcaseSkusCached } from '../../lib/showcase-server';
 import { resolveCategoryMeta } from '../../lib/category-content';
-import { stripCharsOutside } from '../../lib/shop-chars';
-import { categoryFamilySlugs } from '../../lib/seo/meta';
+import { branchRoot } from '../../lib/shop-products';
+import { subtreeSlugs } from '../../lib/facets';
 
 type Props = {
   initialSaleOnly?: boolean;
@@ -26,18 +26,18 @@ export default async function ShopLoader({ initialSaleOnly, initialCategory, ini
   // ціни в гайді — живі, з того ж каталогу, що й цінники (lib/seo/guide-prices)
   const initialMeta = initialCategory ? await resolveCategoryMeta(initialCategory, lang, products, categories) : null;
 
-  // Сторінка категорії везе характеристики лише своєї гілки (−0,7 МБ даних);
-  // решту клієнт довантажує при перемиканні (lib/use-category-chars). На /shop,
-  // /shop/sale і бренд-сторінках фасети будуються по всьому списку — там повний набір.
-  const charsScope = initialCategory && !initialBrand && !initialSaleOnly ? initialCategory : null;
-  const shipped = charsScope
-    ? stripCharsOutside(products, new Set(categoryFamilySlugs(categories, charsScope)))
-    : products;
+  // Сторінка категорії везе лише товари гілки від кореня (див. lib/shop-products):
+  // решту клієнт довантажує при перемиканні (lib/use-shop-products). На /shop,
+  // /shop/sale і бренд-сторінках список і фасети — по всьому каталогу, там повний набір.
+  const scope = initialCategory && !initialBrand && !initialSaleOnly ? branchRoot(categories, initialCategory) : null;
+  const branch = scope ? new Set(subtreeSlugs(categories, scope)) : null;
+  const shipped = branch ? products.filter(p => branch.has(p.category_slug ?? '')) : products;
 
   return (
     <ShopClient
       products={shipped}
-      charsScope={charsScope}
+      scope={scope}
+      catalogOrder={scope ? products.map(p => p.sku) : null}
       categories={categories}
       reviewStats={reviewStats}
       showcaseSkus={showcaseSkus}

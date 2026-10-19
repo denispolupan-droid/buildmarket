@@ -22,7 +22,7 @@ import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import type { ProductPublic, Category, ReviewStats } from '../../lib/supabase';
 import type { CategoryMeta } from '../../lib/category-descriptions';
 import { useCategoryMeta } from '../../lib/use-category-meta';
-import { useCategoryChars } from '../../lib/use-category-chars';
+import { useShopProducts } from '../../lib/use-shop-products';
 import { publishCategoryView } from '../../lib/category-view';
 import { useStickyCompact, suppressStickyCompact } from '../../lib/useStickyCompact';
 import { orderByShowcase, isShowcaseVisible } from '../../lib/showcase';
@@ -272,11 +272,13 @@ type Props = {
   showcaseSkus?: string[];
   /** Опис/FAQ/гайд стартової категорії — з сервера, щоб текст був у HTML; решта — через /api/category-meta */
   initialMeta?: CategoryMeta | null;
-  /** Корінь гілки, чиї характеристики є в `products`; null — повний набір (lib/shop-chars) */
-  charsScope?: string | null;
+  /** Корінь гілки, чиї товари є в `products`; null — увесь каталог (lib/shop-products) */
+  scope?: string | null;
+  /** Артикули всього каталогу в серверному порядку — щоб довантажені стали на свої місця */
+  catalogOrder?: string[] | null;
 };
 
-export default function ShopClient({ products: shippedProducts, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, initialSearch, showcaseSkus = [], initialMeta = null, charsScope = null }: Props) {
+export default function ShopClient({ products: shippedProducts, categories, reviewStats, initialSaleOnly = false, initialCategory, initialBrand, initialSearch, showcaseSkus = [], initialMeta = null, scope = null, catalogOrder = null }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const lang = pathname.startsWith('/ru') ? 'ru' as const : 'uk' as const;
@@ -289,9 +291,9 @@ export default function ShopClient({ products: shippedProducts, categories, revi
   const [wholesaleModalSku, setWholesaleModalSku] = useState<string | null>(null);
   const [search,       setSearch]       = useState(initialSearch ?? '');
   const [selCat,       setSelCat]       = useState<string | null>(initialCategory ?? null);
-  // Характеристики чужих категорій довантажуються при перемиканні — увесь код
-  // нижче працює з повним списком і про це не знає.
-  const products = useCategoryChars(shippedProducts, categories, selCat, charsScope);
+  // Товари чужих гілок довантажуються при перемиканні — увесь код нижче працює
+  // з повним списком і про це не знає; поки обрана гілка в дорозі, loading.
+  const { products, loading: productsLoading } = useShopProducts(shippedProducts, catalogOrder, categories, selCat, scope);
 
   // ?q= з пошуку на головній. /ru/shop статичний (ISR) і searchParams на
   // сервері не читає — тому параметр знімаємо на клієнті після маунту.
@@ -781,11 +783,6 @@ export default function ShopClient({ products: shippedProducts, categories, revi
   // сортування). Знятий разом із тим, що на [selCat]: інакше сторінка смикалась би
   // однаково. Див. коментар вище.
 
-  const countFor = (slug: string) => {
-    const slugs = new Set(subtreeSlugs(categories, slug));
-    return products.filter(p => slugs.has(p.category_slug ?? '')).length;
-  };
-
   return (
     <>
     {!initialSaleOnly && !initialBrand && (
@@ -1107,7 +1104,7 @@ export default function ShopClient({ products: shippedProducts, categories, revi
               <TitleTag className="shop-title">
                 {catInfo ? catInfo.name : saleOnly ? t('Акційні товари', 'Акционные товары') : t('Будівельна хімія', 'Строительная химия')}
               </TitleTag>
-              <span className="shop-count">{filtered.length} {t('товарів', 'товаров')}</span>
+              {!productsLoading && <span className="shop-count">{filtered.length} {t('товарів', 'товаров')}</span>}
             </div>
           </div>
           {/* Розкладка — у CSS: інлайновий gap перебивав медіазапити, і на вузьких
@@ -1238,7 +1235,12 @@ export default function ShopClient({ products: shippedProducts, categories, revi
 
         <SalesBanner mode="shop" activeSlugs={matchingSlugs} />
         <div className={'shop-grid' + (gridCols === 1 ? ' list-view' : '')}>
-          {sorted.length === 0 && (
+          {productsLoading && (
+            <div className="brand-empty" role="status" aria-live="polite">
+              <p>{t('Завантажуємо товари…', 'Загружаем товары…')}</p>
+            </div>
+          )}
+          {!productsLoading && sorted.length === 0 && (
             <div className="brand-empty">
               <SearchX size={36} strokeWidth={1.5} />
               <h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3>
@@ -1248,7 +1250,8 @@ export default function ShopClient({ products: shippedProducts, categories, revi
               )}
             </div>
           )}
-          {sorted.slice(0, visibleCount).map((p, cardIndex) => {
+          {/* «Всі категорії» в дорозі: у списку поки лише стартова гілка — не видаємо її за весь каталог */}
+          {!productsLoading && sorted.slice(0, visibleCount).map((p, cardIndex) => {
             const pricePromo = p.stock?.price_promo ?? null;
             const price = pricePromo ?? (p.stock?.price_retail ?? null);
             const priceOld = pricePromo
@@ -1279,7 +1282,7 @@ export default function ShopClient({ products: shippedProducts, categories, revi
           })}
         </div>
 
-        {sorted.length > visibleCount && (
+        {!productsLoading && sorted.length > visibleCount && (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
             <button
               onClick={() => setVisibleCount(v => v + 24)}
