@@ -23,6 +23,11 @@ describe('buildDraftAlertHtml', () => {
     const html = buildDraftAlertHtml({ ...base, draft: { ...base.draft, needsHuman: true, reason: 'повернення' } });
     expect(html).toContain('Потрібна людина</b>: повернення');
   });
+  it('показує вказівку, за якою переписано, і підказку про Reply', () => {
+    const html = buildDraftAlertHtml({ ...base, revisedBy: 'коротше <тест>' });
+    expect(html).toContain('переписано: «коротше &lt;тест&gt;»');
+    expect(html).toContain('дайте відповідь (Reply)');
+  });
   it('довге питання обрізається', () => {
     const html = buildDraftAlertHtml({ ...base, lastIncoming: 'а'.repeat(500) });
     expect(html).toContain('а'.repeat(349) + '…');

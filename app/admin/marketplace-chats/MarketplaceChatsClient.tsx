@@ -6,7 +6,7 @@ import { RefreshCw, Send, ExternalLink, Sparkles, AlertTriangle } from 'lucide-r
 import { htmlToText } from '../../../lib/html-to-text';
 import { CATEGORY_LABELS, type DraftCategory } from '../../../lib/marketplace-chat-draft-types';
 import {
-  InboxShell, InboxToolbar, InboxRow, ThreadHead, Bubble, EmptyThread, EmptyList, timeAgo, initials,
+  InboxShell, InboxToolbar, InboxRow, ThreadHead, Bubble, EmptyThread, EmptyList, timeAgo, initials, ReplyTextarea,
 } from '../chat/inbox-ui';
 
 export type ChatItem = {
@@ -26,6 +26,7 @@ type ChatMessage = {
   at: string | null;
   fromUs: boolean;
   author: string | null;
+  attachments?: { kind: 'image' | 'file' | 'product'; name: string; url: string }[];
 };
 
 /** Чернетка відповіді від ШІ-помічника (/api/admin/marketplace-chats/draft). */
@@ -47,7 +48,8 @@ type Filter = 'all' | 'waiting' | 'rozetka' | 'prom';
 function buyerWaits(messages: ChatMessage[]): boolean {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
-    if (!htmlToText(m.body) || m.author === 'Система') continue;
+    const media = (m.attachments ?? []).some(a => a.kind !== 'product');
+    if ((!htmlToText(m.body) && !media) || m.author === 'Система') continue;
     return !m.fromUs;
   }
   return false;
@@ -95,14 +97,40 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftError, setDraftError] = useState('');
   const draftFor = useRef<string>('');
+  // «Направити» відповідь: вказівка менеджера → агент переписує ПОТОЧНУ чернетку
+  const [instruction, setInstruction] = useState('');
+  const [revising, setRevising] = useState(false);
+  const [revisedBy, setRevisedBy] = useState<string[]>([]);
 
   const chatKey = (item: ChatItem) => `${item.mp}:${item.id}`;
+
+  async function reviseCurrentDraft(text: string) {
+    if (!draft?.id || !selected || revising || !text.trim()) return;
+    const key = chatKey(selected);
+    setRevising(true); setDraftError('');
+    try {
+      const res = await fetch('/api/admin/marketplace-chats/draft/revise', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draftId: draft.id, instruction: text.trim() }),
+      });
+      const d = await res.json();
+      if (draftFor.current !== key) return;
+      if (!res.ok) throw new Error(d.error ?? 'Не вдалося переписати');
+      setDraft(d.draft);
+      setRevisedBy(prev => [...prev, text.trim()]);
+      setInstruction('');
+    } catch (e) {
+      if (draftFor.current === key) setDraftError(e instanceof Error ? e.message : String(e));
+    } finally {
+      if (draftFor.current === key) setRevising(false);
+    }
+  }
 
   async function requestDraft(item: ChatItem, force = false) {
     const key = chatKey(item);
     draftFor.current = key;
     setDraftLoading(true); setDraftError('');
-    if (force) setDraft(null);
+    if (force) { setDraft(null); setRevisedBy([]); }
     try {
       const res = await fetch('/api/admin/marketplace-chats/draft', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -136,6 +164,7 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
     setSelected(item);
     setMessages([]); setThreadError(''); setThreadContact(item.contact); setReceiverId(item.receiverId);
     setDraft(null); setDraftError(''); setDraftLoading(false); draftFor.current = chatKey(item);
+    setInstruction(''); setRevising(false); setRevisedBy([]);
     setThreadLoading(true);
     try {
       // updatedAt передаємо навмисно: сервер запамʼятає САМЕ цю мітку як
@@ -263,9 +292,10 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
         {threadError && <div className="inbox-note error" style={{ borderTop: 'none' }}>{threadError}</div>}
         {messages.map((m, i) => {
           const text = htmlToText(m.body);
-          if (!text) return null;
+          // Повідомлення «лише фото» без тексту раніше зникали з треда цілком
+          if (!text && !m.attachments?.length) return null;
           const system = !m.fromUs && m.author === 'Система';
-          return <Bubble key={i} ours={m.fromUs} kind={system ? 'system' : 'default'} author={m.author} text={text} at={m.at} />;
+          return <Bubble key={i} ours={m.fromUs} kind={system ? 'system' : 'default'} author={m.author} text={text} at={m.at} attachments={m.attachments} />;
         })}
         <div ref={bottomRef} />
       </div>
@@ -291,8 +321,8 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
             <span style={{ flex: 1 }} />
             {draft && !draftLoading && (
               <>
-                <button type="button" className="inbox-btn primary" onClick={() => setReply(draft.reply)}>Вставити у відповідь</button>
-                <button type="button" className="inbox-btn" onClick={() => selected && requestDraft(selected, true)}>Ще раз</button>
+                <button type="button" className="inbox-btn primary" onClick={() => setReply(draft.reply)} disabled={revising}>Вставити у відповідь</button>
+                <button type="button" className="inbox-btn" onClick={() => selected && requestDraft(selected, true)} disabled={revising} title="Нова чернетка з нуля">Ще раз</button>
               </>
             )}
           </div>
@@ -301,14 +331,47 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
             <>
               <div style={{ color: 'var(--text-secondary)', marginTop: '6px' }}>{draft.summary}</div>
               {draft.reason && <div style={{ color: '#92400E', marginTop: '4px' }}>{draft.reason}</div>}
-              <div className="inbox-draft-text">{draft.reply}</div>
+              {revisedBy.length > 0 && (
+                <div style={{ color: 'var(--text-muted)', marginTop: '4px', fontSize: '11px' }}>
+                  ✏️ Переписано: {revisedBy.map(r => `«${r}»`).join(' → ')}
+                </div>
+              )}
+              <div className="inbox-draft-text" style={revising ? { opacity: 0.5 } : undefined}>{draft.reply}</div>
+              {/* Направити відповідь: вказівка менеджера до ПОТОЧНОЇ чернетки */}
+              {draft.id && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={instruction}
+                      onChange={e => setInstruction(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void reviseCurrentDraft(instruction); } }}
+                      placeholder="Що змінити? Напр.: допиши, що повернемо за наш рахунок"
+                      maxLength={500}
+                      disabled={revising}
+                      style={{ flex: 1, minWidth: 0, height: '30px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
+                    />
+                    <button type="button" className="inbox-btn" onClick={() => reviseCurrentDraft(instruction)} disabled={revising || !instruction.trim()}>
+                      {revising ? 'Переписую…' : 'Переписати'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {['Коротше', 'Тепліше, з вибаченням', 'Повернення за наш рахунок', 'Запропонуй обмін'].map(q => (
+                      <button key={q} type="button" className="inbox-btn" onClick={() => reviseCurrentDraft(q)} disabled={revising}
+                        style={{ fontSize: '11px', height: '24px', padding: '0 8px' }}>
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
       )}
 
       <div className="inbox-reply">
-        <textarea
+        <ReplyTextarea
           value={reply}
           onChange={e => setReply(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendReply(); } }}

@@ -1,7 +1,36 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { ArrowLeft, Search, MessagesSquare } from 'lucide-react';
+
+/**
+ * Поле відповіді, що росте під текст: вставлена чернетка ШІ на 5–6 рядків
+ * у полі на 2 рядки не читалась. Висота — за вмістом, від 2 рядків до
+ * половини екрана (далі прокрутка); куточок дає розтягнути ще й руками.
+ * Ручний розмір поважаємо: якщо менеджер потягнув поле, автовисота
+ * не стискає його назад, доки текст не очиститься.
+ */
+export function ReplyTextarea({ value, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement> & { value: string }) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const manual = useRef(false);
+  const lastAuto = useRef(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!value) { manual.current = false; el.style.height = ''; lastAuto.current = 0; return; }
+    // Висоту змінили руками (куточком) — не чіпаємо
+    if (lastAuto.current && Math.abs(el.offsetHeight - lastAuto.current) > 2) manual.current = true;
+    if (manual.current) return;
+    el.style.height = 'auto';
+    const max = Math.round(window.innerHeight * 0.5);
+    const next = Math.min(el.scrollHeight + 2, max);
+    el.style.height = `${next}px`;
+    lastAuto.current = el.offsetHeight;
+  }, [value]);
+
+  return <textarea ref={ref} value={value} {...rest} />;
+}
 
 /**
  * Спільні елементи розділу «Чати» для обох вкладок (сайт і маркетплейси):
@@ -140,14 +169,31 @@ export function ThreadHead({ onBack, title, subtitle, actions }: {
   );
 }
 
-export function Bubble({ ours, kind = 'default', author, text, at }: {
+export type BubbleAttachment = { kind: 'image' | 'file' | 'product'; name: string; url: string };
+
+export function Bubble({ ours, kind = 'default', author, text, at, attachments }: {
   ours: boolean; kind?: 'default' | 'system' | 'ai'; author?: string | null; text: string; at: string | null | undefined;
+  /** фото/файли покупця (через проксі адмінки) і картка товару, з якої написали */
+  attachments?: BubbleAttachment[];
 }) {
+  const media = attachments ?? [];
   return (
     <div className="inbox-bubble-row" style={{ justifyContent: ours ? 'flex-end' : 'flex-start' }}>
       <div className={'inbox-bubble' + (ours ? ' ours' : '') + (kind === 'system' ? ' system' : '') + (kind === 'ai' ? ' ai' : '')}>
         {!ours && author && <div className="inbox-bubble-author">{author}</div>}
         {text}
+        {media.length > 0 && (
+          <div className="inbox-bubble-media">
+            {media.map((a, i) => a.kind === 'file' ? (
+              <a key={i} href={a.url} target="_blank" rel="noreferrer" className="inbox-bubble-file">📎 {a.name}</a>
+            ) : (
+              <a key={i} href={a.url} target="_blank" rel="noreferrer" title={a.name} className={'inbox-bubble-img' + (a.kind === 'product' ? ' product' : '')}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- приватні фото через проксі, next/image тут не потрібен */}
+                <img src={a.url} alt={a.name} loading="lazy" />
+              </a>
+            ))}
+          </div>
+        )}
         <div className="inbox-bubble-time">{formatClock(at)}</div>
       </div>
     </div>

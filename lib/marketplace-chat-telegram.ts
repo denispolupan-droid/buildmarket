@@ -7,7 +7,7 @@ import { getPromChatRooms, sendPromChatMessage } from './prom-api';
 import { loadChatSeen, isChatUnread, markChatSeen, type MarketplaceId } from './marketplace-chat-seen';
 import { loadMarketplaceThread, type MarketplaceChatMessage } from './marketplace-chat-thread';
 import { awaitingOurReply, lastIncomingAt, draftOutcome } from './marketplace-chat-draft-rules';
-import { getOrCreateDraft } from './marketplace-chat-assistant';
+import { getOrCreateDraft, reviseDraft } from './marketplace-chat-assistant';
 import type { DraftCategory } from './marketplace-chat-draft-types';
 import { adminChatLink, buildDraftAlertHtml, buildDraftAlertKeyboard } from './marketplace-chat-telegram-rules';
 
@@ -53,7 +53,8 @@ function lastIncomingText(messages: MarketplaceChatMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
     if (m.fromUs || m.author === 'Система') continue;
-    const t = htmlToText(m.body);
+    const media = (m.attachments ?? []).filter(a => a.kind !== 'product').length;
+    const t = [htmlToText(m.body), media ? `📷 фото/файлів: ${media} — дивіться в адмінці` : ''].filter(Boolean).join('\n');
     if (t) return t;
   }
   return '';
@@ -152,6 +153,35 @@ export async function sendDraftFromTelegram(draftId: string): Promise<{ ok: bool
 
   await finalizeTelegram(row, `✅ <b>Надіслано покупцю</b>\n${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`);
   return { ok: true, message: 'Надіслано' };
+}
+
+/**
+ * Reply на алерт у Telegram = вказівка «направити» чернетку. Знаходимо
+ * чернетку за message_id алерту, переписуємо, оновлюємо те саме повідомлення
+ * (з новими кнопками). Помилку показуємо окремим коротким повідомленням.
+ * null — це не відповідь на наш алерт (нехай вебхук обробляє як звичайне).
+ */
+export async function reviseDraftFromTelegram(replyToMessageId: number, instruction: string): Promise<{ ok: boolean; message: string } | null> {
+  const db = createServiceClient();
+  const { data: row } = await db.from('marketplace_chat_drafts')
+    .select('id, mp, chat_id, order_number').eq('tg_message_id', replyToMessageId).maybeSingle();
+  if (!row) return null;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  try {
+    const d = await reviseDraft(row.id, instruction, { by: 'telegram', via: 'telegram' });
+    const thread = await loadMarketplaceThread(row.mp as MarketplaceId, row.chat_id);
+    const input = {
+      mp: row.mp as MarketplaceId, contact: thread.contact, orderNumber: row.order_number ?? null, lastIncoming: lastIncomingText(thread.messages),
+      draft: { id: row.id, category: d.category, reply: d.reply, needsHuman: d.needsHuman, reason: d.reason },
+      link: adminChatLink(SITE_URL, row.mp as MarketplaceId, row.chat_id), revisedBy: instruction,
+    };
+    if (chatId) await editTelegramMessage(chatId, replyToMessageId, buildDraftAlertHtml(input), buildDraftAlertKeyboard(input));
+    return { ok: true, message: 'Переписано' };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (chatId) await sendTelegram(chatId, `✏️ Не вдалося переписати чернетку: ${msg.replace(/[<>&]/g, ' ')}`);
+    return { ok: false, message: msg };
+  }
 }
 
 /** «Пропустити»: журнал + прибрати кнопки; чат лишається непрочитаним в адмінці. */

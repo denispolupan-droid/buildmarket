@@ -5,7 +5,7 @@ import { Bot, UserCheck, CheckCircle, Send } from 'lucide-react';
 import { siteChatState, siteChatPreview } from '../../../lib/site-chat-rules';
 import {
   InboxShell, InboxToolbar, InboxRow, ThreadHead, Bubble, EmptyThread, EmptyList,
-  timeAgo, formatClock, type InboxState,
+  timeAgo, formatClock, ReplyTextarea, type InboxState,
 } from './inbox-ui';
 
 /** Рядок списку: сервер уже порахував заголовок, прев'ю і стан (lib/site-chat-rules). */
@@ -213,7 +213,7 @@ export default function SiteChatsPane({ rows: initialRows, autoOpenId }: { rows:
       </div>
       {session?.status === 'open' && (
         <div className="inbox-reply">
-          <textarea value={reply} onChange={e => setReply(e.target.value)} rows={2}
+          <ReplyTextarea value={reply} onChange={e => setReply(e.target.value)} rows={2}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendReply(); } }}
             placeholder={aiOn ? 'Відповісти від імені менеджера… (ШІ лишиться увімкненим)' : 'Відповідь відвідувачу… (Enter — надіслати)'} />
           <button type="button" className="inbox-send" onClick={() => sendReply()} disabled={sending || !reply.trim()} aria-label="Надіслати">

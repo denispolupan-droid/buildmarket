@@ -15,6 +15,8 @@ export type DraftAlertInput = {
   draft: { id: string; category: DraftCategory; reply: string; needsHuman: boolean; reason: string | null };
   /** посилання на чат в адмінці */
   link: string;
+  /** остання вказівка менеджера, за якою чернетку переписано */
+  revisedBy?: string | null;
 };
 
 const MP_NAME = { rozetka: 'Rozetka', prom: 'Prom' } as const;
@@ -23,9 +25,11 @@ const CB_PREFIX = 'mpd';
 export function buildDraftAlertHtml(i: DraftAlertInput): string {
   const head = `💬 <b>${MP_NAME[i.mp]} · ${escTg(i.contact ?? 'покупець')}</b>${i.orderNumber ? ` · №${i.orderNumber}` : ''}`;
   const q = i.lastIncoming.length > 350 ? i.lastIncoming.slice(0, 349) + '…' : i.lastIncoming;
-  const lines = [head, `<i>«${escTg(q)}»</i>`, '', `✨ <b>Чернетка</b> · ${escTg(CATEGORY_LABELS[i.draft.category] ?? i.draft.category)}`, escTg(i.draft.reply)];
+  const lines = [head, `<i>«${escTg(q)}»</i>`, '', `✨ <b>Чернетка</b> · ${escTg(CATEGORY_LABELS[i.draft.category] ?? i.draft.category)}`];
+  if (i.revisedBy) lines.push(`✏️ <i>переписано: «${escTg(i.revisedBy)}»</i>`);
+  lines.push(escTg(i.draft.reply));
   if (i.draft.needsHuman) lines.push('', `⚠️ <b>Потрібна людина</b>${i.draft.reason ? `: ${escTg(i.draft.reason)}` : ''}`);
-  lines.push('', `<a href="${i.link}">Відкрити чат в адмінці</a>`);
+  lines.push('', `<a href="${i.link}">Відкрити чат в адмінці</a>`, '<i>Щоб змінити чернетку — дайте відповідь (Reply) на це повідомлення з вказівкою, напр. «допиши, що повернемо за наш рахунок».</i>');
   return lines.join('\n');
 }
 

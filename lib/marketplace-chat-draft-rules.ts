@@ -9,6 +9,10 @@ import type { MarketplaceChatMessage } from './marketplace-chat-thread';
 
 const TRANSCRIPT_LIMIT = 30;
 
+/** Фото/файли покупця — це теж зміст (повідомлення «лише фото» без тексту). Картка товару — ні. */
+const mediaCount = (m: MarketplaceChatMessage) => (m.attachments ?? []).filter(a => a.kind !== 'product').length;
+const hasContent = (m: MarketplaceChatMessage) => !!htmlToText(m.body) || mediaCount(m) > 0;
+
 /** Мітка останнього повідомлення покупця (сервісні повідомлення Rozetka не рахуємо). */
 export function lastIncomingAt(messages: MarketplaceChatMessage[]): string | null {
   let max: string | null = null;
@@ -23,7 +27,7 @@ export function lastIncomingAt(messages: MarketplaceChatMessage[]): string | nul
 export function awaitingOurReply(messages: MarketplaceChatMessage[]): boolean {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
-    if (!htmlToText(m.body)) continue;
+    if (!hasContent(m)) continue;
     if (m.author === 'Система') continue;
     return !m.fromUs;
   }
@@ -35,7 +39,9 @@ export function buildTranscript(messages: MarketplaceChatMessage[]): string {
   const tail = messages.slice(-TRANSCRIPT_LIMIT);
   const lines: string[] = [];
   for (const m of tail) {
-    const text = htmlToText(m.body);
+    const media = mediaCount(m);
+    // Сам вміст фото модель не бачить — але має знати, що покупець його надіслав
+    const text = [htmlToText(m.body), media ? `[надіслано фото/файлів: ${media}; вміст невідомий — за потреби попроси менеджера переглянути]` : ''].filter(Boolean).join('\n');
     if (!text) continue;
     const who = m.fromUs ? 'МИ (магазин)' : m.author === 'Система' ? 'СИСТЕМА площадки' : `ПОКУПЕЦЬ${m.author ? ` (${m.author})` : ''}`;
     lines.push(`[${m.at ?? '—'}] ${who}:\n${text}`);
@@ -57,6 +63,33 @@ export function findPolicyViolations(text: string): string[] {
   if (/\b(viber|telegram|вайбер|телеграм|whatsapp)\b/i.test(text)) out.push('месенджер');
   if (/@[a-z0-9._-]+\.[a-z]{2,}/i.test(text)) out.push('email');
   return out;
+}
+
+export const MAX_INSTRUCTION_CHARS = 500;
+
+/** Вказівка менеджера: обрізати пробіли, порожня або задовга — помилка. */
+export function normalizeInstruction(raw: unknown): { ok: true; text: string } | { ok: false; error: string } {
+  const text = String(raw ?? '').replace(/\s+/g, ' ').trim();
+  if (text.length < 2) return { ok: false, error: 'Напишіть, що змінити в чернетці' };
+  if (text.length > MAX_INSTRUCTION_CHARS) return { ok: false, error: `Вказівка задовга (максимум ${MAX_INSTRUCTION_CHARS} символів)` };
+  return { ok: true, text };
+}
+
+/**
+ * Блок для моделі: поточна чернетка + вказівка менеджера. Вказівка має
+ * пріоритет над стилем і власними міркуваннями агента, але НЕ над правилами
+ * площадок і НЕ дозволяє вигадувати факти — це тримає системний промпт і
+ * детермінований findPolicyViolations після відповіді.
+ */
+export function buildRevisionBlock(current: string, instruction: string, previous: string[] = []): string {
+  const prev = previous.length ? `\nПопередні вказівки менеджера (уже враховані в чернетці): ${previous.map(p => `«${p}»`).join('; ')}` : '';
+  return `=== ПОТОЧНА ЧЕРНЕТКА ===
+${current}
+
+=== ВКАЗІВКА МЕНЕДЖЕРА ===
+${instruction}${prev}
+
+Перепиши ПОТОЧНУ чернетку за вказівкою менеджера: зміни лише те, про що він просить, решту залиш. Вказівка менеджера — рішення магазину (наприклад, повернення за наш рахунок, знижка, обмін) і має пріоритет над твоїми порадами й стилем. Але правила площадок діють і далі: жодних телефонів, посилань, месенджерів. Факти про замовлення (статус, ТТН, суми) — лише з інструментів; якщо вказівка вимагає факту, якого немає, напиши загально і поясни в reason. Якщо вказівка вже виконує рішення, через яке була потрібна людина, needs_human може стати false. Виклич submit_reply.`;
 }
 
 /** Що сталося з чернеткою: пішла як є чи менеджер її правив. */

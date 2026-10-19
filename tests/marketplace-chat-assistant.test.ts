@@ -1,7 +1,29 @@
 import { describe, it, expect } from 'vitest';
 import {
   awaitingOurReply, buildTranscript, draftOutcome, findPolicyViolations, lastIncomingAt,
+  normalizeInstruction, buildRevisionBlock, MAX_INSTRUCTION_CHARS,
 } from '../lib/marketplace-chat-draft-rules';
+
+// «Направити» відповідь: вказівка менеджера до поточної чернетки
+describe('normalizeInstruction', () => {
+  it('стискає пробіли, відкидає порожнє й задовге', () => {
+    expect(normalizeInstruction('  допиши,   що повернемо  ')).toEqual({ ok: true, text: 'допиши, що повернемо' });
+    expect(normalizeInstruction(' ').ok).toBe(false);
+    expect(normalizeInstruction(null).ok).toBe(false);
+    expect(normalizeInstruction('а'.repeat(MAX_INSTRUCTION_CHARS + 1)).ok).toBe(false);
+  });
+});
+
+describe('buildRevisionBlock', () => {
+  it('містить поточну чернетку, вказівку, попередні вказівки й правила площадок', () => {
+    const b = buildRevisionBlock('Добрий день, перевіримо.', 'допиши, що повернемо за наш рахунок', ['коротше']);
+    expect(b).toContain('Добрий день, перевіримо.');
+    expect(b).toContain('допиши, що повернемо за наш рахунок');
+    expect(b).toContain('«коротше»');
+    expect(b).toContain('жодних телефонів');
+    expect(b).toContain('submit_reply');
+  });
+});
 import { htmlToText } from '../lib/html-to-text';
 import type { MarketplaceChatMessage } from '../lib/marketplace-chat-thread';
 

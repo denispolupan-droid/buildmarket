@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendTelegram, answerCallbackQuery } from '../../../../lib/telegram';
 import { parseDraftCallback } from '../../../../lib/marketplace-chat-telegram-rules';
-import { sendDraftFromTelegram, discardDraftFromTelegram } from '../../../../lib/marketplace-chat-telegram';
+import { sendDraftFromTelegram, discardDraftFromTelegram, reviseDraftFromTelegram } from '../../../../lib/marketplace-chat-telegram';
+import { normalizeInstruction } from '../../../../lib/marketplace-chat-draft-rules';
+
+// Переписування чернетки (агент з інструментами) займає 10–40 с — виконуємо
+// в after(), щоб Telegram отримав 200 одразу і не повторював запит.
+export const maxDuration = 120;
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,6 +49,22 @@ export async function POST(req: NextRequest) {
 
   const chatId = message.chat?.id;
   const text: string = message.text ?? '';
+
+  // Reply на алерт з чернеткою в адмін-чаті = вказівка «направити» відповідь
+  const replyTo = message.reply_to_message?.message_id;
+  const fromAdminChat = String(chatId ?? '') === String(process.env.TELEGRAM_ADMIN_CHAT_ID ?? '');
+  if (fromAdminChat && typeof replyTo === 'number' && text && !text.startsWith('/')) {
+    const instr = normalizeInstruction(text);
+    if (!instr.ok) {
+      await sendTelegram(chatId, `✏️ ${instr.error}`);
+      return NextResponse.json({ ok: true });
+    }
+    after(async () => {
+      try { await reviseDraftFromTelegram(replyTo, instr.text); }
+      catch (err) { console.error('[telegram webhook] revise failed:', err); }
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

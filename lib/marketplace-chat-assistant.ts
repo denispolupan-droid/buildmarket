@@ -7,7 +7,8 @@ import { costOf } from './ai-cost';
 import type { MarketplaceId } from './marketplace-chat-seen';
 import type { MarketplaceChatMessage } from './marketplace-chat-thread';
 import { DRAFT_CATEGORIES, type DraftCategory } from './marketplace-chat-draft-types';
-import { buildTranscript, draftOutcome, findPolicyViolations } from './marketplace-chat-draft-rules';
+import { buildRevisionBlock, buildTranscript, draftOutcome, findPolicyViolations, lastIncomingAt, awaitingOurReply } from './marketplace-chat-draft-rules';
+import { loadMarketplaceThread } from './marketplace-chat-thread';
 
 /**
  * ШІ-помічник чатів маркетплейсів: готує ЧЕРНЕТКУ відповіді покупцю.
@@ -231,6 +232,8 @@ export type DraftContext = {
   orderNumber: number | null;
   ourOrderId: string | null;
   subject?: string | null;
+  /** «Направити» відповідь: переписати поточну чернетку за вказівкою менеджера */
+  revision?: { current: string; instruction: string; previous?: string[] } | null;
 };
 
 export async function draftMarketplaceReply(ctx: DraftContext): Promise<DraftRun> {
@@ -247,7 +250,9 @@ export async function draftMarketplaceReply(ctx: DraftContext): Promise<DraftRun
 
   let messages: Anthropic.MessageParam[] = [{
     role: 'user',
-    content: `${header}\n\n=== ЛИСТУВАННЯ ===\n${buildTranscript(ctx.messages)}\n\nПідготуй чернетку відповіді на останнє повідомлення покупця і виклич submit_reply.`,
+    content: ctx.revision
+      ? `${header}\n\n=== ЛИСТУВАННЯ ===\n${buildTranscript(ctx.messages)}\n\n${buildRevisionBlock(ctx.revision.current, ctx.revision.instruction, ctx.revision.previous)}`
+      : `${header}\n\n=== ЛИСТУВАННЯ ===\n${buildTranscript(ctx.messages)}\n\nПідготуй чернетку відповіді на останнє повідомлення покупця і виклич submit_reply.`,
   }];
 
   let costUsd = 0, inputTokens = 0, outputTokens = 0, toolCalls = 0;
@@ -364,18 +369,74 @@ export async function getOrCreateDraft(
     category: run.category, summary: run.summary, draft: run.reply,
     needs_human: run.needsHuman, reason: run.reason,
     model: run.model, cost_usd: run.costUsd, input_tokens: run.inputTokens, output_tokens: run.outputTokens, tool_calls: run.toolCalls,
+    // Контекст для переписування з Telegram (міграція 130); «Ще раз» скидає історію правок
+    order_number: ctx.orderNumber, our_order_id: ctx.ourOrderId, subject: ctx.subject ?? null, revisions: [],
   };
   let id: string | null = null;
   try {
-    const { data, error } = await db.from('marketplace_chat_drafts')
+    let { data, error } = await db.from('marketplace_chat_drafts')
       .upsert(row, { onConflict: 'mp,chat_id,last_incoming_at' })
       .select('id').single();
+    // Міграцію 130 ще не накотили (немає колонок контексту/правок) — пишемо
+    // без них: чернетки й алерти працюють як раніше, бракує лише «направити».
+    if (error && /order_number|our_order_id|subject|revisions/.test(error.message ?? '')) {
+      const { order_number: _o, our_order_id: _i, subject: _s, revisions: _r, ...base } = row;
+      void _o; void _i; void _s; void _r;
+      ({ data, error } = await db.from('marketplace_chat_drafts')
+        .upsert(base, { onConflict: 'mp,chat_id,last_incoming_at' })
+        .select('id').single());
+    }
     if (error) throw error;
     id = data?.id ?? null;
   } catch (err) {
     console.error('[mp-chat-assistant] draft log failed (міграція 122?):', err instanceof Error ? err.message : err);
   }
   return { id, cached: false, category: run.category, summary: run.summary, reply: run.reply, needsHuman: run.needsHuman, reason: run.reason, costUsd: run.costUsd };
+}
+
+export type Revision = { at: string; by: string | null; via: 'admin' | 'telegram'; instruction: string; before: string };
+
+/**
+ * «Направити» відповідь: переписати поточну чернетку за вказівкою менеджера.
+ * Перевіряє, що чернетка ще актуальна (покупець не дописав, відповіді ще
+ * немає, чернетку не відправили/не пропустили), інакше — помилка з поясненням.
+ */
+export async function reviseDraft(
+  draftId: string,
+  instruction: string,
+  meta: { by: string | null; via: 'admin' | 'telegram' },
+): Promise<StoredDraft & { revisions: Revision[] }> {
+  const db = createServiceClient();
+  const { data: row, error } = await db.from('marketplace_chat_drafts')
+    .select('id, mp, chat_id, last_incoming_at, draft, outcome, cost_usd, order_number, our_order_id, subject, revisions')
+    .eq('id', draftId).maybeSingle();
+  if (error) throw error;
+  if (!row) throw new Error('Чернетку не знайдено');
+  if (row.outcome) throw new Error(row.outcome === 'discarded' ? 'Цю чернетку вже пропущено' : 'Цю чернетку вже надіслано');
+
+  const mp = row.mp as MarketplaceId;
+  const thread = await loadMarketplaceThread(mp, row.chat_id);
+  if (lastIncomingAt(thread.messages) !== row.last_incoming_at) throw new Error('Покупець написав ще — оновіть чернетку («Ще раз»)');
+  if (!awaitingOurReply(thread.messages)) throw new Error('На це повідомлення вже відповіли');
+
+  const revisions = (Array.isArray(row.revisions) ? row.revisions : []) as Revision[];
+  const run = await draftMarketplaceReply({
+    mp, messages: thread.messages, contact: thread.contact, phone: thread.phone,
+    orderNumber: row.order_number ?? null, ourOrderId: row.our_order_id ?? null, subject: row.subject ?? null,
+    revision: { current: row.draft, instruction, previous: revisions.map(r => r.instruction) },
+  });
+
+  const next: Revision[] = [...revisions, { at: new Date().toISOString(), by: meta.by, via: meta.via, instruction, before: row.draft }];
+  const { error: upErr } = await db.from('marketplace_chat_drafts').update({
+    draft: run.reply, category: run.category, summary: run.summary, needs_human: run.needsHuman, reason: run.reason,
+    cost_usd: Number(row.cost_usd ?? 0) + run.costUsd, revisions: next,
+  }).eq('id', draftId).is('outcome', null);
+  if (upErr) throw upErr;
+
+  return {
+    id: draftId, cached: false, category: run.category, summary: run.summary, reply: run.reply,
+    needsHuman: run.needsHuman, reason: run.reason, costUsd: run.costUsd, revisions: next,
+  };
 }
 
 /** Після відправки: як є чи з правками. Помилки журналу не валять відправку. */

@@ -15,6 +15,15 @@ async function getToken(): Promise<string> {
   return token;
 }
 
+/**
+ * Вкладення з чату Prom (komora.prom.ua/file/{uid}) — віддаються лише з нашим
+ * токеном. Сирий Response для проксі адмінки; uid перевіряє викликач.
+ */
+export async function fetchPromChatFile(uid: string): Promise<Response> {
+  const token = await getToken();
+  return fetch(`https://komora.prom.ua/file/${encodeURIComponent(uid)}`, { headers: { Authorization: `Bearer ${token}` } });
+}
+
 async function headers() {
   const token = await getToken();
   return {
