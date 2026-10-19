@@ -46,6 +46,31 @@ function cond(col: string, b: DateBounds): string[] {
  * періоді. Один вираз на всі статуси — тож лічильники вкладок, суми й список
  * рахуються однаково. null — періоду немає.
  */
+/**
+ * Вкладка «Всі»: період за датою створення — «що надійшло за цей час».
+ * 19.10.2026: на «Всі» відправлені фільтрувались за shipped_at, і під «з 18.10»
+ * потрапляли замовлення від 16.10, відправлені 19.10.
+ */
+export function createdOrFilter(b: DateBounds): string | null {
+  if (!b.gte && !b.lt) return null;
+  return `and(${cond('created_at', b).join(',')})`;
+}
+
+type DatedRow = { status?: string | null; created_at?: string | null; [k: string]: unknown };
+const inRange = (v: unknown, b: DateBounds) =>
+  typeof v === 'string' && (!b.gte || new Date(v) >= new Date(b.gte)) && (!b.lt || new Date(v) < new Date(b.lt));
+
+/** Те саме правило, що statusDateOrFilter, — для рядків, уже вибраних із бази. */
+export function matchesEventDate(row: DatedRow, b: DateBounds): boolean {
+  if (!b.gte && !b.lt) return true;
+  const col = STATUS_DATE_COLUMN[row.status ?? ''] ?? 'created_at';
+  return inRange(row[col], b);
+}
+export function matchesCreatedDate(row: DatedRow, b: DateBounds): boolean {
+  if (!b.gte && !b.lt) return true;
+  return inRange(row.created_at, b);
+}
+
 export function statusDateOrFilter(b: DateBounds): string | null {
   if (!b.gte && !b.lt) return null;
   const special = Object.keys(STATUS_DATE_COLUMN);

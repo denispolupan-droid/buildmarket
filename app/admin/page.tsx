@@ -13,7 +13,7 @@ import { escapeOrTerm, orderNumberFilter } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
-import { kyivBounds, statusDateOrFilter } from '../../lib/orders/date-filter';
+import { kyivBounds, statusDateOrFilter, createdOrFilter, matchesEventDate, matchesCreatedDate } from '../../lib/orders/date-filter';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,6 +74,9 @@ export default async function AdminPage({
   // Якщо відкриваємо конкретне замовлення — показуємо всі статуси.
   // Без явного ?status= в URL (перший заход на сторінку) — за замовчуванням показуємо нові.
   const status = expandOrderId ? (statusParam ?? '') : (statusParam ?? 'new');
+  // Період за київським днем; межі незалежні — лише «з» означає «з дати і далі»
+  const periodBounds = kyivBounds(dateFrom, dateTo);
+  const allTab = status === '' && !ret;
   const page = Math.max(1, parseInt(pageStr ?? '1'));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -85,12 +88,16 @@ export default async function AdminPage({
    * лежало на другій сторінці. Ця ж функція накладається і на вибірку для
    * лічильників, щоб цифри на вкладках збігалися зі списком.
    */
-  function applyOrderFilters<T>(query: T, opts?: { ignoreFacets?: boolean }): T {
+  function applyOrderFilters<T>(query: T, opts?: { ignoreFacets?: boolean; dateMode?: 'tab' | 'union' | 'event' }): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = query as any;
-    // Період — за датою події статусу (доставлено → delivered_at тощо) і за
-    // київським днем; див. lib/orders/date-filter
-    const dateOr = statusDateOrFilter(kyivBounds(dateFrom, dateTo));
+    // Період за київським днем (lib/orders/date-filter). Вкладка «Всі» — за
+    // датою створення, вкладки статусів — за датою події (доставлено →
+    // delivered_at тощо). 'union' — для лічильників вкладок: вибираємо рядки,
+    // що проходять будь-яке з правил, а розкладаємо вже в коді.
+    const dateOr = opts?.dateMode === 'union'
+      ? [statusDateOrFilter(periodBounds), createdOrFilter(periodBounds)].filter(Boolean).join(',') || null
+      : (allTab && opts?.dateMode !== 'event' ? createdOrFilter(periodBounds) : statusDateOrFilter(periodBounds));
     if (dateOr) q = q.or(dateOr);
     if (!opts?.ignoreFacets) {
       // Замовлення з сайту історично лежать і як 'website', і як NULL
@@ -198,8 +205,9 @@ export default async function AdminPage({
     query,
     // Лічильники вкладок — по тому ж зрізу, що й список (пошук/канал/перевізник),
     // інакше вкладка каже «89», а в списку три рядки.
-    fetchAllRows<{ status: string; carrier_accepted_at: string | null; total_price: number | null }>((f, t) =>
-      applyOrderFilters(serviceClient.from('orders').select('status, carrier_accepted_at, total_price')).order('id').range(f, t),
+    // Дати події — щоб розкласти рядки за правилом вкладки (див. eventRows нижче)
+    fetchAllRows<{ status: string; carrier_accepted_at: string | null; total_price: number | null; created_at: string | null; delivered_at: string | null; cancelled_at: string | null; shipped_at: string | null }>((f, t) =>
+      applyOrderFilters(serviceClient.from('orders').select('status, carrier_accepted_at, total_price, created_at, delivered_at, cancelled_at, shipped_at'), { dateMode: 'union' }).order('id').range(f, t),
     ),
     serviceClient.from('acc_documents')
       .select('id', { count: 'exact', head: true })
@@ -220,12 +228,27 @@ export default async function AdminPage({
     // тому цифра на чіпі завжди дорівнює довжині списку під ним.
     applyReturnPendingFilter(applyOrderFilters(
       serviceClient.from('orders').select('id', { count: 'exact', head: true }),
+      { dateMode: 'event' },
     )),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
     serviceClient.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle(),
   ]);
   const promCommissionPct = parseFloat(promSetting?.value ?? '3');
   const rozetkaCommissionPct = parseFloat(rozetkaSetting?.value ?? '15');
+
+  // Сума саме того, що в списку: той самий зріз, що й основний запит (вкладка,
+  // період, пошук, фільтри колонок, «повернення без рішення»), по всіх
+  // сторінках. Раніше підсумок брав суму вкладки без фільтрів, а для зрізу
+  // повернень не показував її зовсім (19.10.2026).
+  // Скасовані в суму не входять (вони не виручка) — окрім вкладки «Скасовано» й
+  // зрізу повернень, де весь список і є скасованими.
+  const filteredRows = await fetchAllRows<{ total_price: number | null; status: string }>((f, t) =>
+    applyStatusFilter(applyOrderFilters(serviceClient.from('orders').select('total_price, status'))).order('id').range(f, t),
+  );
+  const countCancelled = status === 'cancelled' || !!ret;
+  const filteredAmount = filteredRows
+    .filter(r => countCancelled || r.status !== 'cancelled')
+    .reduce((s, r) => s + Number(r.total_price ?? 0), 0);
 
   // Тарифи зборів за доставку — щоб оцінка економіки замовлення показувала те саме,
   // що потім спишеться з балансу. Читаємо з тих самих ключів, які редагують екрани
@@ -319,20 +342,11 @@ export default async function AdminPage({
     initialShippedQty[orderId][line.sku] = (initialShippedQty[orderId][line.sku] ?? 0) + Number(line.qty);
   }
 
-  // Sum per status. Скасовані в суми не входять — вони не виручка.
-  const amountRows = (statusRows ?? []).filter(r => r.status !== 'cancelled');
-  const statusAmounts = amountRows.reduce<Record<string, number>>((acc, row) => {
-    const amt = Number(row.total_price ?? 0);
-    // shipped розділяємо: не прийнятий НП → «Готово до відправки», прийнятий → «Відправлено».
-    if (row.status === 'shipped') {
-      acc[row.carrier_accepted_at ? 'shipped' : 'ready_to_ship'] = (acc[row.carrier_accepted_at ? 'shipped' : 'ready_to_ship'] ?? 0) + amt;
-    } else if (row.status) {
-      acc[row.status] = (acc[row.status] ?? 0) + amt;
-    }
-    return acc;
-  }, {});
-  // Загальна сума — напряму з рядків (ready_to_ship дублює shipped, тому не через Object.values).
-  const totalAmount = amountRows.reduce((s, r) => s + Number(r.total_price ?? 0), 0);
+  // statusRows — об'єднання двох правил періоду. Вкладки статусів рахуються за
+  // датою події, «Всі» — за датою створення (як і їхні списки).
+  const eventRows   = (statusRows ?? []).filter(r => matchesEventDate(r, periodBounds));
+  const createdRows = (statusRows ?? []).filter(r => matchesCreatedDate(r, periodBounds));
+
 
   // Лічильники для чіпів каналу й перевізника (фасети — без власного фільтра)
   const channelCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
@@ -359,7 +373,7 @@ export default async function AdminPage({
   }, {});
 
   // Count orders per status
-  const statusCounts = (statusRows ?? []).reduce<Record<string, number>>((acc, row) => {
+  const statusCounts = eventRows.reduce<Record<string, number>>((acc, row) => {
     // shipped розділяємо: не прийнятий НП → «Готово до відправки», прийнятий → «Відправлено».
     if (row.status === 'shipped') {
       const key = row.carrier_accepted_at ? 'shipped' : 'ready_to_ship';
@@ -369,7 +383,7 @@ export default async function AdminPage({
     }
     return acc;
   }, {});
-  const totalCount = statusRows?.length ?? 0;
+  const totalCount = createdRows.length;
 
   // Невирішені повернення — рахує БД тим самим предикатом, що фільтрує список
   // (applyReturnPendingFilter): посилка їде назад, рішення «забрати / залишити»
@@ -433,7 +447,7 @@ export default async function AdminPage({
           AdminOrders — в одному рядку з фільтром періоду. Для зрізу повернень
           вкладки немає, тож суми не передаємо. */}
 
-      <AdminOrders key={`${curStatus}|${ret}`} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} sentFilter={sent} sentCounts={sentCounts} retFilter={ret} pendingReturns={pendingReturns} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} summaryAmount={ret ? 0 : (curStatus === '' ? totalAmount : (statusAmounts[curStatus] ?? 0))} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={ret ? '' : curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
+      <AdminOrders key={`${curStatus}|${ret}`} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} sentFilter={sent} sentCounts={sentCounts} retFilter={ret} pendingReturns={pendingReturns} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} summaryAmount={filteredAmount} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={ret ? '' : curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
     </div>
   );
 }
