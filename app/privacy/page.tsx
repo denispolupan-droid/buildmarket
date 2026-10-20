@@ -82,7 +82,7 @@ export default function PrivacyPage() {
 
           <Section icon={<ShieldCheck size={22} color="#4880B8" strokeWidth={2} />} title="Хто обробляє дані">
             <p style={p}>
-              Володілець і розпорядник персональних даних — {SELLER.name}, РНОКПП {SELLER.edrpou}, {SELLER.city} (далі — FIXLINE).
+              Володілець і розпорядник персональних даних — FIXLINE (реквізити наведено внизу сторінки).
               Сайт fixline.com.ua — інтернет-магазин будівельної хімії. Оформлюючи замовлення, реєструючись у кабінеті або звертаючись
               до нас, ви надаєте згоду на обробку своїх даних на умовах цієї політики.
             </p>
@@ -134,6 +134,10 @@ export default function PrivacyPage() {
               </a>
             </div>
           </div>
+
+          <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.6, margin: '28px 0 0' }}>
+            Володілець персональних даних: {SELLER.name}, РНОКПП {SELLER.edrpou}, {SELLER.city}.
+          </p>
 
         </div>
       </div>

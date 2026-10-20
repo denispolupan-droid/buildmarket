@@ -79,7 +79,7 @@ export default function PrivacyRuPage() {
 
           <Section icon={<ShieldCheck size={22} color="#4880B8" strokeWidth={2} />} title="Кто обрабатывает данные">
             <p style={p}>
-              Владелец и распорядитель персональных данных — {SELLER.name}, РНОКПП {SELLER.edrpou}, {SELLER.city} (далее — FIXLINE).
+              Владелец и распорядитель персональных данных — FIXLINE (реквизиты приведены внизу страницы).
               Сайт fixline.com.ua — интернет-магазин строительной химии. Оформляя заказ, регистрируясь в кабинете или обращаясь
               к нам, вы даёте согласие на обработку своих данных на условиях этой политики.
             </p>
@@ -131,6 +131,10 @@ export default function PrivacyRuPage() {
               </a>
             </div>
           </div>
+
+          <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.6, margin: '28px 0 0' }}>
+            Владелец персональных данных: {SELLER.name}, РНОКПП {SELLER.edrpou}, {SELLER.city}.
+          </p>
 
         </div>
       </div>
