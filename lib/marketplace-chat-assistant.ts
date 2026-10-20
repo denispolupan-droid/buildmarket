@@ -124,7 +124,9 @@ async function findOrdersText(mp: MarketplaceId, contact: string | null, phone: 
   const name = contact ? escapeOrTerm(contact).split(/\s+/).filter(w => w.length > 2)[0] : '';
   if (name) ors.push(`contact.ilike.%${name}%`);
   const digits = (phone ?? '').replace(/\D/g, '').slice(-9);
-  if (digits.length === 9) ors.push(`phone.ilike.%${digits}%`);
+  // phone_digits (міграція 133), а не phone: у базі номер буває з
+  // роздільниками — «+38 (068) 052-92-36», і дев'ять цифр у нього не влучали
+  if (digits.length === 9) ors.push(`phone_digits.ilike.%${digits}%`);
   if (!ors.length) return 'Немає імені чи телефону для пошуку.';
   const { data } = await db.from('orders').select(ORDER_COLS)
     .eq('channel_code', mp).gte('created_at', since).or(ors.join(','))

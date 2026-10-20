@@ -117,8 +117,10 @@ export default async function AdminPage({
         `delivery_city_name.ilike.%${term}%`,
       ];
       // Телефони лежать у різних форматах ('380…' з Rozetka, '+380…' з Prom,
-      // '+38 (066) …' із сайту), тому пробуємо і як ввели, і самі цифри.
-      if (digits.length >= 3) ors.push(`phone.ilike.%${digits}%`);
+      // '+38 (068) 052-92-36' із сайту), тому цифри запиту шукаємо в
+      // phone_digits — колонці без роздільників (міграція 133). До неї
+      // «068052» не знаходило нічого, бо в базі між цифрами стояли ) і -.
+      if (digits.length >= 3) ors.push(`phone_digits.ilike.%${digits}%`);
       // Номер замовлення — повний або з початку («261010» → 26101000…26101099),
       // див. orderNumberFilter. Довге число (ТТН, телефон) туди не потрапляє:
       // int4 на ньому валив би ВЕСЬ запит «out of range for type integer».
