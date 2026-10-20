@@ -15,7 +15,7 @@ type PrintLine = { sku: string; name: string; qty: number; price: number };
 export default function VidatkovaNakladna({
   docId, docNumber, docDate, lines, total,
   sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
-  buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName,
+  buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName, buyerSignatoryName,
   defaultEmail, isStaff = false, canEdit = false, docStatus,
 }: {
   docId: string;
@@ -35,6 +35,7 @@ export default function VidatkovaNakladna({
   buyerAddress?: string | null;
   orderNumber?: number | null;
   signatoryName?: string;
+  buyerSignatoryName?: string | null;
   defaultEmail?: string | null;
   isStaff?: boolean;
   canEdit?: boolean;
@@ -361,7 +362,9 @@ export default function VidatkovaNakladna({
             <div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
                 <span style={{ whiteSpace: 'nowrap' }}>Отримав(ла):</span>
-                <span style={{ borderBottom: '1px solid #000', minWidth: '180px', display: 'inline-block' }}>&nbsp;</span>
+                <span style={{ borderBottom: '1px solid #000', minWidth: '180px', display: 'inline-block', textAlign: 'center' }}>
+                  {buyerSignatoryName || ' '}
+                </span>
               </div>
               <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '3px', textAlign: 'right' }}>(посада, підпис, прізвище)</div>
             </div>

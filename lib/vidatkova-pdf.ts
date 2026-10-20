@@ -29,11 +29,13 @@ export async function buildVidatkovaPdf(params: {
   buyerAddress?: string | null;
   orderNumber?: number | null;
   signatoryName?: string;
+  buyerSignatoryName?: string | null;
 }): Promise<Buffer> {
   const {
     docNumber, docDate, lines, total,
     sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
     buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName = '',
+    buyerSignatoryName,
   } = params;
 
   const ibanDisplay = formatIban(sellerIban);
@@ -210,7 +212,7 @@ export async function buildVidatkovaPdf(params: {
     }
 
     drawSignature(leftX,  'Відпустив(ла):', signatoryName);
-    drawSignature(rightX, 'Отримав(ла):',   '');
+    drawSignature(rightX, 'Отримав(ла):',   buyerSignatoryName ?? '');
 
     doc.end();
   });

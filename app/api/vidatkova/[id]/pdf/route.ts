@@ -61,6 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     buyerAddress: buyer.address,
     orderNumber:  buyer.orderNumber,
     signatoryName: SELLER.signatory,
+    buyerSignatoryName: buyer.signatory,
   });
 
   const asciiName = `FIXLINE_vidatkova_${String(doc.doc_number).replace(/[^\x20-\x7E]/g, '')}.pdf`;

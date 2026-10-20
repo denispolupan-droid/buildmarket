@@ -64,6 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     buyerAddress:  buyer.address,
     orderNumber:   buyer.orderNumber,
     signatoryName: SELLER.signatory,
+    buyerSignatoryName: buyer.signatory,
     printUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/vidatkova/${id}`,
   };
 

@@ -22,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     'name', 'company', 'legal_name', 'tax_number',
     'phone', 'email', 'city', 'address', 'legal_address',
     'bank_name', 'bank_iban', 'bank_mfo',
+    'signatory_name', 'signatory_position',
     'type', 'price_tier',
   ];
   const update: Record<string, unknown> = {};

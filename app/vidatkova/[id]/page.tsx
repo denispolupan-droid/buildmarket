@@ -69,6 +69,7 @@ export default async function VidatkovaPage({ params }: { params: Promise<{ id: 
       buyerAddress={buyer.address}
       orderNumber={buyer.orderNumber}
       signatoryName={SELLER.signatory}
+      buyerSignatoryName={buyer.signatory}
       defaultEmail={buyer.email}
       isStaff={isStaff}
       canEdit={user?.app_metadata?.role === 'admin'}

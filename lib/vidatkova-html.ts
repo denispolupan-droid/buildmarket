@@ -1,6 +1,10 @@
 import { hryvniaInWords } from "./number-to-words";
 type PrintLine = { sku: string; name: string; qty: number; price: number };
 
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
 function formatIban(raw: string) {
   const s = raw.replace(/\s/g, '');
   return s.match(/.{1,4}/g)?.join(' ') ?? s;
@@ -23,12 +27,14 @@ export function buildVidatkovaHtml(params: {
   buyerAddress?: string | null;
   orderNumber?: number | null;
   signatoryName?: string;
+  buyerSignatoryName?: string | null;
   printUrl?: string;
 }): string {
   const {
     docNumber, docDate, lines, total,
     sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
     buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName = '', printUrl,
+    buyerSignatoryName,
   } = params;
 
   const date = new Date(docDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -127,7 +133,7 @@ export function buildVidatkovaHtml(params: {
     </tr>
     <tr>
       <td style="border:1px solid #ccc;padding:6px 8px;font-weight:700">Отримав:</td>
-      <td style="border:1px solid #ccc;padding:6px 8px"></td>
+      <td style="border:1px solid #ccc;padding:6px 8px;text-align:center">${buyerSignatoryName ? `<strong>${escapeHtml(buyerSignatoryName)}</strong>` : ''}</td>
       <td style="border:1px solid #ccc;padding:6px 8px"></td>
       <td style="border:1px solid #ccc;padding:6px 8px"></td>
     </tr>

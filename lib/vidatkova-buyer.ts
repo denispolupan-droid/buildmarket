@@ -14,6 +14,8 @@ export type VidatkovaBuyer = {
   phone: string | null;
   email: string | null;
   orderNumber: number | null;
+  /** «Посада ПІБ» керівника з картки контрагента — у рядок «Отримав(ла)». */
+  signatory: string | null;
 };
 
 export async function resolveVidatkovaBuyer(
@@ -31,11 +33,11 @@ export async function resolveVidatkovaBuyer(
   }
 
   const customerId = doc.customer_id ?? order?.customer_id ?? null;
-  let customer: { name: string | null; company: string | null; legal_name: string | null; tax_number: string | null; address: string | null; legal_address: string | null; city: string | null } | null = null;
+  let customer: { name: string | null; company: string | null; legal_name: string | null; tax_number: string | null; address: string | null; legal_address: string | null; city: string | null; signatory_name: string | null; signatory_position: string | null } | null = null;
   if (customerId) {
     const { data } = await db
       .from('customers')
-      .select('name, company, legal_name, tax_number, address, legal_address, city')
+      .select('name, company, legal_name, tax_number, address, legal_address, city, signatory_name, signatory_position')
       .eq('id', customerId)
       .maybeSingle();
     customer = data ?? null;
@@ -54,5 +56,9 @@ export async function resolveVidatkovaBuyer(
     phone:   order?.phone ?? null,
     email:   order?.email ?? null,
     orderNumber: order?.order_number ?? null,
+    // Посада без ПІБ нічого не дає — підставляємо лише коли є прізвище.
+    signatory: customer?.signatory_name?.trim()
+      ? [customer.signatory_position?.trim(), customer.signatory_name.trim()].filter(Boolean).join(' ')
+      : null,
   };
 }

@@ -38,6 +38,7 @@ type Customer = {
   legal_name: string | null; tax_number: string | null;
   address: string | null; legal_address: string | null;
   bank_name: string | null; bank_iban: string | null; bank_mfo: string | null;
+  signatory_name: string | null; signatory_position: string | null;
 };
 
 type Payout = {
@@ -125,6 +126,7 @@ export default function PartnersClient({
     name: '', company: '', legal_name: '', tax_number: '',
     email: '', city: '', address: '', legal_address: '',
     bank_name: '', bank_iban: '', bank_mfo: '',
+    signatory_name: '', signatory_position: '',
     type: 'retail', credit_limit: '', notes: '',
     contract_payment_terms: 'prepay', contract_credit_days: 0, contract_credit_limit: 0,
   });
@@ -193,7 +195,7 @@ export default function PartnersClient({
     setNewSaving(false);
     setCustomers(prev => [data, ...prev]);
     setShowNew(false);
-    setNewForm({ name: '', company: '', legal_name: '', tax_number: '', email: '', city: '', address: '', legal_address: '', bank_name: '', bank_iban: '', bank_mfo: '', type: 'retail', credit_limit: '', notes: '', contract_payment_terms: 'prepay', contract_credit_days: 0, contract_credit_limit: 0 });
+    setNewForm({ name: '', company: '', legal_name: '', tax_number: '', email: '', city: '', address: '', legal_address: '', bank_name: '', bank_iban: '', bank_mfo: '', signatory_name: '', signatory_position: '', type: 'retail', credit_limit: '', notes: '', contract_payment_terms: 'prepay', contract_credit_days: 0, contract_credit_limit: 0 });
     setNewPhone('');
   }
 
@@ -455,7 +457,7 @@ export default function PartnersClient({
                       <button onClick={() => {
                         setEditingId(c.id);
                         setEditPhone(c.phone ?? '');
-                        setEditForm({ name: c.name, company: c.company ?? '', email: c.email ?? '', city: c.city ?? '', type: c.type, credit_limit: c.credit_limit ?? undefined, notes: c.notes ?? '', legal_name: c.legal_name ?? '', tax_number: c.tax_number ?? '', legal_address: c.legal_address ?? '', address: c.address ?? '', bank_name: c.bank_name ?? '', bank_iban: c.bank_iban ?? '', bank_mfo: c.bank_mfo ?? '' });
+                        setEditForm({ name: c.name, company: c.company ?? '', email: c.email ?? '', city: c.city ?? '', type: c.type, credit_limit: c.credit_limit ?? undefined, notes: c.notes ?? '', legal_name: c.legal_name ?? '', tax_number: c.tax_number ?? '', legal_address: c.legal_address ?? '', address: c.address ?? '', bank_name: c.bank_name ?? '', bank_iban: c.bank_iban ?? '', bank_mfo: c.bank_mfo ?? '', signatory_name: c.signatory_name ?? '', signatory_position: c.signatory_position ?? '' });
                       }}
                         style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Edit2 size={11} /> Редагувати
@@ -526,6 +528,17 @@ export default function PartnersClient({
                           <div>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Факт. адреса</div>
                             <input value={String((editForm as Record<string, unknown>).address ?? '')} onChange={e => setEditForm(prev => ({ ...prev, address: e.target.value }))} style={inp} placeholder="вул., місто" />
+                          </div>
+                        </div>
+                        {/* Керівник — підставляється в «Отримав(ла)» видаткової */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Керівник (ПІБ)</div>
+                            <input value={String(editForm.signatory_name ?? '')} onChange={e => setEditForm(prev => ({ ...prev, signatory_name: e.target.value }))} style={inp} placeholder="Іваненко І. І." />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Посада</div>
+                            <input value={String(editForm.signatory_position ?? '')} onChange={e => setEditForm(prev => ({ ...prev, signatory_position: e.target.value }))} style={inp} placeholder="Директор" />
                           </div>
                         </div>
                         {/* Банк */}
@@ -753,7 +766,7 @@ export default function PartnersClient({
 
                 {/* Footer actions */}
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => { setViewingId(null); setExpandedId(vc.id); setEditingId(vc.id); setEditPhone(vc.phone ?? ''); setEditForm({ name: vc.name, company: vc.company ?? '', email: vc.email ?? '', city: vc.city ?? '', type: vc.type, credit_limit: vc.credit_limit ?? undefined, notes: vc.notes ?? '', legal_name: vc.legal_name ?? '', tax_number: vc.tax_number ?? '', legal_address: vc.legal_address ?? '', address: vc.address ?? '', bank_name: vc.bank_name ?? '', bank_iban: vc.bank_iban ?? '', bank_mfo: vc.bank_mfo ?? '' }); }}
+                  <button onClick={() => { setViewingId(null); setExpandedId(vc.id); setEditingId(vc.id); setEditPhone(vc.phone ?? ''); setEditForm({ name: vc.name, company: vc.company ?? '', email: vc.email ?? '', city: vc.city ?? '', type: vc.type, credit_limit: vc.credit_limit ?? undefined, notes: vc.notes ?? '', legal_name: vc.legal_name ?? '', tax_number: vc.tax_number ?? '', legal_address: vc.legal_address ?? '', address: vc.address ?? '', bank_name: vc.bank_name ?? '', bank_iban: vc.bank_iban ?? '', bank_mfo: vc.bank_mfo ?? '', signatory_name: vc.signatory_name ?? '', signatory_position: vc.signatory_position ?? '' }); }}
                     style={{ flex: 1, height: '38px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                     <Edit2 size={13} /> Редагувати
                   </button>
@@ -849,6 +862,19 @@ export default function PartnersClient({
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Фактична адреса</div>
                   <input placeholder="вул. Пушкіна, 5, офіс 3" value={newForm.address}
                     onChange={e => setNewForm(prev => ({ ...prev, address: e.target.value }))} style={inp} />
+                </div>
+              </div>
+              {/* Керівник — підставляється в «Отримав(ла)» видаткової накладної */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Керівник (ПІБ)</div>
+                  <input placeholder="Іваненко Іван Іванович" value={newForm.signatory_name}
+                    onChange={e => setNewForm(prev => ({ ...prev, signatory_name: e.target.value }))} style={inp} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Посада</div>
+                  <input placeholder="Директор" value={newForm.signatory_position}
+                    onChange={e => setNewForm(prev => ({ ...prev, signatory_position: e.target.value }))} style={inp} />
                 </div>
               </div>
 
