@@ -29,16 +29,27 @@ describe('orderNumberFilter', () => {
 describe('orderSearchOr', () => {
   it('ім\'я з кількох слів — послівно і в будь-якому порядку', () => {
     const f = orderSearchOr('Александр Стельмах')!;
-    expect(f).toContain('and(or(contact.ilike.%Александр%,company.ilike.%Александр%),or(contact.ilike.%Стельмах%,company.ilike.%Стельмах%))');
-    // цілим рядком ім'я більше не шукаємо — саме це й не знаходило перевернутий порядок
-    expect(f).not.toContain('contact.ilike.%Александр Стельмах%');
+    expect(f).toContain('and(');
+    expect(f).toContain('contact_norm.ilike.%стелмах%');   // ь знято нормалізацією
+    // обидва корені імені — знайдеться і «Олександр», і «Александр»
+    expect(f).toContain('contact_norm.ilike.%олександр%');
+    expect(f).toContain('contact_norm.ilike.%александр%');
+    // цілим рядком по імені не шукаємо — саме це й не знаходило перевернутий
+    // порядок (у ТТН і телефоні рядок цілий — там слова ні до чого)
+    expect(f).not.toContain('contact_norm.ilike.%александр стелмах%');
   });
 
-  it('одне слово — звичайний ilike по контакту й компанії', () => {
+  it('одне слово — одна умова, без and()', () => {
     const f = orderSearchOr('Стельмах')!;
-    expect(f).toContain('contact.ilike.%Стельмах%');
-    expect(f).toContain('company.ilike.%Стельмах%');
+    expect(f).toContain('or(contact_norm.ilike.%стелмах%,company_norm.ilike.%стелмах%)');
     expect(f).not.toContain('and(or(');
+  });
+
+  it('різна орфографія сходиться: Лисенко / Лысенко', () => {
+    expect(orderSearchOr('Лисенко')!).toContain('%лисенко%');
+    expect(orderSearchOr('Лысенко')!).toContain('%лисенко%');
+    expect(orderSearchOr('Сергієнко')!).toContain('%сергиенко%');
+    expect(orderSearchOr('Сергиенко')!).toContain('%сергиенко%');
   });
 
   it('телефон у будь-якому форматі зводиться до цифр', () => {

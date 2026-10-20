@@ -1,3 +1,5 @@
+import { nameFragments } from './name-search';
+
 // Sanitises a user-supplied search value before it is interpolated into a
 // PostgREST `.or(...)` / `.ilike(...)` filter string. Without this a value
 // containing a comma injects an extra OR condition (e.g. `x,is_active.eq.false`),
@@ -32,10 +34,12 @@ const SEARCH_WORDS_MAX = 4;
  * Умова PostgREST для пошуку замовлення в журналі: номер (повний чи з початку),
  * № в кабінеті МП, ТТН, телефон у будь-якому форматі, ім'я, компанія, місто.
  *
- * Ім'я з кількох слів шукається ПОСЛІВНО і в будь-якому порядку: у базі контакт
- * записаний як прийшов із площадки («Стельмах Александр»), а шукають і навпаки
- * («Александр Стельмах») — цілим рядком це не знаходилось. Кожне слово має
- * знайтись у contact або company, тому «Король» і «Роман Король» звужують
+ * Ім'я шукається ПОСЛІВНО, у будь-якому порядку і без огляду на написання:
+ * у базі контакт записаний як прийшов із площадки («Стельмах Александр»), а
+ * шукають як звикли («Олександр Стельмах»). Кожне слово має знайтись у
+ * contact_norm або company_norm (міграція 134 — згорнута орфографія), причому
+ * слово розкривається в корені свого імені, якщо вони різні в українській і
+ * російській — див. lib/name-search. Тому «Король» і «Роман Король» звужують
  * вибірку, а випадковий збіг одного слова не витягує чужі замовлення.
  *
  * Телефон порівнюється по phone_digits (міграція 133) — колонці без
@@ -47,12 +51,16 @@ export function orderSearchOr(search: string): string | null {
   const digits = search.replace(/\D/g, '');
   const ors: string[] = [`tracking_number.ilike.%${term}%`, `delivery_city_name.ilike.%${term}%`];
 
+  // Слово → «contact_norm або company_norm містить будь-який із варіантів»
+  const wordCond = (w: string) => {
+    const frags = nameFragments(w);
+    if (!frags.length) return null;
+    return `or(${frags.map(f => `contact_norm.ilike.%${f}%,company_norm.ilike.%${f}%`).join(',')})`;
+  };
   const words = term.split(/\s+/).filter(w => w.length > 1).slice(0, SEARCH_WORDS_MAX);
-  if (words.length > 1) {
-    ors.push(`and(${words.map(w => `or(contact.ilike.%${w}%,company.ilike.%${w}%)`).join(',')})`);
-  } else {
-    ors.push(`contact.ilike.%${term}%`, `company.ilike.%${term}%`);
-  }
+  const conds = words.map(wordCond).filter((c): c is string => c !== null);
+  if (conds.length > 1) ors.push(`and(${conds.join(',')})`);
+  else if (conds.length === 1) ors.push(conds[0]);
 
   // Телефон: і як ввели (раптом формат збігся), і самими цифрами
   ors.push(`phone.ilike.%${term}%`);
