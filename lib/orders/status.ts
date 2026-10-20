@@ -29,6 +29,26 @@ export function isOrderStatus(v: unknown): v is OrderStatus {
 }
 
 /**
+ * Порядок і підписи вкладок журналу (app/admin/page.tsx) — разом із
+ * псевдостатусом `ready_to_ship`: це зріз «підтверджено + зібрано», а не
+ * окремий статус, тож у ORDER_STATUSES його немає й бути не повинно.
+ */
+export const ORDER_TAB_ORDER = [
+  '', 'new', 'confirmed', 'pending_payment', 'awaiting_stock', 'ready_to_ship', 'shipped', 'delivered', 'cancelled',
+] as const;
+export const ORDER_TAB_LABELS: Record<string, string> = {
+  '': 'Всі',
+  new: 'Нові',
+  confirmed: 'Підтверджено',
+  pending_payment: 'Очікує оплати',
+  awaiting_stock: 'Очікуємо товар',
+  ready_to_ship: 'До відправки',
+  shipped: 'Відправлено',
+  delivered: 'Доставлено',
+  cancelled: 'Скасовано',
+};
+
+/**
  * Лінійний ранг для «вперед/назад». cancelled поза шкалою: скасувати можна
  * з будь-якого стану, і це не «рух назад».
  */

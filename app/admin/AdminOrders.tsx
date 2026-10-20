@@ -2430,18 +2430,66 @@ export default function AdminOrders({
           const cnt = totalFound;
           const avg = cnt > 0 && summaryAmount > 0 ? Math.round(summaryAmount / cnt) : 0;
           const noun = cnt % 10 === 1 && cnt % 100 !== 11 ? 'замовлення' : 'замовлень';
+          // Скасовані — це не гроші: сума й середній чек по них означали б
+          // «виручка, якої не було». Лишаємо тільки кількість. Під зрізом
+          // «повернення без рішення» сума навпаки потрібна — це те, що зараз
+          // їде назад (зріз приходить з currentStatus = '').
+          const moneyless = currentStatus === 'cancelled';
+          const showMoney = summaryAmount > 0 && !moneyless;
+          // Ні період, ні назву вкладки біля суми не пишемо (рішення власника
+          // 20.10.2026): вкладка підсвічена вище, вибраний період видно по
+          // пігулці чи заповнених датах — підпис лише дублював би їх.
           // Текст зліва: з вирівнюванням по центру курсор стояв посередині поля
           const inpStyle: React.CSSProperties = { height: '26px', width: '92px', padding: '0 8px', border: 'none', borderRadius: '999px', fontSize: '12.5px', outline: 'none', background: 'transparent', color: 'var(--text-primary)', textAlign: 'left' };
           return (
             <div className="oc-summary-row">
               <div className="oc-summary">
-                {summaryAmount > 0 && <span className="oc-summary-amount">{fmt(summaryAmount)} ₴</span>}
-                {/* Кількість і середній чек — стовпчиком дрібним сірим: економить
-                    ширину рядка під період і реєстр */}
+                {showMoney && <span className="oc-summary-amount">{fmt(summaryAmount)}<span className="oc-summary-cur">₴</span></span>}
+                {/* Біля суми — два тихі рядки: скільки замовлень і середній чек.
+                    На «Скасовано» другого немає: сума по скасованих означала б
+                    виручку, якої не було, тож грошей там не показуємо взагалі. */}
                 <span className="oc-summary-stats">
                   <span className="oc-summary-stat"><b>{cnt}</b> {noun}{totalPages > 1 && <span className="oc-summary-page"> · стор. {currentPage}/{totalPages}</span>}</span>
-                  {avg > 0 && <span className="oc-summary-stat">середній чек <b>{fmt(avg)} ₴</b></span>}
+                  {showMoney && avg > 0 && <span className="oc-summary-stat">середній чек <b>{fmt(avg)} ₴</b></span>}
                 </span>
+              </div>
+              {/* Порядок у рядку (рішення власника 20.10.2026): пошук → період →
+                  повернення. Пошук перший, бо ним користуються найчастіше.
+                  Внутрішня обгортка з position: relative — точка відліку для
+                  лупи й хрестика (на телефоні .oc-filter-search має власний
+                  верхній відступ). Підказка стоїть по центру, поки поле порожнє
+                  й поза фокусом — див. .oc-search-input. */}
+              <div className="oc-filter-search oc-search-compact">
+              <div style={{ position: 'relative' }}>
+                <Search size={15} color="var(--brand-blue)" style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                <input
+                  className={`oc-search-input${searchInput ? ' has-text' : ''}`}
+                  placeholder="Пошук: № замовлення (маркетплейс, сайт), ПІБ, телефон, ТТН"
+                  title="№ замовлення або МП, ПІБ, компанія, телефон, ТТН — пошук по всій базі"
+                  ref={searchInputRef}
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') pushSearch(searchInput.trim()); }}
+                  style={{
+                    // Вирівнювання — в .oc-search-input: підказка по центру, а у
+                    // фокусі й із набраним текстом ліворуч (інакше курсор блимав
+                    // би посеред порожнього поля).
+                    width: '100%', height: '34px',
+                    paddingLeft: '36px', paddingRight: searchInput ? '30px' : '36px',
+                    borderRadius: '999px', fontSize: '13px',
+                    outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)',
+                  }}
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => setSearchInput('')}
+                    aria-label="Очистити пошук"
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
               </div>
               <div className="oc-filter-dates oc-period" role="group" aria-label="Період">
                 {[
@@ -2467,40 +2515,6 @@ export default function AdminOrders({
                   <button type="button" onClick={() => pushFilters({ dateFrom: '', dateTo: '' })} title="Скинути період" aria-label="Скинути період" className="oc-date-clear oc-period-clear">✕</button>
                 )}
               </div>
-              {/* Пошук — компактне поле в тому ж рядку, у мові пігулок. Внутрішня
-                  обгортка з position: relative — точка відліку для лупи й хрестика
-                  (на телефоні .oc-filter-search має власний верхній відступ). */}
-              <div className="oc-filter-search oc-search-compact">
-              <div style={{ position: 'relative' }}>
-                <Search size={15} color="var(--brand-blue)" style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                <input
-                  className="oc-search-input"
-                  placeholder="Пошук: №, ПІБ, телефон, ТТН"
-                  title="№ замовлення або МП, ПІБ, компанія, телефон, ТТН — пошук по всій базі"
-                  ref={searchInputRef}
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') pushSearch(searchInput.trim()); }}
-                  style={{
-                    width: '100%', height: '34px', paddingLeft: '36px', paddingRight: searchInput ? '30px' : '14px',
-                    borderRadius: '999px', fontSize: '13px',
-                    outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)',
-                  }}
-                />
-                {searchInput && (
-                  <button
-                    onClick={() => setSearchInput('')}
-                    aria-label="Очистити пошук"
-                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
-              </div>
-              {/* «Реєстр НП» — у шапці сторінки поруч із «Нове замовлення»
-                  (page.tsx); Excel прибрано, вивантаження лишилось за адресою
-                  /api/admin/orders/export */}
               {/* Повернення без рішення — лише на «Скасовано» (або поки зріз
                   увімкнений); на десктопі тут, бо рядок пігулок нижче мобільний */}
               {((currentStatus === 'cancelled' && pendingReturns > 0) || retFilter === 'pending') && (() => {
@@ -2516,6 +2530,9 @@ export default function AdminOrders({
                   </button>
                 );
               })()}
+              {/* «Реєстр НП» — у шапці сторінки поруч із «Нове замовлення»
+                  (page.tsx); Excel прибрано, вивантаження лишилось за адресою
+                  /api/admin/orders/export */}
             </div>
           );
         })()}
@@ -6199,9 +6216,18 @@ export default function AdminOrders({
                       const validEmail = g.email.includes('@');
                       return (
                         <div key={gi} style={{ border: `1.5px solid ${hasSupplier && validEmail ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '10px', padding: '12px', background: 'var(--bg-soft)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-                            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.supplierName}</div>
-                            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', flexShrink: 0 }}>{g.orderNumbers.length} зам. · {g.orderNumbers.map(n => `#${n}`).join(', ')}</div>
+                          {/* Назва постачальника й лічильник — одним рядком, номери
+                              замовлень — під ними з переносом. Поки номери стояли
+                              в тому ж рядку з flexShrink: 0, десяток замовлень
+                              розпирав модалку вшир (20.10.2026). */}
+                          <div style={{ marginBottom: '8px', minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.supplierName}</div>
+                              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', flexShrink: 0 }}>{g.orderNumbers.length} зам.</div>
+                            </div>
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginTop: '3px', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+                              {g.orderNumbers.map(n => `#${n}`).join(', ')}
+                            </div>
                           </div>
 
                           {g.contacts.length > 0 && (

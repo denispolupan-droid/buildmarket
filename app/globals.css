@@ -3015,12 +3015,25 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
    Вкладки статусів як .fin-tab, підсумок активної вкладки, аркуш з рядками в
    одній картці, чипи обраних фільтрів. Мобільні картки не чіпаємо: аркуш
    діє лише від 769px. */
+/* Акцент журналу замовлень — ним світяться сума й активна вкладка.
+   --jr-accent     заливка: підкреслення вкладки, пігулка лічильника
+   --jr-accent-ink текст: сума й підпис активної вкладки. Світлий акцент тут
+                   не годиться — бірюза #3DBFB8 на білому дає ~2:1 і цифри
+                   замилюються; для такої барви сюди йде темніший її тон
+   --jr-accent-on  текст на заливці
+   Обрано власником 20.10.2026 — глибокий синьо-сталевий, у тон активній
+   пігулці періоду поруч. Відкинуто тоді ж: var(--brand-blue) (блякло),
+   #0F172A чорнило, #3DBFB8 бірюза. */
+:root { --jr-accent: #1E3A5F; --jr-accent-ink: #1E3A5F; --jr-accent-on: #FFFFFF; }
+[data-theme="dark"] { --jr-accent: #93C5FD; --jr-accent-ink: #93C5FD; --jr-accent-on: #0F172A; }
+
 .admin-status-tabs {
   display: flex; gap: 2px; flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
 }
 /* Вкладки рівномірно на всю ширину сторінки (flex: 1, текст по центру) і
-   трохи більшим кеглем */
+   трохи більшим кеглем — власник просив підписи статусів не дрібнити
+   (20.10.2026). Активну тримають насиченість, колір і підкреслення. */
 .admin-status-tab {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   flex: 1 1 auto;
@@ -3032,13 +3045,13 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 }
 .admin-status-tab:hover { color: var(--text-primary); }
 .admin-status-tab.empty { color: var(--text-muted); }
-.admin-status-tab.active { color: var(--brand-blue); font-weight: 700; border-bottom-color: var(--brand-blue); }
+.admin-status-tab.active { color: var(--jr-accent-ink); font-weight: 700; border-bottom-color: var(--jr-accent); }
 .admin-status-count {
   font-size: 11px; font-weight: 700; line-height: 17px; padding: 0 7px;
-  border-radius: 999px; background: var(--bg-soft); color: #64748B;
+  border-radius: 999px; background: var(--bg-soft); color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.admin-status-tab.active .admin-status-count { background: var(--brand-blue); color: #fff; }
+.admin-status-tab.active .admin-status-count { background: var(--jr-accent); color: var(--jr-accent-on); }
 .admin-status-count.alert { background: #DC2626; color: #fff; }
 .admin-status-returns {
   font-size: 11px; font-weight: 700; line-height: 16px; padding: 0 7px;
@@ -3057,13 +3070,27 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .oc-summary { flex: 0 0 auto; min-width: 200px; }
 /* Пошук у рядку підсумку: тягнеться до правого краю, помітний — біле поле з
    синьою лупою, рамка темніша за решту пігулок, при фокусі синє кільце */
-.oc-search-compact { flex: 1 1 320px; min-width: 240px; }
+/* Поле тягнеться до кінця рядка, але стартова ширина мала (240 замість 320):
+   від неї браузер вирішує, чи влізуть сусіди — період і «повернення без
+   рішення». З більшою базою кнопка зіштовхувалась на другий рядок.
+   Пробували не розтягувати, з фільтрами праворуч — порожнеча між групами
+   виглядала гірше (20.10.2026). */
+.oc-search-compact { flex: 1 1 240px; min-width: 240px; }
 .oc-search-input {
   border: 1.5px solid #B9C9DF; background: var(--bg-card);
   box-shadow: 0 1px 2px rgba(15,23,42,0.06);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.oc-search-input::placeholder { color: var(--text-secondary); }
+/* Підказка — найтихіший сірий на сторінці: поле широке, і темніший текст
+   у ньому перетягував увагу із суми */
+.oc-search-input::placeholder { color: #AEB9C8; }
+/* У фокусі підказка зникає — поле чисте, видно, що можна друкувати */
+.oc-search-input:focus::placeholder { color: transparent; }
+/* Порожнє поле тримає підказку по центру (широке поле, інакше довга
+   порожнеча праворуч), а щойно в ньому працюють — текст і курсор ліворуч,
+   одразу за лупою */
+.oc-search-input { text-align: center; }
+.oc-search-input:focus, .oc-search-input.has-text { text-align: left; }
 .oc-search-input:hover { border-color: var(--brand-blue); }
 .oc-search-input:focus { border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgba(72,128,184,0.18); }
 
@@ -3077,8 +3104,10 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .oc-summary { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
 .oc-summary-amount {
   font-size: 24px; font-weight: 800; letter-spacing: -0.4px; line-height: 1;
-  color: var(--brand-blue); font-variant-numeric: tabular-nums;
+  color: var(--jr-accent-ink); font-variant-numeric: tabular-nums;
 }
+/* Гривня — тихіша за число: акцент на сумі, а не на знаку валюти */
+.oc-summary-amount .oc-summary-cur { font-weight: 700; color: var(--text-muted); margin-left: 2px; }
 /* Кількість і середній чек — стовпчиком, дрібно й сіро, під висоту суми */
 .oc-summary-stats { display: inline-flex; flex-direction: column; gap: 1px; line-height: 1.2; align-self: center; }
 .oc-summary-stat { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }

@@ -14,6 +14,7 @@ import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
 import { kyivBounds, statusDateOrFilter, createdOrFilter, matchesEventDate, matchesCreatedDate } from '../../lib/orders/date-filter';
+import { ORDER_TAB_ORDER, ORDER_TAB_LABELS } from '../../lib/orders/status';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,17 +25,9 @@ const PAGE_SIZE = 50;
 
 // Порядок — за робочим циклом (рішення власника): нові → підтверджені →
 // очікують оплати → далі логістика і термінальні статуси.
-const STATUS_TABS = [
-  { value: '',                label: 'Всі' },
-  { value: 'new',             label: 'Нові',            badge: true },
-  { value: 'confirmed',       label: 'Підтверджено' },
-  { value: 'pending_payment', label: 'Очікує оплати' },
-  { value: 'awaiting_stock',  label: 'Очікуємо товар' },
-  { value: 'ready_to_ship',   label: 'До відправки' },
-  { value: 'shipped',         label: 'Відправлено' },
-  { value: 'delivered',       label: 'Доставлено' },
-  { value: 'cancelled',       label: 'Скасовано' },
-] as const;
+// Порядок і підписи вкладок — з lib/orders/status, поруч зі списком статусів
+// і правилами переходів, щоб не розходились.
+const STATUS_TABS = ORDER_TAB_ORDER.map(value => ({ value, label: ORDER_TAB_LABELS[value] }));
 
 export default async function AdminPage({
   searchParams,
