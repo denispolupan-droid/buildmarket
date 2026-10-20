@@ -9,7 +9,7 @@ import NewOrderButton from './orders/NewOrderButton';
 import { SMART_TARIFF_KEY, parseSmartTariff } from '../../lib/rozetka-smart-tariff';
 import { ROZETKA_DELIVERY_TARIFF_KEY, parseRozetkaDeliveryTariff } from '../../lib/rozetka-delivery-tariff';
 import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/prom-delivery-fee';
-import { escapeOrTerm, orderNumberFilter } from '../../lib/pg-filter';
+import { orderSearchOr } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
@@ -106,34 +106,11 @@ export default async function AdminPage({
       if (sent === 'sent')        q = q.not('supplier_sent_at', 'is', null);
       else if (sent === 'unsent') q = q.is('supplier_sent_at', null);
     }
+    // Номер, ТТН, телефон у будь-якому форматі, ім'я послівно — див.
+    // orderSearchOr (чиста функція, покрита тестами).
     if (search) {
-      const term = escapeOrTerm(search);
-      const digits = search.replace(/\D/g, '');
-      const ors = [
-        `contact.ilike.%${term}%`,
-        `company.ilike.%${term}%`,
-        `tracking_number.ilike.%${term}%`,
-        `phone.ilike.%${term}%`,
-        `delivery_city_name.ilike.%${term}%`,
-      ];
-      // Телефони лежать у різних форматах ('380…' з Rozetka, '+380…' з Prom,
-      // '+38 (068) 052-92-36' із сайту), тому цифри запиту шукаємо в
-      // phone_digits — колонці без роздільників (міграція 133). До неї
-      // «068052» не знаходило нічого, бо в базі між цифрами стояли ) і -.
-      if (digits.length >= 3) ors.push(`phone_digits.ilike.%${digits}%`);
-      // Номер замовлення — повний або з початку («261010» → 26101000…26101099),
-      // див. orderNumberFilter. Довге число (ТТН, телефон) туди не потрапляє:
-      // int4 на ньому валив би ВЕСЬ запит «out of range for type integer».
-      const byNumber = orderNumberFilter(term);
-      if (byNumber) ors.push(byNumber);
-      // Номер замовлення в кабінеті маркетплейсу — його називають і покупець, і
-      // підтримка Prom/Rozetka, а знайти замовлення по ньому досі було нічим.
-      // Обидві колонки BIGINT, тож тільки точний збіг і тільки для цифр.
-      if (/^\d{4,18}$/.test(digits)) {
-        ors.push(`prom_order_id.eq.${digits}`);
-        ors.push(`rozetka_order_id.eq.${digits}`);
-      }
-      q = q.or(ors.join(','));
+      const ors = orderSearchOr(search);
+      if (ors) q = q.or(ors);
     }
     return q as T;
   }
