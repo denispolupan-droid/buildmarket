@@ -781,6 +781,24 @@ export default function AdminOrders({
     setSearchInput(initialSearch);
   }, [initialSearch]);
 
+  // Підказка пошуку за шириною поля: повний перелік того, за чим шукаємо, у
+  // вузькому полі обрізався на півслові. Міряємо саме поле (ResizeObserver), а
+  // не вікно: ширина залежить ще й від того, чи показана сума й кнопка
+  // повернень. Текст міняється, лише коли поле порожнє, — щоб підказка не
+  // смикалась під час набору.
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const [searchHint, setSearchHint] = useState('Пошук: №, ПІБ, телефон, ТТН');
+  useEffect(() => {
+    const el = searchBoxRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const hint = (w: number) => w >= 520 ? 'Пошук: № замовлення (маркетплейс, сайт), ПІБ, телефон, ТТН'
+      : w >= 330 ? 'Пошук: №, ПІБ, телефон, ТТН'
+      : 'Пошук';
+    const ro = new ResizeObserver(entries => setSearchHint(hint(entries[0].contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const pushFilters = useCallback((patch: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(patch)) {
@@ -2459,12 +2477,12 @@ export default function AdminOrders({
                   лупи й хрестика (на телефоні .oc-filter-search має власний
                   верхній відступ). Підказка стоїть по центру, поки поле порожнє
                   й поза фокусом — див. .oc-search-input. */}
-              <div className="oc-filter-search oc-search-compact">
+              <div className="oc-filter-search oc-search-compact" ref={searchBoxRef}>
               <div style={{ position: 'relative' }}>
                 <Search size={15} color="var(--brand-blue)" style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                 <input
                   className={`oc-search-input${searchInput ? ' has-text' : ''}`}
-                  placeholder="Пошук: № замовлення (маркетплейс, сайт), ПІБ, телефон, ТТН"
+                  placeholder={searchHint}
                   title="№ замовлення або МП, ПІБ, компанія, телефон, ТТН — пошук по всій базі"
                   ref={searchInputRef}
                   value={searchInput}

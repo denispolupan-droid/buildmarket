@@ -3089,7 +3089,9 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 /* Порожнє поле тримає підказку по центру (широке поле, інакше довга
    порожнеча праворуч), а щойно в ньому працюють — текст і курсор ліворуч,
    одразу за лупою */
-.oc-search-input { text-align: center; }
+/* Страхувальна сітка, якщо підказка все-таки не вмістилась: обрізаємо
+   трикрапкою, а не на півлітері (сам текст підбирається за шириною поля) */
+.oc-search-input { text-align: center; text-overflow: ellipsis; }
 .oc-search-input:focus, .oc-search-input.has-text { text-align: left; }
 .oc-search-input:hover { border-color: var(--brand-blue); }
 .oc-search-input:focus { border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgba(72,128,184,0.18); }
