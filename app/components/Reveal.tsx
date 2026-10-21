@@ -30,11 +30,25 @@ export default function Reveal({ children, delay = 0, y = 10, duration = 1300, c
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // Елементи, що вже в кадрі при завантаженні, не ховаємо взагалі —
-    // інакше видимий контент блимнув би. Анімуються лише ті, до яких ще крутити.
-    if (el.getBoundingClientRect().top <= window.innerHeight - 60) return;
+    // Елементи, що вже в кадрі, не ховаємо взагалі — інакше видимий контент
+    // блимнув би. Анімуються лише ті, до яких ще крутити (або вище кадру).
+    const inView = () => {
+      const r = el.getBoundingClientRect();
+      return r.top <= window.innerHeight - 60 && r.bottom > 0;
+    };
     // transition тут вимкнений (animating=false), тож приховування не «згасає» кадром
-    setHidden(true);
+    if (!inView()) { setHidden(true); return; }
+    // Перехід усередині сайту (посилання з підвалу): у цю мить документ ще
+    // прокручений туди, звідки клікнули, і наверх Next стрибає вже після
+    // нашої перевірки. Тоді майже все вважало себе «в кадрі» й з'являлось
+    // без анімації (20.10.2026: /about з підвалу — 4 анімації з 48). Тому
+    // перевіряємо ще раз після стрибка: що опинилось поза кадром — ховаємо,
+    // користувач цього не бачить, а при докрутці блок з'явиться плавно.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => { if (!inView()) setHidden(true); });
+    });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
   }, []);
 
   useEffect(() => {

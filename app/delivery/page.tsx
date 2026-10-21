@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
+import Reveal from '../components/Reveal';
 import { Truck, Clock, MapPin, Package, CreditCard, Phone } from 'lucide-react';
 import { NP_BRANCHES, RZ_POINTS, RZ_CITIES } from '../../lib/site';
 
@@ -46,6 +47,7 @@ export default function DeliveryPage() {
           <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '48px' }}>Відправляємо по всій Україні щоденно, пн–пт</p>
 
           {/* Methods */}
+          <Reveal>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
 
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
@@ -122,8 +124,10 @@ export default function DeliveryPage() {
             </div>
 
           </div>
+          </Reveal>
 
           {/* Terms */}
+          <Reveal>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', marginBottom: '32px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '24px' }}>Терміни та умови</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -144,8 +148,10 @@ export default function DeliveryPage() {
               ))}
             </div>
           </div>
+          </Reveal>
 
           {/* Questions */}
+          <Reveal>
           <div style={{ background: '#1E3A5F', borderRadius: '16px', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Залишились питання щодо доставки?</div>
@@ -160,6 +166,7 @@ export default function DeliveryPage() {
               </Link>
             </div>
           </div>
+          </Reveal>
 
         </div>
       </div>

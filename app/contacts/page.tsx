@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
+import Reveal from '../components/Reveal';
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -59,6 +60,7 @@ export default function ContactsPage() {
             Працюємо з B2B клієнтами по всій Україні
           </p>
 
+          <Reveal>
           <div className="contacts-grid">
 
             {/* Info cards */}
@@ -125,8 +127,10 @@ export default function ContactsPage() {
               </div>
             ))}
           </div>
+          </Reveal>
 
           {/* CTA */}
+          <Reveal>
           <div style={{
             marginTop: '32px', background: '#1E3A5F', borderRadius: '16px',
             padding: '32px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -148,6 +152,7 @@ export default function ContactsPage() {
               Зареєструватися →
             </Link>
           </div>
+          </Reveal>
 
         </div>
       </div>

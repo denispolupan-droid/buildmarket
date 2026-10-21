@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
+import Reveal from '../../components/Reveal';
 import { ShieldCheck, Database, Share2, Cookie, UserCheck, Phone } from 'lucide-react';
 import { SELLER } from '../../../lib/company';
 
@@ -77,6 +78,7 @@ export default function PrivacyRuPage() {
             Действует в соответствии с Законом Украины «О защите персональных данных». Обновлено {UPDATED}.
           </p>
 
+          <Reveal>
           <Section icon={<ShieldCheck size={22} color="#4880B8" strokeWidth={2} />} title="Кто обрабатывает данные">
             <p style={p}>
               Владелец и распорядитель персональных данных — FIXLINE (реквизиты приведены внизу страницы).
@@ -84,7 +86,9 @@ export default function PrivacyRuPage() {
               к нам, вы даёте согласие на обработку своих данных на условиях этой политики.
             </p>
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<Database size={22} color="#4880B8" strokeWidth={2} />} title="Какие данные мы собираем и зачем">
             <Item title="Данные заказа" text="Имя, телефон, электронная почта, город и отделение или адрес доставки, состав заказа. Без них невозможно принять заказ, отправить товар и сообщить о его движении." />
             <Item title="Данные для документов" text="Для юридических лиц и ФЛП — название, код ЕГРПОУ/РНОКПП, реквизиты, нужные для счёта и расходной накладной. Хранятся столько, сколько требует налоговое законодательство для первичных документов." />
@@ -92,7 +96,9 @@ export default function PrivacyRuPage() {
             <Item title="Обращения" text="Письма, сообщения в чатах маркетплейсов и Telegram, звонки — чтобы ответить вам и решить вопрос по заказу." />
             <Item title="Технические данные" text="IP-адрес, тип браузера, страницы и источник перехода (в том числе метки рекламных кампаний). Используются для безопасности, статистики посещений и оценки эффективности рекламы." />
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<Share2 size={22} color="#4880B8" strokeWidth={2} />} title="Кому передаются данные">
             <Item title="Перевозчики" text="«Нова Пошта» и «ROZETKA Доставка» получают имя, телефон и адрес получателя, чтобы доставить отправление и сообщать о его статусе." />
             <Item title="Платёжные сервисы" text="Оплата картой проходит на стороне банка (Monobank / Universal Bank). Мы не видим и не храним реквизиты вашей карты, получаем только подтверждение платежа." />
@@ -103,20 +109,26 @@ export default function PrivacyRuPage() {
               только в случаях, прямо предусмотренных законом.
             </p>
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<Cookie size={22} color="#4880B8" strokeWidth={2} />} title="Cookie и аналитика">
             <Item title="Необходимые" text="Сессия кабинета, содержимое корзины, выбранный язык. Без них сайт не работает, согласие на них не требуется." />
             <Item title="Статистика" text="Посещаемость считается через Vercel Analytics — без cookie и без идентификации личности." />
             <Item title="Реклама" text="При переходе из Google Ads сохраняется идентификатор клика, чтобы мы видели, какие объявления приводят к заказам. Он не содержит ваших личных данных и не используется для профилирования." />
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<UserCheck size={22} color="#4880B8" strokeWidth={2} />} title="Хранение и ваши права">
             <Item title="Срок хранения" text="Данные заказов и документов — в течение сроков, установленных налоговым и бухгалтерским законодательством (не менее 3 лет). Данные кабинета — пока существует учётная запись. Технические журналы — до 12 месяцев." />
             <Item title="Защита" text="Данные хранятся на защищённых серверах с шифрованием каналов связи и разграничением доступа. Доступ имеют только сотрудники, которым он нужен для обработки заказов." />
             <Item title="Ваши права" text="Вы можете узнать, какие данные мы о вас имеем, исправить их, отозвать согласие или потребовать удаления (кроме данных, которые мы обязаны хранить по закону). Для этого напишите на info@fixline.com.ua с адреса, указанного в заказе." />
             <Item title="Изменения политики" text="Обновлённая редакция публикуется на этой странице с указанием даты. О существенных изменениях мы отдельно сообщаем зарегистрированным покупателям." />
           </Section>
+          </Reveal>
 
+          <Reveal>
           <div style={{ background: '#1E3A5F', borderRadius: '16px', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Вопросы о ваших данных?</div>
@@ -131,6 +143,7 @@ export default function PrivacyRuPage() {
               </a>
             </div>
           </div>
+          </Reveal>
 
           <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.6, margin: '28px 0 0' }}>
             Владелец персональных данных: {SELLER.name}, РНОКПП {SELLER.edrpou}, {SELLER.city}.

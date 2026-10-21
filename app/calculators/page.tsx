@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import CalculatorsClient from '../components/CalculatorsClient';
+import Reveal from '../components/Reveal';
 
 const BASE = 'https://fixline.com.ua';
 
@@ -87,22 +88,26 @@ export default function CalculatorsPage() {
         {/* Calculators */}
         <section style={{ padding: '40px 0 24px' }}>
           <div className="page-container">
-            <CalculatorsClient locale="uk" />
+            <Reveal><CalculatorsClient locale="uk" /></Reveal>
           </div>
         </section>
 
         {/* SEO / FAQ text */}
         <section style={{ padding: '24px 0 64px' }}>
           <div className="page-container" style={{ maxWidth: '860px' }}>
+            <Reveal>
             <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '20px' }}>
               Як рахуються ці формули
             </h2>
+            </Reveal>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {FAQ.map(f => (
-                <div key={f.q} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '18px 22px' }}>
+                <Reveal key={f.q}>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '18px 22px' }}>
                   <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>{f.q}</h3>
                   <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{f.a}</p>
                 </div>
+                </Reveal>
               ))}
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, marginTop: '20px' }}>

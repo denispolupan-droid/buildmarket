@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
+import Reveal from '../components/Reveal';
 import { ShieldCheck, Database, Share2, Cookie, UserCheck, Phone } from 'lucide-react';
 import { SELLER } from '../../lib/company';
 
@@ -80,6 +81,7 @@ export default function PrivacyPage() {
             Діє відповідно до Закону України «Про захист персональних даних». Оновлено {UPDATED}.
           </p>
 
+          <Reveal>
           <Section icon={<ShieldCheck size={22} color="#4880B8" strokeWidth={2} />} title="Хто обробляє дані">
             <p style={p}>
               Володілець і розпорядник персональних даних — FIXLINE (реквізити наведено внизу сторінки).
@@ -87,7 +89,9 @@ export default function PrivacyPage() {
               до нас, ви надаєте згоду на обробку своїх даних на умовах цієї політики.
             </p>
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<Database size={22} color="#4880B8" strokeWidth={2} />} title="Які дані ми збираємо і навіщо">
             <Item title="Дані замовлення" text="Ім'я, телефон, електронна пошта, місто і відділення чи адреса доставки, склад замовлення. Без них неможливо прийняти замовлення, відправити товар і повідомити про його рух." />
             <Item title="Дані для документів" text="Для юридичних осіб і ФОП — назва, код ЄДРПОУ/РНОКПП, реквізити, потрібні для рахунку й видаткової накладної. Зберігаються стільки, скільки вимагає податкове законодавство для первинних документів." />
@@ -95,7 +99,9 @@ export default function PrivacyPage() {
             <Item title="Звернення" text="Листи, повідомлення в чатах маркетплейсів і Telegram, дзвінки — щоб відповісти вам і вирішити питання по замовленню." />
             <Item title="Технічні дані" text="IP-адреса, тип браузера, сторінки й джерело переходу (у тому числі мітки рекламних кампаній). Використовуються для безпеки, статистики відвідувань і оцінки ефективності реклами." />
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<Share2 size={22} color="#4880B8" strokeWidth={2} />} title="Кому передаються дані">
             <Item title="Перевізники" text="«Нова Пошта» і «ROZETKA Доставка» отримують ім'я, телефон і адресу одержувача, щоб доставити відправлення та повідомляти про його статус." />
             <Item title="Платіжні сервіси" text="Оплата карткою проходить на стороні банку (Monobank / Universal Bank). Ми не бачимо і не зберігаємо реквізити вашої картки, отримуємо лише підтвердження платежу." />
@@ -106,20 +112,26 @@ export default function PrivacyPage() {
               лише у випадках, прямо передбачених законом.
             </p>
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<Cookie size={22} color="#4880B8" strokeWidth={2} />} title="Cookie та аналітика">
             <Item title="Необхідні" text="Сесія кабінету, вміст кошика, вибрана мова. Без них сайт не працює, згода на них не потрібна." />
             <Item title="Статистика" text="Відвідуваність рахується через Vercel Analytics — без cookie і без ідентифікації особи." />
             <Item title="Реклама" text="При переході з Google Ads зберігається ідентифікатор кліку, щоб ми бачили, які оголошення приводять до замовлень. Він не містить ваших особистих даних і не використовується для профілювання." />
           </Section>
+          </Reveal>
 
+          <Reveal>
           <Section icon={<UserCheck size={22} color="#4880B8" strokeWidth={2} />} title="Зберігання і ваші права">
             <Item title="Строк зберігання" text="Дані замовлень і документів — протягом строків, встановлених податковим і бухгалтерським законодавством (щонайменше 3 роки). Дані кабінету — поки існує обліковий запис. Технічні журнали — до 12 місяців." />
             <Item title="Захист" text="Дані зберігаються на захищених серверах із шифруванням каналів зв'язку і розмежуванням доступу. Доступ мають лише працівники, яким він потрібен для обробки замовлень." />
             <Item title="Ваші права" text="Ви можете дізнатися, які дані ми про вас маємо, виправити їх, відкликати згоду або вимагати видалення (крім даних, які ми зобов'язані зберігати за законом). Для цього напишіть на info@fixline.com.ua з адреси, вказаної в замовленні." />
             <Item title="Зміни політики" text="Оновлена редакція публікується на цій сторінці із зазначенням дати. Істотні зміни ми окремо повідомляємо зареєстрованим покупцям." />
           </Section>
+          </Reveal>
 
+          <Reveal>
           <div style={{ background: '#1E3A5F', borderRadius: '16px', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Питання щодо ваших даних?</div>
@@ -134,6 +146,7 @@ export default function PrivacyPage() {
               </a>
             </div>
           </div>
+          </Reveal>
 
           <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.6, margin: '28px 0 0' }}>
             Володілець персональних даних: {SELLER.name}, РНОКПП {SELLER.edrpou}, {SELLER.city}.

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
+import Reveal from '../../components/Reveal';
 import { RefreshCw, CheckCircle, XCircle, Phone, Clock } from 'lucide-react';
 
 const BASE = 'https://fixline.com.ua';
@@ -52,6 +53,7 @@ export default function ReturnsRuPage() {
           </p>
 
           {/* Acceptable returns */}
+          <Reveal>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
               <CheckCircle size={22} color="#16a34a" strokeWidth={2} />
@@ -70,8 +72,10 @@ export default function ReturnsRuPage() {
               ))}
             </div>
           </div>
+          </Reveal>
 
           {/* Non-returnable */}
+          <Reveal>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
               <XCircle size={22} color="#dc2626" strokeWidth={2} />
@@ -90,8 +94,10 @@ export default function ReturnsRuPage() {
               ))}
             </ul>
           </div>
+          </Reveal>
 
           {/* Process */}
+          <Reveal>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
               <RefreshCw size={22} color="#4880B8" strokeWidth={2} />
@@ -114,8 +120,10 @@ export default function ReturnsRuPage() {
               ))}
             </ol>
           </div>
+          </Reveal>
 
           {/* Timing */}
+          <Reveal>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', marginBottom: '32px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>
               <Clock size={18} color="#4880B8" strokeWidth={2} />
@@ -127,8 +135,10 @@ export default function ReturnsRuPage() {
               </div>
             </div>
           </div>
+          </Reveal>
 
           {/* Contact */}
+          <Reveal>
           <div style={{ background: '#1E3A5F', borderRadius: '16px', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Есть вопросы по возврату?</div>
@@ -143,6 +153,7 @@ export default function ReturnsRuPage() {
               </a>
             </div>
           </div>
+          </Reveal>
 
         </div>
       </div>

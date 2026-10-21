@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
+import Reveal from '../../components/Reveal';
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
 
 const BASE = 'https://fixline.com.ua';
@@ -63,6 +64,7 @@ export default function ContactsRuPage() {
             Работаем с B2B клиентами по всей Украине
           </p>
 
+          <Reveal>
           <div className="contacts-grid">
             {[
               {
@@ -127,7 +129,9 @@ export default function ContactsRuPage() {
               </div>
             ))}
           </div>
+          </Reveal>
 
+          <Reveal>
           <div style={{
             marginTop: '32px', background: '#1E3A5F', borderRadius: '16px',
             padding: '32px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -149,6 +153,7 @@ export default function ContactsRuPage() {
               Зарегистрироваться →
             </Link>
           </div>
+          </Reveal>
 
         </div>
       </div>
