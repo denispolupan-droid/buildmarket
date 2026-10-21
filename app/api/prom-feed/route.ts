@@ -5,6 +5,7 @@ import { promPrice, promPriceFromBase, resolveMarkup, promCommissionOf, type Pro
 import { mpDescription, mpDescriptionRu } from '@/lib/marketplace-description';
 import { PROM_READY_TO_SHIP_KEY, promAvailability, readyToShipEnabled } from '@/lib/prom-ready-to-ship';
 import { BRAND_COUNTRY } from '../../../lib/brand-country';
+import { feedVendor } from '../../../lib/brand-feed';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -290,6 +291,11 @@ export async function GET(request: NextRequest) {
   const readyToShip = readyToShipEnabled((rtsRow as { value?: string } | null)?.value);
 
   const characteristics = charPages.flatMap(r => (r.data ?? []) as { product_sku: string; label: string; value: string }[]);
+
+  // Бренд — у написанні, під яким Prom уже знає виробника (lib/brand-feed)
+  // — і в характеристиці «Бренд», яка йде <param>
+  for (const p of products) p.brand = feedVendor(p.brand);
+  for (const c of characteristics) if (c.label === 'Бренд') c.value = feedVendor(c.value);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 

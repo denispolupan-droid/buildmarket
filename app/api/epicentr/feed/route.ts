@@ -9,6 +9,7 @@ import { epicentrName, epicentrDescription, epicentrWeightGrams, epicentrBrand }
 import { resolveCountry } from '../../../../lib/brand-country';
 import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
 import { readEpicentrManifest, ensureEpicentrJpegs, webpRelFromImage, staticJpegUrl, dynamicJpegUrl } from '../../../../lib/epicentr-images';
+import { feedVendor } from '../../../../lib/brand-feed';
 
 /**
  * XML-фід для маркетплейсу Епіцентр (кабінет → «Імпорт товарів» / «Автооновлення»).
@@ -82,6 +83,11 @@ export async function GET(req: NextRequest) {
       characteristics:product_characteristics(label, value, sort_order)
     `).eq('is_active', true).order('sort_order').range(from, to)),
   ]);
+  // Бренд — у написанні, під яким він є в довіднику Епіцентру (lib/brand-feed)
+  for (const p of products) {
+    p.brand = feedVendor(p.brand);
+    for (const c of p.characteristics ?? []) if (c.label === 'Бренд') c.value = feedVendor(c.value);
+  }
 
   const catMap = new Map<string, Cat>(categories.map(c => [c.slug, c]));
   // Статичні JPEG для Епіцентру, які вже лежать у R2 (lib/epicentr-images)

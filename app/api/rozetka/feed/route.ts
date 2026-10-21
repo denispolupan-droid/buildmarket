@@ -5,6 +5,7 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
 import { rozetkaPrice } from '../../../../lib/marketplace-pricing';
 import { mpDescription, mpDescriptionRu } from '../../../../lib/marketplace-description';
+import { feedVendor } from '../../../../lib/brand-feed';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
@@ -62,6 +63,12 @@ export async function GET() {
       characteristics:product_characteristics(label, value, sort_order)
     `).eq('is_active', true).order('sort_order').range(from, to)),
   ]);
+  // Бренд — у написанні, до якого Rozetka вже прив'язала виробника (lib/brand-feed)
+  // — і в характеристиці «Бренд», яка йде <param>
+  for (const p of products as Product[]) {
+    p.brand = feedVendor(p.brand);
+    for (const c of p.characteristics ?? []) if (c.label === 'Бренд') c.value = feedVendor(c.value);
+  }
 
   // Ціна рахується ЄДИНОЮ формулою lib/marketplace-pricing (та сама, що на всіх
   // адмін-екранах). Тариф Smart — з адмінки (Товари Rozetka → «Умови Smart»).

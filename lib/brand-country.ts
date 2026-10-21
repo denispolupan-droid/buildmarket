@@ -3,6 +3,7 @@
  * «Країна виробника». Спільний довідник для фідів маркетплейсів (Prom, Епіцентр):
  * копія в кожному фіді вже розходилась.
  */
+import { feedVendor } from './brand-feed';
 export const BRAND_COUNTRY: Record<string, string> = {
   'AURA':        'Україна',
   'Polifarb':    'Україна',
@@ -52,5 +53,7 @@ export function resolveCountry(
   const c = (chars ?? []).find(x => x.label === 'Країна виробника' || x.label === 'Країна виробник');
   const v = c?.value?.trim();
   if (v) return v;
-  return brand ? BRAND_COUNTRY[brand] ?? null : null;
+  // Бренд у БД з 21.10.2026 — у єдиному вигляді (Aura), ключі довідника — у
+  // написанні площадок (AURA): шукаємо за обома
+  return brand ? BRAND_COUNTRY[brand] ?? BRAND_COUNTRY[feedVendor(brand)] ?? null : null;
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { escapeOrTerm } from '../../../../lib/pg-filter';
 import { fetchAllRows } from '../../../../lib/db-paginate';
+import { feedVendor } from '../../../../lib/brand-feed';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,6 +46,10 @@ export async function GET(request: NextRequest) {
     fetchAllRows((f, t) => serviceClient.from('product_stock').select('sku, price_drop, stock_status').order('id').range(f, t)),
     serviceClient.from('categories').select('id, slug, name, parent_slug, prom_section_url').order('sort_order'),
   ]);
+
+  // Бренд — у тому ж написанні, що й у наших фідах маркетплейсів: партнери вже
+  // зіставили його у своїх кабінетах (lib/brand-feed)
+  for (const p of products) p.brand = feedVendor(p.brand);
 
   const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
 

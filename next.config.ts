@@ -83,6 +83,11 @@ const nextConfig: NextConfig = {
         destination: '/shop/sale',
         permanent: true,
       },
+      // Бренд «ХАDО» (кирилиця + латинська D) перейменовано на XADO 21.10.2026
+      { source: '/shop/brand/khado', destination: '/shop/brand/xado', permanent: true },
+      { source: '/ru/shop/brand/khado', destination: '/ru/shop/brand/xado', permanent: true },
+      { source: '/shop/:category/khado', destination: '/shop/:category/xado', permanent: true },
+      { source: '/ru/shop/:category/khado', destination: '/ru/shop/:category/xado', permanent: true },
       { source: '/shop/ridki-tsvyakhy', destination: '/shop/klei-dlya-plytky', permanent: true },
       { source: '/ru/shop/ridki-tsvyakhy', destination: '/ru/shop/klei-dlya-plytky', permanent: true },
       // 15.10.2026: «Захисні покриття» злито в «Антисептики та біозахист для дерева»

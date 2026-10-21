@@ -16,6 +16,7 @@ import { batchUpdateEpicentrOffers, EPICENTR_OFFERS_BATCH, type EpicentrOfferUpd
 import { epicentrPrice } from './marketplace-pricing';
 import { epicentrAvailabilityOf } from './epicentr-availability';
 import { epicentrBrand } from './epicentr-content';
+import { feedVendor } from './brand-feed';
 
 export type EpicentrPushResult = {
   ok: boolean;
@@ -52,7 +53,8 @@ export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Pr
   const updates: EpicentrOfferUpdate[] = [];
   for (const p of rows) {
     // Бренди поза довідником Епіцентру — так само, як у фіді, не шлемо
-    if (epicentrBrand(p.brand) === null) continue;
+    // (бренд — у написанні площадки, lib/brand-feed)
+    if (epicentrBrand(feedVendor(p.brand)) === null) continue;
     const stock = Array.isArray(p.stock) ? p.stock[0] ?? null : p.stock;
     const cat = catMap.get(p.category_slug);
     const retail = Number(stock?.price_retail) || 0;
