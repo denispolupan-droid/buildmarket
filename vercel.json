@@ -27,7 +27,7 @@
     },
     {
       "path": "/api/cron/novapay-balance",
-      "schedule": "0 * * * *"
+      "schedule": "0 5,8,11,15 * * *"
     },
     {
       "path": "/api/cron/mail-registers",

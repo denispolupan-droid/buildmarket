@@ -15,10 +15,17 @@ import { cronAuthorized } from '../../../../lib/cron-auth';
 // зламалась 12.08, крон падав п'ять діб, а «Огляд» усі ці дні показував
 // стару цифру як живу. Тому алертимо, коли кеш прострочив кілька годин —
 // це вже не лаг, а зламана інтеграція.
+//
+// Розклад (vercel.json) — 4 рази на день, 8/11/14/18 за Києвом, а не щогодини:
+// кожна автентифікація — ротація одноразового токена, і кожна втрачена
+// відповідь НП убиває доступ (20.10.2026). Крон пошти (:20 після 5/8/11 UTC)
+// встигає взяти вже виданий jwt. Мертвий токен сповіщається одразу
+// (lib/novapay-api alertDeadToken), тож поріг нижче — лише для інших збоїв, і він
+// покриває нічну паузу 15→05 UTC.
 
 export const maxDuration = 300;
 
-const STALE_ALERT_MS = 3 * 60 * 60 * 1000;
+const STALE_ALERT_MS = 15 * 60 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -61,7 +68,7 @@ export async function GET(req: NextRequest) {
     const age = cached ? Date.now() - new Date(cached.fetchedAt).getTime() : Infinity;
     if (!(age < STALE_ALERT_MS)) {
       const since = cached ? new Date(cached.fetchedAt).toISOString().slice(0, 16).replace('T', ' ') : 'ніколи';
-      alertAdmin('NovaPay: живий баланс не оновлюється', `Останнє успішне оновлення: ${since} (UTC). Перевір novapay_refresh_token у app_settings — ротація токена рветься, якщо натиснути «Згенерувати» в кабінеті.`);
+      alertAdmin('NovaPay: живий баланс не оновлюється', `Останнє успішне оновлення: ${since} (UTC). Якщо НовоПей відкидає токен — окреме сповіщення «доступ API втрачено»; інакше це збій на їхньому боці або в мережі.`);
     }
   }
 
