@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { syncDraftShipmentTracking } from '../../../../lib/accounting/completion';
+import { numOrNull, type TtnSnapshot } from '../../../../lib/ttn-snapshot';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -232,10 +233,31 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Що вписали в накладну — для вікна «Деталі ЕН» (lib/ttn-snapshot.ts)
+  const snapshot: TtnSnapshot = {
+    carrier: 'np', ttn: String(ttn), created_at: new Date().toISOString(), created_by: user.email ?? null,
+    cod: ttnPayload.AfterpaymentOnGoodsCost ? Number(ttnPayload.AfterpaymentOnGoodsCost) : 0,
+    declared: numOrNull(cost),
+    weight: numOrNull(weight),
+    dims: dimensions?.width && dimensions?.height && dimensions?.length
+      ? { length: Number(dimensions.length), width: Number(dimensions.width), height: Number(dimensions.height) } : null,
+    places: seatCount,
+    payer: payerType ?? null,
+    payment_method: paymentMethod ?? null,
+    service_type: resolvedServiceType,
+    description: description ?? null,
+    sender: { phone: normalizedSenderPhone },
+    recipient: {
+      name: [lastName, firstName, middleName].filter(Boolean).join(' '),
+      phone: normalizePhone(recipientPhone),
+      address: recipientIsDoors ? (recipientAddress ?? null) : null,
+    },
+  };
+
   // Step 3: Save TTN + Ref to order (status unchanged — changes only on confirm)
   await serviceClient
     .from('orders')
-    .update({ tracking_number: ttn, tracking_ref: ref ?? null })
+    .update({ tracking_number: ttn, tracking_ref: ref ?? null, ttn_snapshot: snapshot })
     .eq('id', orderId);
   // Непроведені РН замовлення мають їхати з тим самим номером — інакше крон
   // доставки їх не знайде і продаж ніколи не проведеться.

@@ -58,6 +58,7 @@ import { estimateMarketplaceDeliveryFee, splitFeeByRevenue, type MarketplaceFeeT
 import { isPromCheapDelivery, computePromDeliveryFee } from '../../lib/prom-delivery-fee';
 import type { OrderSettlement } from '../../lib/accounting/order-settlement';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
+import TtnDetailsModal from '../components/admin/TtnDetailsModal';
 import RzDeliveryTtnModal from '../components/admin/RzDeliveryTtnModal';
 import { planMergeTtn } from '../../lib/orders/merge-ttn';
 
@@ -871,6 +872,8 @@ export default function AdminOrders({
   }, []);
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [rzTtnModal,     setRzTtnModal]     = useState<Order | null>(null);
+  // «Деталі ЕН» — перегляд того, що вписано в накладну (усі перевізники)
+  const [ttnDetailsFor,  setTtnDetailsFor]  = useState<{ id: string; number: number } | null>(null);
   // Накладна власного договору «ROZETKA Доставки» (замовлення сайту) — окреме
   // вікно й окремий роут, щоб не плутати з маркетплейсним rzTtnModal вище
   const [rzOwnTtnModal,  setRzOwnTtnModal]  = useState<Order | null>(null);
@@ -5197,6 +5200,16 @@ export default function AdminOrders({
                             );
                           })()}
                           {order.tracking_number && (
+                            <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
+                              title="Деталі ЕН: післяплата, отримувач, відділення, вага, статус"
+                              style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
+                                background: 'var(--bg-card)', color: 'var(--text-secondary)',
+                                border: '1.5px solid var(--border)', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <FileText size={14} />
+                            </button>
+                          )}
+                          {order.tracking_number && (
                             <button onClick={() => printLabel(order.id, 'ttn')} disabled={rzLabelBusy === order.id}
                               className="oc-ttn-label"
                               title="Друк етикетки НП 100×100 (PDF)"
@@ -5242,8 +5255,13 @@ export default function AdminOrders({
                             // Номер і кнопка — одним рядком: місце дозволяє
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ТТН: <strong>{order.tracking_number}</strong></div>
+                              <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
+                                title="Деталі ЕН: післяплата, отримувач, точка, вага, статус"
+                                style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                                Деталі
+                              </button>
                               <button onClick={() => printLabel(order.id, 'rozetka-delivery-ttn')} disabled={rzLabelBusy === order.id}
-                                style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                style={{ height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                 {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                               </button>
                             </div>
@@ -5311,6 +5329,11 @@ export default function AdminOrders({
                               <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ЕН: <strong>{order.tracking_number}</strong></div>
                               <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+                                <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
+                                  title="Деталі ЕН: післяплата, отримувач, точка, вага, статус"
+                                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                                  Деталі
+                                </button>
                                 <button onClick={() => printLabel(order.id, 'rz-ttn')} disabled={rzLabelBusy === order.id}
                                   style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
@@ -6377,6 +6400,9 @@ export default function AdminOrders({
         />
       )}
 
+      {ttnDetailsFor && (
+        <TtnDetailsModal orderId={ttnDetailsFor.id} orderNumber={ttnDetailsFor.number} onClose={() => setTtnDetailsFor(null)} />
+      )}
       {rzOwnTtnModal && (() => {
         const group = rzMergeGroup ?? [rzOwnTtnModal];
         const ids = group.map(o => o.id);

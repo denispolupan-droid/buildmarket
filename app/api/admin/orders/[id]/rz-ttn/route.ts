@@ -5,6 +5,7 @@ import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/comp
 import { RZ_DELIVERY_TYPE, RZ_TRACK_TYPE_DEPT, rzPhone, rzSplitName } from '../../../../../../lib/rz-delivery';
 import { getRzSender, getRzBox, rzCreateTrack, rzLabel, rzDeleteTrack, rzSearchCities, rzDepartments, RzError } from '../../../../../../lib/rz-delivery-api';
 import { mergedDescription } from '../../../../../../lib/orders/merge-ttn';
+import type { TtnSnapshot } from '../../../../../../lib/ttn-snapshot';
 
 /**
  * Знайти city_ref за назвою міста і UUID точки видачі. Потрібно для замовлень
@@ -94,7 +95,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const user = await requireAdmin();
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
   const body = await req.json().catch(() => ({})) as {
@@ -248,14 +250,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Вартість доставки і комісія — на ОСНОВНОМУ замовленні: проводки по ЕН
     // ідемпотентні за номером (rz-payment-fee:<ЕН>), тож дублювати їх на решту
     // не можна — витрата подвоїлась би.
+    // Що вписали в накладну — перевізник за номером цього не віддає (lib/ttn-snapshot.ts)
+    const snapshot: TtnSnapshot = {
+      carrier: 'rz_delivery', ttn: track.track_id, created_at: new Date().toISOString(), created_by: user.email ?? null,
+      cod: codTotal, cod_manual: body.codAmount != null, declared: insurance,
+      weight, dims: { length, width, height },
+      places: Number(body.places) > 0 ? Number(body.places) : 1,
+      payer: deliveryPayer, description,
+      sender: {
+        name: [sender.last_name, sender.first_name, sender.middle_name].filter(Boolean).join(' '),
+        phone: sender.phone, city: sender.city_name ?? null, point: sender.department_label ?? null,
+      },
+      recipient: {
+        name: [name.last_name, name.first_name, name.middle_name].filter(Boolean).join(' '),
+        phone, city: (order.delivery_city_name as string | null) ?? null, point: (order.delivery_address as string | null) ?? null,
+      },
+      orders: ids.length > 1 ? orders!.map(o => o.order_number as number) : null,
+      result: { delivery_cost: track.shipping_cost ?? null, payment_fee: track.payment_fee ?? null, delivery_date: track.delivery_date ?? null },
+    };
     await db.from('orders').update({
       tracking_number:   track.track_id,
       rz_delivery_cost:  track.shipping_cost ?? null,
       rz_payment_fee:    track.payment_fee ?? null,
       rz_delivery_payer: deliveryPayer,
+      ttn_snapshot:      snapshot,
     }).eq('id', order.id);
     if (ids.length > 1) {
-      await db.from('orders').update({ tracking_number: track.track_id, rz_delivery_payer: deliveryPayer })
+      await db.from('orders').update({ tracking_number: track.track_id, rz_delivery_payer: deliveryPayer, ttn_snapshot: snapshot })
         .in('id', ids.filter(x => x !== order.id));
     }
     // Той самий номер — на непроведені РН, інакше синк доставки їх не знайде

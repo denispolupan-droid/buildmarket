@@ -6,6 +6,8 @@ import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
 import { mergedDescription } from '../../../../../../lib/orders/merge-ttn';
+import { numOrNull, type TtnSnapshot } from '../../../../../../lib/ttn-snapshot';
+import type { RozetkaOrder } from '../../../../../../lib/rozetka-api';
 
 /**
  * Створення накладної для доставки в точку видачі Rozetka.
@@ -230,7 +232,25 @@ export async function POST(
 
     const warnings: string[] = [];
     if (ttn.ttn) {
-      await db.from('orders').update({ tracking_number: ttn.ttn }).in('id', ids);
+      // Що вписали в накладну — Seller API за номером вагу й габарити не віддає (lib/ttn-snapshot.ts)
+      const dlv = ((order.rozetka_data ?? {}) as { delivery?: RozetkaOrder['delivery'] }).delivery ?? null;
+      const snapshot: TtnSnapshot = {
+        carrier: 'rozetka_delivery', ttn: ttn.ttn, created_at: new Date().toISOString(), created_by: user.email ?? null,
+        cod: codAmount, cod_manual: body.codAmount != null,
+        declared: numOrNull(ttn.declared_price),
+        weight, dims: { length, width, height },
+        places: Number(body.places) > 0 ? Number(body.places) : 1,
+        payer: 'sender', description: body.description ?? description,
+        sender: { name: sender.name, phone: sender.phones?.[0] ?? null, point: sender.address ?? null },
+        recipient: {
+          name: dlv?.recipient_title ?? null, phone: dlv?.recipient_phone ?? null,
+          city: dlv?.city?.title ?? dlv?.city?.city_name ?? null,
+          point: (order.delivery_address as string | null) ?? null,
+        },
+        orders: ids.length > 1 ? orders!.map(o => o.order_number as number) : null,
+        result: { delivery_cost: numOrNull(ttn.delivery_price) },
+      };
+      await db.from('orders').update({ tracking_number: ttn.ttn, ttn_snapshot: snapshot }).in('id', ids);
       // Той самий номер — на непроведені РН, інакше синк доставки їх не знайде
       for (const oid of ids) await syncDraftShipmentTracking(oid, ttn.ttn);
 
