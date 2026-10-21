@@ -5,7 +5,8 @@ import { Resend } from 'resend';
 import { buildVidatkovaHtml } from '../../../../../../../lib/vidatkova-html';
 import { buildVidatkovaPdf } from '../../../../../../../lib/vidatkova-pdf';
 import { SELLER } from '../../../../../../../lib/company';
-import { resolveVidatkovaBuyer } from '../../../../../../../lib/vidatkova-buyer';
+import { loadVidatkova, vidatkovaRenderParams } from '../../../../../../../lib/vidatkova-doc';
+import { formatDocDate } from '../../../../../../../lib/doc-format';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -20,60 +21,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const body = await req.json() as { email?: string };
 
-  const [{ data: doc }, { data: lines }] = await Promise.all([
-    db.from('acc_documents').select('*').eq('id', id).single(),
-    db.from('acc_document_lines').select('*').eq('document_id', id).order('sort_order'),
-  ]);
-
-  if (!doc || doc.doc_type !== 'sale') return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-  const skus = (lines ?? []).map((l: { sku: string }) => l.sku).filter(Boolean);
-  const { data: products } = skus.length
-    ? await db.from('products').select('sku, name, brand').in('sku', skus)
-    : { data: [] };
-  const nameMap = new Map((products ?? []).map(p => [p.sku, `${p.brand} ${p.name}`.trim()]));
-
-  const buyer = await resolveVidatkovaBuyer(db, doc);
+  const data = await loadVidatkova(db, id);
+  if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { doc, buyer } = data;
 
   const toEmail = body.email?.trim() || buyer.email;
   if (!toEmail) return NextResponse.json({ error: 'Email не вказано' }, { status: 400 });
 
-  const printLines = (lines ?? []).map((l: { sku: string; qty: number; price: number }) => ({
-    sku: l.sku,
-    name: nameMap.get(l.sku) || l.sku,
-    qty: Number(l.qty),
-    price: Number(l.price ?? 0),
-  }));
-
-  const total = printLines.reduce((s, l) => s + l.qty * l.price, 0);
-
-  const buildParams = {
-    docNumber: doc.doc_number,
-    docDate: doc.doc_date,
-    lines: printLines,
-    total,
-    sellerName:    SELLER.name,
-    sellerEdrpou:  SELLER.edrpou,
-    sellerAddress: SELLER.address,
-    sellerCity:    SELLER.city,
-    sellerBank:    SELLER.bank,
-    sellerIban:    SELLER.iban,
-    buyerName:     buyer.name,
-    buyerPhone:    buyer.phone,
-    buyerEdrpou:   buyer.edrpou,
-    buyerAddress:  buyer.address,
-    orderNumber:   buyer.orderNumber,
-    signatoryName: SELLER.signatory,
-    buyerSignatoryName: buyer.signatory,
-    printUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/vidatkova/${id}`,
-  };
+  const buildParams = vidatkovaRenderParams(data);
 
   const [html, pdfBuffer] = await Promise.all([
-    Promise.resolve(buildVidatkovaHtml(buildParams)),
+    Promise.resolve(buildVidatkovaHtml({ ...buildParams, printUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/vidatkova/${id}` })),
     buildVidatkovaPdf(buildParams),
   ]);
 
-  const date = new Date(doc.doc_date).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
+  const date = formatDocDate(doc.doc_date);
 
   const { error: sendErr } = await resend.emails.send({
     from:    `${SELLER.name} <${process.env.RESEND_FROM_EMAIL ?? process.env.ADMIN_EMAIL ?? 'noreply@buildmarket.com.ua'}>`,

@@ -6,6 +6,7 @@
 // хоча ФОП/ТОВ-покупцям оригінал потрібен саме з ними.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Signer } from './signatory';
 
 export type VidatkovaBuyer = {
   name: string;
@@ -14,8 +15,8 @@ export type VidatkovaBuyer = {
   phone: string | null;
   email: string | null;
   orderNumber: number | null;
-  /** «Посада ПІБ» керівника з картки контрагента — у рядок «Отримав(ла)». */
-  signatory: string | null;
+  /** Керівник з картки контрагента — у блок «Отримав(ла)». */
+  signer: Signer | null;
 };
 
 export async function resolveVidatkovaBuyer(
@@ -57,8 +58,8 @@ export async function resolveVidatkovaBuyer(
     email:   order?.email ?? null,
     orderNumber: order?.order_number ?? null,
     // Посада без ПІБ нічого не дає — підставляємо лише коли є прізвище.
-    signatory: customer?.signatory_name?.trim()
-      ? [customer.signatory_position?.trim(), customer.signatory_name.trim()].filter(Boolean).join(' ')
+    signer: customer?.signatory_name?.trim()
+      ? { position: customer.signatory_position?.trim() || null, name: customer.signatory_name.trim() }
       : null,
   };
 }

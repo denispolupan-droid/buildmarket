@@ -5,6 +5,8 @@ import { resolveInvoiceBuyer, type InvoiceBuyer } from '../../../lib/invoice-buy
 import { useState, useRef, useEffect } from 'react';
 import { Printer, FileSpreadsheet, Mail, FileDown, Copy, Check, CreditCard } from 'lucide-react';
 import InvoiceMessengerButtons, { copyText } from '../../components/InvoiceMessengerButtons';
+import { formatMoney, formatQty, formatDocDate, taxIdLabel } from '../../../lib/doc-format';
+import { shortFio, type Signer } from '../../../lib/signatory';
 
 function formatIban(raw: string) {
   const s = raw.replace(/\s/g, '');
@@ -33,8 +35,8 @@ type Order = {
 };
 
 export default function InvoicePrint({
-  order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signatoryName = '', isStaff = false, buyer, showDelivery = true, showTerms = true,
-  editor = null,
+  order, bankRecipient, bankIban, bankName, bankEdrpou, bankAddress = '', signer = null, isStaff = false, buyer, showDelivery = true, showTerms = true,
+  editor = null, docDate, purpose, sellerTaxStatus, qrSvg = null,
 }: {
   order: Order;
   bankRecipient: string;
@@ -42,7 +44,14 @@ export default function InvoicePrint({
   bankName: string;
   bankEdrpou: string;
   bankAddress?: string;
-  signatoryName?: string;
+  signer?: Signer | null;
+  /** Дата рахунку за Києвом («2026-10-20») — рахується на сервері. */
+  docDate: string;
+  /** Призначення платежу — той самий рядок, що зашитий у QR. */
+  purpose: string;
+  sellerTaxStatus: string;
+  /** SVG QR-коду НБУ для оплати (згенерований на сервері); null — без QR. */
+  qrSvg?: string | null;
   isStaff?: boolean;
   /** Редактор позицій; передається зі сторінки тільки адміну */
   editor?: React.ReactNode;
@@ -57,7 +66,10 @@ export default function InvoicePrint({
   const [copiedKey, setCopiedKey]         = useState<string | null>(null);
 
   // ── Онлайн-оплата карткою (Monobank) ──
-  const amountDue = Math.max(0, Number(order.total_price) - Number(order.amount_paid ?? 0));
+  // Той самий розрахунок, що й invoiceAmountDue на сервері (і в QR): залишок, округлений до копійки.
+  const rawDue = Number(order.total_price) - Number(order.amount_paid ?? 0);
+  const amountDue = rawDue > 0.009 ? Math.round(rawDue * 100) / 100 : 0;
+  const partlyPaid = amountDue > 0 && amountDue < Number(order.total_price);
   const canPayOnline = amountDue > 0.009 && order.status !== 'cancelled';
   const [paying, setPaying]       = useState(false);
   const [justPaid, setJustPaid]   = useState(false);
@@ -160,12 +172,13 @@ export default function InvoicePrint({
     URL.revokeObjectURL(url);
   }
 
-  const date = new Date(order.created_at).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
+  const date = formatDocDate(docDate);
+  const signerName = signer?.name ? shortFio(signer.name) : '';
   const ibanDisplay  = formatIban(bankIban);
   const b            = buyer ?? resolveInvoiceBuyer(order, null);
   const total        = Number(order.total_price);
   const dueDateStr   = order.payment_due_date
-    ? new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' })
+    ? formatDocDate(order.payment_due_date)
     : null;
 
   const deliveryAddr = [order.delivery_city_name, order.delivery_address].filter(Boolean).join(', ');
@@ -203,6 +216,9 @@ export default function InvoicePrint({
           .inv-toolbar-row { justify-content: center !important; }
           .inv-toolbar-row a, .inv-toolbar-row button { flex: 1 1 auto; justify-content: center; }
           .inv-mailform { width: 100% !important; box-sizing: border-box; }
+          /* QR під реквізитами, по центру — на вузькому екрані поруч не влазить */
+          .inv-sample { flex-direction: column; align-items: stretch !important; }
+          .inv-qr { align-self: center; }
         }
       `}</style>
 
@@ -283,9 +299,9 @@ export default function InvoicePrint({
         <div className="inv-toolbar-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {canPayOnline && !justPaid && (
             <button onClick={payOnline} disabled={paying}
-              title={`До сплати: ${amountDue.toFixed(2)} грн`}
+              title={`До сплати: ${formatMoney(amountDue)} грн`}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '44px', padding: '0 20px', borderRadius: '10px', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: paying ? 'wait' : 'pointer', boxShadow: '0 3px 12px rgba(21,128,61,0.35)', opacity: paying ? 0.7 : 1 }}>
-              <CreditCard size={15} /> {paying ? 'Перехід до оплати…' : `Сплатити ${amountDue.toFixed(2)} ₴`}
+              <CreditCard size={15} /> {paying ? 'Перехід до оплати…' : `Сплатити ${formatMoney(amountDue)} ₴`}
             </button>
           )}
           {isStaff && (
@@ -362,7 +378,8 @@ export default function InvoicePrint({
             }}>
               Зразок заповнення платіжного доручення
             </div>
-            <div style={{ background: '#F4F8FD', padding: '10px 14px 12px' }}>
+            <div className="inv-sample" style={{ background: '#F4F8FD', padding: '10px 14px 12px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap', marginBottom: '8px' }}>
                 <div>
                   <div style={{ fontSize: '9px', color: '#6B7E99', marginBottom: '2px', letterSpacing: '0.04em' }}>ОДЕРЖУВАЧ</div>
@@ -370,7 +387,7 @@ export default function InvoicePrint({
                 </div>
                 {bankEdrpou && (
                   <div>
-                    <div style={{ fontSize: '9px', color: '#6B7E99', marginBottom: '2px', letterSpacing: '0.04em' }}>ЄДРПОУ / ДРФО</div>
+                    <div style={{ fontSize: '9px', color: '#6B7E99', marginBottom: '2px', letterSpacing: '0.04em' }}>{taxIdLabel(bankEdrpou).toUpperCase()}</div>
                     <div style={{ fontSize: '12px', fontWeight: 700, color: '#111' }}>
                       <CopyTap k="edrpou" value={bankEdrpou}>{bankEdrpou}</CopyTap>
                     </div>
@@ -392,6 +409,33 @@ export default function InvoicePrint({
                   </CopyTap>
                 </div>
               </div>
+              {/* Сума і призначення — теж одним натисканням: саме в призначенні найчастіше помиляються */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '9px', color: '#6B7E99', marginBottom: '2px', letterSpacing: '0.04em' }}>
+                  {partlyPaid ? 'ЗАЛИШОК ДО СПЛАТИ' : 'СУМА ДО СПЛАТИ'}
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#111' }}>
+                  {amountDue > 0
+                    ? <CopyTap k="amount" value={amountDue.toFixed(2)}>{formatMoney(amountDue)} грн</CopyTap>
+                    : <span style={{ color: '#15803D' }}>Оплачено</span>}
+                </div>
+              </div>
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '9px', color: '#6B7E99', marginBottom: '2px', letterSpacing: '0.04em' }}>ПРИЗНАЧЕННЯ ПЛАТЕЖУ</div>
+                <div style={{ fontSize: '11.5px', color: '#222' }}>
+                  <CopyTap k="purpose" value={purpose}>{purpose}</CopyTap>
+                </div>
+              </div>
+              </div>
+              {/* QR НБУ: банківський застосунок сам заповнить реквізити, суму й призначення */}
+              {qrSvg && (
+                <div className="inv-qr" style={{ flex: '0 0 auto', width: '132px', textAlign: 'center' }}>
+                  <div style={{ width: '132px', height: '132px', background: '#fff' }} dangerouslySetInnerHTML={{ __html: qrSvg }} />
+                  <div style={{ fontSize: '9px', color: '#6B7E99', marginTop: '3px', lineHeight: 1.35 }}>
+                    Скануйте камерою в застосунку банку
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -408,10 +452,11 @@ export default function InvoicePrint({
                 <td style={{ padding: '3px 0', width: '130px', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Постачальник:</td>
                 <td style={{ padding: '3px 0', verticalAlign: 'top', border: 'none', lineHeight: '1.75' }}>
                   <strong>{bankRecipient}</strong>
-                  {bankEdrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ДРФО: <CopyTap k="edrpou2" value={bankEdrpou}>{bankEdrpou}</CopyTap></span></>}
+                  {bankEdrpou && <><br /><span style={{ color: '#555' }}>{taxIdLabel(bankEdrpou)}: <CopyTap k="edrpou2" value={bankEdrpou}>{bankEdrpou}</CopyTap></span></>}
                   {bankAddress && <><br /><span style={{ color: '#555' }}>Адреса: {bankAddress}</span></>}
                   {bankName && <><br /><span style={{ color: '#555' }}>Банк: {bankName}</span></>}
                   {bankIban && <><br /><span style={{ color: '#555' }}>IBAN: <CopyTap k="iban2" value={bankIban.replace(/\s/g, '')}><span style={{ fontFamily: "'Menlo', 'Monaco', 'Consolas', 'Lucida Console', monospace", color: '#1E3A5F', fontWeight: 600, overflowWrap: 'anywhere' }}>{ibanDisplay}</span></CopyTap></span></>}
+                  {sellerTaxStatus && <><br /><span style={{ color: '#555' }}>{sellerTaxStatus}</span></>}
                 </td>
               </tr>
               <tr><td colSpan={2} style={{ border: 'none', padding: '2px 0' }}><hr style={{ border: 'none', borderTop: '1px dashed #ccc' }} /></td></tr>
@@ -419,7 +464,7 @@ export default function InvoicePrint({
                 <td style={{ padding: '3px 0', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Покупець:</td>
                 <td style={{ padding: '3px 0', verticalAlign: 'top', border: 'none' }}>
                   {b.name}
-                  {b.edrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ІПН: {b.edrpou}</span></>}
+                  {b.edrpou && <><br /><span style={{ color: '#555' }}>{taxIdLabel(b.edrpou)}: {b.edrpou}</span></>}
                   {b.address && <><br /><span style={{ color: '#555' }}>Адреса: {b.address}</span></>}
                   {b.contactPerson && <><br />{b.contactPerson}</>}
                   {b.phone && <><br /><span style={{ color: '#555' }}>Тел.: {b.phone}</span></>}
@@ -463,17 +508,17 @@ export default function InvoicePrint({
                   <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'center' }}>{idx + 1}</td>
                   <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center', fontFamily: 'monospace', fontSize: '10px', color: '#444' }}>{item.sku}</td>
                   <td style={{ border: '1px solid #ccc', padding: '5px 8px' }}>{[item.brand, item.name].filter(Boolean).join(' ')}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'right' }}>{item.qty}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'center', color: '#555' }}>шт</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right' }}>{Number(item.price).toFixed(2)}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 700 }}>{(item.qty * Number(item.price)).toFixed(2)}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'right' }}>{formatQty(Number(item.qty))}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'center', color: '#555' }}>шт.</td>
+                  <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatMoney(Number(item.price))}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>{formatMoney(item.qty * Number(item.price))}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 <td colSpan={6} style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontSize: '11px', color: '#555' }}>Всього без ПДВ:</td>
-                <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 700 }}>{total.toFixed(2)}</td>
+                <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>{formatMoney(total)}</td>
               </tr>
             </tfoot>
           </table>
@@ -481,30 +526,37 @@ export default function InvoicePrint({
 
           {/* 6. Sum summary */}
           <div style={{ fontSize: '11px', color: '#333', marginBottom: '2px' }}>
-            Всього найменувань: {order.items.length}, на суму <strong>{total.toFixed(2)} грн</strong>
+            Всього найменувань: {order.items.length}, на суму <strong>{formatMoney(total)} грн</strong>
           </div>
-          <div style={{ fontSize: '11px', color: '#333', marginBottom: '20px', fontStyle: 'italic' }}>
-            {hryvniaInWords(total)}
-          </div>
-
-          {/* 7. Payment purpose */}
-          <div style={{ fontSize: '11px', padding: '7px 10px', border: '1px solid #D1D5DB', borderRadius: '3px', background: '#F9FAFB', marginBottom: '22px', color: '#333' }}>
-            <strong>Призначення платежу:</strong>{' '}
-            Оплата за замовлення №{order.order_number} від {date}. Без ПДВ.
+          <div style={{ fontSize: '11px', color: '#333', marginBottom: '20px', fontWeight: 700 }}>
+            {hryvniaInWords(total)}, без ПДВ
           </div>
 
-          {/* 8. Signature */}
+          {/* Призначення платежу — лише у зразку платіжки зверху (окрема рамка тут дублювала його) */}
+          {partlyPaid && (
+            <div style={{ fontSize: '11px', color: '#333', margin: '-10px 0 18px' }}>
+              Сплачено: {formatMoney(total - amountDue)} грн. Залишок до сплати: <strong>{formatMoney(amountDue)} грн</strong>.
+            </div>
+          )}
+          <div style={{ height: '8px' }} />
+
+          {/* 7. Signature */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '12px', color: '#111' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ display: 'flex', gap: '40px', alignItems: 'baseline' }}>
-                <span>Виписав(ла):</span>
-                <span style={{ borderBottom: '1px solid #000', minWidth: '160px', display: 'inline-block', textAlign: 'center' }}>
-                  {signatoryName || ' '}
-                </span>
+            {/* Як у видатковій: посада, вільна лінія під підпис, ПІБ праворуч від неї */}
+            <div style={{ minWidth: '280px' }}>
+              <div style={{ marginBottom: '6px' }}>
+                <strong>Виписав(ла):</strong>{signer?.position ? <>&nbsp;&nbsp;{signer.position}</> : null}
               </div>
-              {!signatoryName && (
-                <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '3px', marginLeft: '80px' }}>(підпис, прізвище)</div>
-              )}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ borderBottom: '1px solid #000', height: '20px' }} />
+                  <div style={{ fontSize: '9.5px', color: '#9CA3AF', marginTop: '2px', textAlign: 'center' }}>(підпис)</div>
+                </div>
+                <div style={{ flex: signerName ? '0 0 auto' : 1 }}>
+                  <div style={{ borderBottom: signerName ? 'none' : '1px solid #000', height: '20px', lineHeight: '20px', whiteSpace: 'nowrap' }}>{signerName}</div>
+                  <div style={{ fontSize: '9.5px', color: '#9CA3AF', marginTop: '2px', textAlign: 'center' }}>{signerName ? ' ' : '(прізвище, ініціали)'}</div>
+                </div>
+              </div>
             </div>
           </div>
 

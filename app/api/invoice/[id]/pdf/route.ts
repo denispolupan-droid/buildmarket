@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildInvoicePdf } from '../../../../../lib/invoice-pdf';
 import { loadInvoiceView } from '../../../../../lib/invoice-buyer';
-import { SELLER } from '../../../../../lib/company';
+import { SELLER, SELLER_SIGNER } from '../../../../../lib/company';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     bankName:      SELLER.bank,
     bankEdrpou:    SELLER.edrpou,
     bankAddress:   SELLER.address,
-    signatoryName: SELLER.signatory,
+    signer:        SELLER_SIGNER,
   });
 
   const asciiName = `FIXLINE_invoice_${order.order_number}.pdf`;

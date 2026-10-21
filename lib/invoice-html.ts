@@ -1,5 +1,9 @@
 import { hryvniaInWords } from "./number-to-words";
 import { resolveInvoiceBuyer, type InvoiceBuyer } from './invoice-buyer';
+import { sellerTaxStatus } from './company';
+import { formatMoney, formatQty, formatDocDate, taxIdLabel } from './doc-format';
+import { invoiceAmountDue, invoiceDate, invoicePurpose } from './invoice-doc';
+import { shortFio, type Signer } from './signatory';
 type Item = { sku: string; name: string; brand?: string | null; qty: number; price: number };
 
 type Order = {
@@ -13,6 +17,7 @@ type Order = {
   delivery_city_name?: string | null;
   items: Item[];
   total_price: number;
+  amount_paid?: number | null;
   payment_due_date?: string | null;
   channel_code?: string | null;
   prom_order_id?: string | number | null;
@@ -52,7 +57,7 @@ export function buildInvoiceHtml(params: {
   bankName: string;
   bankEdrpou: string;
   bankAddress?: string;
-  signatoryName?: string;
+  signer?: Signer | null;
   invoiceUrl?: string;
   /** Якщо передано — лист отримує сопровідний блок (подяка) зверху та промо-блок (акції/каталог/контакти) знизу. */
   siteUrl?: string;
@@ -61,36 +66,37 @@ export function buildInvoiceHtml(params: {
   showTerms?: boolean;
 }): string {
   const { order, bankRecipient, bankIban, bankName, bankEdrpou,
-          bankAddress = '', signatoryName = '', invoiceUrl, siteUrl, buyer, showDelivery = true, showTerms = true } = params;
+          bankAddress = '', signer, invoiceUrl, siteUrl, buyer, showDelivery = true, showTerms = true } = params;
 
-  const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  });
+  const docDate = invoiceDate(order);
+  const date = formatDocDate(docDate);
   const ibanDisplay = formatIban(bankIban);
   const b           = buyer ?? resolveInvoiceBuyer(order, null);
   const buyerName   = b.name;
   const total       = Number(order.total_price);
+  const amountDue   = invoiceAmountDue(order);
+  const partlyPaid  = amountDue > 0 && amountDue < total;
   const items       = order.items as Item[];
 
-  const dueDateStr = order.payment_due_date
-    ? new Date(order.payment_due_date).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' })
-    : null;
+  const dueDateStr = order.payment_due_date ? formatDocDate(order.payment_due_date) : null;
+  const signerName = signer?.name ? shortFio(signer.name) : '';
+  const signerPosition = signer?.position?.trim() ?? '';
 
   const deliveryAddr = [order.delivery_city_name, order.delivery_address].filter(Boolean).join(', ');
 
   const itemRows = items.map((item, i) => {
     const name = esc([item.brand, item.name].filter(Boolean).join(' '));
-    const sum  = (item.qty * Number(item.price)).toFixed(2);
+    const sum  = formatMoney(item.qty * Number(item.price));
     const bg   = i % 2 === 1 ? '#F8FAFC' : '#ffffff';
     return `
       <tr style="background:${bg};">
         <td style="border:1px solid #ccc;padding:5px 6px;text-align:center;font-size:11px;">${i + 1}</td>
         <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-family:monospace;font-size:10px;color:#444;">${esc(item.sku)}</td>
         <td style="border:1px solid #ccc;padding:5px 8px;font-size:11px;">${name}</td>
-        <td style="border:1px solid #ccc;padding:5px 6px;text-align:right;font-size:11px;">${item.qty}</td>
-        <td style="border:1px solid #ccc;padding:5px 6px;text-align:center;font-size:11px;color:#555;">шт</td>
-        <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-size:11px;">${Number(item.price).toFixed(2)}</td>
-        <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-size:11px;font-weight:700;">${sum}</td>
+        <td style="border:1px solid #ccc;padding:5px 6px;text-align:right;font-size:11px;">${formatQty(Number(item.qty))}</td>
+        <td style="border:1px solid #ccc;padding:5px 6px;text-align:center;font-size:11px;color:#555;">шт.</td>
+        <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-size:11px;white-space:nowrap;">${formatMoney(Number(item.price))}</td>
+        <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-size:11px;font-weight:700;white-space:nowrap;">${sum}</td>
       </tr>`;
   }).join('');
 
@@ -217,7 +223,7 @@ ${coverBlock}
             <div style="font-size:12px;font-weight:700;color:#111;">${bankRecipient}</div>
           </td>
           ${bankEdrpou ? `<td style="vertical-align:top;">
-            <div style="font-size:9px;color:#6B7E99;margin-bottom:2px;letter-spacing:0.04em;">ЄДРПОУ / ДРФО</div>
+            <div style="font-size:9px;color:#6B7E99;margin-bottom:2px;letter-spacing:0.04em;">${taxIdLabel(bankEdrpou).toUpperCase()}</div>
             <div style="font-size:12px;font-weight:700;color:#111;">${bankEdrpou}</div>
           </td>` : ''}
         </tr>
@@ -230,6 +236,14 @@ ${coverBlock}
         <div style="font-size:9px;color:#6B7E99;margin-bottom:3px;letter-spacing:0.04em;">РАХУНОК (IBAN)</div>
         <div style="font-family:'Menlo','Monaco','Consolas','Lucida Console',monospace;font-size:15px;font-weight:700;
                     color:#1E3A5F;letter-spacing:0.08em;">${ibanDisplay}</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div style="font-size:9px;color:#6B7E99;margin-bottom:2px;letter-spacing:0.04em;">${partlyPaid ? 'ЗАЛИШОК ДО СПЛАТИ' : 'СУМА ДО СПЛАТИ'}</div>
+        <div style="font-size:14px;font-weight:700;color:#111;">${amountDue > 0 ? `${formatMoney(amountDue)} грн` : 'Оплачено'}</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div style="font-size:9px;color:#6B7E99;margin-bottom:2px;letter-spacing:0.04em;">ПРИЗНАЧЕННЯ ПЛАТЕЖУ</div>
+        <div style="font-size:11.5px;color:#222;">${esc(invoicePurpose(order))}</div>
       </div>
     </div>
   </div>
@@ -247,10 +261,11 @@ ${coverBlock}
       <td style="padding:3px 0;width:120px;font-weight:700;vertical-align:top;">Постачальник:</td>
       <td style="padding:3px 0;vertical-align:top;line-height:1.75;">
         <strong>${bankRecipient}</strong>
-        ${bankEdrpou ? `<br/><span style="color:#555;font-size:11px;">ЄДРПОУ/ДРФО: ${bankEdrpou}</span>` : ''}
+        ${bankEdrpou ? `<br/><span style="color:#555;font-size:11px;">${taxIdLabel(bankEdrpou)}: ${bankEdrpou}</span>` : ''}
         ${bankAddress ? `<br/><span style="color:#555;font-size:11px;">Адреса: ${bankAddress}</span>` : ''}
         ${bankName ? `<br/><span style="color:#555;font-size:11px;">Банк: ${bankName}</span>` : ''}
         ${bankIban ? `<br/><span style="color:#555;font-size:11px;">IBAN: <span style="font-family:'Menlo','Monaco','Consolas','Lucida Console',monospace;color:#1E3A5F;font-weight:600;">${ibanDisplay}</span></span>` : ''}
+        <br/><span style="color:#555;font-size:11px;">${sellerTaxStatus(docDate)}</span>
       </td>
     </tr>
     <tr><td colspan="2" style="padding:3px 0;"><hr style="border:none;border-top:1px dashed #ccc;"/></td></tr>
@@ -258,7 +273,7 @@ ${coverBlock}
       <td style="padding:3px 0;font-weight:700;vertical-align:top;">Покупець:</td>
       <td style="padding:3px 0;vertical-align:top;">
         ${esc(b.name)}
-        ${b.edrpou ? `<br/><span style="color:#555;">ЄДРПОУ/ІПН: ${esc(b.edrpou)}</span>` : ''}
+        ${b.edrpou ? `<br/><span style="color:#555;">${taxIdLabel(b.edrpou)}: ${esc(b.edrpou)}</span>` : ''}
         ${b.address ? `<br/><span style="color:#555;">Адреса: ${esc(b.address)}</span>` : ''}
         ${b.contactPerson ? `<br/>${esc(b.contactPerson)}` : ''}
         ${b.phone ? `<br/><span style="color:#555;font-size:11px;">Тел.: ${esc(b.phone)}</span>` : ''}
@@ -296,34 +311,29 @@ ${coverBlock}
     <tfoot>
       <tr>
         <td colspan="6" style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-size:11px;color:#555;">Всього без ПДВ:</td>
-        <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:700;font-size:11px;">${total.toFixed(2)}</td>
+        <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:700;font-size:11px;white-space:nowrap;">${formatMoney(total)}</td>
       </tr>
     </tfoot>
   </table>
 
   <!-- Sum summary -->
   <div style="font-size:11px;color:#333;margin-bottom:2px;">
-    Всього найменувань: ${items.length}, на суму <strong>${total.toFixed(2)} грн</strong>
+    Всього найменувань: ${items.length}, на суму <strong>${formatMoney(total)} грн</strong>
   </div>
-  <div style="font-size:11px;color:#333;margin-bottom:18px;font-style:italic;">
-    ${hryvniaInWords(total)}
+  <div style="font-size:11px;color:#333;margin-bottom:18px;font-weight:700;">
+    ${hryvniaInWords(total)}, без ПДВ
   </div>
 
-  <!-- Payment purpose -->
-  <div style="font-size:11px;padding:7px 10px;border:1px solid #D1D5DB;border-radius:3px;
-              background:#F9FAFB;margin-bottom:20px;color:#333;">
-    <strong>Призначення платежу:</strong>
-    Оплата за замовлення №${order.order_number} від ${date}. Без ПДВ.
-  </div>
+  ${partlyPaid ? `<div style="font-size:11px;color:#333;margin:-10px 0 18px;">
+    Сплачено: ${formatMoney(total - amountDue)} грн. Залишок до сплати: <strong>${formatMoney(amountDue)} грн</strong>.
+  </div>` : ''}
 
   <!-- Signature -->
   <div style="display:flex;justify-content:flex-end;font-size:12px;">
     <div>
-      <span>Виписав(ла):&nbsp;&nbsp;</span>
-      <span style="border-bottom:1px solid #000;display:inline-block;min-width:150px;text-align:center;padding-bottom:1px;">
-        ${signatoryName || '&nbsp;'}
-      </span>
-      ${!signatoryName ? `<div style="font-size:10px;color:#9CA3AF;text-align:right;margin-top:2px;">(підпис, прізвище)</div>` : ''}
+      <span>Виписав(ла):&nbsp;&nbsp;${esc(signerPosition)}&nbsp;&nbsp;</span>
+      <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;">&nbsp;</span>
+      ${signerName ? `<span>&nbsp;&nbsp;${esc(signerName)}</span>` : ''}
     </div>
   </div>
 
@@ -336,8 +346,7 @@ ${promoBlock}
 <!-- Email footer -->
 <div style="max-width:736px;margin:0 auto;padding:10px 0;text-align:center;
             font-size:10px;color:#9CA3AF;">
-  Цей документ сформовано автоматично та є дійсним без печатки та підпису
-  відповідно до Закону України «Про електронні документи та електронний документообіг».
+  Рахунок сформовано автоматично.
 </div>
 </body>
 </html>`;

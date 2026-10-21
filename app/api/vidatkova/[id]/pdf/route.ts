@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildVidatkovaPdf } from '../../../../../lib/vidatkova-pdf';
-import { SELLER } from '../../../../../lib/company';
-import { resolveVidatkovaBuyer } from '../../../../../lib/vidatkova-buyer';
+import { loadVidatkova, vidatkovaRenderParams } from '../../../../../lib/vidatkova-doc';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,47 +21,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // print the exact same portrait A4 file); default = download (attachment).
   const inline = req.nextUrl.searchParams.get('inline') === '1';
 
-  const [{ data: doc }, { data: lines }] = await Promise.all([
-    db.from('acc_documents').select('*').eq('id', id).single(),
-    db.from('acc_document_lines').select('*').eq('document_id', id).order('sort_order'),
-  ]);
-  if (!doc || doc.doc_type !== 'sale') return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const data = await loadVidatkova(db, id);
+  if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { doc } = data;
 
-  const skus = (lines ?? []).map((l: { sku: string }) => l.sku).filter(Boolean);
-  const { data: products } = skus.length
-    ? await db.from('products').select('sku, name, brand').in('sku', skus)
-    : { data: [] };
-  const nameMap = new Map((products ?? []).map(p => [p.sku, `${p.brand} ${p.name}`.trim()]));
-
-  const buyer = await resolveVidatkovaBuyer(db, doc);
-
-  const printLines = (lines ?? []).map((l: { sku: string; qty: number; price: number }) => ({
-    sku: l.sku,
-    name: nameMap.get(l.sku) || l.sku,
-    qty: Number(l.qty),
-    price: Number(l.price ?? 0),
-  }));
-  const total = printLines.reduce((s, l) => s + l.qty * l.price, 0);
-
-  const pdf = await buildVidatkovaPdf({
-    docNumber:    doc.doc_number,
-    docDate:      doc.doc_date,
-    lines:        printLines,
-    total,
-    sellerName:   SELLER.name,
-    sellerEdrpou: SELLER.edrpou,
-    sellerAddress: SELLER.address,
-    sellerCity:    SELLER.city,
-    sellerBank:   SELLER.bank,
-    sellerIban:   SELLER.iban,
-    buyerName:    buyer.name,
-    buyerPhone:   buyer.phone,
-    buyerEdrpou:  buyer.edrpou,
-    buyerAddress: buyer.address,
-    orderNumber:  buyer.orderNumber,
-    signatoryName: SELLER.signatory,
-    buyerSignatoryName: buyer.signatory,
-  });
+  const pdf = await buildVidatkovaPdf(vidatkovaRenderParams(data));
 
   const asciiName = `FIXLINE_vidatkova_${String(doc.doc_number).replace(/[^\x20-\x7E]/g, '')}.pdf`;
   const utf8Name  = encodeURIComponent(`Видаткова_${doc.doc_number}.pdf`);

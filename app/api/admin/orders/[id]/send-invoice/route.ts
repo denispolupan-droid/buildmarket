@@ -5,8 +5,10 @@ import { Resend } from 'resend';
 import { buildInvoiceHtml, orderMarketplace } from '../../../../../../lib/invoice-html';
 import { buildInvoicePdf } from '../../../../../../lib/invoice-pdf';
 import { loadInvoiceView } from '../../../../../../lib/invoice-buyer';
-import { SELLER } from '../../../../../../lib/company';
+import { SELLER, SELLER_SIGNER } from '../../../../../../lib/company';
 import { SITE_URL } from '../../../../../../lib/site';
+import { formatDocDate } from '../../../../../../lib/doc-format';
+import { invoiceDate } from '../../../../../../lib/invoice-doc';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     bankName:      SELLER.bank,
     bankEdrpou:    SELLER.edrpou,
     bankAddress:   SELLER.address,
-    signatoryName: SELLER.signatory,
+    signer:        SELLER_SIGNER,
   };
 
   const [html, pdfBuffer] = await Promise.all([
@@ -48,9 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     buildInvoicePdf(bankParams),
   ]);
 
-  const date = new Date(order.created_at).toLocaleDateString('uk-UA', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  });
+  const date = formatDocDate(invoiceDate(order));
 
   const { error: sendErr } = await resend.emails.send({
     from:    `${SELLER.name} <${process.env.RESEND_FROM_EMAIL ?? process.env.ADMIN_EMAIL ?? 'noreply@buildmarket.com.ua'}>`,

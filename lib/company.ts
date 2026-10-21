@@ -28,3 +28,18 @@ export const SELLER = {
   iban:      clean(process.env.BANK_IBAN,      'UA803220010000026000370117963'),
   signatory: clean(process.env.SIGNATORY_NAME, ''),
 } as const;
+
+// Податковий статус продавця для первинних документів — за датою документа:
+// з 01.10.2026 ФОП на 2 групі єдиного податку, до того — 3 група. В обох
+// випадках не платник ПДВ.
+export function sellerTaxStatus(docDate: string): string {
+  const group = docDate.slice(0, 10) >= '2026-10-01' ? 2 : 3;
+  return `Платник єдиного податку ${group} групи, не є платником ПДВ`;
+}
+
+// Підписант продавця у видатковій: «ФОП» + ПІБ. SIGNATORY_NAME у проді
+// порожній, тому ПІБ за замовчуванням виводиться з назви ФОП.
+export const SELLER_SIGNER = {
+  position: 'ФОП',
+  name: SELLER.signatory || SELLER.name.replace(/^ФОП\s+/, ''),
+};

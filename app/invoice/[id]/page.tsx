@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { SELLER } from '../../../lib/company';
+import { SELLER, SELLER_SIGNER, sellerTaxStatus } from '../../../lib/company';
+import { invoiceDate, invoicePurpose, invoiceQrMatrix } from '../../../lib/invoice-doc';
+import { nbuQrSvg } from '../../../lib/nbu-qr';
 import { loadInvoiceView } from '../../../lib/invoice-buyer';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import InvoicePrint from './InvoicePrint';
@@ -48,6 +50,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       price: Number(i.price ?? 0),
     }));
 
+  // Дата, призначення і QR — на сервері: QR-генератор не тягнемо в клієнтський бандл.
+  const docDate = invoiceDate(order);
+  const qr = invoiceQrMatrix(order);
+
   // UUID is unguessable — anyone with the link can view the invoice
   return (
     <InvoicePrint
@@ -70,7 +76,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       bankName={SELLER.bank}
       bankEdrpou={SELLER.edrpou}
       bankAddress={SELLER.address}
-      signatoryName={SELLER.signatory}
+      signer={SELLER_SIGNER}
+      docDate={docDate}
+      purpose={invoicePurpose(order)}
+      sellerTaxStatus={sellerTaxStatus(docDate)}
+      qrSvg={qr ? nbuQrSvg(qr) : null}
     />
   );
 }

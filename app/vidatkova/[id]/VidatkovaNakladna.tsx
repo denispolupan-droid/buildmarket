@@ -4,38 +4,57 @@ import { hryvniaInWords } from "../../../lib/number-to-words";
 import { useState, useRef } from 'react';
 import { Printer, Mail, FileDown, Copy, Check, Pencil } from 'lucide-react';
 import InvoiceMessengerButtons, { copyText } from '../../components/InvoiceMessengerButtons';
+import { shortFio, type Signer } from '../../../lib/signatory';
+import type { VidatkovaRenderParams } from '../../../lib/vidatkova-doc';
+import { formatMoney, formatQty, formatDocDate, taxIdLabel } from '../../../lib/doc-format';
 
 function formatIban(raw: string) {
   const s = raw.replace(/\s/g, '');
   return s.match(/.{1,4}/g)?.join(' ') ?? s;
 }
 
-type PrintLine = { sku: string; name: string; qty: number; price: number };
+
+const TH: React.CSSProperties = { border: '1px solid #000', padding: '5px 6px', color: '#111', fontWeight: 700 };
+const TD: React.CSSProperties = { border: '1px solid #000', padding: '4px 6px', color: '#111' };
+
+// Блок підпису: посада над лінією, лінія вільна під живий підпис, ПІБ праворуч
+// від неї (розшифровка), під лінією — підказки, нижче М.П. з місцем під печатку.
+// Якщо підписанта не задано — порожні лінії з підказками, щоб дописати від руки.
+function SignatureBlock({ label, signer }: { label: string; signer?: Signer | null }) {
+  const caption: React.CSSProperties = { fontSize: '9.5px', color: '#9CA3AF', marginTop: '2px' };
+  const position = signer?.position?.trim();
+  const name = signer?.name ? shortFio(signer.name) : '';
+  return (
+    <div style={{ flex: '1 1 0', minWidth: 0, maxWidth: '320px' }}>
+      <div style={{ fontWeight: 700, marginBottom: '6px' }}>{label}:</div>
+      {position
+        ? <div style={{ marginBottom: '14px' }}>{position}</div>
+        : <div style={{ marginBottom: '10px' }}>
+            <div style={{ borderBottom: '1px solid #000', height: '16px' }} />
+            <div style={caption}>(посада)</div>
+          </div>}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ borderBottom: '1px solid #000', height: '20px' }} />
+          <div style={{ ...caption, textAlign: 'center' }}>(підпис)</div>
+        </div>
+        <div style={{ flex: name ? '0 0 auto' : 1 }}>
+          <div style={{ borderBottom: name ? 'none' : '1px solid #000', height: '20px', lineHeight: '20px', whiteSpace: 'nowrap' }}>{name}</div>
+          <div style={{ ...caption, textAlign: 'center' }}>{name ? ' ' : '(прізвище, ініціали)'}</div>
+        </div>
+      </div>
+      <div style={{ marginTop: '14px', color: '#555', fontSize: '11px', minHeight: '40px' }}>М.П.</div>
+    </div>
+  );
+}
 
 export default function VidatkovaNakladna({
   docId, docNumber, docDate, lines, total,
-  sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
-  buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName, buyerSignatoryName,
+  sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban, sellerTaxStatus,
+  buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, contract, sellerSigner, buyerSigner,
   defaultEmail, isStaff = false, canEdit = false, docStatus,
-}: {
+}: VidatkovaRenderParams & {
   docId: string;
-  docNumber: string;
-  docDate: string;
-  lines: PrintLine[];
-  total: number;
-  sellerName: string;
-  sellerEdrpou: string;
-  sellerAddress: string;
-  sellerCity?: string;
-  sellerBank: string;
-  sellerIban: string;
-  buyerName: string;
-  buyerPhone?: string | null;
-  buyerEdrpou?: string | null;
-  buyerAddress?: string | null;
-  orderNumber?: number | null;
-  signatoryName?: string;
-  buyerSignatoryName?: string | null;
   defaultEmail?: string | null;
   isStaff?: boolean;
   canEdit?: boolean;
@@ -111,13 +130,13 @@ export default function VidatkovaNakladna({
     setSending(false);
   }
 
-  const date = new Date(docDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
+  const date = formatDocDate(docDate);
   const ibanDisplay = formatIban(sellerIban);
 
   // Text copied to the clipboard when sending the delivery note via a messenger.
   const messengerMessage = [
     `Вітаємо, ${buyerName}! 🤝`,
-    `Ваша видаткова накладна № ${docNumber} на суму ${total.toFixed(2)} грн.`,
+    `Ваша видаткова накладна № ${docNumber} на суму ${formatMoney(total)} грн.`,
     `Переглянути онлайн: ${typeof window !== 'undefined' ? window.location.origin : 'https://fixline.com.ua'}/vidatkova/${docId}`,
   ].join('\n');
 
@@ -272,13 +291,16 @@ export default function VidatkovaNakladna({
           <div style={{ fontSize: '17px', fontWeight: 700, color: '#111', marginBottom: '4px' }}>
             Видаткова накладна № {docNumber} від {date}
           </div>
-          {(sellerCity || orderNumber) && (
+          {(sellerCity || orderNumber || contract) && (
             <div style={{ fontSize: '11px', color: '#555', marginBottom: '6px' }}>
-              {[sellerCity && `Місце складання: ${sellerCity}`, orderNumber && `Підстава: замовлення №${orderNumber}`]
-                .filter(Boolean).join(' · ')}
+              {[
+                sellerCity && `Місце складання: ${sellerCity}`,
+                contract && `Договір ${contract}`,
+                orderNumber && `Підстава: замовлення №${orderNumber}`,
+              ].filter(Boolean).join(' · ')}
             </div>
           )}
-          <hr style={{ border: 'none', borderTop: '2px solid #1E3A5F', marginBottom: '14px' }} />
+          <hr style={{ border: 'none', borderTop: '1.5px solid #111', marginBottom: '14px' }} />
 
           {/* Parties */}
           <table className="vd-parties" style={{ marginBottom: '10px', fontSize: '12px', border: 'none' }}>
@@ -287,10 +309,11 @@ export default function VidatkovaNakladna({
                 <td style={{ padding: '3px 0', width: '130px', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Постачальник:</td>
                 <td style={{ padding: '3px 0', verticalAlign: 'top', border: 'none', lineHeight: '1.75' }}>
                   <strong>{sellerName}</strong>
-                  {sellerEdrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ДРФО: <CopyTap k="edrpou" value={sellerEdrpou}>{sellerEdrpou}</CopyTap></span></>}
+                  {sellerEdrpou && <><br /><span style={{ color: '#555' }}>{taxIdLabel(sellerEdrpou)}: <CopyTap k="edrpou" value={sellerEdrpou}>{sellerEdrpou}</CopyTap></span></>}
                   {sellerAddress && <><br /><span style={{ color: '#555' }}>Адреса: {sellerAddress}</span></>}
                   {sellerBank && <><br /><span style={{ color: '#555' }}>Банк: {sellerBank}</span></>}
-                  {sellerIban && <><br /><span style={{ color: '#555' }}>IBAN: <CopyTap k="iban" value={sellerIban.replace(/\s/g, '')}><span style={{ fontFamily: "'Menlo','Monaco','Consolas','Lucida Console',monospace", color: '#1E3A5F', fontWeight: 600 }}>{ibanDisplay}</span></CopyTap></span></>}
+                  {sellerIban && <><br /><span style={{ color: '#555' }}>IBAN: <CopyTap k="iban" value={sellerIban.replace(/\s/g, '')}><span style={{ color: '#111', fontWeight: 600 }}>{ibanDisplay}</span></CopyTap></span></>}
+                  {sellerTaxStatus && <><br /><span style={{ color: '#555' }}>{sellerTaxStatus}</span></>}
                 </td>
               </tr>
               <tr><td colSpan={2} style={{ border: 'none', padding: '2px 0' }}><hr style={{ border: 'none', borderTop: '1px dashed #ccc' }} /></td></tr>
@@ -298,7 +321,7 @@ export default function VidatkovaNakladna({
                 <td style={{ padding: '3px 0', fontWeight: 700, verticalAlign: 'top', border: 'none' }}>Покупець:</td>
                 <td style={{ padding: '3px 0', verticalAlign: 'top', border: 'none', lineHeight: '1.75' }}>
                   <strong>{buyerName}</strong>
-                  {buyerEdrpou && <><br /><span style={{ color: '#555' }}>ЄДРПОУ/ДРФО: {buyerEdrpou}</span></>}
+                  {buyerEdrpou && <><br /><span style={{ color: '#555' }}>{taxIdLabel(buyerEdrpou)}: {buyerEdrpou}</span></>}
                   {buyerAddress && <><br /><span style={{ color: '#555' }}>Адреса: {buyerAddress}</span></>}
                   {buyerPhone && <><br /><span style={{ color: '#555' }}>Тел.: {buyerPhone}</span></>}
                 </td>
@@ -308,66 +331,51 @@ export default function VidatkovaNakladna({
 
           {/* Items table */}
           <div className="vd-items-wrap">
-          <table className="vd-items" style={{ marginBottom: '6px', fontSize: '11px', border: '1px solid #999' }}>
+          {/* Таблиця в стилі друкованих форм 1С: тонкі чорні рамки, сіра шапка, без «зебри» */}
+          <table className="vd-items" style={{ marginBottom: '6px', fontSize: '11px', border: '1px solid #000' }}>
             <thead>
-              <tr style={{ background: '#1E3A5F' }}>
-                <th style={{ border: '1px solid #4B6B8F', padding: '6px 6px', color: '#fff', width: '28px', textAlign: 'center' }}>№</th>
-                <th style={{ border: '1px solid #4B6B8F', padding: '6px 8px', color: '#fff', width: '88px', textAlign: 'center' }}>Код</th>
-                <th style={{ border: '1px solid #4B6B8F', padding: '6px 8px', color: '#fff', textAlign: 'left' }}>Найменування товару</th>
-                <th style={{ border: '1px solid #4B6B8F', padding: '6px 6px', color: '#fff', width: '52px', textAlign: 'center' }}>Кіл-сть</th>
-                <th style={{ border: '1px solid #4B6B8F', padding: '6px 6px', color: '#fff', width: '36px', textAlign: 'center' }}>Од.</th>
-                <th style={{ border: '1px solid #4B6B8F', padding: '6px 8px', color: '#fff', width: '72px', textAlign: 'right' }}>Ціна</th>
-                <th style={{ border: '1px solid #4B6B8F', padding: '6px 8px', color: '#fff', width: '72px', textAlign: 'right' }}>Сума</th>
+              <tr style={{ background: '#F2F2F2' }}>
+                <th style={{ ...TH, width: '28px', textAlign: 'center' }}>№</th>
+                <th style={{ ...TH, width: '84px', textAlign: 'center' }}>Код</th>
+                <th style={{ ...TH, textAlign: 'center' }}>Найменування товару</th>
+                <th style={{ ...TH, width: '64px', textAlign: 'center' }}>Кількість</th>
+                <th style={{ ...TH, width: '40px', textAlign: 'center' }}>Од.</th>
+                <th style={{ ...TH, width: '78px', textAlign: 'center' }}>Ціна, грн</th>
+                <th style={{ ...TH, width: '86px', textAlign: 'center' }}>Сума, грн</th>
               </tr>
             </thead>
             <tbody>
               {lines.map((item, idx) => (
-                <tr key={item.sku} style={{ background: idx % 2 === 1 ? '#F8FAFC' : '#fff' }}>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'center' }}>{idx + 1}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center', fontFamily: 'monospace', fontSize: '10px', color: '#444' }}>{item.sku}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 8px' }}>{item.name}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'right' }}>{item.qty}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'center', color: '#555' }}>шт</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right' }}>{item.price.toFixed(2)}</td>
-                  <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 700 }}>{(item.qty * item.price).toFixed(2)}</td>
+                <tr key={`${item.sku}-${idx}`}>
+                  <td style={{ ...TD, textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ ...TD, textAlign: 'center', fontSize: '10px' }}>{item.sku}</td>
+                  <td style={TD}>{item.name}</td>
+                  <td style={{ ...TD, textAlign: 'right' }}>{formatQty(item.qty)}</td>
+                  <td style={{ ...TD, textAlign: 'center' }}>{item.unit}</td>
+                  <td style={{ ...TD, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatMoney(item.price)}</td>
+                  <td style={{ ...TD, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatMoney(item.qty * item.price)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#555', padding: '5px 0', marginBottom: '2px' }}>
-            <span>Всього без ПДВ:</span>
-            <strong style={{ color: '#111', display: 'inline-block', width: '73px', textAlign: 'right', paddingRight: '8px', boxSizing: 'border-box' }}>{total.toFixed(2)}</strong>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', fontSize: '12px', padding: '4px 0', marginBottom: '2px' }}>
+            <strong>Разом без ПДВ:</strong>
+            <strong style={{ display: 'inline-block', minWidth: '86px', textAlign: 'right', paddingRight: '6px', boxSizing: 'border-box', whiteSpace: 'nowrap' }}>{formatMoney(total)}</strong>
           </div>
 
           {/* Sum summary */}
-          <div style={{ fontSize: '11px', color: '#333', marginBottom: '2px' }}>
-            Всього найменувань: {lines.length}, на суму <strong>{total.toFixed(2)} грн</strong>
+          <div style={{ fontSize: '11px', color: '#111', marginBottom: '2px' }}>
+            Всього найменувань: {lines.length}, на суму {formatMoney(total)} грн
           </div>
-          <div style={{ fontSize: '11px', color: '#333', marginBottom: '28px', fontStyle: 'italic' }}>
-            {hryvniaInWords(total)}
+          <div style={{ fontSize: '12px', color: '#111', marginBottom: '28px', fontWeight: 700 }}>
+            {hryvniaInWords(total)}, без ПДВ
           </div>
 
-          {/* Signatures */}
-          <div className="vd-sigs" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#111', gap: '32px' }}>
-            <div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
-                <span style={{ whiteSpace: 'nowrap' }}>Відпустив(ла):</span>
-                <span style={{ borderBottom: '1px solid #000', minWidth: '180px', display: 'inline-block', textAlign: 'center' }}>
-                  {signatoryName || ' '}
-                </span>
-              </div>
-              <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '3px', textAlign: 'right' }}>(посада, підпис, прізвище)</div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
-                <span style={{ whiteSpace: 'nowrap' }}>Отримав(ла):</span>
-                <span style={{ borderBottom: '1px solid #000', minWidth: '180px', display: 'inline-block', textAlign: 'center' }}>
-                  {buyerSignatoryName || ' '}
-                </span>
-              </div>
-              <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '3px', textAlign: 'right' }}>(посада, підпис, прізвище)</div>
-            </div>
+          {/* Signatures: посада й ПІБ поруч і під лінією, лінія вільна під підпис, М.П. — під печатку */}
+          <div className="vd-sigs" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#111', gap: '40px' }}>
+            <SignatureBlock label="Відпустив(ла)" signer={sellerSigner} />
+            <SignatureBlock label="Отримав(ла)" signer={buyerSigner} />
           </div>
 
         </div>

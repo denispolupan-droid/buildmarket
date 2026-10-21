@@ -1,8 +1,33 @@
 import { hryvniaInWords } from "./number-to-words";
-type PrintLine = { sku: string; name: string; qty: number; price: number };
+import { shortFio, type Signer } from "./signatory";
+import type { VidatkovaRenderParams } from "./vidatkova-doc";
+import { formatMoney, formatQty, formatDocDate, taxIdLabel } from "./doc-format";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+// Блок підпису для листа — та сама схема, що й на сторінці/PDF: посада над
+// лінією, лінія вільна під підпис, ПІБ праворуч, нижче М.П. (табличний HTML
+// для поштових клієнтів).
+function signatureBlock(label: string, signer: Signer | null | undefined) {
+  const cap = (t: string) => `<div style="font-size:9.5px;color:#9CA3AF;text-align:center;margin-top:2px">${t}</div>`;
+  const position = signer?.position?.trim();
+  const name = signer?.name ? shortFio(signer.name) : '';
+  return `
+    <div style="font-weight:700;margin-bottom:6px">${label}:</div>
+    ${position
+      ? `<div style="margin-bottom:14px">${escapeHtml(position)}</div>`
+      : `<div style="border-bottom:1px solid #000;height:16px"></div>${cap('(посада)')}<div style="height:8px"></div>`}
+    <table style="border-collapse:collapse;width:100%"><tr>
+      <td style="border:none;padding:0;vertical-align:bottom"><div style="border-bottom:1px solid #000;height:20px"></div>${cap('(підпис)')}</td>
+      <td style="border:none;padding:0 0 0 10px;vertical-align:bottom;${name ? 'white-space:nowrap;width:1%' : 'width:45%'}">
+        ${name
+          ? `<div style="height:20px;line-height:20px">${escapeHtml(name)}</div>${cap('&nbsp;')}`
+          : `<div style="border-bottom:1px solid #000;height:20px"></div>${cap('(прізвище, ініціали)')}`}
+      </td>
+    </tr></table>
+    <div style="margin-top:14px;color:#555;font-size:11px;min-height:40px">М.П.</div>`;
 }
 
 function formatIban(raw: string) {
@@ -10,132 +35,110 @@ function formatIban(raw: string) {
   return s.match(/.{1,4}/g)?.join(' ') ?? s;
 }
 
-export function buildVidatkovaHtml(params: {
-  docNumber: string;
-  docDate: string;
-  lines: PrintLine[];
-  total: number;
-  sellerName: string;
-  sellerEdrpou: string;
-  sellerAddress: string;
-  sellerCity?: string;
-  sellerBank: string;
-  sellerIban: string;
-  buyerName: string;
-  buyerPhone?: string | null;
-  buyerEdrpou?: string | null;
-  buyerAddress?: string | null;
-  orderNumber?: number | null;
-  signatoryName?: string;
-  buyerSignatoryName?: string | null;
-  printUrl?: string;
-}): string {
+export function buildVidatkovaHtml(params: VidatkovaRenderParams & { printUrl?: string }): string {
   const {
     docNumber, docDate, lines, total,
-    sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban,
-    buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, signatoryName = '', printUrl,
-    buyerSignatoryName,
+    sellerName, sellerEdrpou, sellerAddress, sellerCity, sellerBank, sellerIban, sellerTaxStatus,
+    buyerName, buyerPhone, buyerEdrpou, buyerAddress, orderNumber, contract, printUrl,
+    sellerSigner, buyerSigner,
   } = params;
 
-  const date = new Date(docDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
+  const date = formatDocDate(docDate);
   const ibanDisplay = formatIban(sellerIban);
+  // Таблиця як у друкованих формах 1С: тонкі чорні рамки, сіра шапка, без «зебри»
+  const th = 'border:1px solid #000;padding:5px 6px;color:#111;font-weight:700;text-align:center';
+  const td = 'border:1px solid #000;padding:4px 6px;color:#111';
 
   const rows = lines.map((item, idx) => `
-    <tr style="background:${idx % 2 === 1 ? '#F8FAFC' : '#fff'}">
-      <td style="border:1px solid #ccc;padding:5px 6px;text-align:center">${idx + 1}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-family:monospace;font-size:10px;color:#444">${item.sku}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px">${item.name}</td>
-      <td style="border:1px solid #ccc;padding:5px 6px;text-align:right">${item.qty}</td>
-      <td style="border:1px solid #ccc;padding:5px 6px;text-align:center;color:#555">шт</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:right">${item.price.toFixed(2)}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:700">${(item.qty * item.price).toFixed(2)}</td>
+    <tr>
+      <td style="${td};text-align:center">${idx + 1}</td>
+      <td style="${td};text-align:center;font-size:10px">${escapeHtml(item.sku)}</td>
+      <td style="${td}">${escapeHtml(item.name)}</td>
+      <td style="${td};text-align:right">${formatQty(item.qty)}</td>
+      <td style="${td};text-align:center">${escapeHtml(item.unit)}</td>
+      <td style="${td};text-align:right;white-space:nowrap">${formatMoney(item.price)}</td>
+      <td style="${td};text-align:right;white-space:nowrap">${formatMoney(item.qty * item.price)}</td>
     </tr>`).join('');
+
+  const subtitle = [
+    sellerCity ? `Місце складання: ${escapeHtml(sellerCity)}` : null,
+    contract ? `Договір ${escapeHtml(contract)}` : null,
+    orderNumber ? `Підстава: замовлення №${orderNumber}` : null,
+  ].filter(Boolean).join(' · ');
 
   return `<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Видаткова накладна ${docNumber}</title>
+<title>Видаткова накладна ${escapeHtml(docNumber)}</title>
 </head>
 <body style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#111;background:#E8ECF0;margin:0;padding:20px">
 <div style="max-width:700px;margin:0 auto;background:#fff;padding:28px 32px;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
 
   <div style="font-size:17px;font-weight:700;margin-bottom:4px">
-    Видаткова накладна № ${docNumber} від ${date}
+    Видаткова накладна № ${escapeHtml(docNumber)} від ${date}
   </div>
-  ${sellerCity || orderNumber ? `<div style="font-size:11px;color:#555;margin-bottom:6px">${[sellerCity ? `Місце складання: ${sellerCity}` : null, orderNumber ? `Підстава: замовлення №${orderNumber}` : null].filter(Boolean).join(' · ')}</div>` : ''}
-  <hr style="border:none;border-top:2px solid #1E3A5F;margin-bottom:14px">
+  ${subtitle ? `<div style="font-size:11px;color:#555;margin-bottom:6px">${subtitle}</div>` : ''}
+  <hr style="border:none;border-top:1.5px solid #111;margin-bottom:14px">
 
   <table style="border-collapse:collapse;width:100%;margin-bottom:10px;font-size:12px">
     <tr>
       <td style="padding:3px 0;width:130px;font-weight:700;vertical-align:top;border:none">Постачальник:</td>
       <td style="padding:3px 0;vertical-align:top;border:none;line-height:1.75">
-        <strong>${sellerName}</strong>
-        ${sellerEdrpou ? `<br><span style="color:#555">ЄДРПОУ/ДРФО: ${sellerEdrpou}</span>` : ''}
-        ${sellerAddress ? `<br><span style="color:#555">Адреса: ${sellerAddress}</span>` : ''}
-        ${sellerBank ? `<br><span style="color:#555">Банк: ${sellerBank}</span>` : ''}
-        ${sellerIban ? `<br><span style="color:#555">IBAN: <span style="font-family:monospace;color:#1E3A5F;font-weight:600">${ibanDisplay}</span></span>` : ''}
+        <strong>${escapeHtml(sellerName)}</strong>
+        ${sellerEdrpou ? `<br><span style="color:#555">${taxIdLabel(sellerEdrpou)}: ${escapeHtml(sellerEdrpou)}</span>` : ''}
+        ${sellerAddress ? `<br><span style="color:#555">Адреса: ${escapeHtml(sellerAddress)}</span>` : ''}
+        ${sellerBank ? `<br><span style="color:#555">Банк: ${escapeHtml(sellerBank)}</span>` : ''}
+        ${sellerIban ? `<br><span style="color:#555">IBAN: <span style="color:#111;font-weight:600">${ibanDisplay}</span></span>` : ''}
+        ${sellerTaxStatus ? `<br><span style="color:#555">${escapeHtml(sellerTaxStatus)}</span>` : ''}
       </td>
     </tr>
     <tr><td colspan="2" style="border:none;padding:2px 0"><hr style="border:none;border-top:1px dashed #ccc"></td></tr>
     <tr>
       <td style="padding:3px 0;font-weight:700;vertical-align:top;border:none">Покупець:</td>
-      <td style="padding:3px 0;vertical-align:top;border:none">
-        <strong>${buyerName}</strong>
-        ${buyerEdrpou ? `<br><span style="color:#555">ЄДРПОУ/ДРФО: ${buyerEdrpou}</span>` : ''}
-        ${buyerAddress ? `<br><span style="color:#555">Адреса: ${buyerAddress}</span>` : ''}
-        ${buyerPhone ? `<br><span style="color:#555">Тел.: ${buyerPhone}</span>` : ''}
+      <td style="padding:3px 0;vertical-align:top;border:none;line-height:1.75">
+        <strong>${escapeHtml(buyerName)}</strong>
+        ${buyerEdrpou ? `<br><span style="color:#555">${taxIdLabel(buyerEdrpou)}: ${escapeHtml(buyerEdrpou)}</span>` : ''}
+        ${buyerAddress ? `<br><span style="color:#555">Адреса: ${escapeHtml(buyerAddress)}</span>` : ''}
+        ${buyerPhone ? `<br><span style="color:#555">Тел.: ${escapeHtml(buyerPhone)}</span>` : ''}
       </td>
     </tr>
   </table>
 
-  <table style="border-collapse:collapse;width:100%;margin-bottom:6px;font-size:11px">
+  <table style="border-collapse:collapse;width:100%;margin-bottom:6px;font-size:11px;border:1px solid #000">
     <thead>
-      <tr style="background:#1E3A5F">
-        <th style="border:1px solid #4B6B8F;padding:6px 6px;color:#fff;width:28px;text-align:center">№</th>
-        <th style="border:1px solid #4B6B8F;padding:6px 8px;color:#fff;width:88px;text-align:center">Код</th>
-        <th style="border:1px solid #4B6B8F;padding:6px 8px;color:#fff;text-align:left">Найменування</th>
-        <th style="border:1px solid #4B6B8F;padding:6px 6px;color:#fff;width:52px;text-align:center">Кіл-сть</th>
-        <th style="border:1px solid #4B6B8F;padding:6px 6px;color:#fff;width:36px;text-align:center">Од.</th>
-        <th style="border:1px solid #4B6B8F;padding:6px 8px;color:#fff;width:72px;text-align:right">Ціна</th>
-        <th style="border:1px solid #4B6B8F;padding:6px 8px;color:#fff;width:72px;text-align:right">Сума</th>
+      <tr style="background:#F2F2F2">
+        <th style="${th};width:28px">№</th>
+        <th style="${th};width:80px">Код</th>
+        <th style="${th}">Найменування товару</th>
+        <th style="${th};width:60px">Кількість</th>
+        <th style="${th};width:36px">Од.</th>
+        <th style="${th};width:74px">Ціна, грн</th>
+        <th style="${th};width:84px">Сума, грн</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
-    <tfoot>
-      <tr>
-        <td colspan="6" style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-size:11px;color:#555">Всього без ПДВ:</td>
-        <td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:700">${total.toFixed(2)}</td>
-      </tr>
-    </tfoot>
   </table>
-
-  <div style="font-size:11px;color:#333;margin-bottom:2px">
-    Всього найменувань: ${lines.length}, на суму <strong>${total.toFixed(2)} грн</strong>
+  <div style="text-align:right;font-size:12px;font-weight:700;padding:4px 6px 4px 0;margin-bottom:2px">
+    Разом без ПДВ:&nbsp;&nbsp;${formatMoney(total)}
   </div>
-  <div style="font-size:11px;color:#333;margin-bottom:24px;font-style:italic">
-    ${hryvniaInWords(total)}
+
+  <div style="font-size:11px;color:#111;margin-bottom:2px">
+    Всього найменувань: ${lines.length}, на суму ${formatMoney(total)} грн
+  </div>
+  <div style="font-size:12px;color:#111;margin-bottom:24px;font-weight:700">
+    ${hryvniaInWords(total)}, без ПДВ
   </div>
 
   ${printUrl ? `<div style="margin-bottom:20px;padding:10px 14px;background:#EFF4FF;border-radius:6px;font-size:12px">
     Переглянути накладну онлайн: <a href="${printUrl}" style="color:#1E3A5F;font-weight:600">${printUrl}</a>
   </div>` : ''}
 
-  <table style="border-collapse:collapse;width:100%;font-size:11px;margin-top:8px">
+  <table style="border-collapse:collapse;width:100%;font-size:12px;margin-top:8px">
     <tr>
-      <td style="border:1px solid #ccc;padding:6px 8px;width:80px;font-weight:700">Відпустив:</td>
-      <td style="border:1px solid #ccc;padding:6px 8px;width:140px;text-align:center">
-        ${signatoryName ? `<strong>${signatoryName}</strong>` : '<span style="color:#9CA3AF">(посада)</span>'}
-      </td>
-      <td style="border:1px solid #ccc;padding:6px 8px;width:80px;text-align:center"><span style="color:#9CA3AF">(підпис)</span></td>
-      <td style="border:1px solid #ccc;padding:6px 8px;width:140px;text-align:center"><span style="color:#9CA3AF">(прізвище, ім'я)</span></td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #ccc;padding:6px 8px;font-weight:700">Отримав:</td>
-      <td style="border:1px solid #ccc;padding:6px 8px;text-align:center">${buyerSignatoryName ? `<strong>${escapeHtml(buyerSignatoryName)}</strong>` : ''}</td>
-      <td style="border:1px solid #ccc;padding:6px 8px"></td>
-      <td style="border:1px solid #ccc;padding:6px 8px"></td>
+      <td style="width:50%;padding:0 20px 0 0;vertical-align:top;border:none">${signatureBlock('Відпустив(ла)', sellerSigner)}</td>
+      <td style="width:50%;padding:0 0 0 20px;vertical-align:top;border:none">${signatureBlock('Отримав(ла)', buyerSigner)}</td>
     </tr>
   </table>
 
