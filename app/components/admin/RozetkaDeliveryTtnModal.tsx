@@ -44,6 +44,10 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   const [width,  setWidth]  = useState('20');
   const [height, setHeight] = useState('15');
   const [places, setPlaces] = useState('1');
+  // Післяплата: сервер підставляє суму неоплачених замовлень, менеджер може
+  // виправити (домовленість з покупцем) — як у накладній Нової Пошти.
+  const [cod, setCod] = useState('');
+  const [codDefault, setCodDefault] = useState<number | null>(null);
   const [sender, setSender] = useState<RzSender | null>(null);
   const [contact, setContact] = useState<{ name: string; phones: string[] } | null>(null);
   const [settingsDep, setSettingsDep] = useState<string | null>(null);
@@ -64,13 +68,17 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   const cityBoxRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const mergedKey = (order.mergedIds ?? []).join(',');
   useEffect(() => {
-    fetch(`/api/admin/orders/${order.id}/rozetka-delivery-ttn`)
+    fetch(`/api/admin/orders/${order.id}/rozetka-delivery-ttn${mergedKey ? `?merged=${encodeURIComponent(mergedKey)}` : ''}`)
       .then(r => r.json())
-      .then(d => { setSender(d.sender ?? null); setContact(d.contact ?? null); setSettingsDep(d.settingsDepartment ?? null); })
+      .then(d => {
+        setSender(d.sender ?? null); setContact(d.contact ?? null); setSettingsDep(d.settingsDepartment ?? null);
+        if (typeof d.cod === 'number') { setCodDefault(d.cod); setCod(String(d.cod)); }
+      })
       .catch(() => setSender(null))
       .finally(() => setSenderLoading(false));
-  }, [order.id]);
+  }, [order.id, mergedKey]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -180,6 +188,8 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
           weight: parseFloat(weight), length: parseFloat(length),
           width: parseFloat(width), height: parseFloat(height),
           places: parseInt(places) || 1,
+          // Лише виправлена сума: інакше сервер рахує сам із БД
+          ...(codChanged ? { codAmount: codNum } : {}),
           ...(order.mergedIds?.length ? { mergedIds: order.mergedIds } : {}),
         }),
       });
@@ -196,7 +206,10 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   const limitKg = sender?.weight_limit_kg ?? null;
   const weightNum = parseFloat(weight);
   const overLimit = limitKg != null && Number.isFinite(weightNum) && weightNum > limitKg;
-  const canSubmit = !busy && !!sender && !senderSaving && !overLimit;
+  const codNum = cod.trim() === '' ? NaN : parseFloat(cod.replace(',', '.'));
+  const codInvalid = !Number.isFinite(codNum) || codNum < 0;
+  const codChanged = codDefault != null && !codInvalid && Math.abs(codNum - codDefault) > 0.005;
+  const canSubmit = !busy && !!sender && !senderSaving && !overLimit && !codInvalid;
 
   const num = (v: string, set: (s: string) => void, label: string, suffix: string, warn?: boolean) => (
     <label style={{ flex: 1, minWidth: 0 }}>
@@ -343,6 +356,27 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
             {num(length, setLength, 'Довжина', 'см')}
             {num(width, setWidth, 'Ширина', 'см')}
             {num(height, setHeight, 'Висота', 'см')}
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              {num(cod, setCod, 'Післяплата', '₴')}
+              {codChanged && (
+                <button type="button" onClick={() => setCod(String(codDefault))}
+                  style={{ height: '38px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  Повернути {codDefault} ₴
+                </button>
+              )}
+            </div>
+            <div style={{ fontSize: '11.5px', marginTop: '5px', lineHeight: 1.45, color: codInvalid ? '#DC2626' : codChanged ? '#B45309' : 'var(--text-muted)' }}>
+              {codInvalid
+                ? 'Вкажіть суму (0 — без післяплати)'
+                : codChanged
+                  ? `Змінено вручну: із замовлення ${codDefault} ₴. Сума замовлення в обліку не зміниться — якщо змінилась ціна, правте замовлення.`
+                  : codNum === 0
+                    ? 'Без післяплати — замовлення оплачене.'
+                    : 'Сума товарів із замовлення — без доставки покупця (її Rozetka бере окремо).'}
+            </div>
           </div>
 
           {error && (

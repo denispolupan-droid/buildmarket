@@ -47,12 +47,26 @@ export async function GET(
     }
   }
 
-  const [sender, settings, contact] = await Promise.all([
+  // Післяплата за замовчуванням — для поля у вікні; `?merged=id1,id2` — об'єднана посилка
+  const { id } = await params;
+  const merged = (new URL(req.url).searchParams.get('merged') ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  const ids = [...new Set([id, ...merged])];
+  const [sender, settings, contact, { data: orders }] = await Promise.all([
     getRozetkaSender(),
     getRzSettingsSender().catch(() => null),
     getRzSettingsContact().catch(() => null),
+    createServiceClient().from('orders').select('id, payment_type, payment_confirmed, total_price').in('id', ids).limit(ids.length),
   ]);
-  return NextResponse.json({ sender, contact, settingsDepartment: settings?.department ?? null });
+  return NextResponse.json({ sender, contact, settingsDepartment: settings?.department ?? null, cod: defaultCod(orders ?? []) });
+}
+
+/** Післяплата за замовчуванням: лише неоплачені замовлення з оплатою при отриманні.
+ *  total_price — уже без 49 ₴ доставки покупця (їх Rozetka бере собі). */
+function defaultCod(orders: { payment_type: unknown; payment_confirmed: unknown; total_price: unknown }[]): number {
+  const sum = orders
+    .filter(o => o.payment_type === 'cod' && !o.payment_confirmed)
+    .reduce((s, o) => s + (Number(o.total_price) || 0), 0);
+  return Math.round(sum * 100) / 100;
 }
 
 /** Обрати відділення відправника для МП-накладних. Вибір точки, що збігається з
@@ -117,7 +131,15 @@ export async function POST(
     places?: number; description?: string;
     /** Об'єднана посилка: усі замовлення, що їдуть цією накладною (включно з id) */
     mergedIds?: string[];
+    /** Післяплата, виправлена менеджером у вікні; без поля — рахуємо з БД */
+    codAmount?: number;
   };
+  if (body.codAmount != null) {
+    const c = Number(body.codAmount);
+    if (!Number.isFinite(c) || c < 0) {
+      return NextResponse.json({ error: 'Некоректна сума післяплати' }, { status: 400 });
+    }
+  }
 
   const weight = Number(body.weight);
   const length = Number(body.length);
@@ -186,10 +208,11 @@ export async function POST(
   // Накладений платіж: Rozetka має стягнути з отримувача суму замовлення й
   // повернути її нам. Для передоплачених — has_paid=true і нуль до стягнення.
   // В об'єднаній посилці — сума неоплачених замовлень; оплачено повністю лише
-  // тоді, коли стягувати нічого.
-  const codAmount = orders!
-    .filter(o => o.payment_type === 'cod' && !o.payment_confirmed)
-    .reduce((s, o) => s + (Number(o.total_price) || 0), 0);
+  // тоді, коли стягувати нічого. Менеджер може виправити суму у вікні (як у
+  // накладній НП); 0 — накладна без післяплати.
+  const codAmount = body.codAmount != null
+    ? Math.round(Number(body.codAmount) * 100) / 100
+    : defaultCod(orders!);
   const description = ids.length > 1
     ? mergedDescription(orders!.map(o => ({ order_number: o.order_number, items: (o.items ?? []) as { name?: string }[] })))
     : ((order.items ?? []) as { name?: string }[]).map(i => i.name).filter(Boolean).join(', ');
