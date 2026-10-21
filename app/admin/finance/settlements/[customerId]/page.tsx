@@ -3,6 +3,8 @@ import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import ActClient, { type ActRow } from '../../_act/ActClient';
 import { isSpecialDebtor, SPECIAL_DEBTOR_LABEL } from '../../../../../lib/accounting/sale-party';
+import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { SELLER, SELLER_SIGNER } from '../../../../../lib/company';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,16 +45,12 @@ export default async function CustomerActPage({
   // Службові дебітори (np:cod, mp:prom, …) — не рядки customers: акт по них теж
   // потрібен (сверка транзиту з виписками), але без реквізитів.
   const special = isSpecialDebtor(customerId);
-  const [customerRes, settingsRes] = await Promise.all([
-    special
-      ? Promise.resolve({ data: { id: customerId, name: SPECIAL_DEBTOR_LABEL[customerId], company: null, legal_name: null, tax_number: null, city: null, address: null } })
-      : db.from('customers').select('id, name, company, legal_name, tax_number, city, address').eq('id', customerId).single(),
-    db.from('app_settings').select('key, value').in('key', ['orders_from_name']),
-  ]);
+  const customerRes = special
+    ? { data: { id: customerId, name: SPECIAL_DEBTOR_LABEL[customerId], company: null, legal_name: null, tax_number: null, city: null, address: null } }
+    : await db.from('customers').select('id, name, company, legal_name, tax_number, city, address').eq('id', customerId).single();
 
   if (!customerRes.data) notFound();
   const customer    = customerRes.data;
-  const companyName = settingsRes.data?.find(s => s.key === 'orders_from_name')?.value ?? 'FIXLINE';
 
   const displayName = (customer.company as string | null)?.trim()
     || (customer.legal_name as string | null)?.trim()
@@ -60,22 +58,23 @@ export default async function CustomerActPage({
 
   const address = [customer.city, customer.address].filter(Boolean).join(', ') || null;
 
-  const [openingRes, txnRes] = await Promise.all([
-    db.from('money_entries').select('amount')
+  // З пагінацією й ORDER BY id: PostgREST мовчки обрізає на 1000 рядків
+  const [openingRows, txns] = await Promise.all([
+    fetchAllRows<{ amount: number }>((f, t) => db.from('money_entries').select('amount')
       .eq('account_type', 'customer')
       .eq('counterparty_id', customerId)
-      .lt('business_date', dateFrom),
-    db.from('ar_transactions')
-      .select('id, business_date, customer_id, amount, doc_type, doc_id, order_id, description')
+      .lt('business_date', dateFrom)
+      .order('id').range(f, t)),
+    fetchAllRows<{ id: string; business_date: string; created_at: string; amount: number; doc_type: string | null; doc_id: string | null; order_id: string | null; description: string | null }>((f, t) => db.from('ar_transactions')
+      .select('id, business_date, created_at, amount, doc_type, doc_id, order_id, description')
       .eq('customer_id', customerId)
       .gte('business_date', dateFrom)
       .lte('business_date', dateTo)
-      .order('business_date', { ascending: true })
-      .order('created_at',    { ascending: true }),
+      .order('id').range(f, t)),
   ]);
+  txns.sort((a, b) => a.business_date.localeCompare(b.business_date) || String(a.created_at).localeCompare(String(b.created_at)));
 
-  const opening = (openingRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0);
-  const txns    = txnRes.data ?? [];
+  const opening = openingRows.reduce((s, r) => s + Number(r.amount), 0);
 
   // Fetch order numbers for links
   const orderIds = [...new Set(txns.map(t => t.order_id).filter(Boolean))] as string[];
@@ -94,15 +93,14 @@ export default async function CustomerActPage({
     const docHref = t.doc_id
       ? (t.doc_type === 'debt_adjustment' ? `/admin/finance/adjustments?id=${t.doc_id}` : `/admin/accounting/documents/${t.doc_id}`)
       : (t.order_id ? `/admin/orders/${t.order_id}` : null);
-    const docLabel = orderNum ? `#${orderNum}` : null;
-
     return {
       date: t.business_date as string,
+      docText: orderNum ? `${typeLabel} (#${orderNum})` : typeLabel,
       description,
       debit:  amt > 0 ? amt : 0,
       credit: amt < 0 ? Math.abs(amt) : 0,
       docHref,
-      docLabel,
+      orderNumber: orderNum ?? null,
     };
   });
 
@@ -117,7 +115,8 @@ export default async function CustomerActPage({
       dateTo={dateTo}
       opening={opening}
       rows={rows}
-      companyName={companyName}
+      ourName={SELLER.name}
+      ourSigner={SELLER_SIGNER.name}
       mode="customer"
     />
   );

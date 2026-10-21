@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import ActClient, { type ActRow } from '../../_act/ActClient';
+import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { SELLER, SELLER_SIGNER } from '../../../../../lib/company';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +11,24 @@ const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+/**
+ * Колонка «Документ» — як у акті постачальника з 1С («Принято (21.10.2026)»),
+ * але з нашим номером документа і замовленням, щоб рядок знаходився з обох боків.
+ * Знак — з боку постачальника в леджері: мінус — наш борг (поставка), плюс — оплата/повернення.
+ */
+function docName(docType: string | null, amount: number): string {
+  switch (docType) {
+    case 'sale':             return amount < 0 ? 'Отримано' : 'Коригування поставки';
+    case 'receipt':
+    case 'stock_in':         return amount < 0 ? 'Прихід товару' : 'Коригування приходу';
+    case 'supplier_payment': return amount > 0 ? 'Оплата' : 'Повернення оплати';
+    case 'dropship_cancel':  return amount > 0 ? 'Повернення постачальнику' : 'Коригування (недостача)';
+    case 'return_out':       return 'Повернення постачальнику';
+    case 'debt_adjustment':  return 'Коригування боргу';
+    default:                 return amount < 0 ? 'Нараховано' : 'Списано';
+  }
+}
 
 export default async function SupplierActPage({
   params,
@@ -31,34 +51,30 @@ export default async function SupplierActPage({
   const dateFrom   = sp.from ?? monthStart;
   const dateTo     = sp.to   ?? today;
 
-  const [supplierRes, settingsRes] = await Promise.all([
-    db.from('suppliers').select('id, name, legal_name, edrpou').eq('id', supplierId).single(),
-    db.from('app_settings').select('key, value').in('key', ['orders_from_name']),
-  ]);
+  const { data: supplier } = await db.from('suppliers').select('id, name, legal_name, edrpou').eq('id', supplierId).single();
+  if (!supplier) notFound();
 
-  if (!supplierRes.data) notFound();
-  const supplier    = supplierRes.data;
-  const companyName = settingsRes.data?.find(s => s.key === 'orders_from_name')?.value ?? 'FIXLINE';
-
-  const [openingRes, entriesRes] = await Promise.all([
-    db.from('money_entries').select('amount')
+  // Усі проводки з пагінацією й ORDER BY id: у ЗРХ їх уже сотні, а PostgREST
+  // мовчки обрізає на 1000 — і сальдо на початок тихо «пливе».
+  const [openingRows, entries] = await Promise.all([
+    fetchAllRows<{ amount: number }>((f, t) => db.from('money_entries').select('amount')
       .eq('account_type', 'supplier')
       .eq('counterparty_id', String(supplierId))
-      .lt('business_date', dateFrom),
-    db.from('money_entries')
-      .select('doc_type, amount, business_date, description, doc_id, order_id, created_at')
+      .lt('business_date', dateFrom)
+      .order('id').range(f, t)),
+    fetchAllRows<{ id: string; doc_type: string | null; amount: number; business_date: string; description: string | null; doc_id: string | null; order_id: string | null; created_at: string }>((f, t) => db.from('money_entries')
+      .select('id, doc_type, amount, business_date, description, doc_id, order_id, created_at')
       .eq('account_type', 'supplier')
       .eq('counterparty_id', String(supplierId))
       .gte('business_date', dateFrom)
       .lte('business_date', dateTo)
-      .order('business_date', { ascending: true })
-      .order('created_at',    { ascending: true }),
+      .order('id').range(f, t)),
   ]);
+  entries.sort((a, b) => a.business_date.localeCompare(b.business_date) || a.created_at.localeCompare(b.created_at));
 
-  const opening = (openingRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0);
-  const entries = entriesRes.data ?? [];
+  // Леджер постачальника: мінус — винні ми. В акті «плюс — на нашу користь» — той самий знак.
+  const opening = openingRows.reduce((s, r) => s + Number(r.amount), 0);
 
-  // Fetch doc numbers
   const docIds = [...new Set(entries.map(e => e.doc_id).filter(Boolean))] as string[];
   const { data: docs } = docIds.length
     ? await db.from('acc_documents').select('id, doc_number, doc_type').in('id', docIds)
@@ -75,23 +91,23 @@ export default async function SupplierActPage({
 
   const rows: ActRow[] = entries.map(e => {
     const amt     = Number(e.amount);
-    const docInfo = e.doc_id ? docMap.get(e.doc_id as string) : null;
+    const docInfo = e.doc_id ? docMap.get(e.doc_id) : null;
     let docHref: string | null = null;
     if (e.doc_id && docInfo) {
-      if (docInfo.type === 'receipt' || docInfo.type === 'stock_in') {
-        docHref = `/admin/procurement/receipts/${e.doc_id}`;
-      } else if (docInfo.type === 'purchase_order') {
-        docHref = `/admin/procurement/${e.doc_id}`;
-      }
+      if (docInfo.type === 'receipt' || docInfo.type === 'stock_in') docHref = `/admin/procurement/receipts/${e.doc_id}`;
+      else if (docInfo.type === 'purchase_order') docHref = `/admin/procurement/${e.doc_id}`;
     }
+    const orderNumber = e.order_id ? (ordNumMap.get(e.order_id) ?? null) : null;
+    const refs = [docInfo?.number, orderNumber != null ? `#${orderNumber}` : null].filter(Boolean).join(', ');
     return {
-      date:        e.business_date as string,
-      description: (e.description as string) ?? '',
-      debit:       amt < 0 ? Math.abs(amt) : 0,
-      credit:      amt > 0 ? amt : 0,
+      date:        e.business_date,
+      docText:     `${docName(e.doc_type, amt)}${refs ? ` (${refs})` : ''}`,
+      description: e.description ?? '',
+      // Звірка з постачальником: оплати й повернення — дебет, поставки — кредит
+      debit:       amt > 0 ? amt : 0,
+      credit:      amt < 0 ? Math.abs(amt) : 0,
       docHref,
-      docLabel: docInfo?.number ?? null,
-      orderNumber: e.order_id ? (ordNumMap.get(e.order_id as string) ?? null) : null,
+      orderNumber,
     };
   });
 
@@ -105,7 +121,8 @@ export default async function SupplierActPage({
       dateTo={dateTo}
       opening={opening}
       rows={rows}
-      companyName={companyName}
+      ourName={SELLER.name}
+      ourSigner={SELLER_SIGNER.name}
       mode="supplier"
     />
   );
