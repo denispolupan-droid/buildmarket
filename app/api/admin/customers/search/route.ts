@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { personSearchOr } from '../../../../../lib/pg-filter';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,10 +37,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data ?? []);
   }
 
+  // Ім'я послівно й без огляду на написання, телефон у будь-якому форматі —
+  // ті самі правила, що в журналі замовлень (lib/pg-filter, міграція 135).
   if (q.length >= 2) {
-    query = query.or(
-      `name.ilike.%${q}%,company.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`
-    );
+    const ors = personSearchOr(q);
+    if (ors) query = query.or(ors);
   }
 
   const { data } = await query;

@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { SPECIAL_DEBTOR_LABEL } from '../../../../../../lib/accounting/sale-party';
 import { isDebtAccount } from '../../../../../../lib/accounting/debt-adjustment-rules';
+import { personSearchOr } from '../../../../../../lib/pg-filter';
 
 export type PartyOption = { id: string; label: string; sub: string | null; balance: number; cabinet?: number };
 
@@ -39,7 +40,9 @@ export async function GET(req: NextRequest) {
   if (account === 'partner') {
     let query = db.from('customers').select('id, name, company, legal_name, phone, balance')
       .eq('type', 'dropship_partner').order('name').limit(50);
-    if (q.length >= 2) query = query.or(`name.ilike.%${q}%,company.ilike.%${q}%,legal_name.ilike.%${q}%,phone.ilike.%${q}%`);
+    // Пошук як у журналі замовлень: слова в будь-якому порядку, різне
+    // написання імені, телефон у будь-якому форматі (lib/pg-filter)
+    if (q.length >= 2) { const ors = personSearchOr(q); if (ors) query = query.or(ors); }
     const { data } = await query;
     const bal = await balanceOf((data ?? []).map(c => c.id as string));
     const options: PartyOption[] = (data ?? []).map(c => ({
@@ -57,7 +60,7 @@ export async function GET(req: NextRequest) {
     .filter(([id, label]) => !q || label.toLowerCase().includes(q.toLowerCase()) || id.includes(q.toLowerCase()));
   let query = db.from('customers').select('id, name, company, legal_name, phone, city')
     .order('last_order_at', { ascending: false, nullsFirst: false }).limit(30);
-  if (q.length >= 2) query = query.or(`name.ilike.%${q}%,company.ilike.%${q}%,legal_name.ilike.%${q}%,phone.ilike.%${q}%`);
+  if (q.length >= 2) { const ors = personSearchOr(q); if (ors) query = query.or(ors); }
   const { data } = await query;
   const bal = await balanceOf([...specials.map(([id]) => id), ...(data ?? []).map(c => c.id as string)]);
   const options: PartyOption[] = [

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { escapeOrTerm, orderNumberFilter, orderSearchOr } from '../lib/pg-filter';
+import { escapeOrTerm, orderNumberFilter, orderSearchOr, personSearchOr } from '../lib/pg-filter';
 
 describe('escapeOrTerm', () => {
   it('прибирає структурні символи фільтра PostgREST', () => {
@@ -75,5 +75,30 @@ describe('orderSearchOr', () => {
   it('порожній запит — null', () => {
     expect(orderSearchOr('   ')).toBeNull();
     expect(orderSearchOr('')).toBeNull();
+  });
+});
+
+describe('personSearchOr — клієнти й партнери', () => {
+  it('ті самі правила, що в журналі: слова, корені імен, телефон цифрами', () => {
+    const f = personSearchOr('Александр Демидов')!;
+    expect(f).toContain('and(');
+    expect(f).toContain('name_norm.ilike.%олександр%');
+    expect(f).toContain('name_norm.ilike.%александр%');
+    expect(f).toContain('name_norm.ilike.%демидов%');
+    // юридична назва теж бере участь — партнери записані нею
+    expect(f).toContain('legal_name_norm.ilike.%демидов%');
+  });
+
+  it('телефон із роздільниками зводиться до цифр', () => {
+    expect(personSearchOr('+38 (099) 020-79-54')!).toContain('phone_digits.ilike.%380990207954%');
+    expect(personSearchOr('0990207954')!).toContain('phone_digits.ilike.%0990207954%');
+  });
+
+  it('пошта шукається як набрали', () => {
+    expect(personSearchOr('shop@example.com')!).toContain('email.ilike.%shop@example.com%');
+  });
+
+  it('порожній запит — null', () => {
+    expect(personSearchOr('  ')).toBeNull();
   });
 });

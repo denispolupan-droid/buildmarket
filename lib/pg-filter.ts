@@ -31,6 +31,25 @@ export function orderNumberFilter(term: string): string | null {
 const SEARCH_WORDS_MAX = 4;
 
 /**
+ * «Кожне слово запиту є в одній із колонок» — спільна частина пошуку людей.
+ * Слова звіряються в будь-якому порядку, кожне розкривається в корені свого
+ * імені (lib/name-search), а колонки — завжди *_norm зі згорнутою орфографією.
+ */
+function nameWordsCond(term: string, cols: readonly string[]): string | null {
+  const conds = term.split(/\s+/)
+    .filter(w => w.length > 1)
+    .slice(0, SEARCH_WORDS_MAX)
+    .map(w => {
+      const frags = nameFragments(w);
+      if (!frags.length) return null;
+      return `or(${frags.flatMap(f => cols.map(c => `${c}.ilike.%${f}%`)).join(',')})`;
+    })
+    .filter((c): c is string => c !== null);
+  if (!conds.length) return null;
+  return conds.length > 1 ? `and(${conds.join(',')})` : conds[0];
+}
+
+/**
  * Умова PostgREST для пошуку замовлення в журналі: номер (повний чи з початку),
  * № в кабінеті МП, ТТН, телефон у будь-якому форматі, ім'я, компанія, місто.
  *
@@ -51,16 +70,8 @@ export function orderSearchOr(search: string): string | null {
   const digits = search.replace(/\D/g, '');
   const ors: string[] = [`tracking_number.ilike.%${term}%`, `delivery_city_name.ilike.%${term}%`];
 
-  // Слово → «contact_norm або company_norm містить будь-який із варіантів»
-  const wordCond = (w: string) => {
-    const frags = nameFragments(w);
-    if (!frags.length) return null;
-    return `or(${frags.map(f => `contact_norm.ilike.%${f}%,company_norm.ilike.%${f}%`).join(',')})`;
-  };
-  const words = term.split(/\s+/).filter(w => w.length > 1).slice(0, SEARCH_WORDS_MAX);
-  const conds = words.map(wordCond).filter((c): c is string => c !== null);
-  if (conds.length > 1) ors.push(`and(${conds.join(',')})`);
-  else if (conds.length === 1) ors.push(conds[0]);
+  const byName = nameWordsCond(term, ['contact_norm', 'company_norm']);
+  if (byName) ors.push(byName);
 
   // Телефон: і як ввели (раптом формат збігся), і самими цифрами
   ors.push(`phone.ilike.%${term}%`);
@@ -72,5 +83,27 @@ export function orderSearchOr(search: string): string | null {
   if (/^\d{4,18}$/.test(digits)) {
     ors.push(`prom_order_id.eq.${digits}`, `rozetka_order_id.eq.${digits}`);
   }
+  return ors.join(',');
+}
+
+/**
+ * Умова PostgREST для пошуку клієнта чи партнера в таблиці customers: ім'я,
+ * компанія, юридична назва, телефон у будь-якому форматі, пошта.
+ *
+ * Правила ті самі, що в журналі замовлень (orderSearchOr): слова в будь-якому
+ * порядку, згорнута орфографія в *_norm, корені імен із lib/name-search,
+ * телефон по phone_digits — усе з міграції 135.
+ */
+export function personSearchOr(search: string): string | null {
+  const term = escapeOrTerm(search);
+  if (!term) return null;
+  const digits = search.replace(/\D/g, '');
+  const ors: string[] = [`email.ilike.%${term}%`];
+
+  const byName = nameWordsCond(term, ['name_norm', 'company_norm', 'legal_name_norm']);
+  if (byName) ors.push(byName);
+
+  ors.push(`phone.ilike.%${term}%`);
+  if (digits.length >= 3) ors.push(`phone_digits.ilike.%${digits}%`);
   return ors.join(',');
 }
