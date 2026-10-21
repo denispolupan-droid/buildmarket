@@ -43,15 +43,24 @@ async function requireAdmin() {
   return user?.app_metadata?.role === 'admin' ? user : null;
 }
 
+/** Післяплата за замовчуванням: лише неоплачені замовлення з оплатою при отриманні. */
+function defaultCod(orders: { payment_type: unknown; payment_confirmed: unknown; total_price: unknown }[]): number {
+  const sum = orders
+    .filter(o => o.payment_type === 'cod' && !o.payment_confirmed)
+    .reduce((s, o) => s + (Number(o.total_price) || 0), 0);
+  return Math.round(sum * 100) / 100;
+}
+
 /**
- * Без параметрів — дані для модалки (відправник + коробка за замовчуванням).
+ * Без параметрів — дані для модалки (відправник + коробка за замовчуванням +
+ * післяплата з БД; `?merged=id1,id2` — для об'єднаної посилки).
  * З `?label=1` — PDF-етикетка вже створеної накладної, base64.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+  const { id } = await params;
   if (req.nextUrl.searchParams.get('label')) {
-    const { id } = await params;
     const { data: order } = await createServiceClient()
       .from('orders').select('tracking_number, delivery_type').eq('id', id).single();
     if (!order?.tracking_number || order.delivery_type !== RZ_DELIVERY_TYPE) {
@@ -66,7 +75,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  const [sender, box] = await Promise.all([getRzSender(), getRzBox()]);
+  const merged = (req.nextUrl.searchParams.get('merged') ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  const ids = [...new Set([id, ...merged])];
+  const [sender, box, { data: orders }] = await Promise.all([
+    getRzSender(),
+    getRzBox(),
+    createServiceClient().from('orders').select('id, payment_type, payment_confirmed, total_price').in('id', ids).limit(ids.length),
+  ]);
   return NextResponse.json({
     sender: sender ? {
       point:    sender.department_label ?? '',
@@ -74,6 +89,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       limitKg:  sender.weight_limit_kg ?? null,
     } : null,
     box,
+    cod: defaultCod(orders ?? []),
   });
 }
 
@@ -86,7 +102,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     places?: number; description?: string; deliveryPayer?: string;
     /** Об'єднана посилка: усі замовлення, що їдуть цією накладною (включно з id) */
     mergedIds?: string[];
+    /** Післяплата, виправлена менеджером у вікні; без поля — рахуємо з БД */
+    codAmount?: number;
   };
+  if (body.codAmount != null) {
+    const c = Number(body.codAmount);
+    if (!Number.isFinite(c) || c < 0) {
+      return NextResponse.json({ error: 'Некоректна сума післяплати' }, { status: 400 });
+    }
+  }
 
   // Платник доставки. Значення звіряємо зі списком, а не передаємо як є:
   // API приймає рівно 'sender' | 'receiver', а будь-яке інше слово тут — це
@@ -180,9 +204,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const total = orders!.reduce((s, o) => s + (Number(o.total_price) || 0), 0);
   if (total <= 0) return NextResponse.json({ error: 'Нульова сума замовлення' }, { status: 400 });
 
-  const codTotal = orders!
-    .filter(o => o.payment_type === 'cod' && !o.payment_confirmed)
-    .reduce((s, o) => s + (Number(o.total_price) || 0), 0);
+  // Післяплату менеджер може виправити у вікні (як у накладній НП) — домовленість
+  // з покупцем, яка не варта правки замовлення. Без поля — сума з БД. Оголошена
+  // вартість не може бути меншою за післяплату, тож піднімаємо її до неї.
+  const codTotal = body.codAmount != null
+    ? Math.round(Number(body.codAmount) * 100) / 100
+    : defaultCod(orders!);
+  const insurance = Math.max(total, codTotal);
   const items = (order.items ?? []) as { name?: string }[];
   const description = (body.description ?? (ids.length > 1
     ? mergedDescription(orders!.map(o => ({ order_number: o.order_number, items: (o.items ?? []) as { name?: string }[] })))
@@ -196,7 +224,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       places:         Number(body.places) > 0 ? Number(body.places) : 1,
       delivery_payer: deliveryPayer,
       cost:           codTotal,
-      insurance_cost: total,
+      insurance_cost: insurance,
       params:         { weight, length, width, height },
       sender: {
         city:        sender.city,

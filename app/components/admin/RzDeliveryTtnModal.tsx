@@ -36,21 +36,27 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
   // кожна створена досі накладна, і мовчазна зміна умов на вже налагодженому
   // потоці коштувала б грошей на кожній посилці, поки хтось помітить.
   const [payer, setPayer] = useState<'receiver' | 'sender'>('receiver');
+  // Післяплата: сервер підставляє суму неоплачених замовлень, менеджер може
+  // виправити (домовленість з покупцем) — як у накладній Нової Пошти.
+  const [cod, setCod] = useState('');
+  const [codDefault, setCodDefault] = useState<number | null>(null);
   const [sender, setSender] = useState<Sender | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  const mergedKey = (order.mergedIds ?? []).join(',');
   useEffect(() => {
-    fetch(`/api/admin/orders/${order.id}/rz-ttn`)
+    fetch(`/api/admin/orders/${order.id}/rz-ttn${mergedKey ? `?merged=${encodeURIComponent(mergedKey)}` : ''}`)
       .then(r => r.json())
-      .then((d: { sender?: Sender | null; box?: { length: number; width: number; height: number } }) => {
+      .then((d: { sender?: Sender | null; box?: { length: number; width: number; height: number }; cod?: number }) => {
         setSender(d.sender ?? null);
         if (d.box) { setLength(String(d.box.length)); setWidth(String(d.box.width)); setHeight(String(d.box.height)); }
+        if (typeof d.cod === 'number') { setCodDefault(d.cod); setCod(String(d.cod)); }
       })
       .catch(() => setSender(null))
       .finally(() => setLoading(false));
-  }, [order.id]);
+  }, [order.id, mergedKey]);
 
   // Вага — тим самим роутом, що й для Нової Пошти (фасування з карток товарів)
   useEffect(() => {
@@ -67,6 +73,9 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
 
   const weightNum = parseFloat(weight);
   const overLimit = sender?.limitKg != null && Number.isFinite(weightNum) && weightNum > sender.limitKg;
+  const codNum = cod.trim() === '' ? NaN : parseFloat(cod.replace(',', '.'));
+  const codInvalid = !Number.isFinite(codNum) || codNum < 0;
+  const codChanged = codDefault != null && !codInvalid && Math.abs(codNum - codDefault) > 0.005;
 
   async function submit() {
     setError(''); setBusy(true);
@@ -79,6 +88,8 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
           width: parseFloat(width), height: parseFloat(height),
           places: parseInt(places) || 1,
           deliveryPayer: payer,
+          // Лише виправлена сума: інакше сервер рахує сам із БД
+          ...(codChanged ? { codAmount: codNum } : {}),
           ...(order.mergedIds?.length ? { mergedIds: order.mergedIds } : {}),
         }),
       });
@@ -103,7 +114,7 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
     </label>
   );
 
-  const blocked = busy || !sender || overLimit;
+  const blocked = busy || !sender || overLimit || codInvalid;
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
@@ -141,6 +152,27 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
             {num(length, setLength, 'Довжина', 'см')}
             {num(width, setWidth, 'Ширина', 'см')}
             {num(height, setHeight, 'Висота', 'см')}
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              {num(cod, setCod, 'Післяплата', '₴')}
+              {codChanged && (
+                <button type="button" onClick={() => setCod(String(codDefault))}
+                  style={{ height: '38px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  Повернути {codDefault} ₴
+                </button>
+              )}
+            </div>
+            <div style={{ fontSize: '11.5px', marginTop: '5px', lineHeight: 1.45, color: codInvalid ? '#DC2626' : codChanged ? '#B45309' : 'var(--text-muted)' }}>
+              {codInvalid
+                ? 'Вкажіть суму (0 — без післяплати)'
+                : codChanged
+                  ? `Змінено вручну: із замовлення ${codDefault} ₴. Сума замовлення в обліку не зміниться — якщо змінилась ціна, правте замовлення.`
+                  : codNum === 0
+                    ? 'Без післяплати — замовлення оплачене.'
+                    : 'Сума з замовлення — покупець сплатить її на точці видачі.'}
+            </div>
           </div>
 
           <div>
