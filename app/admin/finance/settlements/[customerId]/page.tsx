@@ -4,7 +4,7 @@ import { redirect, notFound } from 'next/navigation';
 import ActClient, { type ActRow } from '../../_act/ActClient';
 import { isSpecialDebtor, SPECIAL_DEBTOR_LABEL } from '../../../../../lib/accounting/sale-party';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
-import { SELLER, SELLER_SIGNER } from '../../../../../lib/company';
+import { SELLER } from '../../../../../lib/company';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,7 +116,7 @@ export default async function CustomerActPage({
       opening={opening}
       rows={rows}
       ourName={SELLER.name}
-      ourSigner={SELLER_SIGNER.name}
+      ourSigner={SELLER.signatory || SELLER.name.replace(/^ФОП\s+/, '')}
       mode="customer"
     />
   );
