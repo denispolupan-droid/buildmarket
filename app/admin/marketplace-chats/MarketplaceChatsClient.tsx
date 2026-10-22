@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { RefreshCw, Send, ExternalLink, Sparkles, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Send, ExternalLink, Sparkles, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { htmlToText } from '../../../lib/html-to-text';
 import { CATEGORY_LABELS, type DraftCategory } from '../../../lib/marketplace-chat-draft-types';
 import {
@@ -101,6 +101,18 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
   const [instruction, setInstruction] = useState('');
   const [revising, setRevising] = useState(false);
   const [revisedBy, setRevisedBy] = useState<string[]>([]);
+  // Згорнута чернетка лишає лише рядок-заголовок, щоб було видно листування.
+  // Вибір менеджера памʼятаємо між чатами й перезавантаженнями.
+  const [draftCollapsed, setDraftCollapsed] = useState(false);
+  useEffect(() => {
+    try { setDraftCollapsed(localStorage.getItem('mp-chat-draft-collapsed') === '1'); } catch { /* приватне вікно */ }
+  }, []);
+  function toggleDraftCollapsed() {
+    setDraftCollapsed(prev => {
+      try { localStorage.setItem('mp-chat-draft-collapsed', prev ? '0' : '1'); } catch { /* приватне вікно */ }
+      return !prev;
+    });
+  }
 
   const chatKey = (item: ChatItem) => `${item.mp}:${item.id}`;
 
@@ -322,12 +334,19 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
             {draft && !draftLoading && (
               <>
                 <button type="button" className="inbox-btn primary" onClick={() => setReply(draft.reply)} disabled={revising}>Вставити у відповідь</button>
-                <button type="button" className="inbox-btn" onClick={() => selected && requestDraft(selected, true)} disabled={revising} title="Нова чернетка з нуля">Ще раз</button>
+                {!draftCollapsed && (
+                  <button type="button" className="inbox-btn" onClick={() => selected && requestDraft(selected, true)} disabled={revising} title="Нова чернетка з нуля">Ще раз</button>
+                )}
               </>
             )}
+            <button type="button" className="inbox-btn" onClick={toggleDraftCollapsed}
+              title={draftCollapsed ? 'Показати чернетку повністю' : 'Згорнути чернетку, щоб бачити листування'}
+              aria-expanded={!draftCollapsed}>
+              {draftCollapsed ? <><ChevronUp size={13} /> Розгорнути</> : <><ChevronDown size={13} /> Згорнути</>}
+            </button>
           </div>
-          {draftError && <div style={{ color: '#DC2626', marginTop: '6px' }}>{draftError}</div>}
-          {draft && (
+          {!draftCollapsed && draftError && <div style={{ color: '#DC2626', marginTop: '6px' }}>{draftError}</div>}
+          {!draftCollapsed && draft && (
             <>
               <div style={{ color: 'var(--text-secondary)', marginTop: '6px' }}>{draft.summary}</div>
               {draft.reason && <div style={{ color: '#92400E', marginTop: '4px' }}>{draft.reason}</div>}

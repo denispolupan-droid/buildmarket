@@ -37,6 +37,9 @@ type Props = {
 const caps: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const field: React.CSSProperties = { width: '100%', height: '36px', boxSizing: 'border-box', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' };
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#1D4ED8', fontSize: '12px', fontWeight: 600 };
+const fieldLabel: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' };
+const unit: React.CSSProperties = { position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '11.5px', color: 'var(--text-muted)', pointerEvents: 'none' };
+const section: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '10px' };
 
 export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: Props) {
   const [weight, setWeight] = useState('');
@@ -211,15 +214,21 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   const codChanged = codDefault != null && !codInvalid && Math.abs(codNum - codDefault) > 0.005;
   const canSubmit = !busy && !!sender && !senderSaving && !overLimit && !codInvalid;
 
-  const num = (v: string, set: (s: string) => void, label: string, suffix: string, warn?: boolean) => (
-    <label style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ ...caps, marginBottom: '5px' }}>{label}</div>
+  const num = (v: string, set: (s: string) => void, label: string, suffix: string, warn?: boolean, width?: string) => (
+    <label style={{ flex: width ? `0 0 ${width}` : 1, minWidth: 0 }}>
+      <div style={{ ...fieldLabel }}>{label}</div>
       <div style={{ position: 'relative' }}>
         <input value={v} onChange={e => set(e.target.value)} inputMode="decimal"
-          style={{ width: '100%', height: '38px', padding: '0 34px 0 10px', boxSizing: 'border-box', borderRadius: '9px', border: `1.5px solid ${warn ? '#DC2626' : 'var(--border)'}`, background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '14px' }} />
-        <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: 'var(--text-muted)' }}>{suffix}</span>
+          style={{ ...field, height: '38px', padding: '0 30px 0 10px', fontSize: '13.5px', fontVariantNumeric: 'tabular-nums', borderColor: warn ? '#DC2626' : 'var(--border)' }} />
+        <span style={unit}>{suffix}</span>
       </div>
     </label>
+  );
+
+  // Габарити — одне поле «Д × Ш × В», а не три окремі на всю ширину
+  const dimInput = (v: string, set: (s: string) => void, title: string) => (
+    <input value={v} onChange={e => set(e.target.value)} inputMode="decimal" aria-label={title} title={title}
+      style={{ width: 0, flex: 1, minWidth: 0, height: '100%', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '13.5px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }} />
   );
 
   const filtered = pickupFilter.trim()
@@ -228,28 +237,24 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div className="adm-modal-box" style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '460px', maxWidth: '96vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>Накладна Rozetka</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+      <div className="adm-modal-box" style={{ background: 'var(--bg-card)', borderRadius: '14px', width: '480px', maxWidth: '96vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(15,23,42,0.28)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', padding: '16px 20px 14px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Накладна Rozetka</div>
+            <div style={{ marginTop: '2px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               {order.mergedNumbers && order.mergedNumbers.length > 1
                 ? `Одна посилка: ${order.mergedNumbers.map(n => `#${n}`).join(' + ')}`
-                : `Замовлення #${order.order_number}`} · точка видачі
+                : `Замовлення #${order.order_number}`} · точка видачі · адресу отримувача Rozetka бере із замовлення
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Закрити" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', padding: '2px', flexShrink: 0 }}><X size={18} /></button>
         </div>
 
-        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--text-secondary)', background: 'var(--bg-soft)', borderRadius: '9px', padding: '10px 12px' }}>
-            Адресу отримувача Rozetka бере із замовлення — вводити її не треба.
-          </div>
-
+        <div style={{ padding: '16px 20px 18px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto' }}>
           {/* Відділення відправника */}
-          <div style={{ border: '1.5px solid var(--border)', borderRadius: '10px', padding: '10px 12px' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '11px 13px', background: 'var(--bg-soft)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-              <div style={caps}>Відділення відправника</div>
+              <div style={caps}>Відправник</div>
               {!senderLoading && !pickerOpen && (
                 <button type="button" onClick={openPicker} disabled={senderSaving} style={linkBtn}>
                   {sender ? 'Змінити' : 'Обрати'}
@@ -343,40 +348,58 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {num(weight, setWeight, 'Вага', 'кг', overLimit)}
-            {num(places, setPlaces, 'Місць', 'шт')}
-          </div>
-          {overLimit && (
-            <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '-6px' }}>
-              Точка приймає до {limitKg} кг — зменште вагу або оберіть інше відділення.
+          {/* Посилка: вага, місця, габарити — один рядок */}
+          <div style={section}>
+            <div style={caps}>Посилка</div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {num(weight, setWeight, 'Вага', 'кг', overLimit, '96px')}
+              {num(places, setPlaces, 'Місць', 'шт', false, '80px')}
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <div style={fieldLabel}>Габарити, Д × Ш × В</div>
+                <div style={{ ...field, height: '38px', display: 'flex', alignItems: 'center', padding: '0 30px 0 4px', position: 'relative' }}>
+                  {dimInput(length, setLength, 'Довжина, см')}
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>×</span>
+                  {dimInput(width, setWidth, 'Ширина, см')}
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>×</span>
+                  {dimInput(height, setHeight, 'Висота, см')}
+                  <span style={unit}>см</span>
+                </div>
+              </div>
             </div>
-          )}
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {num(length, setLength, 'Довжина', 'см')}
-            {num(width, setWidth, 'Ширина', 'см')}
-            {num(height, setHeight, 'Висота', 'см')}
+            {overLimit && (
+              <div style={{ fontSize: '12px', color: '#DC2626' }}>
+                Точка приймає до {limitKg} кг — зменште вагу або оберіть інше відділення.
+              </div>
+            )}
           </div>
 
-          <div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              {num(cod, setCod, 'Післяплата', '₴')}
-              {codChanged && (
-                <button type="button" onClick={() => setCod(String(codDefault))}
-                  style={{ height: '38px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-                  Повернути {codDefault} ₴
-                </button>
-              )}
+          {/* Оплата: вузьке поле суми, пояснення поруч */}
+          <div style={section}>
+            <div style={caps}>Оплата</div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              {num(cod, setCod, 'Післяплата', '₴', codInvalid, '150px')}
+              <div style={{ flex: '1 1 180px', minWidth: 0, minHeight: '38px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ fontSize: '12px', lineHeight: 1.45, color: codInvalid ? '#DC2626' : codChanged ? '#B45309' : 'var(--text-muted)' }}>
+                  {codInvalid
+                    ? 'Вкажіть суму (0 — без післяплати)'
+                    : codChanged
+                      ? `Змінено вручну, із замовлення — ${codDefault} ₴`
+                      : codNum === 0
+                        ? 'Замовлення оплачене — без післяплати'
+                        : 'Сума товарів без доставки покупця — її Rozetka бере окремо'}
+                </div>
+                {codChanged && (
+                  <button type="button" onClick={() => setCod(String(codDefault))} style={{ ...linkBtn, flexShrink: 0 }}>
+                    Повернути
+                  </button>
+                )}
+              </div>
             </div>
-            <div style={{ fontSize: '11.5px', marginTop: '5px', lineHeight: 1.45, color: codInvalid ? '#DC2626' : codChanged ? '#B45309' : 'var(--text-muted)' }}>
-              {codInvalid
-                ? 'Вкажіть суму (0 — без післяплати)'
-                : codChanged
-                  ? `Змінено вручну: із замовлення ${codDefault} ₴. Сума замовлення в обліку не зміниться — якщо змінилась ціна, правте замовлення.`
-                  : codNum === 0
-                    ? 'Без післяплати — замовлення оплачене.'
-                    : 'Сума товарів із замовлення — без доставки покупця (її Rozetka бере окремо).'}
-            </div>
+            {codChanged && (
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                Сума замовлення в обліку не зміниться — якщо змінилась ціна, правте замовлення.
+              </div>
+            )}
           </div>
 
           {error && (
@@ -384,13 +407,13 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', padding: '0 20px 18px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', borderRadius: '0 0 14px 14px' }}>
           <button onClick={onClose} disabled={busy}
-            style={{ flex: 1, height: '42px', borderRadius: '10px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ height: '38px', padding: '0 16px', borderRadius: '9px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             Скасувати
           </button>
           <button onClick={submit} disabled={!canSubmit}
-            style={{ flex: 2, height: '42px', borderRadius: '10px', border: 'none', background: canSubmit ? '#15803D' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'default' }}>
+            style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: canSubmit ? '#15803D' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'default' }}>
             {busy ? 'Створюємо…' : 'Створити накладну'}
           </button>
         </div>
