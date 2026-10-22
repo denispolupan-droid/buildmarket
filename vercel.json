@@ -72,6 +72,14 @@
     {
       "path": "/api/cron/morning-digest",
       "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/metric-watch?scope=daily",
+      "schedule": "10 7 * * *"
+    },
+    {
+      "path": "/api/cron/metric-watch?scope=hourly",
+      "schedule": "17 * * * *"
     }
   ]
 }
