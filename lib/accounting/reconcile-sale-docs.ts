@@ -20,6 +20,7 @@
 
 import { createServiceClient } from '../supabase';
 import { fetchAllRows } from '../db-paginate';
+import { saleLinePrice } from './sale-party';
 
 export type SaleDivergence = {
   orderId: string;
@@ -34,6 +35,20 @@ export type SaleDivergence = {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 /** Копійчана різниця — це округлення, а не розбіжність. */
 const TOLERANCE = 0.05;
+
+/**
+ * Товарна сума замовлення за тим самим правилом, за яким будується РН
+ * (saleLinePrice): у дропшип-замовленні рядок накладної — дроп-ціна партнера
+ * (cost_price), а не ціна для його покупця. Без цього кожне доставлене
+ * замовлення партнера давало хибну «розбіжність» (#26101104, #26101112, 22.10.2026).
+ */
+export function orderGoodsAmount(channelCode: string | null | undefined, items: unknown): number {
+  const list = Array.isArray(items) ? items as { qty?: unknown; price?: unknown; cost_price?: unknown }[] : [];
+  return round2(list.reduce((s, i) => {
+    const price = saleLinePrice(channelCode, { price: Number(i?.price) || 0, cost_price: Number(i?.cost_price) || null });
+    return s + round2((Number(i?.qty) || 0) * price);
+  }, 0));
+}
 
 export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergence[]> {
   const db = createServiceClient();
@@ -72,10 +87,10 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
   }
 
   const orderIds = [...new Set(withOrder.map(d => d.order_id!))];
-  const orders = await fetchAllRows<{ id: string; order_number: number | null; status: string | null; items: unknown }>(
+  const orders = await fetchAllRows<{ id: string; order_number: number | null; status: string | null; items: unknown; channel_code: string | null }>(
     (from, to) => db
       .from('orders')
-      .select('id, order_number, status, items')
+      .select('id, order_number, status, items, channel_code')
       .in('id', orderIds)
       .order('id')
       .range(from, to),
@@ -94,9 +109,7 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
   for (const [orderId, a] of agg) {
     const order = orderMap.get(orderId);
     if (!order) continue;
-    const items = Array.isArray(order.items) ? order.items as { qty?: unknown; price?: unknown }[] : [];
-    const orderAmount = round2(items.reduce(
-      (s, i) => s + round2((Number(i?.qty) || 0) * (Number(i?.price) || 0)), 0));
+    const orderAmount = orderGoodsAmount(order.channel_code, order.items);
 
     const diff = round2(a.docAmount - orderAmount);
     if (Math.abs(diff) <= TOLERANCE) continue;
