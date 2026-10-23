@@ -7,9 +7,12 @@ import { SELLER } from '../../../../lib/company';
 import { isSpecialDebtor } from '../../../../lib/accounting/sale-party';
 import {
   accountsFor, buildJournal, buildMutualStatement, counterpartyRefString, documentHref, groupAccounts, groupOf,
-  orderHref, parseCounterpartyRef, parseGroup, specialLabel, COUNTERPARTY_GROUPS, SETTLEMENT_ACCOUNT_LABEL,
-  type CounterpartyGroup, type CounterpartyRef, type LedgerEntry, type SettlementAccount,
+  openItemsByOrder, orderHref, parseCounterpartyRef, parseGroup, saldoWords, specialLabel,
+  COUNTERPARTY_GROUPS, SETTLEMENT_ACCOUNT_LABEL,
+  type CounterpartyGroup, type CounterpartyRef, type LedgerEntry, type OpenItem, type SettlementAccount,
 } from '../../../../lib/accounting/mutual-settlements';
+import { ORDER_TAB_LABELS } from '../../../../lib/orders/status';
+import { carrierInfo } from '../../../../lib/delivery-label';
 import FinanceTabs from '../FinanceTabs';
 import ActClient, { type ActRow } from '../_act/ActClient';
 import CounterpartyPicker from './CounterpartyPicker';
@@ -38,16 +41,23 @@ function fmt(n: number) {
 }
 const dmy = (d: string) => d.slice(0, 10).split('-').reverse().join('.');
 
-/** Хто кому винен — словами, бо знак у взаєморозрахунках читають по-різному. */
-function balanceWords(v: number): { text: string; color: string } {
-  if (Math.abs(v) < 0.005) return { text: 'розрахунки закриті', color: 'var(--text-muted)' };
-  return v > 0
-    ? { text: 'борг контрагента', color: '#15803D' }
-    : { text: 'наш борг',         color: '#B45309' };
+const TONE_COLOR = { pos: '#15803D', neg: '#B45309', zero: 'var(--text-muted)' } as const;
+
+/** Хто кому винен — словами (lib: для площадок мінус — «отримано наперед»). */
+function balanceWords(v: number, special = false): { text: string; color: string } {
+  const w = saldoWords(v, special);
+  return { text: w.text, color: TONE_COLOR[w.tone] };
 }
 
-function SaldoTag({ v }: { v: number }) {
-  const w = balanceWords(v);
+/** Підписи під оборотами — що саме стоїть за розходом і приходом у цього типу контрагента. */
+function turnoverCaptions(kind: CounterpartyRef['kind']): { debit: string; credit: string } {
+  if (kind === 'supplier') return { debit: 'оплати й повернення постачальнику', credit: 'поставки товару' };
+  if (kind === 'special')  return { debit: 'вручені посилки', credit: 'виплати площадки' };
+  return { debit: 'відвантаження, виплати, комісії', credit: 'оплати, поповнення, наложка' };
+}
+
+function SaldoTag({ v, special = false }: { v: number; special?: boolean }) {
+  const w = balanceWords(v, special);
   return (
     // Тим самим підписом, що й «поставки товару» під оборотами — лише колір каже, чий борг
     <div className="fin-money-sub" style={{ color: w.color, fontWeight: 600, whiteSpace: 'nowrap' }}>{w.text}</div>
@@ -155,7 +165,79 @@ async function Journal({ group, dateFrom, dateTo }: { group: CounterpartyGroup; 
     opening: r.opening, debit: r.debit, credit: r.credit, closing: r.closing,
   }));
 
-  return <JournalTable items={items} emptyText="За цей період ні сальдо, ні руху" />;
+  return <JournalTable items={items} emptyText="За цей період ні сальдо, ні руху" special={group === 'services'} />;
+}
+
+// ── Що не закрито (пошта й маркетплейси) ──────────────────────────────────────
+
+type OpenOrder = { order_number: number; status: string | null; delivery_type: string | null };
+
+function OpenItems({ items, orders, closing, dateTo }: {
+  items: OpenItem[]; orders: Record<string, OpenOrder>; closing: number; dateTo: string;
+}) {
+  const LIMIT = 50;
+  const groups = [
+    { key: 'neg', title: 'Отримано наперед — посилка ще не вручена', hint: 'площадка вже переказала гроші, продаж визнаємо при врученні',
+      rows: items.filter(i => i.orderId && i.net < 0) },
+    { key: 'pos', title: 'Вручено — чекаємо виплату', hint: 'продаж є, гроші від площадки ще не прийшли',
+      rows: items.filter(i => i.orderId && i.net > 0) },
+    { key: 'none', title: 'Без прив’язки до замовлення', hint: 'виплати чи коригування, не рознесені по замовленнях',
+      rows: items.filter(i => !i.orderId) },
+  ].filter(g => g.rows.length > 0);
+  const total = Math.round(items.reduce((s, i) => s + i.net, 0) * 100) / 100;
+
+  const td: React.CSSProperties = { padding: '5px 8px 5px 0', fontSize: '13px', borderBottom: '1px solid var(--border-light, var(--border))' };
+  const num: React.CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 600 };
+
+  return (
+    <div className="act-no-print fin-card" style={{ marginBottom: '12px', padding: '10px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="fin-card-title">Що не закрито на {dmy(dateTo)}</div>
+        <div className="fin-hint" style={{ marginTop: 0 }}>
+          замовлення, де продаж і гроші ще не зійшлись · разом {fmt(Math.abs(total))} ₴ — {balanceWords(total, true).text}
+          {Math.abs(total - closing) > 0.005 && ` (не збігається з сальдо ${fmt(closing)} — перевірте проводки)`}
+        </div>
+      </div>
+      {groups.length === 0 ? (
+        <div className="fin-hint" style={{ marginTop: '8px' }}>Усі замовлення закриті.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(320px, 1fr))`, gap: '8px 28px', marginTop: '6px' }}>
+          {groups.map(g => {
+            const sum = g.rows.reduce((s, i) => s + i.net, 0);
+            return (
+              <div key={g.key}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 0 2px', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)' }} title={g.hint}>{g.title}</span>
+                  <span style={{ fontSize: '12.5px', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmt(Math.abs(sum))} ₴</span>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {g.rows.slice(0, LIMIT).map(i => {
+                      const o = i.orderId ? orders[i.orderId] : undefined;
+                      const href = orderHref(o?.order_number);
+                      return (
+                        <tr key={i.orderId ?? 'none'}>
+                          <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                            {href ? <Link href={href} target="_blank" style={{ color: '#1D4ED8', textDecoration: 'none', fontWeight: 600 }}>#{o!.order_number}</Link> : '—'}
+                          </td>
+                          <td style={{ ...td, color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                            {o ? [ORDER_TAB_LABELS[o.status ?? ''] ?? o.status, carrierInfo(o.delivery_type).name].filter(Boolean).join(' · ') : ''}
+                          </td>
+                          <td style={{ ...td, color: 'var(--text-muted)', fontSize: '12px', whiteSpace: 'nowrap' }}>{dmy(i.lastDate)}</td>
+                          <td style={num}>{fmt(Math.abs(i.net))}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {g.rows.length > LIMIT && <div className="fin-hint">…і ще {g.rows.length - LIMIT}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Рух по контрагенту ────────────────────────────────────────────────────────
@@ -186,6 +268,28 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
   const opening: Partial<Record<SettlementAccount, number>> = {};
   for (const r of openingRows) opening[r.account_type] = (opening[r.account_type] ?? 0) + Number(r.amount);
   const st = buildMutualStatement({ accounts, opening, entries, showInternal });
+  const special = ref.kind === 'special';
+  const captions = turnoverCaptions(ref.kind);
+
+  // «Що не закрито» — для пошти й маркетплейсів: по яких замовленнях гроші й
+  // продаж ще не зійшлись на кінець періоду. Уся історія до дати, бо замовлення
+  // могло відкритись задовго до початку періоду.
+  let openBlock: React.ReactNode = null;
+  if (special && view === 'moves') {
+    const all = await fetchAllRows<{ order_id: string | null; amount: number; business_date: string }>((f, t) => db.from('money_entries')
+      .select('order_id, amount, business_date')
+      .in('account_type', accounts)
+      .eq('counterparty_id', ref.id)
+      .lte('business_date', dateTo)
+      .order('id').range(f, t));
+    const items = openItemsByOrder(all);
+    const ids = items.map(i => i.orderId).filter(Boolean) as string[];
+    const parts = await Promise.all(chunks(ids).map(c => db.from('orders')
+      .select('id, order_number, status, delivery_type').in('id', c).limit(c.length)));
+    // Звичайний об'єкт, не Map: пропси серверних компонентів у dev серіалізуються в браузер
+    const om: Record<string, OpenOrder> = Object.fromEntries(parts.flatMap(p => p.data ?? []).map(o => [o.id as string, o as OpenOrder]));
+    openBlock = <OpenItems items={items} orders={om} closing={st.closing} dateTo={dateTo} />;
+  }
 
   // Номери документів і замовлень — щоб кожен рядок вів на свою угоду
   const docIds = [...new Set(st.rows.map(r => r.doc_id).filter(Boolean))] as string[];
@@ -217,7 +321,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
   // Рахунки без руху й сальдо не показуємо: у звичайного покупця «Баланс партнера» — вічний нуль
   const shownAccounts = st.accounts.filter(a => Math.abs(a.opening) > 0.005 || a.debit > 0.005 || a.credit > 0.005);
   const multi = shownAccounts.length > 1;
-  const totalWords = balanceWords(st.closing);
+  const totalWords = balanceWords(st.closing, special);
   const totalDebit  = lines.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0);
   const totalCredit = lines.reduce((s, l) => s + (l.amount < 0 ? -l.amount : 0), 0);
 
@@ -254,22 +358,22 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
           <div>
             <div className="fin-kpi-label">Сальдо на {dmy(dateFrom)}</div>
             <div className="fin-money-val">{fmt(Math.abs(st.opening))} ₴</div>
-            <SaldoTag v={st.opening} />
+            <SaldoTag v={st.opening} special={special} />
           </div>
           <div>
             <div className="fin-kpi-label">Розхід за період</div>
             <div className="fin-money-val">{fmt(totalDebit)} ₴</div>
-            <div className="fin-money-sub">{ref.kind === 'supplier' ? 'оплати й повернення постачальнику' : 'відвантаження, виплати, комісії'}</div>
+            <div className="fin-money-sub">{captions.debit}</div>
           </div>
           <div>
             <div className="fin-kpi-label">Прихід за період</div>
             <div className="fin-money-val">{fmt(totalCredit)} ₴</div>
-            <div className="fin-money-sub">{ref.kind === 'supplier' ? 'поставки товару' : 'оплати, поповнення, наложка'}</div>
+            <div className="fin-money-sub">{captions.credit}</div>
           </div>
           <div>
             <div className="fin-kpi-label">Сальдо на {dmy(dateTo)}</div>
             <div className="fin-money-val" style={{ fontSize: '24px' }}>{fmt(Math.abs(st.closing))} ₴</div>
-            <SaldoTag v={st.closing} />
+            <SaldoTag v={st.closing} special={special} />
           </div>
         </div>
         {/* Щільніше за стандартну fin-картку: це шапка виписки, а не дашборд */}
@@ -302,6 +406,8 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
           </div>
         )}
       </div>
+
+      {openBlock}
 
       {(st.hiddenInternal > 0 || showInternal) && (
         <div className="act-no-print fin-hint" style={{ margin: '0 0 10px', fontSize: '12px' }}>
@@ -343,7 +449,10 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
         <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
             <b>Розхід</b> — що ми віддали контрагенту (товар, гроші), <b>прихід</b> — що отримали від нього.
-            Сальдо: плюс — борг контрагента, мінус — наш борг. Клік по документу чи замовленню відкриває угоду.
+            {special
+              ? 'Сальдо: плюс — до виплати нам, мінус — отримано наперед. '
+              : 'Сальдо: плюс — борг контрагента, мінус — наш борг. '}
+            Клік по документу чи замовленню відкриває угоду.
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px' }}>

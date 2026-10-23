@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
+import { saldoWords } from '../../../../lib/accounting/mutual-settlements';
 
 export type JournalItem = {
   href: string;
@@ -19,18 +20,18 @@ function fmt(n: number) {
   return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** Сальдо зі знаком словами: плюс — борг контрагента, мінус — наш борг. */
-function Saldo({ v }: { v: number }) {
+/** Сальдо зі знаком; хто кому винен — підказкою (для площадок мінус — «отримано наперед»). */
+function Saldo({ v, special }: { v: number; special: boolean }) {
   if (Math.abs(v) < 0.005) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
   return (
-    <span style={{ color: v > 0 ? '#15803D' : '#B45309' }} title={v > 0 ? 'борг контрагента' : 'наш борг'}>
+    <span style={{ color: v > 0 ? '#15803D' : '#B45309' }} title={saldoWords(v, special).text}>
       {v > 0 ? '' : '−'}{fmt(Math.abs(v))}
     </span>
   );
 }
 
 /** Журнал контрагентів групи за період: клік по рядку — розгорнутий рух. */
-export default function JournalTable({ items, emptyText }: { items: JournalItem[]; emptyText: string }) {
+export default function JournalTable({ items, emptyText, special = false }: { items: JournalItem[]; emptyText: string; special?: boolean }) {
   const router = useRouter();
   const [q, setQ] = useState('');
   const shown = useMemo(() => {
@@ -75,18 +76,18 @@ export default function JournalTable({ items, emptyText }: { items: JournalItem[
                     <Link href={i.href} style={{ color: 'var(--text-primary)', fontWeight: 600, textDecoration: 'none' }}>{i.name}</Link>
                     {i.sub && <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>{i.sub}</div>}
                   </td>
-                  <td style={td}><Saldo v={i.opening} /></td>
+                  <td style={td}><Saldo v={i.opening} special={special} /></td>
                   <td style={td}>{i.debit > 0.005 ? fmt(i.debit) : ''}</td>
                   <td style={td}>{i.credit > 0.005 ? fmt(i.credit) : ''}</td>
-                  <td style={{ ...td, fontWeight: 700 }}><Saldo v={i.closing} /></td>
+                  <td style={{ ...td, fontWeight: 700 }}><Saldo v={i.closing} special={special} /></td>
                 </tr>
               ))}
               <tr>
                 <td style={{ ...td, textAlign: 'left', fontWeight: 700, borderBottom: 'none' }}>Разом</td>
-                <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}><Saldo v={total.opening} /></td>
+                <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}><Saldo v={total.opening} special={special} /></td>
                 <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}>{fmt(total.debit)}</td>
                 <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}>{fmt(total.credit)}</td>
-                <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}><Saldo v={total.closing} /></td>
+                <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}><Saldo v={total.closing} special={special} /></td>
               </tr>
             </tbody>
           </table>

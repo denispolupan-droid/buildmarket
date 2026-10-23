@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildMutualStatement, parseCounterpartyRef, counterpartyRefString, accountsFor, operationLabel,
-  buildJournal, documentHref, groupOf, parseGroup,
+  buildJournal, documentHref, groupOf, parseGroup, openItemsByOrder, saldoWords,
   type LedgerEntry,
 } from '../lib/accounting/mutual-settlements';
 
@@ -155,6 +155,31 @@ describe('documentHref', () => {
     expect(groupOf({ kind: 'customer', id: P }, 'wholesale')).toBe('customers');
     expect(parseGroup('suppliers')).toBe('suppliers');
     expect(parseGroup('x')).toBeNull();
+  });
+});
+
+describe('openItemsByOrder', () => {
+  it('Rozetka: передоплата в дорозі — мінус, вручена наложка без виплати — плюс, закриті зникають', () => {
+    const items = openItemsByOrder([
+      { order_id: 'closed', amount: 600,   business_date: '2026-10-10' },
+      { order_id: 'closed', amount: -600,  business_date: '2026-10-11' },
+      { order_id: 'prepaid', amount: -470, business_date: '2026-10-21' },
+      { order_id: 'cod',    amount: 520,   business_date: '2026-10-20' },
+      { order_id: null,     amount: -15,   business_date: '2026-10-05' },
+    ]);
+    expect(items).toEqual([
+      { orderId: 'cod',     net: 520,  lastDate: '2026-10-20' },
+      { orderId: 'prepaid', net: -470, lastDate: '2026-10-21' },
+      { orderId: null,      net: -15,  lastDate: '2026-10-05' },
+    ]);
+    expect(items.reduce((s, i) => s + i.net, 0)).toBe(35);
+  });
+
+  it('слова сальдо: для площадок мінус — «отримано наперед», а не борг', () => {
+    expect(saldoWords(-2800, true).text).toBe('отримано наперед');
+    expect(saldoWords(970, true).text).toBe('до виплати нам');
+    expect(saldoWords(-2800, false).text).toBe('наш борг');
+    expect(saldoWords(0.001, true).tone).toBe('zero');
   });
 });
 

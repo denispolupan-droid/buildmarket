@@ -150,6 +150,42 @@ export function orderHref(orderNumber: number | null | undefined): string | null
   return orderNumber != null ? `/admin?status=&q=${orderNumber}` : null;
 }
 
+/**
+ * Хто кому винен — словами. Для пошти й маркетплейсів мінус — не борг: площадка
+ * переказує гроші передоплати до вручення (Rozetka Pay — наступного дня після
+ * оплати), а продаж визнається при врученні. Тож мінус там — «отримано наперед»
+ * за посилки в дорозі, плюс — вручене, за яке виплата ще не прийшла.
+ */
+export function saldoWords(v: number, special: boolean): { text: string; tone: 'pos' | 'neg' | 'zero' } {
+  if (Math.abs(v) < EPS) return { text: 'розрахунки закриті', tone: 'zero' };
+  if (special) return v > 0 ? { text: 'до виплати нам', tone: 'pos' } : { text: 'отримано наперед', tone: 'neg' };
+  return v > 0 ? { text: 'борг контрагента', tone: 'pos' } : { text: 'наш борг', tone: 'neg' };
+}
+
+export type OpenItem = { orderId: string | null; net: number; lastDate: string };
+
+/**
+ * Що не закрито по замовленнях: сума всіх проводок контрагента по кожному
+ * замовленню (на дату). Нуль — замовлення закрите (продаж і оплата зійшлись);
+ * мінус — гроші отримано, продажу ще немає; плюс — продаж є, грошей ще немає.
+ * Проводки без замовлення (нерознесені виплати тощо) — окремим рядком orderId=null.
+ * Сума всіх рядків = сальдо контрагента на ту саму дату.
+ */
+export function openItemsByOrder(entries: { order_id: string | null; amount: number; business_date: string }[]): OpenItem[] {
+  const m = new Map<string | null, { net: number; lastDate: string }>();
+  for (const e of entries) {
+    const k = e.order_id ?? null;
+    const a = m.get(k) ?? { net: 0, lastDate: '' };
+    a.net += Number(e.amount);
+    if (e.business_date > a.lastDate) a.lastDate = e.business_date;
+    m.set(k, a);
+  }
+  return [...m]
+    .map(([orderId, a]) => ({ orderId, net: round2(a.net), lastDate: a.lastDate }))
+    .filter(i => Math.abs(i.net) >= EPS)
+    .sort((x, y) => (x.orderId === null ? 1 : 0) - (y.orderId === null ? 1 : 0) || x.lastDate.localeCompare(y.lastDate));
+}
+
 export function specialLabel(id: string): string {
   return isSpecialDebtor(id) ? SPECIAL_DEBTOR_LABEL[id] : id;
 }
