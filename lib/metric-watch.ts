@@ -3,6 +3,7 @@ import { fetchAllRows } from './db-paginate';
 import { productRows, listDataSources, latestUpload } from './merchant';
 import { sendTelegramResult, escTg } from './telegram';
 import { alertAdmin } from './alert';
+import { getRozetkaSellerRating } from './rozetka-api';
 import { SITE_URL } from './site';
 import { kyivHuman } from './kyiv-date';
 import {
@@ -203,6 +204,21 @@ async function silentChannels(db: Db): Promise<Reading> {
     : { state: 'ok', level: 'green', text: 'маркетплейси приносять замовлення як зазвичай', set: [] };
 }
 
+/**
+ * Рейтинг продавця на Rozetka: падіння зірок або нова погана оцінка (1–2 із 5) —
+ * привід подзвонити покупцю, поки відгук свіжий. Від рейтингу залежить показ на вітрині.
+ */
+async function rozetkaRating(): Promise<Reading> {
+  const r = await getRozetkaSellerRating();
+  const bad = Number(r.mark_bad_cnt ?? 0) + Number(r.mark_worst_cnt ?? 0);
+  const stars = Number(r.stars ?? 0);
+  return {
+    state: `${stars.toFixed(1)}|${bad}`,
+    level: stars < 4 ? 'red' : stars < 4.5 || bad > 0 ? 'yellow' : 'green',
+    text: `${stars.toFixed(1)} ★ з ${r.mark_all_cnt} оцінок; поганих (1–2 ★): ${bad}; до відправки в середньому ${Math.round(Number(r.avg_diff_delivery_time ?? 0) / 60)} год`,
+  };
+}
+
 // ── Товари, що продаються ───────────────────────────────────────────────────
 
 /** Ходові товари (≥ 2 шт за 60 днів по всіх каналах), яких немає в наявності. */
@@ -281,6 +297,7 @@ export const DAILY: Check[] = [
   { key: 'ads', title: 'Google Ads', run: adsRunning },
   { key: 'orders', title: 'Замовлення', run: ordersTrend },
   { key: 'channels', title: 'Маркетплейси', run: silentChannels },
+  { key: 'rozetka_rating', title: 'Рейтинг продавця Rozetka', run: () => rozetkaRating() },
   { key: 'bestsellers_oos', title: 'Ходові товари без наявності', run: bestsellersOut },
   { key: 'below_cost', title: 'Ціна нижча за закупівлю', run: belowCost },
 ];
