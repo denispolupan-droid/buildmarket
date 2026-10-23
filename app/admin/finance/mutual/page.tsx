@@ -82,7 +82,11 @@ async function loadCounterparty(db: Db, ref: CounterpartyRef): Promise<Counterpa
 
 // ── Журнал контрагентів групи ─────────────────────────────────────────────────
 
-async function Journal({ db, group, dateFrom, dateTo }: { db: Db; group: CounterpartyGroup; dateFrom: string; dateTo: string }) {
+// Клієнт бази — усередині компонента, НЕ пропом: у dev React серіалізує пропси
+// серверних компонентів для налагодження, і екземпляр класу валить клієнт
+// («Object prototype may only be an Object or null») — сторінка не відкривалась.
+async function Journal({ group, dateFrom, dateTo }: { group: CounterpartyGroup; dateFrom: string; dateTo: string }) {
+  const db = createServiceClient();
   const accounts = groupAccounts(group);
   const belongs = (id: string) =>
     group === 'suppliers' ? /^\d+$/.test(id)
@@ -146,9 +150,10 @@ async function Journal({ db, group, dateFrom, dateTo }: { db: Db; group: Counter
 
 // ── Рух по контрагенту ────────────────────────────────────────────────────────
 
-async function Statement({ db, cpRef: ref, counterparty, dateFrom, dateTo, showInternal, view }: {
-  db: Db; cpRef: CounterpartyRef; counterparty: Counterparty; dateFrom: string; dateTo: string; showInternal: boolean; view: 'moves' | 'act';
+async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInternal, view }: {
+  cpRef: CounterpartyRef; counterparty: Counterparty; dateFrom: string; dateTo: string; showInternal: boolean; view: 'moves' | 'act';
 }) {
+  const db = createServiceClient();
   const accounts = accountsFor(ref);
   // Усе з пагінацією й ORDER BY id: PostgREST мовчки обрізає на 1000 рядків,
   // і сальдо на початок тихо «пливе» (інциденти 30.08 і 29.09).
@@ -419,11 +424,11 @@ export default async function MutualSettlementsPage({
       </div>
 
       {ref && counterparty
-        ? <Statement db={db} cpRef={ref} counterparty={counterparty} dateFrom={dateFrom} dateTo={dateTo}
+        ? <Statement cpRef={ref} counterparty={counterparty} dateFrom={dateFrom} dateTo={dateTo}
             showInternal={sp.internal === '1'} view={sp.view === 'act' ? 'act' : 'moves'} />
         : sp.cp
           ? <div className="fin-card" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>Контрагента не знайдено</div>
-          : <Journal db={db} group={group} dateFrom={dateFrom} dateTo={dateTo} />}
+          : <Journal group={group} dateFrom={dateFrom} dateTo={dateTo} />}
     </div>
   );
 }
