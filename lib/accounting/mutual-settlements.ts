@@ -49,6 +49,107 @@ export function accountsFor(ref: CounterpartyRef): SettlementAccount[] {
   return ['customer', 'partner'];
 }
 
+/** Групи журналу контрагентів — кнопки-фільтри над списком. */
+export type CounterpartyGroup = 'customers' | 'partners' | 'suppliers' | 'services';
+
+export const COUNTERPARTY_GROUPS: { key: CounterpartyGroup; label: string }[] = [
+  { key: 'customers', label: 'Покупці' },
+  { key: 'partners',  label: 'Дропшипери' },
+  { key: 'suppliers', label: 'Постачальники' },
+  { key: 'services',  label: 'Пошта й маркетплейси' },
+];
+
+export function parseGroup(raw: string | null | undefined): CounterpartyGroup | null {
+  return COUNTERPARTY_GROUPS.some(g => g.key === raw) ? raw as CounterpartyGroup : null;
+}
+
+/** Група, до якої належить контрагент, — щоб «назад до списку» вело туди, звідки прийшли. */
+export function groupOf(ref: CounterpartyRef, customerType?: string | null): CounterpartyGroup {
+  if (ref.kind === 'supplier') return 'suppliers';
+  if (ref.kind === 'special')  return 'services';
+  return customerType === 'dropship_partner' ? 'partners' : 'customers';
+}
+
+export function groupAccounts(group: CounterpartyGroup): SettlementAccount[] {
+  if (group === 'suppliers') return ['supplier'];
+  if (group === 'services')  return ['customer'];
+  return ['customer', 'partner'];
+}
+
+export type JournalRow = { counterpartyId: string; opening: number; debit: number; credit: number; closing: number };
+
+/**
+ * Обороти й сальдо кожного контрагента за період — без читання всієї історії:
+ * поточне сальдо з кешу counterparty_balances мінус рухи після кінця періоду
+ * дає сальдо на кінець, мінус рухи періоду — на початок. Тому досить проводок
+ * від початку періоду до сьогодні (`entries`, будь-якого порядку).
+ * Контрагенти без сальдо й без руху за період у список не потрапляють.
+ */
+export function buildJournal(params: {
+  current: Map<string, number>;
+  entries: { counterparty_id: string; amount: number; business_date: string }[];
+  dateFrom: string;
+  dateTo: string;
+}): JournalRow[] {
+  const acc = new Map<string, { after: number; debit: number; credit: number }>();
+  const get = (id: string) => {
+    let a = acc.get(id);
+    if (!a) { a = { after: 0, debit: 0, credit: 0 }; acc.set(id, a); }
+    return a;
+  };
+  for (const e of params.entries) {
+    if (e.business_date < params.dateFrom) continue;
+    const a = get(e.counterparty_id);
+    const amt = Number(e.amount);
+    if (e.business_date > params.dateTo) a.after += amt;
+    else if (amt > 0) a.debit += amt;
+    else a.credit -= amt;
+  }
+  const ids = new Set([...params.current.keys(), ...acc.keys()]);
+  const out: JournalRow[] = [];
+  for (const id of ids) {
+    const a = acc.get(id) ?? { after: 0, debit: 0, credit: 0 };
+    const closing = round2((params.current.get(id) ?? 0) - a.after);
+    const debit = round2(a.debit), credit = round2(a.credit);
+    const opening = round2(closing - debit + credit);
+    if (Math.abs(opening) < EPS && debit < EPS && credit < EPS && Math.abs(closing) < EPS) continue;
+    out.push({ counterpartyId: id, opening, debit, credit, closing });
+  }
+  return out.sort((x, y) => Math.abs(y.closing) - Math.abs(x.closing) || y.debit + y.credit - (x.debit + x.credit));
+}
+
+/**
+ * Куди веде клік по документу в русі: ордер оплати, прихідна накладна,
+ * замовлення постачальнику, КБ, РН/інший документ обліку. Без документа —
+ * у журнал замовлень, відфільтрований за номером (окремої сторінки замовлення немає).
+ */
+export function documentHref(p: {
+  entryDocType: string | null;
+  docId: string | null;
+  accDocType?: string | null;
+  orderNumber?: number | null;
+}): string | null {
+  if (p.docId) {
+    if (p.entryDocType === 'debt_adjustment') return `/admin/finance/adjustments?id=${p.docId}`;
+    switch (p.accDocType) {
+      case 'supplier_payment': case 'supplier_payment_reversal':
+      case 'customer_payment': case 'customer_payment_reversal':
+      case 'cash_in': case 'cash_out':
+        return `/admin/finance/voucher/${p.docId}`;
+      case 'receipt': case 'stock_in':
+        return `/admin/procurement/receipts/${p.docId}`;
+      case 'purchase_order':
+        return `/admin/procurement/${p.docId}`;
+    }
+    if (p.accDocType) return `/admin/accounting/documents/${p.docId}`;
+  }
+  return orderHref(p.orderNumber);
+}
+
+export function orderHref(orderNumber: number | null | undefined): string | null {
+  return orderNumber != null ? `/admin?status=&q=${orderNumber}` : null;
+}
+
 export function specialLabel(id: string): string {
   return isSpecialDebtor(id) ? SPECIAL_DEBTOR_LABEL[id] : id;
 }

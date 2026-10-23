@@ -109,7 +109,7 @@ export default function ActClient({
   return (
     <>
       {/* ── Screen-only controls ──────────────────────────────────────────── */}
-      <div className="act-no-print" style={{ padding: backHref ? '20px 32px' : '12px 0 0', maxWidth: '1100px' }}>
+      <div className="act-no-print" style={{ padding: backHref ? '20px 32px' : '0 0 16px', maxWidth: '1100px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
           {backHref && (
             <>
@@ -140,7 +140,8 @@ export default function ActClient({
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 18px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', marginBottom: '24px' }}>
+        {/* Вбудований акт бере період зі сторінки («Взаєморозрахунки») */}
+        {backHref && <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 18px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', marginBottom: '24px' }}>
           <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Період</span>
           <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={inp} />
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
@@ -149,7 +150,7 @@ export default function ActClient({
             style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <RefreshCw size={13} /> Оновити
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* ── Printable act (форма 1С) ─────────────────────────────────────── */}

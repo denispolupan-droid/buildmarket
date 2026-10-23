@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildMutualStatement, parseCounterpartyRef, counterpartyRefString, accountsFor, operationLabel,
+  buildJournal, documentHref, groupOf, parseGroup,
   type LedgerEntry,
 } from '../lib/accounting/mutual-settlements';
 
@@ -105,6 +106,55 @@ describe('buildMutualStatement', () => {
       e({ id: 'early', account_type: 'customer', amount: 1, business_date: '2026-10-01' }),
     ];
     expect(buildMutualStatement({ accounts: ['customer'], opening: {}, entries }).rows.map(r => r.id)).toEqual(['early', 'late']);
+  });
+});
+
+describe('buildJournal', () => {
+  it('сальдо на кінець і початок — від поточного кешу назад, без усієї історії', () => {
+    const rows = buildJournal({
+      current: new Map([['a', 1000], ['b', 0], ['idle', 0]]),
+      entries: [
+        { counterparty_id: 'a', amount: 700,  business_date: '2026-10-05' }, // у періоді
+        { counterparty_id: 'a', amount: -200, business_date: '2026-10-20' }, // у періоді
+        { counterparty_id: 'a', amount: 300,  business_date: '2026-11-02' }, // після періоду
+        { counterparty_id: 'b', amount: -50,  business_date: '2026-10-10' },
+        { counterparty_id: 'b', amount: 50,   business_date: '2026-11-01' },
+      ],
+      dateFrom: '2026-10-01', dateTo: '2026-10-31',
+    });
+    expect(rows).toEqual([
+      { counterpartyId: 'a', opening: 200, debit: 700, credit: 200, closing: 700 },
+      { counterpartyId: 'b', opening: 0,   debit: 0,   credit: 50,  closing: -50 },
+    ]);
+  });
+
+  it('контрагент, якого немає в кеші, але з рухом — теж у списку', () => {
+    const rows = buildJournal({
+      current: new Map(),
+      entries: [{ counterparty_id: 'n', amount: 10, business_date: '2026-10-03' }, { counterparty_id: 'n', amount: -10, business_date: '2026-10-04' }],
+      dateFrom: '2026-10-01', dateTo: '2026-10-31',
+    });
+    expect(rows).toEqual([{ counterpartyId: 'n', opening: 0, debit: 10, credit: 10, closing: 0 }]);
+  });
+});
+
+describe('documentHref', () => {
+  it('веде на документ свого типу, без документа — у журнал замовлень', () => {
+    expect(documentHref({ entryDocType: 'supplier_payment', docId: 'd', accDocType: 'supplier_payment' })).toBe('/admin/finance/voucher/d');
+    expect(documentHref({ entryDocType: 'sale', docId: 'd', accDocType: 'receipt' })).toBe('/admin/procurement/receipts/d');
+    expect(documentHref({ entryDocType: 'sale', docId: 'd', accDocType: 'sale', orderNumber: 26101112 })).toBe('/admin/accounting/documents/d');
+    expect(documentHref({ entryDocType: 'debt_adjustment', docId: 'k' })).toBe('/admin/finance/adjustments?id=k');
+    expect(documentHref({ entryDocType: 'partner_cod', docId: null, orderNumber: 26101112 })).toBe('/admin?status=&q=26101112');
+    expect(documentHref({ entryDocType: 'partner_topup', docId: null })).toBeNull();
+  });
+
+  it('групи: постачальник, служба, дропшипер, покупець', () => {
+    expect(groupOf({ kind: 'supplier', id: '1' })).toBe('suppliers');
+    expect(groupOf({ kind: 'special', id: 'np:cod' })).toBe('services');
+    expect(groupOf({ kind: 'customer', id: P }, 'dropship_partner')).toBe('partners');
+    expect(groupOf({ kind: 'customer', id: P }, 'wholesale')).toBe('customers');
+    expect(parseGroup('suppliers')).toBe('suppliers');
+    expect(parseGroup('x')).toBeNull();
   });
 });
 
