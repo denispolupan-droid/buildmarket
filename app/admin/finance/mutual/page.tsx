@@ -49,7 +49,7 @@ function balanceWords(v: number): { text: string; color: string; bg: string } {
 function SaldoTag({ v }: { v: number }) {
   const w = balanceWords(v);
   return (
-    <span style={{ display: 'inline-block', marginTop: '6px', padding: '2px 9px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 600, color: w.color, background: w.bg, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-block', marginLeft: '8px', padding: '1px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, color: w.color, background: w.bg, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
       {w.text}
     </span>
   );
@@ -250,12 +250,11 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
 
       {/* Підсумок як у банківській виписці: сальдо — сума без знака + хто кому винен,
           обороти — тими самими рядками, що в таблиці й акті (без схованих заліків) */}
-      <div className="act-no-print fin-card" style={{ marginBottom: '12px', padding: '18px 22px' }}>
+      <div className="act-no-print fin-card mutual-sum" style={{ marginBottom: '12px', padding: '10px 18px' }}>
         <div className="fin-money-grid" style={{ marginTop: 0 }}>
           <div>
             <div className="fin-kpi-label">Сальдо на {dmy(dateFrom)}</div>
-            <div className="fin-money-val">{fmt(Math.abs(st.opening))} ₴</div>
-            <SaldoTag v={st.opening} />
+            <div className="fin-money-val">{fmt(Math.abs(st.opening))} ₴<SaldoTag v={st.opening} /></div>
           </div>
           <div>
             <div className="fin-kpi-label">Розхід за період</div>
@@ -269,10 +268,20 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
           </div>
           <div>
             <div className="fin-kpi-label">Сальдо на {dmy(dateTo)}</div>
-            <div className="fin-money-val" style={{ fontSize: '24px' }}>{fmt(Math.abs(st.closing))} ₴</div>
-            <SaldoTag v={st.closing} />
+            <div className="fin-money-val" style={{ fontWeight: 900 }}>{fmt(Math.abs(st.closing))} ₴<SaldoTag v={st.closing} /></div>
           </div>
         </div>
+        {/* Щільніше за стандартну fin-картку: це шапка виписки, а не дашборд */}
+        <style>{`
+          .mutual-sum .fin-money-val { font-size: 17px; margin-top: 2px; }
+          .mutual-sum .fin-money-sub { margin-top: 1px; }
+          .mutual-sum .fin-kpi-label { font-size: 10.5px; }
+          .mutual-sum .fin-money-grid { gap: 14px; }
+          .mutual-sum .fin-money-grid > div { padding-left: 14px; }
+          .mutual-sum .fin-money-grid > div:first-child { padding-left: 0; }
+          .mutual-sum .fin-table { margin-top: 8px !important; }
+          .mutual-sum .fin-table td { padding: 5px 8px 5px 0; font-size: 12.5px; }
+        `}</style>
 
         {multi && (
           <table className="fin-table" style={{ marginTop: '16px', borderTop: '1px solid var(--border)' }}>
@@ -282,7 +291,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
                   <td className="muted">{SETTLEMENT_ACCOUNT_LABEL[a.account]}</td>
                   <td className="num muted">на {dmy(dateFrom)}: {fmt(Math.abs(a.opening))} ₴</td>
                   <td className="num">на {dmy(dateTo)}: {fmt(Math.abs(a.closing))} ₴</td>
-                  <td style={{ width: '1%', paddingLeft: '10px' }}><SaldoTag v={a.closing} /></td>
+                  <td style={{ width: '1%' }}><SaldoTag v={a.closing} /></td>
                 </tr>
               ))}
             </tbody>
@@ -437,7 +446,7 @@ export default async function MutualSettlementsPage({
         </div>
         <FinanceTabs />
 
-        <div className="fin-card" style={{ margin: '20px 0 16px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="fin-card" style={{ margin: '16px 0 10px', padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {COUNTERPARTY_GROUPS.map(g => (
               <Link key={g.key} href={qs({ group: g.key, from: dateFrom, to: dateTo })}

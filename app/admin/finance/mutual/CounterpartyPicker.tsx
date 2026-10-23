@@ -69,7 +69,7 @@ export default function CounterpartyPicker({
   }
 
   return (
-    <div ref={boxRef} className="fin-card" style={{ padding: '14px 18px', position: 'relative' }}>
+    <div ref={boxRef} className="fin-card" style={{ padding: '10px 16px', position: 'relative' }}>
       <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
         Контрагент
       </label>
