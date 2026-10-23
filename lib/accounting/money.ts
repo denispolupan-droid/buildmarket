@@ -28,6 +28,7 @@
  */
 
 import { createServiceClient } from '../supabase';
+import { fetchAllRows } from '../db-paginate';
 
 export type AccountType =
   | 'customer' | 'supplier' | 'partner'
@@ -353,14 +354,16 @@ export async function recordMarketplaceManualEntry(params: {
 export async function getMarketplaceBalance(marketplace: string): Promise<number> {
   const db = createServiceClient();
 
-  const { data, error } = await db
+  // З пагінацією: у Rozetka вже 780 проводок, а PostgREST мовчки обрізає на 1000 —
+  // і перевірка залишку проти кабінету почала б «розходитись» сама собою.
+  const rows = await fetchAllRows<{ amount: number }>((from, to) => db
     .from('money_entries')
     .select('amount')
     .eq('account_type', 'marketplace_balance')
-    .eq('counterparty_id', marketplace);
-
-  if (error) throw error;
-  return (data ?? []).reduce((s, r) => s + Number(r.amount), 0);
+    .eq('counterparty_id', marketplace)
+    .order('id')
+    .range(from, to));
+  return rows.reduce((s, r) => s + Number(r.amount), 0);
 }
 
 /** Аванс від клієнта: дебет bank/cash, кредит advance */

@@ -315,7 +315,23 @@ export async function POST(
         { isSmart: isSmartOrder, actualPrice: Number(cabinet._rz_delivery_price) },
         await getRozetkaDeliveryTariff(),
       );
-      if (fee > 0) {
+      // Збір Rozetka бере за ПОСИЛКУ (накладну), а не за замовлення. Тож оцінку не
+      // ставимо, якщо накладної Rozetka немає (знімати нема за що — #26091049/062/185
+      // висіли з 35 ₴ без списання) або цю накладну вже «оплатило» сусіднє
+      // замовлення спільної посилки (#26091246 + #26091247 — Rozetka зняла раз, ми
+      // двічі). Фактичний збір у будь-якому разі проведе синк логістичного балансу.
+      let parcelAlreadyCharged = false;
+      if (effectiveTtn) {
+        const { data: siblings } = await db.from('orders').select('id')
+          .eq('tracking_number', effectiveTtn).neq('id', order.id).limit(20);
+        const sibIds = (siblings ?? []).map(s => s.id);
+        if (sibIds.length) {
+          const { data: sibFees } = await db.from('money_entries').select('id')
+            .in('idempotency_key', sibIds.map(s => `rz-delivery-fee:rozetka:${s}`)).limit(1);
+          parcelAlreadyCharged = (sibFees ?? []).length > 0;
+        }
+      }
+      if (fee > 0 && effectiveTtn && !parcelAlreadyCharged) {
         await recordMarketplaceServiceFee({
           orderId:        order.id,
           amount:         fee,

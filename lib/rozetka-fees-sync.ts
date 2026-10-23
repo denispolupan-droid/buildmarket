@@ -230,9 +230,9 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
               meta:           { kind: 'rz_delivery_fee', ttn: want.ttn, operation_ids: want.ops },
             });
           } else {
-            // Доводимо оцінку до факту. Ключ прив'язаний до САМОЇ суми факту:
-            // якщо Rozetka донарахує ще раз, з'явиться новий ключ, а повторний
-            // прогін по тій самій сумі нічого не задвоїть.
+            // Доводимо оцінку до факту. Ключ — «було → факт»: якщо Rozetka
+            // донарахує ще раз, з'явиться новий ключ, а повторний прогін по тій
+            // самій парі нічого не задвоїть.
             await recordTxn({
               debitAccount:   delta > 0 ? 'marketplace_fee' : 'marketplace_balance',
               debitParty:     'rozetka',
@@ -244,7 +244,11 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
               businessDate:   dateOf(want.ts),
               description:    `Rozetka Доставка — організація видачі відправлення, уточнення до факту `
                             + `(замовлення #${order.order_number}: було ${have} ₴, факт ${want.amount} ₴)`,
-              idempotencyKey: `rz-delivery-fee-adj:rozetka:${order.id}:${want.amount.toFixed(2)}`,
+              // Ключ — пара «було → факт». Лише факт у ключі не давав доводити ВНИЗ:
+              // 70 → 35 по замовленню, де колись уже було уточнення 30 → 35, ловило
+              // наявний ключ «…:35.00» і мовчки пропускалось (звірка 23.10.2026:
+              // #26081101/140/146 місяцями висіли на 70 ₴ при факті 35).
+              idempotencyKey: `rz-delivery-fee-adj:rozetka:${order.id}:${want.amount.toFixed(2)}:from-${have.toFixed(2)}`,
               createdBy:      'sync:rozetka-fees',
               meta:           { kind: 'rz_delivery_fee_adj', was: have, actual: want.amount, operation_ids: want.ops },
             });
@@ -253,6 +257,70 @@ export async function syncRozetkaFees(perPage = 100): Promise<{
         } catch (err) {
           errors++;
           console.error('[rozetka-fees] delivery fee failed:', rz, err);
+        }
+      }
+    }
+
+    // Збір, якого Rozetka НЕ знімала. Цикл вище лише додає й уточнює те, що є у
+    // виписці; оцінка з відгрузки по посилці, за яку списання так і не прийшло
+    // (накладна не Rozetka, друге замовлення спільної посилки), висіла назавжди —
+    // звірка 23.10.2026 знайшла 7 таких на 245 ₴. Rozetka знімає збір при
+    // прийманні перевізником, тож 14 днів від відгрузки — з великим запасом.
+    // Тільки в межах, які покриває вибірка операцій: старіше за найдавнішу
+    // операцію ми просто не бачимо, і «немає списання» там нічого не означає.
+    const ORPHAN_AFTER_DAYS = 14;
+    const oldestOp = all.reduce((m, o) => (o.transaction_ts < m ? o.transaction_ts : m), '9999');
+    const charged = new Set(charges.map(o => String(o.order_id ?? '')).filter(Boolean));
+    const cutoff = new Date(Date.now() - ORPHAN_AFTER_DAYS * 86400_000).toISOString();
+    const { data: estRows } = await db.from('money_entries')
+      .select('order_id')
+      .eq('account_type', 'marketplace_fee')
+      .eq('counterparty_id', 'rozetka')
+      .like('idempotency_key', 'rz-delivery-fee:rozetka:%')
+      .limit(10000);
+    const estIds = [...new Set((estRows ?? []).map(r => r.order_id).filter(Boolean))] as string[];
+    for (let i = 0; i < estIds.length && oldestOp !== '9999'; i += 200) {
+      const { data: os } = await db.from('orders')
+        .select('id, order_number, rozetka_order_id, shipped_at')
+        .in('id', estIds.slice(i, i + 200))
+        .lt('shipped_at', cutoff)
+        .gt('shipped_at', oldestOp.replace(' ', 'T'))
+        .limit(200);
+      const orphans = (os ?? []).filter(o => !charged.has(String(o.rozetka_order_id ?? '')) && !charged.has(String(o.order_number)));
+      if (!orphans.length) continue;
+      const { data: rows } = await db.from('money_entries')
+        .select('order_id, amount, description')
+        .eq('account_type', 'marketplace_fee')
+        .eq('counterparty_id', 'rozetka')
+        .in('order_id', orphans.map(o => o.id))
+        .limit(10000);
+      const have = new Map<string, number>();
+      for (const r of rows ?? []) {
+        if (!r.order_id || !/організація видачі/i.test(String(r.description ?? ''))) continue;
+        have.set(r.order_id, Math.round(((have.get(r.order_id) ?? 0) + Number(r.amount)) * 100) / 100);
+      }
+      for (const o of orphans) {
+        const h = have.get(o.id) ?? 0;
+        if (!(h > 0.005)) continue;
+        try {
+          await recordTxn({
+            debitAccount:   'marketplace_balance',
+            debitParty:     'rozetka',
+            creditAccount:  'marketplace_fee',
+            creditParty:    'rozetka',
+            amount:         h,
+            docType:        'commission',
+            orderId:        o.id,
+            description:    `Rozetka Доставка — організація видачі відправлення, уточнення до факту `
+                          + `(замовлення #${o.order_number}: було ${h} ₴, факт 0 ₴ — у логістичному балансі списання немає)`,
+            idempotencyKey: `rz-delivery-fee-adj:rozetka:${o.id}:0.00:from-${h.toFixed(2)}`,
+            createdBy:      'sync:rozetka-fees',
+            meta:           { kind: 'rz_delivery_fee_adj', was: h, actual: 0, reason: 'no_logistic_charge' },
+          });
+          delivery++;
+        } catch (err) {
+          errors++;
+          console.error('[rozetka-fees] orphan delivery fee reversal failed:', o.order_number, err);
         }
       }
     }
@@ -380,7 +448,9 @@ export async function trueUpRozetkaCommission(
         orderId:        o.id,
         description:    `Rozetka — комісія, уточнення до виписки (замовлення #${o.order_number}: `
                       + `нараховано ${have.toFixed(2)} ₴, площадка списала ${want.toFixed(2)} ₴)`,
-        idempotencyKey: `rz-commission-adj:rozetka:${o.id}:${want.toFixed(2)}`,
+        // «було → факт», як у зборі за видачу: інакше повернення до суми, яка вже
+        // колись була фактом, натрапляло б на старий ключ і пропускалось.
+        idempotencyKey: `rz-commission-adj:rozetka:${o.id}:${want.toFixed(2)}:from-${have.toFixed(2)}`,
         createdBy:      'sync:rozetka-fees',
         meta:           { kind: 'rz_commission_adj', accrued: have, actual: want },
       });
