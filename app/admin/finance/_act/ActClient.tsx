@@ -31,7 +31,8 @@ export type ActRow = {
 };
 
 type Props = {
-  backHref: string;
+  /** Без нього — акт вбудований у сторінку («Взаєморозрахунки»), кнопки «Назад» немає */
+  backHref?: string;
   counterpartyName: string;
   counterpartyLegalName?: string | null;
   counterpartyTaxId?: string | null;
@@ -108,12 +109,16 @@ export default function ActClient({
   return (
     <>
       {/* ── Screen-only controls ──────────────────────────────────────────── */}
-      <div className="act-no-print" style={{ padding: '20px 32px', maxWidth: '1100px' }}>
+      <div className="act-no-print" style={{ padding: backHref ? '20px 32px' : '12px 0 0', maxWidth: '1100px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          <Link href={backHref} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '13px' }}>
-            <ArrowLeft size={16} /> Назад
-          </Link>
-          <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
+          {backHref && (
+            <>
+              <Link href={backHref} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '13px' }}>
+                <ArrowLeft size={16} /> Назад
+              </Link>
+              <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
+            </>
+          )}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>
               Акт звірки взаємних розрахунків

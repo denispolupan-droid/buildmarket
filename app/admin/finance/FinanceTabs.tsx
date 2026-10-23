@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-// Єдина навігація розділу «Фінанси»: 7 тем замість 12 вкладок-таблиць
+// Єдина навігація розділу «Фінанси»: 8 тем замість 12 вкладок-таблиць
 // (рішення власника: «Огляд» — загальна картина, решта розкриває нюанси).
 // Споріднені екрани згруповано: тема в головному рядку, її екрани — рядком
 // підвкладок нижче. URL сторінок НЕ мінялись — закладки живі.
@@ -21,6 +21,7 @@ const GROUPS: Group[] = [
     { href: '/admin/finance/bank',          label: 'Банк' },
     { href: '/admin/finance/novapay',       label: 'НоваПей' },
   ] },
+  { href: '/admin/finance/mutual',    label: 'Взаєморозрахунки' },
   { label: 'Борги', children: [
     { href: '/admin/finance/settlements', label: 'Дебіторка' },
     { href: '/admin/finance/payables',    label: 'Кредиторка' },
