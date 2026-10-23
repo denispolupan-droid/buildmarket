@@ -24,14 +24,8 @@ import { Tag, BadgeCheck, Box, Truck } from 'lucide-react';
 import Footer from '../../components/Footer';
 import ProductReviews from './ProductReviews';
 import { RatingBadge } from '../../components/StarRating';
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import './product.css';
-
-const service = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 
 const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
 
@@ -100,17 +94,13 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const sku = product.sku;
   const categoryBlogSlug = product.category_slug ? (await getCategoryMeta(product.category_slug, 'uk'))?.blogSlug ?? null : null;
 
-  const [related, categoryProducts, faq, categories, reviewsData, reviewStats, articleSlugForSku] = await Promise.all([
+  const [related, categoryProducts, faq, categories, reviewStats, articleSlugForSku] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
     // Лише для findVariants (список фасовок) — беремо ту саму категорію, але легкою вибіркою
     // (без описів/характеристик), findVariants однаково фільтрує лише по бренду+базовій назві.
     product.category_slug ? getProductsLightCached({ category: product.category_slug }) : Promise.resolve([]),
     getProductFaqCached(sku),
     getCategoriesCached(),
-    service.from('product_reviews')
-      .select('rating')
-      .eq('product_sku', sku)
-      .eq('is_approved', true),
     getReviewStatsCached(),
     // Стаття саме про цей товар (він стоїть у блоці «Чим це зробити»). Точніша за
     // категорійну: у «акрилових герметиках» і віконний шов, і плінтус, і кольоровий
@@ -118,11 +108,11 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     getPostSlugForSkuCached(sku),
   ]);
 
-  const approvedReviews = reviewsData.data ?? [];
-  const reviewCount = approvedReviews.length;
-  const reviewAvg = reviewCount
-    ? Math.round((approvedReviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / reviewCount) * 10) / 10
-    : 0;
+  // Рейтинг — з кешованої статистики (та сама формула, тег review-stats скидає
+  // модерація відгуків). Окремий запит до product_reviews на кожен перегляд
+  // картки був єдиним некешованим зверненням до БД на цій сторінці.
+  const reviewCount = reviewStats[sku]?.count ?? 0;
+  const reviewAvg = reviewStats[sku]?.avg ?? 0;
 
   const pricePromo = isRetail ? (product.stock?.price_promo ?? null) : null;
   const priceUnit = isRetail

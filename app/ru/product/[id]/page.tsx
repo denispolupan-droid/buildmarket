@@ -27,13 +27,7 @@ import Footer from '../../../components/Footer';
 import ProductReviews from '../../../product/[id]/ProductReviews';
 import { RatingBadge } from '../../../components/StarRating';
 import { tFilterValue } from '../../../../lib/translations-ru';
-import { createClient } from '@supabase/supabase-js';
 import '../../../product/[id]/product.css';
-
-const service = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 
 const BASE = 'https://fixline.com.ua';
 
@@ -101,24 +95,18 @@ export default async function RuProductPage({ params, searchParams }: { params: 
     ? (await getCategoryMeta(product.category_slug, 'ru'))?.blogSlug ?? (await getCategoryMeta(product.category_slug, 'uk'))?.blogSlug ?? null
     : null;
 
-  const [related, categoryProducts, faq, categories, reviewsData, reviewStats] = await Promise.all([
+  const [related, categoryProducts, faq, categories, reviewStats] = await Promise.all([
     product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
     // Лише для findVariants (список фасовок) — легка вибірка тієї ж категорії.
     product.category_slug ? getProductsLightCached({ category: product.category_slug }) : Promise.resolve([]),
     getProductFaqCached(sku),
     getCategoriesCached(),
-    service.from('product_reviews')
-      .select('rating')
-      .eq('product_sku', sku)
-      .eq('is_approved', true),
     getReviewStatsCached(),
   ]);
 
-  const approvedReviews = reviewsData.data ?? [];
-  const reviewCount = approvedReviews.length;
-  const reviewAvg = reviewCount
-    ? Math.round((approvedReviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / reviewCount) * 10) / 10
-    : 0;
+  // Рейтинг — з кешованої статистики, як в українській картці (app/product/[id]/page.tsx)
+  const reviewCount = reviewStats[sku]?.count ?? 0;
+  const reviewAvg = reviewStats[sku]?.avg ?? 0;
 
   const pricePromo = isRetail ? (product.stock?.price_promo ?? null) : null;
   const priceUnit = isRetail
