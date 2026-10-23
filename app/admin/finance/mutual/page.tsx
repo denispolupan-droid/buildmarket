@@ -39,19 +39,18 @@ function fmt(n: number) {
 const dmy = (d: string) => d.slice(0, 10).split('-').reverse().join('.');
 
 /** Хто кому винен — словами, бо знак у взаєморозрахунках читають по-різному. */
-function balanceWords(v: number): { text: string; color: string; bg: string } {
-  if (Math.abs(v) < 0.005) return { text: 'розрахунки закриті', color: 'var(--text-muted)', bg: 'var(--bg-soft)' };
+function balanceWords(v: number): { text: string; color: string } {
+  if (Math.abs(v) < 0.005) return { text: 'розрахунки закриті', color: 'var(--text-muted)' };
   return v > 0
-    ? { text: 'борг контрагента', color: '#15803D', bg: '#F0FDF4' }
-    : { text: 'наш борг',         color: '#B45309', bg: '#FFF7ED' };
+    ? { text: 'борг контрагента', color: '#15803D' }
+    : { text: 'наш борг',         color: '#B45309' };
 }
 
 function SaldoTag({ v }: { v: number }) {
   const w = balanceWords(v);
   return (
-    <span style={{ display: 'inline-block', marginLeft: '8px', padding: '1px 8px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 600, color: w.color, background: w.bg, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-      {w.text}
-    </span>
+    // Тим самим підписом, що й «поставки товару» під оборотами — лише колір каже, чий борг
+    <div className="fin-money-sub" style={{ color: w.color, fontWeight: 600, whiteSpace: 'nowrap' }}>{w.text}</div>
   );
 }
 
@@ -254,7 +253,8 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
         <div className="fin-money-grid" style={{ marginTop: 0 }}>
           <div>
             <div className="fin-kpi-label">Сальдо на {dmy(dateFrom)}</div>
-            <div className="fin-money-val">{fmt(Math.abs(st.opening))} ₴<SaldoTag v={st.opening} /></div>
+            <div className="fin-money-val">{fmt(Math.abs(st.opening))} ₴</div>
+            <SaldoTag v={st.opening} />
           </div>
           <div>
             <div className="fin-kpi-label">Розхід за період</div>
@@ -268,7 +268,8 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
           </div>
           <div>
             <div className="fin-kpi-label">Сальдо на {dmy(dateTo)}</div>
-            <div className="fin-money-val" style={{ fontSize: '24px' }}>{fmt(Math.abs(st.closing))} ₴<SaldoTag v={st.closing} /></div>
+            <div className="fin-money-val" style={{ fontSize: '24px' }}>{fmt(Math.abs(st.closing))} ₴</div>
+            <SaldoTag v={st.closing} />
           </div>
         </div>
         {/* Щільніше за стандартну fin-картку: це шапка виписки, а не дашборд */}
