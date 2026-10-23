@@ -39,9 +39,20 @@ function fmt(n: number) {
 const dmy = (d: string) => d.slice(0, 10).split('-').reverse().join('.');
 
 /** Хто кому винен — словами, бо знак у взаєморозрахунках читають по-різному. */
-function balanceWords(v: number): { text: string; color: string } {
-  if (Math.abs(v) < 0.005) return { text: 'розрахунки закриті', color: 'var(--text-muted)' };
-  return v > 0 ? { text: 'винні нам', color: '#15803D' } : { text: 'винні ми', color: '#B45309' };
+function balanceWords(v: number): { text: string; color: string; bg: string } {
+  if (Math.abs(v) < 0.005) return { text: 'розрахунки закриті', color: 'var(--text-muted)', bg: 'var(--bg-soft)' };
+  return v > 0
+    ? { text: 'борг контрагента', color: '#15803D', bg: '#F0FDF4' }
+    : { text: 'наш борг',         color: '#B45309', bg: '#FFF7ED' };
+}
+
+function SaldoTag({ v }: { v: number }) {
+  const w = balanceWords(v);
+  return (
+    <span style={{ display: 'inline-block', marginTop: '6px', padding: '2px 9px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 600, color: w.color, background: w.bg, whiteSpace: 'nowrap' }}>
+      {w.text}
+    </span>
+  );
 }
 
 function chunks<T>(arr: T[], size = 100): T[][] {
@@ -237,30 +248,53 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
         </div>
       </div>
 
-      <div className="act-no-print fin-kpi-row" style={{ gridTemplateColumns: `repeat(${shownAccounts.length + 1}, minmax(0, 1fr))`, marginBottom: '12px' }}>
-        {shownAccounts.map(a => {
-          const w = balanceWords(a.closing);
-          return (
-            <div key={a.account} className="fin-card fin-kpi">
-              <div className="fin-kpi-label">{SETTLEMENT_ACCOUNT_LABEL[a.account]}</div>
-              <div className="fin-money-val" style={{ color: w.color }}>{fmt(Math.abs(a.closing))} ₴</div>
-              <div className="fin-money-sub">{w.text} на {dmy(dateTo)}</div>
-              <div className="fin-hint">на початок {fmt(a.opening)} · розхід {fmt(a.debit)} · прихід {fmt(a.credit)}</div>
-              {a.account === 'partner' && counterparty.cabinetBalance != null && (
-                <div className="fin-hint">
-                  У кабінеті партнера зараз {fmt(counterparty.cabinetBalance)} ₴. Розходиться з обліком на суму замовлень у дорозі:
-                  кабінет списує їх при оформленні, облік — при врученні.
-                </div>
-              )}
-            </div>
-          );
-        })}
-        <div className="fin-card fin-kpi" style={{ borderColor: '#1E3A5F' }}>
-          <div className="fin-kpi-label">Сальдо взаєморозрахунків</div>
-          <div className="fin-money-val" style={{ color: totalWords.color }}>{fmt(Math.abs(st.closing))} ₴</div>
-          <div className="fin-money-sub">{totalWords.text} на {dmy(dateTo)}</div>
-          <div className="fin-hint">на {dmy(dateFrom)}: {fmt(Math.abs(st.opening))} ₴ — {balanceWords(st.opening).text}</div>
+      {/* Підсумок як у банківській виписці: сальдо — сума без знака + хто кому винен,
+          обороти — тими самими рядками, що в таблиці й акті (без схованих заліків) */}
+      <div className="act-no-print fin-card" style={{ marginBottom: '12px', padding: '18px 22px' }}>
+        <div className="fin-money-grid" style={{ marginTop: 0 }}>
+          <div>
+            <div className="fin-kpi-label">Сальдо на {dmy(dateFrom)}</div>
+            <div className="fin-money-val">{fmt(Math.abs(st.opening))} ₴</div>
+            <SaldoTag v={st.opening} />
+          </div>
+          <div>
+            <div className="fin-kpi-label">Розхід за період</div>
+            <div className="fin-money-val">{fmt(totalDebit)} ₴</div>
+            <div className="fin-money-sub">{ref.kind === 'supplier' ? 'оплати й повернення постачальнику' : 'відвантаження, виплати, комісії'}</div>
+          </div>
+          <div>
+            <div className="fin-kpi-label">Прихід за період</div>
+            <div className="fin-money-val">{fmt(totalCredit)} ₴</div>
+            <div className="fin-money-sub">{ref.kind === 'supplier' ? 'поставки товару' : 'оплати, поповнення, наложка'}</div>
+          </div>
+          <div>
+            <div className="fin-kpi-label">Сальдо на {dmy(dateTo)}</div>
+            <div className="fin-money-val" style={{ fontSize: '24px' }}>{fmt(Math.abs(st.closing))} ₴</div>
+            <SaldoTag v={st.closing} />
+          </div>
         </div>
+
+        {multi && (
+          <table className="fin-table" style={{ marginTop: '16px', borderTop: '1px solid var(--border)' }}>
+            <tbody>
+              {shownAccounts.map(a => (
+                <tr key={a.account}>
+                  <td className="muted">{SETTLEMENT_ACCOUNT_LABEL[a.account]}</td>
+                  <td className="num muted">на {dmy(dateFrom)}: {fmt(Math.abs(a.opening))} ₴</td>
+                  <td className="num">на {dmy(dateTo)}: {fmt(Math.abs(a.closing))} ₴</td>
+                  <td style={{ width: '1%', paddingLeft: '10px' }}><SaldoTag v={a.closing} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {counterparty.cabinetBalance != null && (
+          <div className="fin-hint" style={{ marginTop: '12px' }}>
+            Баланс у кабінеті партнера зараз — {fmt(counterparty.cabinetBalance)} ₴. Від обліку може відрізнятись на суму замовлень у дорозі:
+            кабінет списує їх при оформленні, облік — при врученні.
+          </div>
+        )}
       </div>
 
       {(st.hiddenInternal > 0 || showInternal) && (
@@ -303,7 +337,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
         <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
             <b>Розхід</b> — що ми віддали контрагенту (товар, гроші), <b>прихід</b> — що отримали від нього.
-            Сальдо: плюс — винні нам, мінус — винні ми. Клік по документу чи замовленню відкриває угоду.
+            Сальдо: плюс — борг контрагента, мінус — наш борг. Клік по документу чи замовленню відкриває угоду.
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px' }}>

@@ -126,7 +126,7 @@ export default function CounterpartyPicker({
                   {o.sub && <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)' }}>{o.sub}</span>}
                 </span>
                 <span style={{ fontSize: '12.5px', fontWeight: 700, color, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
-                  title={o.balance > 0 ? 'винні нам' : o.balance < 0 ? 'винні ми' : 'розрахунки закриті'}>
+                  title={o.balance > 0 ? 'борг контрагента' : o.balance < 0 ? 'наш борг' : 'розрахунки закриті'}>
                   {Math.abs(o.balance) < 0.005 ? '0,00' : `${o.balance > 0 ? '+' : '−'}${fmt(Math.abs(o.balance))}`} ₴
                 </span>
               </button>

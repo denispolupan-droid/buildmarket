@@ -19,11 +19,11 @@ function fmt(n: number) {
   return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** Сальдо зі знаком словами: плюс — винні нам, мінус — винні ми. */
+/** Сальдо зі знаком словами: плюс — борг контрагента, мінус — наш борг. */
 function Saldo({ v }: { v: number }) {
   if (Math.abs(v) < 0.005) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
   return (
-    <span style={{ color: v > 0 ? '#15803D' : '#B45309' }} title={v > 0 ? 'винні нам' : 'винні ми'}>
+    <span style={{ color: v > 0 ? '#15803D' : '#B45309' }} title={v > 0 ? 'борг контрагента' : 'наш борг'}>
       {v > 0 ? '' : '−'}{fmt(Math.abs(v))}
     </span>
   );
