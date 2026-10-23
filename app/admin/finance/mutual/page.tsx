@@ -49,7 +49,7 @@ function balanceWords(v: number): { text: string; color: string; bg: string } {
 function SaldoTag({ v }: { v: number }) {
   const w = balanceWords(v);
   return (
-    <span style={{ display: 'inline-block', marginLeft: '8px', padding: '1px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, color: w.color, background: w.bg, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+    <span style={{ display: 'inline-block', marginLeft: '8px', padding: '1px 8px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 600, color: w.color, background: w.bg, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
       {w.text}
     </span>
   );
@@ -268,19 +268,15 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
           </div>
           <div>
             <div className="fin-kpi-label">Сальдо на {dmy(dateTo)}</div>
-            <div className="fin-money-val" style={{ fontWeight: 900 }}>{fmt(Math.abs(st.closing))} ₴<SaldoTag v={st.closing} /></div>
+            <div className="fin-money-val" style={{ fontSize: '24px' }}>{fmt(Math.abs(st.closing))} ₴<SaldoTag v={st.closing} /></div>
           </div>
         </div>
         {/* Щільніше за стандартну fin-картку: це шапка виписки, а не дашборд */}
         <style>{`
-          .mutual-sum .fin-money-val { font-size: 17px; margin-top: 2px; }
+          .mutual-sum .fin-money-val { margin-top: 2px; }
           .mutual-sum .fin-money-sub { margin-top: 1px; }
-          .mutual-sum .fin-kpi-label { font-size: 10.5px; }
-          .mutual-sum .fin-money-grid { gap: 14px; }
-          .mutual-sum .fin-money-grid > div { padding-left: 14px; }
-          .mutual-sum .fin-money-grid > div:first-child { padding-left: 0; }
           .mutual-sum .fin-table { margin-top: 8px !important; }
-          .mutual-sum .fin-table td { padding: 5px 8px 5px 0; font-size: 12.5px; }
+          .mutual-sum .fin-table td { padding: 5px 8px 5px 0; }
         `}</style>
 
         {multi && (
