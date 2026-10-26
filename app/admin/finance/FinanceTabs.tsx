@@ -23,9 +23,8 @@ const GROUPS: Group[] = [
   ] },
   { href: '/admin/finance/mutual',    label: 'Взаєморозрахунки' },
   { label: 'Борги', children: [
-    { href: '/admin/finance/settlements', label: 'Дебіторка' },
+    // Дебіторку й старіння замінили «Взаєморозрахунки» (26.10.2026)
     { href: '/admin/finance/payables',    label: 'Кредиторка' },
-    { href: '/admin/finance/aging',       label: 'Старіння' },
     { href: '/admin/finance/adjustments', label: 'Коригування' },
   ] },
   { href: '/admin/finance/expenses',            label: 'Витрати' },

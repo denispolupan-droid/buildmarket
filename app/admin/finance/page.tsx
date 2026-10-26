@@ -321,7 +321,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               <div className="fin-money-sub" style={ov.ar.overdueCount > 0 ? { color: '#DC2626', fontWeight: 600 } : undefined}>
                 {ov.ar.overdueCount > 0 ? `● прострочено ${fmt(ov.ar.overdueSum)} ₴` : 'без прострочень'}
               </div>
-              <div className="fin-money-sub"><Link href="/admin/finance/settlements" style={{ color: 'var(--text-muted)' }}>клієнти →</Link></div>
+              <div className="fin-money-sub"><Link href="/admin/finance/mutual?group=customers" style={{ color: 'var(--text-muted)' }}>клієнти →</Link></div>
             </div>
             <div>
               <div className="fin-kpi-label">Кредиторка · ми винні</div>
