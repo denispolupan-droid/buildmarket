@@ -330,7 +330,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                     style={{ height: '28px', width: '28px', borderRadius: '6px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FileText size={12} />
                   </button>
-                  <a href={`/admin/finance/settlements?customerId=${c.customer_id}`} title="Взаєморозрахунки"
+                  <a href={`/admin/finance/mutual?cp=c:${c.customer_id}`} title="Взаєморозрахунки"
                     style={{ height: '28px', width: '28px', borderRadius: '6px', border: '1.5px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
                     <ExternalLink size={12} />
                   </a>

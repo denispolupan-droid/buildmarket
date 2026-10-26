@@ -715,7 +715,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <div className="fin-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div className="fin-card-title">Топ клієнти за прибутком <span className="fin-card-sub">· замовлень, виручка, валовий прибуток після комісій · доставлені за {curMonthLabel}</span></div>
-            <Link href="/admin/finance/settlements" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>всі клієнти →</Link>
+            <Link href="/admin/finance/mutual?group=customers" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>всі клієнти →</Link>
           </div>
           {topClients.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
