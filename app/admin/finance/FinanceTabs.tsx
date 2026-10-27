@@ -22,6 +22,7 @@ const GROUPS: Group[] = [
     { href: '/admin/finance/novapay',       label: 'НоваПей' },
   ] },
   { href: '/admin/finance/mutual',    label: 'Взаєморозрахунки' },
+  { href: '/admin/finance/returns',   label: 'Повернення' },
   // Дебіторку, старіння (26.10.2026) і кредиторку (28.10.2026) замінили
   // «Взаєморозрахунки»; з групи «Борги» лишились самі документи коригування
   { href: '/admin/finance/adjustments', label: 'Коригування' },

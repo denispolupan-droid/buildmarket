@@ -1,243 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
-import { createDocument, confirmDocument, resolveSaleDebitParty } from '../../../../../../lib/accounting/documents';
-import { recordTxn, reverseMarketplaceCommission } from '../../../../../../lib/accounting/money';
-import { alertAdmin } from '../../../../../../lib/alert';
+import { createCustomerReturn, getReturnableItems } from '../../../../../../lib/accounting/returns';
+import { isReturnReason, type RefundMethod } from '../../../../../../lib/accounting/returns-rules';
 
-// Повернення від покупця по замовленню: частковий вибір позицій.
-// Створює документ return_in → confirmDocument (restock own-рядків новою FIFO-партією,
-// сторно виручки, повернення собівартості), для dropship-рядків додатково реверсує
-// борг перед постачальником; опційно фіксує повернення коштів покупцю.
-
-type SaleLine = { sku: string; qty: number; price: number; cost_price: number; fulfillment_type: string | null; supplier_id: number | null };
-
-async function loadReturnableState(db: ReturnType<typeof createServiceClient>, orderId: string) {
-  const { data: saleDocs } = await db
-    .from('acc_documents')
-    .select('id, doc_date')
-    .eq('order_id', orderId)
-    .eq('doc_type', 'sale')
-    .eq('status', 'confirmed')
-    .is('reversal_of', null)
-    .order('doc_date', { ascending: true });
-  const saleIds = (saleDocs ?? []).map(d => d.id);
-  // РН-основа для «введення на підставі»: остання РН замовлення
-  const lastSaleId: string | null = saleIds.length ? saleIds[saleIds.length - 1] : null;
-
-  const { data: returnDocs } = await db
-    .from('acc_documents')
-    .select('id')
-    .eq('order_id', orderId)
-    .eq('doc_type', 'return_in')
-    .eq('status', 'confirmed')
-    .is('reversal_of', null);
-  const returnIds = (returnDocs ?? []).map(d => d.id);
-
-  const saleLines: SaleLine[] = saleIds.length
-    ? ((await db.from('acc_document_lines')
-        .select('sku, qty, price, cost_price, fulfillment_type, supplier_id')
-        .in('document_id', saleIds)).data ?? []) as SaleLine[]
-    : [];
-
-  const returnedLines = returnIds.length
-    ? ((await db.from('acc_document_lines').select('sku, qty').in('document_id', returnIds)).data ?? [])
-    : [];
-
-  // Скільки відвантажено та вже повернуто по кожному SKU
-  const state = new Map<string, { shipped: number; returned: number; price: number; cost_price: number; fulfillment_type: string | null; supplier_id: number | null }>();
-  for (const l of saleLines) {
-    const s = state.get(l.sku) ?? { shipped: 0, returned: 0, price: Number(l.price), cost_price: Number(l.cost_price ?? 0), fulfillment_type: l.fulfillment_type, supplier_id: l.supplier_id };
-    s.shipped += Number(l.qty);
-    state.set(l.sku, s);
-  }
-  for (const l of returnedLines) {
-    const s = state.get(l.sku);
-    if (s) s.returned += Number(l.qty);
-  }
-  return { state, hasSale: saleIds.length > 0, lastSaleId };
-}
+// Повернення від покупця по замовленню: GET — що можна повернути, POST — заявка
+// (чернетка ПВ «очікуємо товар»). Проводки робляться в журналі повернень
+// кнопкою «Товар отримано» (lib/accounting/returns → receiveCustomerReturn).
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  const db = createServiceClient();
-
-  const { state, hasSale } = await loadReturnableState(db, id);
-  if (!hasSale) return NextResponse.json({ error: 'Немає підтвердженої РН — повертати нічого' }, { status: 409 });
-
-  const { data: order } = await db.from('orders').select('items').eq('id', id).single();
-  const names = new Map(((order?.items ?? []) as { sku: string; name: string; brand?: string }[])
-    .map(i => [i.sku, [i.brand, i.name].filter(Boolean).join(' ')]));
-
-  return NextResponse.json({
-    items: [...state.entries()].map(([sku, s]) => ({
-      sku,
-      name: names.get(sku) ?? sku,
-      price: s.price,
-      shipped: s.shipped,
-      returned: s.returned,
-      available: Math.max(0, s.shipped - s.returned),
-    })).filter(i => i.available > 0 || i.returned > 0),
-  });
+  try {
+    const res = await getReturnableItems(id);
+    if (!res.hasSale) return NextResponse.json({ error: 'Немає підтвердженої РН — повертати нічого' }, { status: 409 });
+    return NextResponse.json(res);
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  const db = createServiceClient();
 
   const body = await req.json().catch(() => ({})) as {
     items?: { sku: string; qty: number }[];
-    refund?: { method: 'bank' | 'cash' };
     reason?: string;
+    reason_text?: string;
+    ttn?: string;
+    mp_unaware?: boolean;
+    refund?: { method: RefundMethod } | null;
   };
-  const reqItems = (body.items ?? []).filter(i => i.qty > 0);
-  if (!reqItems.length) return NextResponse.json({ error: 'Не обрано позицій' }, { status: 400 });
+  const items = (body.items ?? []).map(i => ({ sku: String(i.sku), qty: Number(i.qty) })).filter(i => i.qty > 0);
+  if (!items.length) return NextResponse.json({ error: 'Не обрано позицій' }, { status: 400 });
+  if (!isReturnReason(body.reason)) return NextResponse.json({ error: 'Вкажіть причину повернення' }, { status: 400 });
+  const refund = body.refund && (body.refund.method === 'bank' || body.refund.method === 'cash') ? { method: body.refund.method } : null;
 
-  const { data: order } = await db
-    .from('orders')
-    .select('id, order_number, customer_id, channel_code, shipping_supplier_id, items, total_price')
-    .eq('id', id)
-    .single();
-  if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
-
-  const { state, hasSale, lastSaleId } = await loadReturnableState(db, id);
-  if (!hasSale) return NextResponse.json({ error: 'Немає підтвердженої РН — повертати нічого' }, { status: 409 });
-
-  for (const item of reqItems) {
-    const s = state.get(item.sku);
-    const available = s ? s.shipped - s.returned : 0;
-    if (!s || item.qty > available + 1e-9) {
-      return NextResponse.json({ error: `${item.sku}: до повернення доступно ${available}, запитано ${item.qty}` }, { status: 400 });
-    }
-  }
-
-  const { data: warehouse } = await db.from('warehouses').select('id').eq('is_default', true).single();
-  if (!warehouse) return NextResponse.json({ error: 'Немає дефолтного складу' }, { status: 500 });
-
-  const createdBy = auth.user.email ?? 'admin';
-
-  const doc = await createDocument({
-    doc_type:     'return_in',
-    warehouse_id: warehouse.id,
-    parent_doc_id: lastSaleId ?? undefined,
-    order_id:     order.id,
-    customer_id:  order.customer_id ?? undefined,
-    channel_code: order.channel_code ?? 'website',
-    notes:        `Повернення від покупця по замовленню #${order.order_number}${body.reason?.trim() ? ` — ${body.reason.trim()}` : ''}`,
-    created_by:   createdBy,
-    lines: reqItems.map(item => {
-      const s = state.get(item.sku)!;
-      return {
-        sku:              item.sku,
-        qty:              item.qty,
-        price:            s.price,
-        cost_price:       s.cost_price,
-        fulfillment_type: (s.fulfillment_type as 'own' | 'dropship' | null) ?? 'own',
-        warehouse_id:     warehouse.id,
-        supplier_id:      s.supplier_id ?? undefined,
-      };
-    }),
-  });
-
-  await confirmDocument(doc.id, createdBy);
-
-  // Dropship-рядки: товар «повернувся» транзитом постачальнику → реверсуємо борг
-  // (DR supplier / CR inventory_asset), дзеркально до recordDropshipSale.
-  const dropGroups = new Map<string, number>();
-  for (const item of reqItems) {
-    const s = state.get(item.sku)!;
-    if (s.fulfillment_type !== 'dropship') continue;
-    const supplierId = String(s.supplier_id ?? order.shipping_supplier_id ?? '');
-    if (!supplierId) continue;
-    const cost = s.cost_price * item.qty;
-    if (cost <= 0) continue;
-    dropGroups.set(supplierId, (dropGroups.get(supplierId) ?? 0) + cost);
-  }
-  for (const [supplierId, amount] of dropGroups) {
-    await recordTxn({
-      debitAccount:   'supplier',
-      debitParty:     supplierId,
-      creditAccount:  'inventory_asset',
-      amount,
-      docId:          doc.id,
-      docType:        'return_in',
-      orderId:        order.id,
-      description:    `Повернення дропшип: зменшення боргу постачальнику (замовлення #${order.order_number})`,
-      idempotencyKey: `dropship-return:${doc.id}:${supplierId}`,
-      createdBy,
+  try {
+    const res = await createCustomerReturn({
+      orderId: id, items, reason: body.reason, reasonText: body.reason_text ?? null,
+      ttn: body.ttn ?? null, mpUnaware: !!body.mp_unaware, refund,
+      createdBy: auth.user.email ?? 'admin',
     });
+    return NextResponse.json({ ok: true, ...res });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const status = /не знайдено|Немає підтвердженої|доступно|Не обрано|більше нуля|дублюється/.test(message) ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
-
-  // Сторно комісії маркетплейсу по повернених позиціях (площадка повертає комісію
-  // за повернений товар). Сторнуємо ПРОПОРЦІЮ від фактично проведеної комісії, а не
-  // перерахунок за таблицею категорій: ставка на момент нарахування могла відрізнятися
-  // від поточної (реальний кейс 2026-07-29 — перемикання плану Prom на «Економ»).
-  if (order.channel_code === 'prom' || order.channel_code === 'rozetka' || order.channel_code === 'epicentr') {
-    try {
-      // Нетто проведеної комісії по замовленню (нарахування мінус попередні сторно).
-      // Сервісні збори (Rozetka Smart / «дешева доставка» НП) мають той самий doc_type,
-      // але площадки їх при поверненні НЕ повертають — виключаємо за meta.
-      const { data: feeRows } = await db
-        .from('money_entries')
-        .select('amount, meta')
-        .eq('order_id', order.id)
-        .eq('account_type', 'marketplace_fee')
-        .eq('counterparty_id', order.channel_code)
-        .eq('doc_type', 'commission')
-        .limit(1000);
-      const postedNet = (feeRows ?? [])
-        .filter(r => {
-          const m = r.meta as Record<string, unknown> | null;
-          return !m?.smart && !m?.kind;
-        })
-        .reduce((s, r) => s + Number(r.amount), 0);
-
-      const returnedTotal = reqItems.reduce((s, i) => s + state.get(i.sku)!.price * i.qty, 0);
-      const orderTotal = Number(order.total_price) || 0;
-      const commission = postedNet > 0 && orderTotal > 0
-        ? Math.round(Math.min(1, returnedTotal / orderTotal) * postedNet * 100) / 100
-        : 0; // комісії не проводили — і сторнувати нічого
-      if (commission > 0) {
-        await reverseMarketplaceCommission({
-          orderId:        order.id,
-          docId:          doc.id,
-          amount:         commission,
-          marketplace:    order.channel_code,
-          createdBy,
-          idempotencyKey: `commission-return:${doc.id}:${order.channel_code}`,
-        });
-      }
-    } catch (err) {
-      alertAdmin(`Сторно комісії при поверненні не пройшло (замовлення #${order.order_number})`, err);
-    }
-  }
-
-  // Повернення коштів покупцю (опційно): DR customer(дебітор) / CR bank|cash
-  const returnAmount = reqItems.reduce((sum, item) => sum + state.get(item.sku)!.price * item.qty, 0);
-  if (body.refund && returnAmount > 0) {
-    const party = await resolveSaleDebitParty(db, { customer_id: order.customer_id, order_id: order.id });
-    await recordTxn({
-      debitAccount:   'customer',
-      debitParty:     party,
-      creditAccount:  body.refund.method === 'cash' ? 'cash' : 'bank',
-      amount:         returnAmount,
-      docId:          doc.id,
-      docType:        'refund',
-      orderId:        order.id,
-      description:    `Повернення коштів покупцю (замовлення #${order.order_number})`,
-      idempotencyKey: `refund:${doc.id}`,
-      createdBy,
-    });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    doc_number: doc.doc_number,
-    return_amount: Math.round(returnAmount * 100) / 100,
-    refunded: !!body.refund,
-  });
 }
