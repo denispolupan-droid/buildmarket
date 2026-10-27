@@ -371,10 +371,18 @@ export async function getReviewStats(): Promise<ReviewStats> {
 
 // ── Кэшированные функции для ISR ──────────────────────────────────────────────
 
+/**
+ * TTL категорій — година, як у листингів, а не 5 хвилин. Свіжість тримає тег
+ * 'categories' (порядок в адмінці, імпорт, /api/revalidate, розділи Prom);
+ * словник фасетів (3 таблиці, читаються тут же service-клієнтом) міняється
+ * лише seed-скриптом. П'ятихвилинний TTL протухав незалежно від змін, і при
+ * хвилі одночасних рендерів кожен промах тягнув 4 запити — 27.10 це було
+ * 126 + 3×118 однакових запитів за хвилину на нано-базі.
+ */
 export const getCategoriesCached = unstable_cache(
   async () => getCategories(),
   ['categories'],
-  { revalidate: 300, tags: ['categories'] }
+  { revalidate: 3600, tags: ['categories'] }
 );
 
 /**

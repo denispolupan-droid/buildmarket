@@ -64,14 +64,29 @@ function sanitizePost(p: BlogPost): BlogPost {
   };
 }
 
-export async function getPublishedPosts(): Promise<BlogPost[]> {
+/**
+ * Стаття без тіла — для списків (блог, головна, sitemap, RSS, llms.txt, «схожі
+ * статті»). Жоден із них не рендерить content_html, а саме тіла двома мовами
+ * важили в цій вибірці найбільше: `select('*')` по всіх статтях тривав 160 мс
+ * у середньому і до 2 с, і повторювався на кожному промаху кешу. Повна стаття —
+ * лише через getPostBySlug.
+ */
+export type BlogPostSummary = Omit<BlogPost, 'content_html' | 'content_html_ru'>;
+
+const SUMMARY_COLUMNS = [
+  'id', 'slug', 'title', 'title_ru', 'description', 'description_ru', 'category', 'category_ru',
+  'read_time', 'keywords', 'image', 'image_ru', 'faq', 'faq_ru', 'related_links', 'product_skus',
+  'is_published', 'noindex', 'published_at', 'created_at', 'updated_at',
+].join(', ');
+
+export async function getPublishedPosts(): Promise<BlogPostSummary[]> {
   const { data, error } = await supabase
     .from('blog_posts')
-    .select('*')
+    .select(SUMMARY_COLUMNS)
     .eq('is_published', true)
     .order('published_at', { ascending: false });
   if (error) return [];
-  return ((data ?? []) as BlogPost[]).map(sanitizePost);
+  return (data ?? []) as unknown as BlogPostSummary[];
 }
 
 export const getPublishedPostsCached = unstable_cache(

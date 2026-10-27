@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -43,5 +44,8 @@ export async function PATCH(req: NextRequest) {
   const { error } = await db.from('categories').update(update).eq('slug', slug);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // prom_section_url/id входять у кешовану вибірку категорій (TTL година) —
+  // без скидання тега зміна розділу Prom чекала б кінця TTL.
+  if ('prom_section_url' in update || 'prom_section_id' in update) revalidateTag('categories', 'max');
   return NextResponse.json({ ok: true });
 }

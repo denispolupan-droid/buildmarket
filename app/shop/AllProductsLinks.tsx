@@ -12,6 +12,10 @@ import { productDisplayName, retailPrice } from '../../lib/seo/meta';
 // Мініатюр тут свідомо немає — перші 24 товари вже показані картками з фото
 // вище, а в найбільшій категорії 207 позицій, і стільки ж зайвих зображень
 // коштували б категорійній сторінці ваги на рівному місці.
+//
+// prefetch={false}: це покажчик для краулера, а не навігація для людини. Без
+// прапорця розгорнутий список на 200 товарів = 600 сегментних запитів на сервер
+// за секунду (по три на <Link>), і кожен — рендер картки товару в базу.
 
 type Props = {
   products: ProductPublic[];
@@ -72,7 +76,7 @@ export default function AllProductsLinks({ products, lang = 'uk' }: Props) {
                 const price = retailPrice(p);
                 return (
                   <li key={p.sku} className="apl-row">
-                    <Link href={`${prefix}/product/${p.slug ?? p.sku}`} className="apl-link">
+                    <Link href={`${prefix}/product/${p.slug ?? p.sku}`} prefetch={false} className="apl-link">
                       {stripBrand(productDisplayName(p, lang), p.brand ?? '')}
                     </Link>
                     {price ? <span className="apl-price">{price} грн</span> : <span />}

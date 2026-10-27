@@ -96,14 +96,19 @@ export default function FooterView({ categories, topBrands }: { categories: Cate
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Categories.
+              Усі посилання підвалу — prefetch={false}. Підвал є на кожній сторінці, і щойно
+              він доїжджає у viewport, Next 16 тягне по три сегментні запити на кожен <Link>
+              (_tree/_head/__PAGE__). Коли листинги щойно протухли (крон синку постачальника
+              скидає тег products), це 100+ одночасних рендерів з холодним кешем — 23.10 і 27.10
+              пул PostgREST на нано-базі захлинався, і сторінки брендів падали з 57014. */}
           <div>
             <p style={{ fontSize: '14px', fontWeight: 700, color: '#F1F5F9', marginBottom: '18px' }}>
               {isRu ? 'Категории' : 'Категорії'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {parentCats.slice(0, 6).map(cat => (
-                <Link key={cat.slug} href={`${shopBase}/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                <Link key={cat.slug} href={`${shopBase}/${cat.slug}`} prefetch={false} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                   {isRu ? getCategoryNameRu(cat.slug, cat.name) : cat.name}
                 </Link>
               ))}
@@ -112,7 +117,7 @@ export default function FooterView({ categories, topBrands }: { categories: Cate
                   <summary>{isRu ? `Ещё ${parentCats.length - 6}` : `Ще ${parentCats.length - 6}`}</summary>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                     {parentCats.slice(6).map(cat => (
-                      <Link key={cat.slug} href={`${shopBase}/${cat.slug}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                      <Link key={cat.slug} href={`${shopBase}/${cat.slug}`} prefetch={false} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                         {isRu ? getCategoryNameRu(cat.slug, cat.name) : cat.name}
                       </Link>
                     ))}
@@ -129,7 +134,7 @@ export default function FooterView({ categories, topBrands }: { categories: Cate
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {topBrands.slice(0, 6).map(brand => (
-                <Link key={brand} href={`${shopBase}/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                <Link key={brand} href={`${shopBase}/brand/${brandToSlug(brand)}`} prefetch={false} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                   {brand}
                 </Link>
               ))}
@@ -138,7 +143,7 @@ export default function FooterView({ categories, topBrands }: { categories: Cate
                   <summary>{isRu ? `Ещё ${topBrands.length - 6}` : `Ще ${topBrands.length - 6}`}</summary>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                     {topBrands.slice(6).map(brand => (
-                      <Link key={brand} href={`${shopBase}/brand/${brandToSlug(brand)}`} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
+                      <Link key={brand} href={`${shopBase}/brand/${brandToSlug(brand)}`} prefetch={false} style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}>
                         {brand}
                       </Link>
                     ))}
@@ -155,7 +160,7 @@ export default function FooterView({ categories, topBrands }: { categories: Cate
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {serviceLinks.map(({ labelUk, labelRu, hrefUk, hrefRu }) => (
-                <Link key={hrefUk} href={isRu ? hrefRu : hrefUk} style={{ fontSize: '14px', color: '#94A3B8', textDecoration: 'none' }}>
+                <Link key={hrefUk} href={isRu ? hrefRu : hrefUk} prefetch={false} style={{ fontSize: '14px', color: '#94A3B8', textDecoration: 'none' }}>
                   {isRu ? labelRu : labelUk}
                 </Link>
               ))}
