@@ -72,4 +72,17 @@ describe('архітектурні межі (AGENTS.md)', () => {
     }
     expect(offenders, 'використовуй cronAuthorized з lib/cron-auth:\n' + offenders.join('\n')).toEqual([]);
   });
+  it('нові адмінські роути авторизуються через requireStaff (lib/auth-guard)', () => {
+    // Старі роути з checkAdmin / ручним getUser зафіксовані в baseline і переводяться
+    // поступово; тут ловимо лише НОВІ роути повз guard і нагадуємо прибрати з baseline
+    // ті, що вже виправлені. Правило з AGENTS.md: ніколи не роби ad-hoc getUser.
+    const baseline = JSON.parse(readFileSync(path.join(ROOT, 'tests', 'architecture-baseline.json'), 'utf8')) as { adminRoutesWithoutRequireStaff: string[] };
+    const known = new Set(baseline.adminRoutesWithoutRequireStaff);
+    const adminRoutes = files.map(rel).filter(r => r.startsWith('app/api/admin/') && r.endsWith('/route.ts'));
+    const without = adminRoutes.filter(r => !read(path.join(ROOT, r)).includes('requireStaff'));
+    const fresh = without.filter(r => !known.has(r));
+    const fixed = [...known].filter(r => !without.includes(r));
+    expect(fresh, 'новий роут повз requireStaff:\n' + fresh.join('\n')).toEqual([]);
+    expect(fixed, 'ці роути вже на requireStaff — прибери їх із tests/architecture-baseline.json:\n' + fixed.join('\n')).toEqual([]);
+  });
 });
