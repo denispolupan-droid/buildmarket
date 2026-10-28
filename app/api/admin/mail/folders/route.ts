@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { zohoFetch, getAccountId } from '../../../../../lib/zoho-mail';
-import { checkAdmin } from '../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 export async function GET() {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   try {
     const accountId = await getAccountId();
     const data = await zohoFetch(`/accounts/${accountId}/folders`);

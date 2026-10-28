@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSendAddresses } from '../../../../../lib/zoho-mail';
 import { createServiceClient } from '../../../../../lib/supabase';
-import { checkAdmin } from '../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 // Дозволені адреси відправника + підпис для кожної (app_settings.mail_signatures,
 // JSON {email: текст}). Віддаємо разом, щоб вікно листа робило один запит.
 export async function GET() {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   try {
     const [senders, { data: row }] = await Promise.all([
       getSendAddresses(),

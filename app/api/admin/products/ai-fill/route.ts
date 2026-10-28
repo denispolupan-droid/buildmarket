@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { checkAdmin } from '../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { fillProducts } from '../../../../../lib/product-ai-filler';
 import { logSeoAction } from '../../../../../lib/seo-actions';
 import { createClient } from '@supabase/supabase-js';
@@ -13,9 +13,8 @@ export const runtime     = 'nodejs';
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  if (!await checkAdmin()) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { skus, fields, force, targetQuery, facts } = await req.json() as {
     skus: string[];

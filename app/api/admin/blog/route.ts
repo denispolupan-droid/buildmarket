@@ -3,7 +3,6 @@ import { revalidateTag } from 'next/cache';
 import { after } from 'next/server';
 import { submitIndexNow } from '../../../../lib/indexnow';
 import { createClient } from '@supabase/supabase-js';
-import { checkAdmin } from '../../../../lib/check-admin';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { generateBlogPost, sanitizeArticleHtml } from '../../../../lib/blog-generator';
 import { buildCovers } from '../../../../lib/blog-cover';
@@ -23,7 +22,8 @@ function bustBlogCache() {
 }
 
 export async function GET(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   const id = req.nextUrl.searchParams.get('id');
   if (id) {
     const { data, error } = await serviceClient.from('blog_posts').select('*').eq('id', Number(id)).single();
@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   const body = await req.json() as {
     id: number;
     is_published?: boolean;
@@ -131,7 +132,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   const id = Number(req.nextUrl.searchParams.get('id'));
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
   const { error } = await serviceClient.from('blog_posts').delete().eq('id', id);

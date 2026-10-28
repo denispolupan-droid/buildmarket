@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { zohoFetch, getAccountId, getSendAddresses } from '../../../../../lib/zoho-mail';
-import { checkAdmin } from '../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 export async function POST(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   try {
     const { to, subject, content, replyTo, from } = await req.json() as {
       to: string; subject: string; content: string; replyTo?: string; from?: string;

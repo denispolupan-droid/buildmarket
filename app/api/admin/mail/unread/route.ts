@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { zohoFetch, getAccountId, getTokenRow } from '../../../../../lib/zoho-mail';
-import { checkAdmin } from '../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,7 +9,8 @@ const db = createClient(
 );
 
 export async function GET() {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   try {
     const tokens = await getTokenRow();
     if (!tokens) return NextResponse.json({ count: 0 });

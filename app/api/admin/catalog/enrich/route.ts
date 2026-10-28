@@ -1,14 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkAdmin } from '../../../../../lib/check-admin';
+import { NextRequest } from 'next/server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { enrichCatalog } from '../../../../../lib/catalog-enricher';
 
 export const runtime    = 'nodejs';
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  if (!await checkAdmin()) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { limit = 10, category, sku, skus, targetQuery } = await req.json() as {
     limit?: number;
