@@ -2,8 +2,32 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   parseAddress, normalizeHouse, stem, significantStems, rankStreets, resolveStreet,
   structuredFromRozetka, structuredFromProm, textKeepsHouse, textKeepsAddress, addressLabel,
-  prepareCourierAddress, resolveCityRef,
+  prepareCourierAddress, resolveCityRef, npFlatFields,
 } from '../lib/np-address';
+
+// Відповіді НП Address.save, зняті наживо 28.10.2026 (просп. Полтавський, 2, Кременчук):
+// Flat «а»/«А» → «Flat has invalid format»; «» і «2а» → success. #26101202 падав саме тут.
+describe('npFlatFields — квартира для Address.save НП', () => {
+  it('квартира з цифри на початку йде у Flat як є', () => {
+    expect(npFlatFields('5')).toEqual({ Flat: '5' });
+    expect(npFlatFields('2а')).toEqual({ Flat: '2а' });
+    expect(npFlatFields(' 12 ')).toEqual({ Flat: '12' });
+  });
+  it('порожня — порожній Flat без Note', () => {
+    expect(npFlatFields('')).toEqual({ Flat: '' });
+    expect(npFlatFields('  ')).toEqual({ Flat: '' });
+  });
+  it('буквена квартира («а», «А», «Б-2») — Flat порожній, текст у Note', () => {
+    expect(npFlatFields('а')).toEqual({ Flat: '', Note: 'кв. а' });
+    expect(npFlatFields('А')).toEqual({ Flat: '', Note: 'кв. А' });
+    expect(npFlatFields('Б-2')).toEqual({ Flat: '', Note: 'кв. Б-2' });
+  });
+  it('Note не довша за 40 символів (ліміт НП)', () => {
+    const r = npFlatFields('а'.repeat(60));
+    expect(r.Flat).toBe('');
+    expect(r.Note).toHaveLength(40);
+  });
+});
 
 // Реальні рядки delivery_address кур'єрських замовлень з бази (Rozetka/Prom),
 // на яких старий розбір падав або знаходив не те.

@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { syncDraftShipmentTracking } from '../../../../lib/accounting/completion';
 import { numOrNull, type TtnSnapshot } from '../../../../lib/ttn-snapshot';
 import {
-  prepareCourierAddress, addressLabel, normalizeHouse,
+  prepareCourierAddress, addressLabel, normalizeHouse, npFlatFields,
   type RozetkaDelivery, type PromProviderData,
 } from '../../../../lib/np-address';
 
@@ -183,14 +183,16 @@ export async function POST(req: NextRequest) {
   // тому — після Step 1). CityRef та вулицю вже зарезолвили вище.
   let finalRecipientAddress: string = recipientAddressRef ?? '';
   if (needAddress) {
+    // Квартира без цифри на початку («а») — у Note, інакше НП: «Flat has invalid format».
     const aRes = await npCall(apiKey, 'Address', 'save', {
       CounterpartyRef: recipientRef,
       StreetRef:       streetRef,
       BuildingNumber:  parsedHouse,
-      Flat:            parsedFlat,
+      ...npFlatFields(parsedFlat),
     });
     if (!aRes.success || !aRes.data?.[0]?.Ref) {
       const npMsg = aRes.errors?.filter(Boolean).join('; ') || 'Не вдалося створити адресу одержувача у НП';
+      console.error('[create-ttn] Address.save відхилено НП:', JSON.stringify({ streetRef, house: parsedHouse, flat: parsedFlat, errors: aRes.errors, warnings: aRes.warnings }));
       // Перевірено наживо 28.10.2026: Ref із довідника населеного пункту (села)
       // Address.save не приймає — «Street doesn't exists», і з CityRef, і без;
       // варіант ЕН «адреса рядком» (NewAddress=1) таку вулицю теж не знаходить.

@@ -393,3 +393,18 @@ export function textKeepsAddress(text: string | null | undefined, house: string,
 export function addressLabel(streetLabel: string, house: string, flat: string): string {
   return [streetLabel, house, flat ? `кв. ${flat}` : ''].filter(Boolean).join(', ');
 }
+
+/**
+ * Поля квартири для `Address.save` НП. Перевірено наживо 28.10.2026 на
+ * просп. Полтавський, 2 (Кременчук): Flat «а» і «А» → «Flat has invalid format»,
+ * «2а» і порожнє приймає — квартира в НП мусить починатися з цифри. Через це
+ * #26101202 (Rozetka віддала place_flat «а») не виписувалась кур'єром.
+ * Таку квартиру кладемо в Note (до 40 символів, НП дописує її в опис адреси,
+ * кур'єр її бачить), а Flat лишаємо порожнім.
+ */
+export function npFlatFields(flat: string): { Flat: string; Note?: string } {
+  const f = flat.trim();
+  if (!f) return { Flat: '' };
+  if (/^\d/.test(f)) return { Flat: f };
+  return { Flat: '', Note: `кв. ${f}`.slice(0, 40) };
+}
