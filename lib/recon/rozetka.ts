@@ -284,18 +284,14 @@ export async function reconcileRozetka(from: string, to: string) {
      замовлення в роботі майбутня комісія, гроші ще наші, просто заморожені, а
      ми резерв окремо не моделюємо. */
   const ourBalance = await getMarketplaceBalance('rozetka');
-  // Логістичний баланс: збір за видачу знімається з нього одразу (ми його вже
-  // провели), а з основного балансу покривається пізніше операцією 68. Поки не
-  // покрито, він мінусовий — без нього залишок «розходився» на ці 35 ₴ (28.10.2026).
-  const lastLogistic = logisticOps.reduce<typeof logisticOps[number] | null>(
-    (m, o) => (!m || Number(o.operation_id) > Number(m.operation_id) ? o : m), null);
-  const cabinetLogistic = r2(num(lastLogistic?.balance));
-  const cabinetTotal = r2(cabinet.balance + cabinet.sumInGray + cabinetLogistic);
+  // Мінус логістичного балансу (збір за видачу, ще не покритий гарантійним
+  // платежем) Rozetka вже враховує в cabinet.balance — окремо не додавати
+  // (перевірено 29.10.2026: залишок у виписці 976,39 − сіра 1 459,67 − 35 = −518,28).
+  const cabinetTotal = r2(cabinet.balance + cabinet.sumInGray);
   const balanceCheck = {
     ours: r2(ourBalance),
     cabinetBalance: r2(cabinet.balance),
     cabinetGray: r2(cabinet.sumInGray),
-    cabinetLogistic,
     cabinetTotal,
     delta: r2(ourBalance - cabinetTotal),
   };
