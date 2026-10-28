@@ -85,10 +85,17 @@ export default function InvoiceMessengerButtons({
     if (normPhone) window.open(`https://t.me/+${normPhone}`, '_blank', 'noopener');
   }
 
+  // Схема посилання Viber. На ПК власника стоять два Viber: особистий слухає viber://,
+  // робочий — окрему схему viber2:// (інакше особистий перехоплює й переписує обробник).
+  // Вмикається лише в тому браузері, де є localStorage['viber-scheme'] = 'viber2'.
+  function viberScheme(): string {
+    try { return localStorage.getItem('viber-scheme') === 'viber2' ? 'viber2' : 'viber'; } catch { return 'viber'; }
+  }
+
   async function openViber() {
     await copyText(message);
     flash('viber');
-    if (normPhone) window.location.href = `viber://chat?number=%2B${normPhone}`;
+    if (normPhone) window.location.href = `${viberScheme()}://chat?number=%2B${normPhone}`;
   }
 
   async function copyOnly() {
