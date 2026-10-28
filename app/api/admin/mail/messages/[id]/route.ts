@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { zohoFetch, getAccountId, getAccessToken } from '../../../../../../lib/zoho-mail';
-import { checkAdmin } from '../../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   try {
     const { id } = await params;
     const folderId = req.nextUrl.searchParams.get('folderId');
@@ -24,7 +25,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   let step = 'init';
   try {
     step = 'params';
@@ -55,7 +57,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   try {
     const { id } = await params;
     const accountId = await getAccountId();

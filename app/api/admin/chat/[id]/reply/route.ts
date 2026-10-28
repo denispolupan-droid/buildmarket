@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { checkAdmin } from '../../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +8,8 @@ const db = createClient(
 );
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   const { id } = await params;
   const { message } = await req.json() as { message?: string };
 

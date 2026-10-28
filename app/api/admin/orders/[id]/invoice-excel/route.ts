@@ -2,7 +2,7 @@ import { hryvniaInWords } from "../../../../../../lib/number-to-words";
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
-import { checkAdmin } from '../../../../../../lib/check-admin';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 import { SELLER } from '../../../../../../lib/company';
 import { loadInvoiceView } from '../../../../../../lib/invoice-buyer';
 
@@ -20,7 +20,8 @@ function formatIban(raw: string) {
 
 // UUID is the auth — anyone with the link can download
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
