@@ -3,6 +3,10 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { syncDraftShipmentTracking } from '../../../../lib/accounting/completion';
 import { numOrNull, type TtnSnapshot } from '../../../../lib/ttn-snapshot';
+import {
+  parseAddress, resolveStreet, structuredFromRozetka, structuredFromProm, textKeepsHouse, addressLabel,
+  type ParsedAddress, type RozetkaDelivery, type PromProviderData,
+} from '../../../../lib/np-address';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -30,21 +34,6 @@ function normalizePhone(phone: string): string {
 function todayStr(): string {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
-}
-
-// Розбираємо вільний рядок адреси "вул. Калинова, 104, кв. 5" → { street, house, flat }
-function parseAddress(raw: string): { street: string; house: string; flat: string } {
-  let s = (raw || '').trim();
-  const flatM = s.match(/(?:кв\.?|квартира|apt\.?)\s*([0-9]+[а-яіїєґa-z]?)/i);
-  const flat = flatM?.[1] ?? '';
-  if (flatM?.index != null) s = s.slice(0, flatM.index).replace(/[,\s]+$/, '');
-  const houseM = s.match(/(\d+[а-яіїєґa-z]?(?:\s*\/\s*\d+[а-яіїєґa-z]?)?)\s*$/i);
-  const house = houseM?.[1]?.replace(/\s+/g, '') ?? '';
-  if (houseM?.index != null) s = s.slice(0, houseM.index).replace(/[,\s]+$/, '');
-  const street = s
-    .replace(/^(вул\.?|вулиця|просп\.?|проспект|пров\.?|провулок|бул\.?|бульвар|пл\.?|площа|наб\.?|набережна|ш\.?|шосе)\s+/i, '')
-    .replace(/[,\s]+$/, '').trim();
-  return { street, house, flat };
 }
 
 export async function POST(req: NextRequest) {
@@ -114,16 +103,12 @@ export async function POST(req: NextRequest) {
   const recipientIsDoors = resolvedServiceType === 'WarehouseDoors' || resolvedServiceType === 'DoorsDoors';
   const needAddress = recipientIsDoors && !recipientAddressRef && !!recipientAddress;
   let finalCityRecipient: string = cityRecipientRef;
-  let settlementStreetRef = '';
+  let streetRef = '';
+  let streetLabel = '';
+  let streetFromSettlementDirectory = false;
   let parsedHouse = '';
   let parsedFlat = '';
   if (needAddress) {
-    const { street, house, flat } = parseAddress(recipientAddress);
-    if (!street || !house) {
-      return NextResponse.json({ error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).' }, { status: 400 });
-    }
-    parsedHouse = house;
-    parsedFlat = flat;
     // SettlementRef → CityRef. Найнадійніше — CityRef складу цього населеного пункту
     // (те саме, що використовує доставка у відділення). Фолбек — DeliveryCity.
     const whRes = await npCall(apiKey, 'Address', 'getWarehouses', { SettlementRef: cityRecipientRef, Limit: 1, Page: 1 });
@@ -138,12 +123,50 @@ export async function POST(req: NextRequest) {
     if (!finalCityRecipient || finalCityRecipient === cityRecipientRef) {
       return NextResponse.json({ error: 'Не вдалося визначити місто НП для адресної доставки. Оберіть місто зі списку НП у полі «Місто».' }, { status: 400 });
     }
-    // Address.save очікує StreetRef із city-based getStreet (не SettlementStreetRef із
-    // searchSettlementStreets — той дає "Street doesn't exists"). CityRef уже зарезолвили.
-    const stRes = await npCall(apiKey, 'Address', 'getStreet', { CityRef: finalCityRecipient, FindByString: street, Limit: 1 });
-    settlementStreetRef = stRes?.data?.[0]?.Ref ?? '';
-    if (!settlementStreetRef) {
-      return NextResponse.json({ error: `Вулицю «${street}» не знайдено в Новій Пошті для цього міста. Перевірте назву вулиці (напр. без «вул.», лише «Калинова»).` }, { status: 400 });
+
+    // Джерела адреси за пріоритетом (lib/np-address): Prom віддає готові
+    // NP-референси міста й вулиці; Rozetka — вулицю/будинок/квартиру окремими
+    // полями; інакше розбираємо текст із модалки. Структуровані дані беремо
+    // лише поки менеджер не змінив номер будинку в полі — інакше вірити треба
+    // тому, що він ввів.
+    const { data: ord } = await serviceClient
+      .from('orders')
+      .select('delivery_city_name, rz:rozetka_data->delivery, pm:prom_data->delivery_provider_data')
+      .eq('id', orderId)
+      .maybeSingle();
+    const typed = parseAddress(recipientAddress, (ord?.delivery_city_name as string | null) ?? null);
+    const promRefs = structuredFromProm(ord?.pm as PromProviderData);
+    const rzParsed = structuredFromRozetka(ord?.rz as RozetkaDelivery);
+
+    if (promRefs && promRefs.cityRef === finalCityRecipient && textKeepsHouse(recipientAddress, promRefs.house)) {
+      streetRef = promRefs.streetRef;
+      streetLabel = promRefs.streetName;
+      parsedHouse = promRefs.house;
+      parsedFlat = typed.flat || promRefs.flat;
+    } else {
+      const parsed: ParsedAddress = rzParsed && textKeepsHouse(recipientAddress, rzParsed.house)
+        ? { ...rzParsed, flat: typed.flat || rzParsed.flat }
+        : typed;
+      if (!parsed.street || !parsed.house) {
+        return NextResponse.json({ error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).' }, { status: 400 });
+      }
+      parsedHouse = parsed.house;
+      parsedFlat = parsed.flat;
+      // Спершу міський довідник (його Ref приймає Address.save), потім довідник
+      // населеного пункту — у селах вулиці є лише там.
+      const found = await resolveStreet(
+        (m, c, p) => npCall(apiKey, m, c, p),
+        { cityRef: finalCityRecipient, settlementRef: cityRecipientRef, parsed },
+      );
+      if (found.kind === 'none') {
+        const hint = found.suggestions.length
+          ? ` Схожі вулиці в довіднику НП: ${found.suggestions.join('; ')}. Виправте назву в полі адреси.`
+          : ' Перевірте місто й назву вулиці в полі адреси.';
+        return NextResponse.json({ error: `Вулицю «${parsed.street}» не знайдено в Новій Пошті для цього міста.${hint}` }, { status: 400 });
+      }
+      streetRef = found.ref;
+      streetLabel = found.label;
+      streetFromSettlementDirectory = found.kind === 'settlement';
     }
   }
 
@@ -174,12 +197,18 @@ export async function POST(req: NextRequest) {
   if (needAddress) {
     const aRes = await npCall(apiKey, 'Address', 'save', {
       CounterpartyRef: recipientRef,
-      StreetRef:       settlementStreetRef,
+      StreetRef:       streetRef,
       BuildingNumber:  parsedHouse,
       Flat:            parsedFlat,
     });
     if (!aRes.success || !aRes.data?.[0]?.Ref) {
-      return NextResponse.json({ error: aRes.errors?.join('; ') ?? 'Не вдалося створити адресу одержувача у НП' }, { status: 400 });
+      const npMsg = aRes.errors?.filter(Boolean).join('; ') || 'Не вдалося створити адресу одержувача у НП';
+      // Ref із довідника населеного пункту НП не завжди приймає в Address.save —
+      // кажемо прямо, що вулицю знайшли, але далі треба руками.
+      const detail = streetFromSettlementDirectory
+        ? ` Вулицю «${streetLabel}» НП знає лише в довіднику населеного пункту і не прийняла її для адреси. Створіть ЕН у кабінеті НП або оформіть доставку у відділення.`
+        : '';
+      return NextResponse.json({ error: `${npMsg}.${detail}`.replace('..', '.') }, { status: 400 });
     }
     finalRecipientAddress = aRes.data[0].Ref;
   }
@@ -272,7 +301,8 @@ export async function POST(req: NextRequest) {
     recipient: {
       name: [lastName, firstName, middleName].filter(Boolean).join(' '),
       phone: normalizePhone(recipientPhone),
-      address: recipientIsDoors ? (recipientAddress ?? null) : null,
+      // Що реально пішло в НП (вулиця з довідника, будинок, квартира), а не сирий текст
+      address: recipientIsDoors ? (streetLabel ? addressLabel(streetLabel, parsedHouse, parsedFlat) : (recipientAddress ?? null)) : null,
     },
   };
 
