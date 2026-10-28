@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { reverseDropshipLedgerExtras, syncSaleDraftLines } from '../../../../../lib/accounting/dropship';
 import { cancelDocument, resolveSaleDebitParty } from '../../../../../lib/accounting/documents';
@@ -31,13 +31,10 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // продаж (документ + виручка + COGS + борг постачальнику), якщо підтвердженої
 // РН по замовленню ще немає. Викликається і на shipped, і на delivered.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const role = user?.app_metadata?.role ?? '';
-  if (!user || !['admin', 'manager'].includes(role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin', 'manager');
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
+  const role = user.app_metadata?.role ?? '';
 
   const { id } = await params;
   const body = await req.json();

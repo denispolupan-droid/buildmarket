@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 const SCOPES = [
   'ZohoMail.messages.ALL',
@@ -8,11 +8,8 @@ const SCOPES = [
 ].join(',');
 
 export async function GET() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   // CSRF state — echoed back by Zoho and verified in the callback so an attacker
   // cannot bind their own Zoho account by luring an admin to the callback URL.

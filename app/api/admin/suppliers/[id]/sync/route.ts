@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 import { syncSupplier } from '../../../../../../lib/supplier-sync';
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.app_metadata?.role === 'admin';
+  return (await requireStaff('admin')).ok;
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -1,7 +1,7 @@
 export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
@@ -15,11 +15,8 @@ const db = createClient(
 );
 
 export async function GET(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  const auth = await requireStaff('admin', 'manager');
+  if (!auth.ok) return auth.response;
 
   const { searchParams } = req.nextUrl;
   const format            = searchParams.get('format') ?? 'xlsx';

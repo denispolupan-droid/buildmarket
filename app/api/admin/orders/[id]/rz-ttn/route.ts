@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { RZ_DELIVERY_TYPE, RZ_TRACK_TYPE_DEPT, rzPhone, rzSplitName } from '../../../../../../lib/rz-delivery';
@@ -39,9 +39,8 @@ async function resolveCityByWarehouse(cityName: string | null, warehouseId: stri
  */
 
 async function requireAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.app_metadata?.role === 'admin' ? user : null;
+  const auth = await requireStaff('admin');
+  return auth.ok ? auth.user : null;
 }
 
 /** Післяплата за замовчуванням: лише неоплачені замовлення з оплатою при отриманні. */

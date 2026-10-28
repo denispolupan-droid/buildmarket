@@ -1,29 +1,13 @@
 {
   "generated": "2026-10-28",
-  "note": "Адмінські роути, які ще не на requireStaff (lib/auth-guard). Список лише зменшується: нові роути сюди не додаються, виправлені — прибираються.",
+  "note": "Адмінські роути, які ще не на requireStaff (lib/auth-guard). Список лише зменшується: нові роути сюди не додаються, виправлені — прибираються. Ці 7 правляться в гілці feat/returns-journal — переводити після її злиття.",
   "adminRoutesWithoutRequireStaff": [
-    "app/api/admin/categories/[slug]/route.ts",
-    "app/api/admin/chat/[id]/resolve/route.ts",
     "app/api/admin/create-ttn/route.ts",
-    "app/api/admin/mail/oauth/authorize/route.ts",
-    "app/api/admin/mail/oauth/callback/route.ts",
-    "app/api/admin/orders/[id]/purchase-orders/route.ts",
-    "app/api/admin/orders/[id]/route.ts",
     "app/api/admin/orders/[id]/rozetka-delivery-ttn/route.ts",
-    "app/api/admin/orders/[id]/rz-ttn/route.ts",
     "app/api/admin/orders/[id]/ship/route.ts",
     "app/api/admin/prices/log/route.ts",
-    "app/api/admin/prices/pricelist/route.ts",
     "app/api/admin/procurement/[id]/return/route.ts",
-    "app/api/admin/prom/attributes/route.ts",
-    "app/api/admin/prom/category-search/route.ts",
-    "app/api/admin/promo-image/route.ts",
-    "app/api/admin/settings/route.ts",
-    "app/api/admin/settings/sync-interval/route.ts",
     "app/api/admin/suppliers/[id]/route.ts",
-    "app/api/admin/suppliers/[id]/sheets/route.ts",
-    "app/api/admin/suppliers/[id]/sync/route.ts",
-    "app/api/admin/suppliers/map-sku/route.ts",
     "app/api/admin/suppliers/route.ts"
   ]
 }

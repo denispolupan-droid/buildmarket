@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { requireStaff } from '../../../../lib/auth-guard';
 import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
@@ -30,10 +28,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   await deleteFromR2(['promo/banner.webp', 'promo/banner.jpg', 'promo/banner.png']);
   return NextResponse.json({ ok: true });

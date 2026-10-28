@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { XMLParser } from 'fast-xml-parser';
 import { normCharKey } from '../../../../../lib/characteristics';
 
@@ -294,9 +294,8 @@ const db = createClient(
 );
 
 async function assertAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') throw new Error('Unauthorized');
+  const auth = await requireStaff('admin');
+  if (!auth.ok) throw new Error('Unauthorized');
 }
 
 // GET /api/admin/prom/attributes?category=<prom_category_id>

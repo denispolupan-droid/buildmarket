@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,10 +8,8 @@ const db = createClient(
 );
 
 export async function GET(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin')
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const q   = req.nextUrl.searchParams.get('q')?.trim() ?? '';
   const lim = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '20'), 5000);

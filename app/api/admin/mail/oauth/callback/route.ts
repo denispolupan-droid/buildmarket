@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveTokens } from '../../../../../../lib/zoho-mail';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 export async function GET(req: NextRequest) {
   const site = process.env.NEXT_PUBLIC_SITE_URL;
 
   // Require an admin session (the callback carries first-party cookies) …
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
+  // Це редірект у браузері, не API-відповідь, тому замість auth.response —
+  // повернення на сторінку пошти з кодом помилки.
+  const auth = await requireStaff('admin');
+  if (!auth.ok) {
     return NextResponse.redirect(`${site}/admin/mail?error=unauthorized`);
   }
 

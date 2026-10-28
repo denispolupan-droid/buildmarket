@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createClient } from '@supabase/supabase-js';
 import { assertPublicUrl } from '../../../../../../lib/safe-fetch-url';
 import * as XLSX from 'xlsx';
@@ -10,9 +10,7 @@ const serviceClient = createClient(
 );
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.app_metadata?.role === 'admin';
+  return (await requireStaff('admin')).ok;
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

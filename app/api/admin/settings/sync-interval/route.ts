@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase';
 
 // Зміна інтервалу синку маркетплейсів з адмінки. Розклад pg_cron змінюється
@@ -9,9 +9,7 @@ import { createServiceClient } from '../../../../../lib/supabase';
 const ALLOWED = [5, 10, 15, 30, 60];
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.app_metadata?.role === 'admin';
+  return (await requireStaff('admin')).ok;
 }
 
 export async function POST(req: NextRequest) {

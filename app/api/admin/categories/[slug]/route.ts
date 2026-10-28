@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { createClient } from '@supabase/supabase-js';
 
 const db = createClient(
@@ -11,11 +11,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireStaff('admin', 'manager');
+  if (!auth.ok) return auth.response;
 
   const { slug } = await params;
   const body = await req.json();
