@@ -26,6 +26,7 @@ const TYPE_LABEL: Record<string, string> = {
   fixed:         'Фіксована ціна',
   manual:        'Ручна правка',
   promo_cancel:  'Завершення акції',
+  supplier_discount: 'Знижка постачальника',
 };
 
 const TARGET_LABEL: Record<string, string> = {
@@ -111,8 +112,11 @@ export default function PricesLog() {
           ? (entry.value >= 0 ? `+${entry.value}%` : `${entry.value}%`)
           : entry.type === 'multiply_cost'
           ? `×${entry.value}`
+          : entry.type === 'supplier_discount'
+          ? `−${entry.value}%`
           : `${entry.value} ₴`;
-        const isPositive = entry.value >= 0;
+        // Знижка постачальника зберігається додатним відсотком, але ціни від неї падають
+        const isPositive = entry.type === 'supplier_discount' ? false : entry.value >= 0;
         const ps = promoStatus(entry);
         const hasSnapshot = (entry.snapshot?.length ?? 0) > 0;
         const isPending   = entry.status === 'pending';
@@ -133,7 +137,7 @@ export default function PricesLog() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 14,
                 color: isPositive ? '#15803D' : '#DC2626' }}>
-                {entry.type === 'increase_pct'
+                {entry.type === 'increase_pct' || entry.type === 'supplier_discount'
                   ? (isPositive ? <TrendingUp size={13} /> : <TrendingDown size={13} />)
                   : <Minus size={13} />}
                 {valStr}

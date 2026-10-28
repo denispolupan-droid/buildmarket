@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeBrandDiscounts } from '../../../../../lib/supplier-brand-discounts';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,6 +52,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
   const { brand_discounts, last_sync, sync_logs, product_overrides, promotions, ...supplier } = body;
+
+  // Знижки на бренди валідуємо ДО будь-якого запису: нижче вони видаляються й
+  // вставляються заново, і бита вставка раніше лишала постачальника без знижок.
+  const discounts = normalizeBrandDiscounts(brand_discounts);
+  if (!discounts.ok) return NextResponse.json({ error: discounts.error }, { status: 400 });
 
   // Зберігаємо акції
   if (Array.isArray(promotions)) {
@@ -108,11 +114,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Пересохраняем скидки на бренды полностью
-  await serviceClient.from('supplier_brand_discounts').delete().eq('supplier_id', id);
-  if (brand_discounts?.length) {
-    await serviceClient.from('supplier_brand_discounts').insert(
-      brand_discounts.map((d: { brand: string; discount_pct: number }) => ({ ...d, supplier_id: Number(id) }))
+  const { error: delErr } = await serviceClient.from('supplier_brand_discounts').delete().eq('supplier_id', id);
+  if (delErr) return NextResponse.json({ error: `Знижки на бренди: ${delErr.message}` }, { status: 500 });
+  if (discounts.rows.length) {
+    const { error: insErr } = await serviceClient.from('supplier_brand_discounts').insert(
+      discounts.rows.map(d => ({ ...d, supplier_id: Number(id) }))
     );
+    if (insErr) return NextResponse.json({ error: `Знижки на бренди не збережено: ${insErr.message}` }, { status: 500 });
   }
 
   return NextResponse.json(data);

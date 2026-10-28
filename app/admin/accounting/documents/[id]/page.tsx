@@ -167,6 +167,12 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         {doc.status === 'confirmed' && (
           <CorrectButton documentId={id} docNumber={doc.doc_number} />
         )}
+        {['return_in', 'supplier_return', 'return_out'].includes(doc.doc_type) && (
+          <Link href={`/admin/finance/returns?id=${id}`}
+            style={{ fontSize: '12px', color: '#B45309', textDecoration: 'none', background: '#FFFBEB', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #FDE68A' }}>
+            ↩ Журнал повернень
+          </Link>
+        )}
         {doc.parent_doc_id && (
           <Link
             href={
@@ -227,7 +233,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
       {/* ── Price-change snapshot ── */}
       {doc.doc_type === 'price_change' && (() => {
-        const TYPE_LABEL: Record<string, string> = { multiply_cost: '× від собівартості', increase_pct: '% зміна', fixed: 'Фіксована ціна' };
+        const TYPE_LABEL: Record<string, string> = { multiply_cost: '× від собівартості', increase_pct: '% зміна', fixed: 'Фіксована ціна', manual: 'Ручна правка', promo_cancel: 'Завершення акції', supplier_discount: 'Знижка постачальника' };
         const TARGET_LABEL: Record<string, string> = { retail: 'Роздріб', unit: 'Опт', drop: 'Дроп', all: 'Всі' };
         const log = priceChangeLog;
         const snapshot = log?.snapshot ?? [];
@@ -237,7 +243,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             {/* Summary */}
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {log ? `${TYPE_LABEL[log.type] ?? log.type}: ${log.type === 'increase_pct' ? (log.value >= 0 ? `+${log.value}%` : `${log.value}%`) : log.type === 'multiply_cost' ? `×${log.value}` : `${log.value} ₴`}` : 'Переоцінка'}
+                {log ? `${TYPE_LABEL[log.type] ?? log.type}: ${log.type === 'increase_pct' ? (log.value >= 0 ? `+${log.value}%` : `${log.value}%`) : log.type === 'multiply_cost' ? `×${log.value}` : log.type === 'supplier_discount' ? `−${log.value}%` : `${log.value} ₴`}` : 'Переоцінка'}
               </span>
               {log && <span style={{ fontSize: 12, color: '#6B7280', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5 }}>{TARGET_LABEL[target] ?? target}</span>}
               {log?.is_promo && <span style={{ fontSize: 12, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '2px 8px', borderRadius: 5 }}>🏷 Акція</span>}

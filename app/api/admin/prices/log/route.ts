@@ -8,6 +8,7 @@ const TYPE_LABEL: Record<string, string> = {
   fixed:         'Фіксована ціна',
   manual:        'Ручна правка',
   promo_cancel:  'Завершення акції',
+  supplier_discount: 'Знижка постачальника',
 };
 
 const TARGET_LABEL: Record<string, string> = {

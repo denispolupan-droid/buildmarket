@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeBrandDiscounts } from '../../../../lib/supplier-brand-discounts';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,6 +50,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { brand_discounts, last_sync, sync_logs, ...supplier } = body;
 
+  const discounts = normalizeBrandDiscounts(brand_discounts);
+  if (!discounts.ok) return NextResponse.json({ error: discounts.error }, { status: 400 });
+
   const { data, error } = await serviceClient
     .from('suppliers')
     .insert(supplier)
@@ -57,10 +61,11 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (brand_discounts?.length) {
-    await serviceClient.from('supplier_brand_discounts').insert(
-      brand_discounts.map((d: { brand: string; discount_pct: number }) => ({ ...d, supplier_id: data.id }))
+  if (discounts.rows.length) {
+    const { error: insErr } = await serviceClient.from('supplier_brand_discounts').insert(
+      discounts.rows.map(d => ({ ...d, supplier_id: data.id }))
     );
+    if (insErr) return NextResponse.json({ error: `Постачальника створено, але знижки на бренди не збережено: ${insErr.message}` }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });
