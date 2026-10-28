@@ -74,6 +74,10 @@
       "schedule": "30 4 * * *"
     },
     {
+      "path": "/api/cron/mp-recon",
+      "schedule": "20 5 * * 1"
+    },
+    {
       "path": "/api/cron/metric-watch?scope=daily",
       "schedule": "10 7 * * *"
     },

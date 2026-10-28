@@ -1,6 +1,7 @@
 import { requireStaffPage } from '../../../lib/auth-guard';
 import { createServiceClient } from '../../../lib/supabase';
 import DigestClient from './DigestClient';
+import ReconCard from './ReconCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,11 +10,14 @@ export const dynamic = 'force-dynamic';
 export default async function DigestPage() {
   await requireStaffPage('admin');
   const db = createServiceClient();
-  const [{ data: setting }, { data: runs }] = await Promise.all([
+  const [{ data: setting }, { data: runs }, { data: recon }] = await Promise.all([
     db.from('app_settings').select('value').eq('key', 'ops_digest').maybeSingle(),
     db.from('ai_agent_runs').select('id, created_at, created_by, cost_usd, error, output')
       .eq('agent', 'ops_digest').order('created_at', { ascending: false }).limit(14),
+    db.from('ai_agent_runs').select('created_at, output')
+      .eq('agent', 'mp_recon').order('created_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
+  const lastRecon = recon ? { at: recon.created_at as string, findings: ((recon.output as { findings?: never[] } | null)?.findings ?? []) } : null;
   const enabled = (setting?.value ?? '').trim().toLowerCase() !== 'off';
   const history = (runs ?? []).map(r => ({
     id: r.id as string,
@@ -33,6 +37,7 @@ export default async function DigestPage() {
         Цифри рахує код за тими самими правилами, що й журнал і «Огляд»; модель лише розставляє пріоритети й пише текст.
       </p>
       <DigestClient enabled={enabled} history={history} />
+      <ReconCard last={lastRecon} />
     </div>
   );
 }
