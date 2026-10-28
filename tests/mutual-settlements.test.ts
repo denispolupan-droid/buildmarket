@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildMutualStatement, parseCounterpartyRef, counterpartyRefString, accountsFor, operationLabel,
-  buildJournal, documentHref, groupOf, parseGroup, openItemsByOrder, saldoWords,
+  buildJournal, documentHref, groupOf, parseGroup, openItemsByOrder, saldoWords, agingBuckets,
   type LedgerEntry,
 } from '../lib/accounting/mutual-settlements';
 
@@ -189,5 +189,22 @@ describe('operationLabel', () => {
     expect(operationLabel('supplier', 'sale', -500)).toBe('Отримано');
     expect(operationLabel('customer', 'customer_payment', -500)).toBe('Оплата');
     expect(operationLabel('supplier', 'supplier_payment', 500)).toBe('Оплата');
+  });
+});
+
+describe('agingBuckets', () => {
+  it('розкладає залишки накладних за віком; закриті не рахує', () => {
+    const a = agingBuckets([
+      { date: '2026-10-20', remaining: 100 },   // 8 днів
+      { date: '2026-09-20', remaining: 50.5 },  // 38
+      { date: '2026-08-20', remaining: 20 },    // 69
+      { date: '2026-06-01', remaining: 7 },     // 149
+      { date: '2026-05-01', remaining: 0 },     // закрита — не найстаріша
+    ], '2026-10-28');
+    expect(a).toEqual({ d0_30: 100, d31_60: 50.5, d61_90: 20, d90p: 7, oldest: '2026-06-01' });
+  });
+
+  it('межа: рівно 30 днів — ще перший кошик', () => {
+    expect(agingBuckets([{ date: '2026-09-28', remaining: 1 }], '2026-10-28').d0_30).toBe(1);
   });
 });

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ charges: await supplierCharges(supplierId) });
 }
 
-// Фіксація оплати постачальнику зі сторінки взаєморозрахунків (/admin/finance/payables).
+// Фіксація оплати постачальнику зі сторінки взаєморозрахунків (/admin/finance/mutual, кнопка «Оплатити»).
 // На відміну від /api/admin/procurement/[id]/add-payment, не прив'язана до конкретного
 // приходу — закриває загальний борг (у т.ч. дропшип-борг, який виникає без PO).
 export async function POST(req: NextRequest) {

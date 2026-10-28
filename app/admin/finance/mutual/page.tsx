@@ -6,11 +6,16 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { SELLER } from '../../../../lib/company';
 import { isSpecialDebtor } from '../../../../lib/accounting/sale-party';
 import {
-  accountsFor, buildJournal, buildMutualStatement, counterpartyRefString, documentHref, groupAccounts, groupOf,
+  accountsFor, agingBuckets, buildJournal, buildMutualStatement, counterpartyRefString, documentHref, groupAccounts, groupOf,
   openItemsByOrder, orderHref, parseCounterpartyRef, parseGroup, saldoWords, specialLabel,
   COUNTERPARTY_GROUPS, SETTLEMENT_ACCOUNT_LABEL,
   type CounterpartyGroup, type CounterpartyRef, type LedgerEntry, type OpenItem, type SettlementAccount,
 } from '../../../../lib/accounting/mutual-settlements';
+import { supplierCharges, type SupplierCharge } from '../../../../lib/accounting/supplier-debts';
+import { supplierInTransit, type TransitItem } from '../../../../lib/accounting/supplier-transit';
+import { pendingTransitDecisions } from '../../../../lib/accounting/transit';
+import SupplierPayForm from './SupplierPayForm';
+import PendingTransitBlock from './PendingTransitBlock';
 import { ORDER_TAB_LABELS } from '../../../../lib/orders/status';
 import { carrierInfo } from '../../../../lib/delivery-label';
 import FinanceTabs from '../FinanceTabs';
@@ -165,7 +170,229 @@ async function Journal({ group, dateFrom, dateTo }: { group: CounterpartyGroup; 
     opening: r.opening, debit: r.debit, credit: r.credit, closing: r.closing,
   }));
 
-  return <JournalTable items={items} emptyText="За цей період ні сальдо, ні руху" special={group === 'services'} />;
+  const table = <JournalTable items={items} emptyText="За цей період ні сальдо, ні руху" special={group === 'services'} />;
+  if (group !== 'suppliers') return table;
+  // Повернені посилки, по яких треба вирішити долю товару, — над списком постачальників
+  const pending = await pendingTransitDecisions();
+  return <><PendingTransitBlock items={pending} />{table}</>;
+}
+
+// ── Сальдо в таблиці: сума без знака + Дт/Кт ──────────────────────────────────
+
+/** Дт — на нашу користь (борг контрагента / до виплати нам), Кт — на його. */
+function DtKt({ v }: { v: number }) {
+  if (Math.abs(v) < 0.005) return <span style={{ color: 'var(--text-muted)' }}>0,00</span>;
+  const dt = v > 0;
+  return (
+    <span style={{ color: dt ? '#15803D' : '#B45309' }}>
+      {fmt(Math.abs(v))}
+      <span style={{ marginLeft: '5px', fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.02em' }}>{dt ? 'Дт' : 'Кт'}</span>
+    </span>
+  );
+}
+
+// ── Рознесення оплат постачальнику (у рядках руху) ────────────────────────────
+
+type AllocIndex = {
+  /** Накладна → якими оплатами закрита */
+  byCharge: Map<string, { paymentId: string; amount: number }[]>;
+  /** Оплата → скільки й на скільки накладних рознесено */
+  byPayment: Map<string, { chargeId: string; amount: number }[]>;
+  /** Документ оплати (ордер) для посилання */
+  paymentDoc: Map<string, { docId: string | null; number: string | null }>;
+};
+
+async function loadAllocations(db: Db, rows: { id: string; amount: number; doc_type: string | null }[]): Promise<AllocIndex> {
+  const chargeIds = rows.filter(r => r.amount < 0).map(r => r.id);
+  const paymentIds = rows.filter(r => r.amount > 0 && r.doc_type === 'supplier_payment').map(r => r.id);
+  const byCharge = new Map<string, { paymentId: string; amount: number }[]>();
+  const byPayment = new Map<string, { chargeId: string; amount: number }[]>();
+  for (const ids of chunks(chargeIds, 200)) {
+    const part = await fetchAllRows<{ payment_entry_id: string; charge_entry_id: string; amount: number }>((f, t) => db
+      .from('supplier_payment_allocations').select('payment_entry_id, charge_entry_id, amount')
+      .in('charge_entry_id', ids).order('charge_entry_id').order('payment_entry_id').range(f, t));
+    for (const a of part) {
+      const l = byCharge.get(a.charge_entry_id) ?? [];
+      l.push({ paymentId: a.payment_entry_id, amount: Number(a.amount) });
+      byCharge.set(a.charge_entry_id, l);
+    }
+  }
+  for (const ids of chunks(paymentIds, 200)) {
+    const part = await fetchAllRows<{ payment_entry_id: string; charge_entry_id: string; amount: number }>((f, t) => db
+      .from('supplier_payment_allocations').select('payment_entry_id, charge_entry_id, amount')
+      .in('payment_entry_id', ids).order('payment_entry_id').order('charge_entry_id').range(f, t));
+    for (const a of part) {
+      const l = byPayment.get(a.payment_entry_id) ?? [];
+      l.push({ chargeId: a.charge_entry_id, amount: Number(a.amount) });
+      byPayment.set(a.payment_entry_id, l);
+    }
+  }
+  // Ордери оплат, що закрили накладні цього періоду (оплата могла бути й пізніше)
+  const payerIds = [...new Set([...byCharge.values()].flat().map(p => p.paymentId))];
+  const paymentDoc = new Map<string, { docId: string | null; number: string | null }>();
+  const entryDoc = new Map<string, string | null>();
+  for (const ids of chunks(payerIds)) {
+    const { data } = await db.from('money_entries').select('id, doc_id').in('id', ids).limit(ids.length);
+    for (const e of data ?? []) entryDoc.set(e.id as string, (e.doc_id as string) ?? null);
+  }
+  const docIds = [...new Set([...entryDoc.values()].filter(Boolean))] as string[];
+  const docNum = new Map<string, string | null>();
+  for (const ids of chunks(docIds)) {
+    const { data } = await db.from('acc_documents').select('id, doc_number').in('id', ids).limit(ids.length);
+    for (const d of data ?? []) docNum.set(d.id as string, (d.doc_number as string) ?? null);
+  }
+  for (const [id, docId] of entryDoc) paymentDoc.set(id, { docId, number: docId ? (docNum.get(docId) ?? null) : null });
+  return { byCharge, byPayment, paymentDoc };
+}
+
+type AllocNote = { text: string; tone: 'ok' | 'warn' | 'muted'; links: { href: string; label: string }[] };
+
+/** Підпис під рядком: накладна — чим оплачена; оплата — на скільки накладних рознесена. */
+function allocationNote(r: { id: string; amount: number; doc_type: string | null }, a: AllocIndex): AllocNote | null {
+  if (r.amount < 0) {
+    const payers = a.byCharge.get(r.id) ?? [];
+    const closed = payers.reduce((s, p) => s + p.amount, 0);
+    const total = -r.amount;
+    const links = payers.map(p => {
+      const d = a.paymentDoc.get(p.paymentId);
+      return d?.docId ? { href: `/admin/finance/voucher/${d.docId}`, label: d.number ?? 'оплата' } : null;
+    }).filter(Boolean) as { href: string; label: string }[];
+    if (closed >= total - 0.005) return { text: 'оплачено', tone: 'ok', links };
+    if (closed > 0.005) return { text: `оплачено частково, лишилось ${fmt(total - closed)} ₴ —`, tone: 'warn', links };
+    return { text: 'не оплачено', tone: 'warn', links: [] };
+  }
+  if (r.doc_type === 'supplier_payment') {
+    const lines = a.byPayment.get(r.id) ?? [];
+    const sum = lines.reduce((s, l) => s + l.amount, 0);
+    const rest = r.amount - sum;
+    const text = lines.length
+      ? `рознесено на ${lines.length} накл. (${fmt(sum)} ₴)${rest > 0.005 ? ` · аванс ${fmt(rest)} ₴` : ''}`
+      : 'не рознесено по накладних';
+    return { text, tone: lines.length ? 'muted' : 'warn', links: [] };
+  }
+  return null;
+}
+
+// ── Що не закрито (постачальник) ──────────────────────────────────────────────
+
+function SupplierOpen({ charges, transit, owed }: { charges: SupplierCharge[]; transit: TransitItem[]; owed: number }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const open = charges.filter(c => c.remaining > 0.005);
+  const openSum = Math.round(open.reduce((s, c) => s + c.remaining, 0) * 100) / 100;
+  const aging = agingBuckets(open, today);
+  // Різниця між неоплаченими накладними й боргом — оплати, не рознесені по накладних (аванс)
+  const unallocated = Math.round((openSum - owed) * 100) / 100;
+  const transitSum = Math.round(transit.reduce((s, t) => s + t.amount, 0) * 100) / 100;
+  const transitPaid = Math.round(transit.reduce((s, t) => s + t.paid, 0) * 100) / 100;
+  const LIMIT = 50;
+
+  const td: React.CSSProperties = { padding: '5px 8px 5px 0', fontSize: '13px', borderBottom: '1px solid var(--border-light, var(--border))' };
+  const num: React.CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 600 };
+  const link: React.CSSProperties = { color: '#1D4ED8', textDecoration: 'none', fontWeight: 600 };
+  const head = (title: string, sum: number, hint?: string) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 0 2px', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)' }} title={hint}>{title}</span>
+      <span style={{ fontSize: '12.5px', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmt(sum)} ₴</span>
+    </div>
+  );
+
+  return (
+    <div className="act-no-print fin-card" style={{ marginBottom: '12px', padding: '10px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="fin-card-title">Що не закрито на сьогодні</div>
+        <div className="fin-hint" style={{ marginTop: 0 }}>
+          неоплачені накладні {fmt(openSum)} ₴
+          {Math.abs(unallocated) > 0.005 && (unallocated > 0
+            ? ` · нерознесені оплати (аванс) ${fmt(unallocated)} ₴`
+            : ` · не збігається з боргом ${fmt(owed)} ₴ на ${fmt(-unallocated)} ₴ — перевірте проводки`)}
+          {' '}· разом до сплати {fmt(Math.max(owed, 0))} ₴
+        </div>
+      </div>
+
+      {open.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '8px 0 2px', fontSize: '12px' }}>
+          {([
+            ['до 30 днів', aging.d0_30, 'var(--text-secondary)'],
+            ['31–60', aging.d31_60, '#B45309'],
+            ['61–90', aging.d61_90, '#B45309'],
+            ['понад 90', aging.d90p, '#DC2626'],
+          ] as const).filter(([, v]) => v > 0.005).map(([lbl, v, color]) => (
+            <span key={lbl} style={{ fontWeight: 700, color, background: 'var(--bg-soft)', borderRadius: '6px', padding: '2px 8px' }}>
+              {lbl}: {fmt(v)} ₴
+            </span>
+          ))}
+          {aging.oldest && <span style={{ color: 'var(--text-muted)', alignSelf: 'center' }}>найстаріша накладна — {dmy(aging.oldest)}</span>}
+        </div>
+      )}
+
+      {open.length === 0 && transit.length === 0 ? (
+        <div className="fin-hint" style={{ marginTop: '8px' }}>Усі накладні оплачені, посилок у дорозі немає.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '8px 28px', marginTop: '4px' }}>
+          {open.length > 0 && (
+            <div>
+              {head(`Неоплачені накладні: ${open.length}`, openSum, 'залишок після рознесення оплат; найстаріші зверху')}
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  {open.slice(0, LIMIT).map(c => {
+                    const oHref = orderHref(c.orderNumber);
+                    const dHref = documentHref({ entryDocType: null, docId: c.docId, accDocType: c.docType });
+                    return (
+                      <tr key={c.id}>
+                        <td style={{ ...td, color: 'var(--text-muted)', fontSize: '12px', whiteSpace: 'nowrap' }}>{dmy(c.date)}</td>
+                        <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                          {dHref ? <Link href={dHref} target="_blank" style={link}>{c.docNumber ?? 'документ'}</Link> : (c.docNumber ?? '—')}
+                        </td>
+                        <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                          {oHref ? <Link href={oHref} target="_blank" style={link}>#{c.orderNumber}</Link> : ''}
+                        </td>
+                        <td style={num}>
+                          {fmt(c.remaining)}
+                          {c.allocated > 0.005 && <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '11px' }}> із {fmt(c.total)}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {open.length > LIMIT && <div className="fin-hint">…і ще {open.length - LIMIT}</div>}
+            </div>
+          )}
+          {transit.length > 0 && (
+            <div>
+              {head(`В дорозі (дропшип, не вручено): ${transit.length}`, transitSum,
+                'борг за ними вже проведено при відвантаженні; тут — яка частина боргу ще їде')}
+              {transitPaid > 0.005 && <div className="fin-hint" style={{ marginTop: '2px' }}>з них уже оплачено {fmt(transitPaid)} ₴</div>}
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  {transit.slice(0, LIMIT).map(t => {
+                    const oHref = orderHref(t.orderNumber);
+                    return (
+                      <tr key={t.docId}>
+                        <td style={{ ...td, color: 'var(--text-muted)', fontSize: '12px', whiteSpace: 'nowrap' }}>{t.docDate ? dmy(t.docDate) : '—'}</td>
+                        <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                          <Link href={`/admin/accounting/documents/${t.docId}`} target="_blank" style={link}>{t.docNumber ?? 'РН'}</Link>
+                        </td>
+                        <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                          {oHref ? <Link href={oHref} target="_blank" style={link}>#{t.orderNumber}</Link> : ''}
+                          {t.trackingNumber && <span style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}> · {t.trackingNumber}</span>}
+                        </td>
+                        <td style={num}>
+                          {fmt(t.amount)}
+                          {t.paid > 0.005 && <span style={{ color: '#15803D', fontWeight: 400, fontSize: '11px' }}> оплачено {fmt(t.paid)}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {transit.length > LIMIT && <div className="fin-hint">…і ще {transit.length - LIMIT}</div>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Що не закрито (пошта й маркетплейси) ──────────────────────────────────────
@@ -291,6 +518,19 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
     openBlock = <OpenItems items={items} orders={om} closing={st.closing} dateTo={dateTo} />;
   }
 
+  // Постачальник: поточний борг (для суми «Оплатити»), неоплачені накладні зі
+  // строками й посилки в дорозі — те, що раніше показувала «Кредиторка».
+  let supplierOwed = 0;
+  if (ref.kind === 'supplier') {
+    const { data: bal } = await db.from('counterparty_balances').select('balance')
+      .eq('account_type', 'supplier').eq('counterparty_id', ref.id).eq('currency', 'UAH').maybeSingle();
+    supplierOwed = Math.round(-Number(bal?.balance ?? 0) * 100) / 100;
+    if (view === 'moves') {
+      const [charges, transit] = await Promise.all([supplierCharges(Number(ref.id)), supplierInTransit(Number(ref.id))]);
+      openBlock = <SupplierOpen charges={charges} transit={transit} owed={supplierOwed} />;
+    }
+  }
+
   // Номери документів і замовлень — щоб кожен рядок вів на свою угоду
   const docIds = [...new Set(st.rows.map(r => r.doc_id).filter(Boolean))] as string[];
   const ordIds = [...new Set(st.rows.map(r => r.order_id).filter(Boolean))] as string[];
@@ -307,11 +547,13 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
     const prev = runningAfter.length ? runningAfter[runningAfter.length - 1] : st.opening;
     runningAfter.push(Math.round((prev + r.amount) * 100) / 100);
   }
+  const alloc = ref.kind === 'supplier' ? await loadAllocations(db, st.rows) : null;
   const lines = st.rows.map((r, i) => {
     const doc = r.doc_id ? docMap.get(r.doc_id) : undefined;
     const orderNumber = r.order_id ? (ordMap.get(r.order_id) ?? null) : null;
     return {
       ...r, doc, orderNumber, running: runningAfter[i],
+      allocNote: alloc ? allocationNote(r, alloc) : null,
       docHref: documentHref({ entryDocType: r.doc_type, docId: r.doc_id, accDocType: doc?.type ?? null, orderNumber }),
     };
   });
@@ -349,6 +591,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
           <Link href={qs({ ...base, view: null })} className={'fin-pill' + (view === 'moves' ? ' active' : '')}>Рух документів</Link>
           <Link href={qs({ ...base, view: 'act' })} className={'fin-pill' + (view === 'act' ? ' active' : '')}>Акт звірки</Link>
         </div>
+        {ref.kind === 'supplier' && <SupplierPayForm supplierId={Number(ref.id)} owed={supplierOwed} />}
       </div>
 
       {/* Підсумок як у банківській виписці: сальдо — сума без знака + хто кому винен,
@@ -450,8 +693,8 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
           <div style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
             <b>Розхід</b> — що ми віддали контрагенту (товар, гроші), <b>прихід</b> — що отримали від нього.
             {special
-              ? 'Сальдо: плюс — до виплати нам, мінус — отримано наперед. '
-              : 'Сальдо: плюс — борг контрагента, мінус — наш борг. '}
+              ? ' Сальдо: Дт — до виплати нам, Кт — отримано наперед. '
+              : ' Сальдо: Дт — борг контрагента, Кт — наш борг. '}
             Клік по документу чи замовленню відкриває угоду.
           </div>
           <div style={{ overflowX: 'auto' }}>
@@ -470,7 +713,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
               <tbody>
                 <tr>
                   <td colSpan={6} style={sumRow}>Сальдо на {dmy(dateFrom)}</td>
-                  <td style={{ ...num, ...sumRow }}>{fmt(st.opening)}</td>
+                  <td style={{ ...num, ...sumRow }}><DtKt v={st.opening} /></td>
                 </tr>
                 {lines.length === 0 && (
                   <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '28px' }}>Руху за період немає</td></tr>
@@ -493,10 +736,20 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         {oHref ? <Link href={oHref} target="_blank" style={link}>#{l.orderNumber}</Link> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
-                      <td style={{ ...td, color: 'var(--text-secondary)', fontSize: '12.5px' }}>{l.description ?? ''}</td>
+                      <td style={{ ...td, color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                        {l.description ?? ''}
+                        {l.allocNote && (
+                          <div style={{ marginTop: '2px', fontSize: '11.5px', color: l.allocNote.tone === 'ok' ? '#15803D' : l.allocNote.tone === 'warn' ? '#B45309' : 'var(--text-muted)' }}>
+                            {l.allocNote.text}
+                            {l.allocNote.links.map((p, k) => (
+                              <span key={k}>{k ? ', ' : ' '}<Link href={p.href} target="_blank" style={{ ...link, fontWeight: 600 }}>{p.label}</Link></span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
                       <td style={num}>{l.amount > 0 ? fmt(l.amount) : ''}</td>
                       <td style={num}>{l.amount < 0 ? fmt(-l.amount) : ''}</td>
-                      <td style={{ ...num, fontWeight: 600, color: running > 0.005 ? '#15803D' : running < -0.005 ? '#B45309' : 'var(--text-muted)' }}>{fmt(running)}</td>
+                      <td style={{ ...num, fontWeight: 600 }}><DtKt v={running} /></td>
                     </tr>
                   );
                 })}
@@ -508,7 +761,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
                 </tr>
                 <tr>
                   <td colSpan={6} style={{ ...sumRow, borderBottom: 'none' }}>Сальдо на {dmy(dateTo)} — {totalWords.text}</td>
-                  <td style={{ ...num, ...sumRow, borderBottom: 'none', color: totalWords.color }}>{fmt(st.closing)}</td>
+                  <td style={{ ...num, ...sumRow, borderBottom: 'none' }}><DtKt v={st.closing} /></td>
                 </tr>
               </tbody>
             </table>

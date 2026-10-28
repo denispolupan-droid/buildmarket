@@ -227,6 +227,29 @@ export type MutualStatement = {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const EPS = 0.005;
 
+export type AgingBuckets = { d0_30: number; d31_60: number; d61_90: number; d90p: number; oldest: string | null };
+
+/**
+ * Строки неоплаченого боргу: залишки накладних, розкладені за віком від дати
+ * накладної до `asOf`. Залишки — після рознесення оплат (supplierCharges).
+ */
+export function agingBuckets(charges: { date: string; remaining: number }[], asOf: string): AgingBuckets {
+  const out: AgingBuckets = { d0_30: 0, d31_60: 0, d61_90: 0, d90p: 0, oldest: null };
+  const asOfMs = Date.parse(asOf.slice(0, 10));
+  for (const c of charges) {
+    if (c.remaining < EPS) continue;
+    if (!out.oldest || c.date < out.oldest) out.oldest = c.date;
+    const age = Math.floor((asOfMs - Date.parse(c.date.slice(0, 10))) / 86400000);
+    if (age <= 30) out.d0_30 += c.remaining;
+    else if (age <= 60) out.d31_60 += c.remaining;
+    else if (age <= 90) out.d61_90 += c.remaining;
+    else out.d90p += c.remaining;
+  }
+  out.d0_30 = round2(out.d0_30); out.d31_60 = round2(out.d31_60);
+  out.d61_90 = round2(out.d61_90); out.d90p = round2(out.d90p);
+  return out;
+}
+
 /**
  * Назва операції в колонці «Документ» — з боку рахунку і знака, бо один doc_type
  * на різних рахунках означає різне (partner_cod: на балансі партнера — наложка,

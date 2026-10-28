@@ -62,7 +62,7 @@ async function main() {
     console.log('  ✓ готово');
   }
 
-  console.log('\nЗавершено. Перевірте /admin/finance/payables.');
+  console.log('\nЗавершено. Перевірте /admin/finance/mutual?group=suppliers.');
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

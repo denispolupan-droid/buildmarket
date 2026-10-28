@@ -62,10 +62,15 @@ export default async function VoucherPage({ params }: { params: Promise<{ id: st
 
   const meta = (doc.meta ?? {}) as Record<string, unknown>;
 
+  // «Назад» — у взаєморозрахунки з тим, кому платили («Кредиторку» прибрано 28.10.2026)
+  const backHref = doc.supplier_id
+    ? `/admin/finance/mutual?cp=s:${doc.supplier_id}`
+    : doc.customer_id ? `/admin/finance/mutual?cp=c:${doc.customer_id}` : '/admin/finance/mutual';
+
   return (
     <div style={{ padding: '28px 32px 64px', maxWidth: '720px' }}>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <Link href="/admin/finance/payables" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+        <Link href={backHref} style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <Banknote size={18} color="#15803D" />

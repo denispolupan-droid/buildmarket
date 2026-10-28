@@ -326,7 +326,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             <div>
               <div className="fin-kpi-label">Кредиторка · ми винні</div>
               <div className="fin-money-val" style={{ color: ov.ap.total > 0 ? '#B45309' : undefined }}>{fmt(ov.ap.total)} ₴</div>
-              <div className="fin-money-sub"><Link href="/admin/finance/payables" style={{ color: 'var(--text-muted)' }}>постачальники →</Link></div>
+              <div className="fin-money-sub"><Link href="/admin/finance/mutual?group=suppliers" style={{ color: 'var(--text-muted)' }}>постачальники →</Link></div>
             </div>
             <div>
               <div className="fin-kpi-label">Баланс маркетплейсів</div>
