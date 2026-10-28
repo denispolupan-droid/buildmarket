@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -65,9 +65,8 @@ async function resolveTtnRef(apiKey: string, ttnNumber: string): Promise<string 
 
 // GET — list of scan sheets, or details of a specific one
 export async function GET(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const apiKey = await getNpApiKey();
   const ref = new URL(req.url).searchParams.get('ref');
@@ -115,9 +114,8 @@ export async function GET(req: NextRequest) {
 
 // DELETE — remove TTN from register OR delete entire scan sheet
 export async function DELETE(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { ttnNumber, registerRef, ttnNumbers } = await req.json() as { ttnNumber?: string; registerRef: string; ttnNumbers?: string[] };
   if (!registerRef) return NextResponse.json({ error: 'registerRef required' }, { status: 400 });
@@ -186,9 +184,8 @@ export async function DELETE(req: NextRequest) {
 
 // POST — add TTN to register (creates new if no ref provided)
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { ttnNumber, registerRef } = await req.json();
   if (!ttnNumber) return NextResponse.json({ error: 'TTN number required' }, { status: 400 });

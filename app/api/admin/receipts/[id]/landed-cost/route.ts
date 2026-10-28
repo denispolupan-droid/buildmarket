@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
@@ -8,9 +8,9 @@ const db = createServiceClient();
 // Додає витрати (Landed Cost) безпосередньо до приходного ордера,
 // без прив'язки до ЗП — для приходів створених без замовлення.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const { id: receiptId } = await params;
 
@@ -113,9 +113,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 // GET /api/admin/receipts/[id]/landed-cost — поточні LC для прихідного ордера
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { id: receiptId } = await params;
 

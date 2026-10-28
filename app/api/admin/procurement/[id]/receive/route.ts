@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createDocument, confirmDocument, maybeAutoClose } from '../../../../../../lib/accounting/documents';
 import { transitionOrder } from '../../../../../../lib/orders/status';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 type OrderRow = { id: string; items: { sku: string; qty: number }[]; status_history: { status: string; at: string; by: string }[] | null };
 
@@ -52,9 +52,9 @@ async function autoPromoteAwaitingOrders(
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const { id } = await params;
   const body = await req.json() as {

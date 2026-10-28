@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { npScanSheetPdf } from '../../../../../lib/np-api';
+import { requireStaff } from '../../../../../lib/auth-guard';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 
@@ -110,9 +110,8 @@ async function generatePdf(
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { toEmail, toName, registerNumber, registerRef, ttns: clientTtns } = await req.json();
   if (!toEmail) return NextResponse.json({ error: 'Email обов\'язковий' }, { status: 400 });
