@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.app_metadata?.role === 'admin' ? user : null;
+  const auth = await requireStaff('admin');
+  return auth.ok ? auth.user : null;
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

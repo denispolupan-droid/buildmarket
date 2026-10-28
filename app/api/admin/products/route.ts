@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag, revalidatePath } from 'next/cache';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { generateProductSlug } from '../../../../lib/seo/slug';
 import { deleteProducts } from '../../../../lib/product-delete';
 import { normalizeCharsDb, type CharInput } from '../../../../lib/characteristics';
 import { generateSku } from '../../../../lib/product-sku';
 import { cleanupReplacedImage } from '../../../../lib/product-image-cleanup';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,9 +14,7 @@ const serviceClient = createClient(
 );
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user && user.app_metadata?.role === 'admin';
+  return (await requireStaff('admin')).ok;
 }
 
 export async function POST(req: NextRequest) {

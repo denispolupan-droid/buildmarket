@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,9 +8,8 @@ const db = createClient(
 );
 
 async function assertAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') throw new Error('Unauthorized');
+  const auth = await requireStaff('admin');
+  if (!auth.ok) throw new Error('Unauthorized');
 }
 
 export async function GET() {

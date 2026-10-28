@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { syncPromOrders } from '../../../../../lib/prom-sync';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return !!(user && user.app_metadata?.role === 'admin');
+  return (await requireStaff('admin')).ok;
 }
 
 export async function POST() {

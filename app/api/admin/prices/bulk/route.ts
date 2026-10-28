@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { saveProductMarkups, type ProductMarkup } from '../../../../../lib/price-overrides';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,9 +10,7 @@ const db = createClient(
 );
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return !!(user && ['admin', 'manager'].includes(user.app_metadata?.role ?? ''));
+  return (await requireStaff('admin', 'manager')).ok;
 }
 
 // Single SKU edit: { skus: [sku], price_unit, price_retail, price_drop, price_cost, price_locked }

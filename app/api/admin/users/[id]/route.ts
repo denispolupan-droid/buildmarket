@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 function adminClient() {
   return createClient(
@@ -11,10 +11,8 @@ function adminClient() {
 }
 
 async function assertAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') return null;
-  return user;
+  const auth = await requireStaff('admin');
+  return auth.ok ? auth.user : null;
 }
 
 // DELETE — видалення менеджера (не можна видаляти адмінів)

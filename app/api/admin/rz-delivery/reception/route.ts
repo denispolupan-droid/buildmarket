@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { RZ_DELIVERY_TYPE } from '../../../../../lib/rz-delivery';
 import { getRzSender, rzAddToReception, rzReceptionsToday, rzReceptionPrint } from '../../../../../lib/rz-delivery-api';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 /**
  * Реєстр ЕН «ROZETKA Доставки» — пачка накладних, яку віддають на точці одним
@@ -16,9 +16,8 @@ import { getRzSender, rzAddToReception, rzReceptionsToday, rzReceptionPrint } fr
  */
 
 async function requireAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.app_metadata?.role === 'admin' ? user : null;
+  const auth = await requireStaff('admin');
+  return auth.ok ? auth.user : null;
 }
 
 export async function GET(req: NextRequest) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,9 +9,7 @@ const db = createClient(
 );
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return !!(user && user.app_metadata?.role === 'admin');
+  return (await requireStaff('admin')).ok;
 }
 
 export async function PATCH(req: NextRequest) {

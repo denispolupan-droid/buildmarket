@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { revalidateTag } from 'next/cache';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeBrandLogo } from '../../../../lib/brand-logo';
 import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
 import { brandFolder } from '../../../../lib/seo/slug';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,9 +13,7 @@ const serviceClient = createClient(
 );
 
 async function requireAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user && user.app_metadata?.role === 'admin';
+  return (await requireStaff('admin')).ok;
 }
 
 export async function POST(req: NextRequest) {

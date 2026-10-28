@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import { pathToFileURL } from 'url';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,9 +10,8 @@ const db = createClient(
 );
 
 async function checkAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.app_metadata?.role === 'admin' ? user : null;
+  const auth = await requireStaff('admin');
+  return auth.ok ? auth.user : null;
 }
 
 type RefEntry = { rz_id: string; name: string; commission_pct: number };
