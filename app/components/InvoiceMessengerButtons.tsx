@@ -79,10 +79,20 @@ export default function InvoiceMessengerButtons({
     setTimeout(() => setDone(null), 2500);
   }
 
+  // На ПК власника Telegram відкривається через окрему схему tg2:// (обробник сам
+  // натискає «Написати» в картці контакту й вставляє скопійований текст). Вмикається
+  // лише в тому браузері, де є localStorage['tg-scheme'] = 'tg2'; інакше звичайне t.me.
+  function tgScheme(): string | null {
+    try { return localStorage.getItem('tg-scheme') === 'tg2' ? 'tg2' : null; } catch { return null; }
+  }
+
   async function openTelegram() {
     await copyText(message);
     flash('tg');
-    if (normPhone) window.open(`https://t.me/+${normPhone}`, '_blank', 'noopener');
+    if (!normPhone) return;
+    const tg2 = tgScheme();
+    if (tg2) window.location.href = `${tg2}://resolve?phone=${normPhone}`;
+    else window.open(`https://t.me/+${normPhone}`, '_blank', 'noopener');
   }
 
   // Схема посилання Viber. На ПК власника стоять два Viber: особистий слухає viber://,
