@@ -3,6 +3,8 @@
  * типи, розбір аркуша XLSX, план проводок. Проведення — lib/novapay-register.ts.
  */
 
+import { nameFragments } from './name-search';
+
 export type NpRegisterRow = {
   n: number;
   /** № ЕН НП; для платежів НоваПей — номер платежу (починається з 59) */
@@ -90,10 +92,17 @@ export function parseNpRegisterSheet(sheet: unknown[][]): NpRegister {
  * Правило: всі слова коротшого імені мають бути в довшому — і збігів має бути
  * щонайменше два. Це строгіше за «однакове перше слово»: один лише спільний
  * «Петров» уже не зчепить різних людей.
+ *
+ * Слова порівнюємо зведеними (lib/name-search): НоваПей пише по-українськи
+ * («Стельмах Олександр Михайлович»), а сайт і площадки — як покупець ввів
+ * («Стельмах Александр»). 22.10.2026 платіж 485 ₴ за #26101097 через це
+ * пішов у «без замовлення».
  */
 export function personNamesMatch(a: string, b: string): boolean {
+  // Ключ слова: корінь групи імені (Олександр = Александр) або саме слово після fold
   const words = (s: string) => new Set(
-    s.toLowerCase().replace(/[^\p{L}\s'’-]/gu, ' ').split(/\s+/).filter(w => w.length > 1),
+    s.toLowerCase().replace(/[^\p{L}\s'’-]/gu, ' ').split(/\s+/).filter(w => w.length > 1)
+      .map(w => nameFragments(w)[0] ?? w),
   );
   const x = words(a), y = words(b);
   const [small, big] = x.size <= y.size ? [x, y] : [y, x];
