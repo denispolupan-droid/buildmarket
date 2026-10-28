@@ -492,6 +492,8 @@ export interface RozetkaLogisticOp {
   order_id: string | null;
   ttn: string | null;
   transaction_ts: string;
+  /** Залишок логістичного балансу після операції. */
+  balance?: number | string | null;
   debit: number;
   credit: number;
   operation_type_title: string;

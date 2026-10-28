@@ -1,7 +1,7 @@
 import { createServiceClient } from '../supabase';
 import { getMarketplaceBalance } from '../accounting/money';
 import { getRozetkaBalanceTotal, getRozetkaBalanceTxns, getRozetkaLogisticOps } from '../rozetka-api';
-import { isRozetkaPickupOp, isRozetkaLogisticAdj } from '../rozetka-delivery-tariff';
+import { isRozetkaPickupOp, isRozetkaLogisticAdj, isRozetkaReturnDeliveryOp } from '../rozetka-delivery-tariff';
 import { rozetkaFeeKind } from '../rozetka-fee-kind';
 
 // Звірка з кабінетом Rozetka (винесено з роуту rozetka-reconcile 28.10.2026 без змін
@@ -45,7 +45,8 @@ export type ReconcileRow = {
 
 const num = (v: string | number | null | undefined) => Number(String(v ?? '0').replace(',', '.')) || 0;
 const r2 = (v: number) => Math.round(v * 100) / 100;
-
+const IN_CHUNK = 200;
+const chunks = <T,>(xs: T[], n: number): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 
 /** Звірка з кабінетом Rozetka за період [from, to] (YYYY-MM-DD). У БД нічого не пише. */
 export async function reconcileRozetka(from: string, to: string) {
@@ -94,25 +95,33 @@ export async function reconcileRozetka(from: string, to: string) {
   const db = createServiceClient();
 
   // Мапа Rozetka orderId → наше замовлення
+  // .in() — порціями: ~400 uuid уже не влазять у URL, запит падає «fetch failed»,
+  // а без перевірки помилки це виглядало як «у нас комісій немає» по всіх замовленнях.
   const rzIds = [...theirByOrder.keys()];
-  const { data: orders } = rzIds.length
-    ? await db.from('orders')
-        .select('id, order_number, status, rozetka_order_id')
-        .in('rozetka_order_id', rzIds)
-        .limit(rzIds.length)
-    : { data: [] as never[] };
-  const orderByRzId = new Map((orders ?? []).map(o => [Number(o.rozetka_order_id), o]));
+  const orders: { id: string; order_number: number; status: string; rozetka_order_id: number }[] = [];
+  for (const part of chunks(rzIds, IN_CHUNK)) {
+    const { data, error } = await db.from('orders')
+      .select('id, order_number, status, rozetka_order_id')
+      .in('rozetka_order_id', part)
+      .limit(part.length);
+    if (error) throw new Error(`Звірка Rozetka: замовлення не прочитались — ${error.message}`);
+    orders.push(...(data ?? []));
+  }
+  const orderByRzId = new Map(orders.map(o => [Number(o.rozetka_order_id), o]));
 
   // Наші проводки комісій по цих замовленнях (marketplace_fee, знак: + списання / − повернення)
-  const ourIds = (orders ?? []).map(o => o.id);
-  const { data: fees } = ourIds.length
-    ? await db.from('money_entries')
-        .select('order_id, amount, doc_type, description, meta')
-        .eq('account_type', 'marketplace_fee')
-        .eq('counterparty_id', 'rozetka')
-        .in('order_id', ourIds)
-        .limit(10000)
-    : { data: [] as never[] };
+  const fees: { order_id: string | null; amount: number; doc_type: string | null; description: string | null; meta: unknown }[] = [];
+  for (const part of chunks(orders.map(o => o.id), IN_CHUNK)) {
+    const { data, error } = await db.from('money_entries')
+      .select('order_id, amount, doc_type, description, meta')
+      .eq('account_type', 'marketplace_fee')
+      .eq('counterparty_id', 'rozetka')
+      .in('order_id', part)
+      .order('id')
+      .limit(10000);
+    if (error) throw new Error(`Звірка Rozetka: комісії не прочитались — ${error.message}`);
+    fees.push(...(data ?? []));
+  }
   // Построчна таблиця звіряє САМЕ КОМІСІЮ, тому Smart і збір за видачу сюди
   // домішувати не можна: у «наших» сумах вони давали фантомні розбіжності
   // рівно на 18/30 ₴ з кнопкою «Провести», яка створила б корекцію на порожньому
@@ -219,7 +228,9 @@ export async function reconcileRozetka(from: string, to: string) {
   // по 30). Без коригувань стаття завищувала їхню суму на 38 ₴.
   const theirPickup = r2(logisticOps
     .filter(o => inPeriod(String(o.transaction_ts).slice(0, 10)))
-    .reduce((s, o) => (isRozetkaPickupOp(o.operation_type) || isRozetkaLogisticAdj(o.operation_type))
+    // 44 «невитребуване» в обліку теж іде статтею доставки (rozetkaFeeKind → pickup),
+    // тож і з боку Rozetka його треба рахувати тут — інакше вічні +49 ₴ на кожне.
+    .reduce((s, o) => (isRozetkaPickupOp(o.operation_type) || isRozetkaLogisticAdj(o.operation_type) || isRozetkaReturnDeliveryOp(o.operation_type))
       ? s + Math.abs(num(o.debit)) - Math.abs(num(o.credit))
       : s, 0));
   const theirSubscription = r2(txns
@@ -273,11 +284,18 @@ export async function reconcileRozetka(from: string, to: string) {
      замовлення в роботі майбутня комісія, гроші ще наші, просто заморожені, а
      ми резерв окремо не моделюємо. */
   const ourBalance = await getMarketplaceBalance('rozetka');
-  const cabinetTotal = r2(cabinet.balance + cabinet.sumInGray);
+  // Логістичний баланс: збір за видачу знімається з нього одразу (ми його вже
+  // провели), а з основного балансу покривається пізніше операцією 68. Поки не
+  // покрито, він мінусовий — без нього залишок «розходився» на ці 35 ₴ (28.10.2026).
+  const lastLogistic = logisticOps.reduce<typeof logisticOps[number] | null>(
+    (m, o) => (!m || Number(o.operation_id) > Number(m.operation_id) ? o : m), null);
+  const cabinetLogistic = r2(num(lastLogistic?.balance));
+  const cabinetTotal = r2(cabinet.balance + cabinet.sumInGray + cabinetLogistic);
   const balanceCheck = {
     ours: r2(ourBalance),
     cabinetBalance: r2(cabinet.balance),
     cabinetGray: r2(cabinet.sumInGray),
+    cabinetLogistic,
     cabinetTotal,
     delta: r2(ourBalance - cabinetTotal),
   };

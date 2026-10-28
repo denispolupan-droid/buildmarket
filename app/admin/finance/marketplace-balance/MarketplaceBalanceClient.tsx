@@ -26,7 +26,7 @@ type CabinetData = {
   articlesTotal?: Article;
   /** Головний контроль: наш баланс проти «кабінет + сіра зона». */
   balanceCheck?: {
-    ours: number; cabinetBalance: number; cabinetGray: number;
+    ours: number; cabinetBalance: number; cabinetGray: number; cabinetLogistic?: number;
     cabinetTotal: number; delta: number;
   };
   totals: { their: number; ours: number; delta: number };
@@ -593,7 +593,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                         {ok ? '✓ Залишок сходиться' : `Залишок розходиться на ${fmt(b.delta)} ₴`}
                       </span>
                       <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-                        наш баланс <b>{fmt(b.ours)} ₴</b> = кабінет {fmt(b.cabinetBalance)} + сіра зона {fmt(b.cabinetGray)} = <b>{fmt(b.cabinetTotal)} ₴</b>
+                        наш баланс <b>{fmt(b.ours)} ₴</b> = кабінет {fmt(b.cabinetBalance)} + сіра зона {fmt(b.cabinetGray)}{b.cabinetLogistic ? ` + логістичний ${fmt(b.cabinetLogistic)}` : ''} = <b>{fmt(b.cabinetTotal)} ₴</b>
                       </span>
                     </div>
                     <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '5px', lineHeight: 1.5 }}>
