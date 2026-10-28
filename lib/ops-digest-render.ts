@@ -27,7 +27,7 @@ const TG_LIMIT = 3900; // ліміт Telegram 4096 на повідомлення
  * Текст від моделі → HTML для Telegram. Усе, що написала модель, екранується;
  * теги лише наші. Без моделі — детермінований текст з тих самих сигналів.
  */
-export function renderDigestHtml(data: DigestData, text: DigestText | null, adminUrl: string): string {
+export function renderDigestHtml(data: DigestData, text: DigestText | null, adminUrl: string, modelFailure?: string | null): string {
   const head = `☀️ <b>Ранковий дайджест · ${escTg(data.dateHuman)}</b>`;
   const lines: string[] = [head];
 
@@ -36,7 +36,7 @@ export function renderDigestHtml(data: DigestData, text: DigestText | null, admi
     const sorted = [...text.items].sort((a, b) => ORDER.indexOf(a.level) - ORDER.indexOf(b.level));
     for (const it of sorted) lines.push(`${ICON[it.level] ?? '•'} ${escTg(it.text)}`);
   } else {
-    lines.push('<i>Сводка без моделі — лише перевірки</i>', '');
+    lines.push(`<i>Сводка без моделі — лише перевірки${modelFailure ? ` (${escTg(modelFailure)})` : ''}</i>`, '');
     const sorted = [...data.signals].sort((a, b) => ORDER.indexOf(a.level) - ORDER.indexOf(b.level));
     for (const s of sorted) {
       lines.push(`${ICON[s.level]} <b>${escTg(s.title)}</b>: ${escTg(s.summary)}`);

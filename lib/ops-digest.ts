@@ -4,6 +4,8 @@ import { costOf } from './ai-cost';
 import { logAgentRun } from './ai-agent-runs';
 import { sendTelegramResult } from './telegram';
 import { alertAdmin } from './alert';
+import { reportAiFailure } from './ai-health';
+import { aiFailureShort } from './ai-health-rules';
 import { kyivDayRange, kyivHuman } from './kyiv-date';
 import { unsettledNpCod } from './novapay-ingest';
 import { getRozetkaChats, getRozetkaReviewCounts } from './rozetka-api';
@@ -338,14 +340,17 @@ export async function runOpsDigest(opts: { send: boolean; createdBy?: string | n
   let text: DigestText | null = null;
   let costUsd = 0;
   let error: string | undefined;
+  let modelFailure: string | null = null;
   let usage: Anthropic.Usage | null = null;
   try {
     const r = await writeDigestText(data);
     text = r.text; costUsd = r.costUsd; usage = r.usage;
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
+    // Причину — і в сам дайджест, і (для балансу/ключа) окремим повідомленням власнику
+    modelFailure = aiFailureShort(await reportAiFailure(e, 'ранковий дайджест'));
   }
-  const html = renderDigestHtml(data, text, `${SITE_URL}/admin`);
+  const html = renderDigestHtml(data, text, `${SITE_URL}/admin`, modelFailure);
 
   // «Відправлено» — лише коли Telegram повернув message_id. До 08.10.2026 прапорець
   // ставився без перевірки, і відмова Telegram (чи порожній chat_id у проді) не

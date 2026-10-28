@@ -3,6 +3,8 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { loadMarketplaceThread } from '../../../../../lib/marketplace-chat-thread';
 import { getOrCreateDraft } from '../../../../../lib/marketplace-chat-assistant';
 import { awaitingOurReply, lastIncomingAt } from '../../../../../lib/marketplace-chat-draft-rules';
+import { reportAiFailure } from '../../../../../lib/ai-health';
+import { aiFailureShort } from '../../../../../lib/ai-health-rules';
 
 // Чернетка відповіді покупцю від ШІ-помічника. Нічого на площадку не пише:
 // повертає текст менеджеру, відправка — окремо через /reply.
@@ -39,8 +41,8 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ draft });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('[marketplace-chats/draft]', err);
+    const kind = await reportAiFailure(err, 'чернетка в адмінці');
+    const message = kind === 'other' ? (err instanceof Error ? err.message : String(err)) : `Чернетку не підготовлено: ${aiFailureShort(kind)}`;
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

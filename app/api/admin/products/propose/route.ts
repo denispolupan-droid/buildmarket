@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { applyCardFollowUps, proposeProductCard } from '../../../../../lib/product-card-proposer';
 import { markAgentRunOutcome } from '../../../../../lib/ai-agent-runs';
+import { reportAiFailure } from '../../../../../lib/ai-health';
+import { aiFailureShort } from '../../../../../lib/ai-health-rules';
 
 // Чернетка картки товару від ШІ-агента за назвою з прайсу постачальника.
 // У БД нічого не пише: форма нового товару заповнюється пропозицією, зберігає
@@ -32,8 +34,8 @@ export async function POST(req: NextRequest) {
     }, { createdBy: auth.user.email ?? null });
     return NextResponse.json(run);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('[products/propose]', err);
+    const kind = await reportAiFailure(err, 'заведення картки товару');
+    const message = kind === 'other' ? (err instanceof Error ? err.message : String(err)) : `Агент недоступний: ${aiFailureShort(kind)}`;
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

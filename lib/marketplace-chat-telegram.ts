@@ -7,7 +7,9 @@ import { getPromChatRooms, sendPromChatMessage } from './prom-api';
 import { loadChatSeen, isChatUnread, markChatSeen, type MarketplaceId } from './marketplace-chat-seen';
 import { loadMarketplaceThread, type MarketplaceChatMessage } from './marketplace-chat-thread';
 import { awaitingOurReply, lastIncomingAt, draftOutcome } from './marketplace-chat-draft-rules';
-import { getOrCreateDraft, reviseDraft } from './marketplace-chat-assistant';
+import { getOrCreateDraft, reviseDraft, recordUnavailableDraft } from './marketplace-chat-assistant';
+import { reportAiFailure } from './ai-health';
+import { aiFailureShort } from './ai-health-rules';
 import type { DraftCategory } from './marketplace-chat-draft-types';
 import { adminChatLink, buildDraftAlertHtml, buildDraftAlertKeyboard } from './marketplace-chat-telegram-rules';
 
@@ -74,22 +76,37 @@ export async function alertMarketplaceChatDrafts(mp: MarketplaceId): Promise<{ u
       const key = lastIncomingAt(thread.messages);
       if (!key) { skipped++; continue; }
 
-      const draft = await getOrCreateDraft(
-        { mp, chatId: c.chatId, lastIncomingAt: key },
-        { mp, messages: thread.messages, contact: thread.contact, phone: thread.phone, orderNumber: c.orderNumber, ourOrderId: c.ourOrderId, subject: c.subject },
-      );
-      if (!draft.id) { skipped++; continue; }   // журнал недоступний — без нього не дедуплікувати, краще змовчати
+      const draftKey = { mp, chatId: c.chatId, lastIncomingAt: key };
+      const draftCtx = { mp, messages: thread.messages, contact: thread.contact, phone: thread.phone, orderNumber: c.orderNumber, ourOrderId: c.ourOrderId, subject: c.subject };
+      // ШІ недоступний (баланс, ключ, перевантаження) — повідомлення покупця не має
+      // загубитись: алерт іде без чернетки, власнику — окреме повідомлення про причину.
+      let draft: Awaited<ReturnType<typeof getOrCreateDraft>> | null = null;
+      let unavailable: string | null = null;
+      let draftId: string | null = null;
+      try {
+        draft = await getOrCreateDraft(draftKey, draftCtx);
+        draftId = draft.id;
+      } catch (aiErr) {
+        const kind = await reportAiFailure(aiErr, `чернетка для чату ${mp === 'rozetka' ? 'Rozetka' : 'Prom'}`);
+        unavailable = aiFailureShort(kind);
+        draftId = await recordUnavailableDraft(draftKey, draftCtx, unavailable);
+      }
+      if (!draftId) { skipped++; continue; }   // журнал недоступний — без нього не дедуплікувати, краще змовчати
 
-      const { data: row } = await db.from('marketplace_chat_drafts').select('alerted_at').eq('id', draft.id).maybeSingle();
+      const { data: row } = await db.from('marketplace_chat_drafts').select('alerted_at').eq('id', draftId).maybeSingle();
       if (row?.alerted_at) { skipped++; continue; }
 
       const input = {
         mp, contact: thread.contact, orderNumber: c.orderNumber, lastIncoming: lastIncomingText(thread.messages),
-        draft: { id: draft.id, category: draft.category as DraftCategory, reply: draft.reply, needsHuman: draft.needsHuman, reason: draft.reason },
+        draft: draft
+          ? { id: draftId, category: draft.category as DraftCategory, reply: draft.reply, needsHuman: draft.needsHuman, reason: draft.reason }
+          : { id: draftId, category: 'other' as DraftCategory, reply: '', needsHuman: true, reason: unavailable },
         link: adminChatLink(SITE_URL, mp, c.chatId),
+        unavailable,
       };
+      const draftIdForUpdate = draftId;
       const msgId = chatId ? await sendTelegram(chatId, buildDraftAlertHtml(input), { replyMarkup: buildDraftAlertKeyboard(input), disablePreview: true }) : null;
-      await db.from('marketplace_chat_drafts').update({ alerted_at: new Date().toISOString(), tg_message_id: msgId }).eq('id', draft.id);
+      await db.from('marketplace_chat_drafts').update({ alerted_at: new Date().toISOString(), tg_message_id: msgId }).eq('id', draftIdForUpdate);
       alerted++;
     } catch (err) {
       console.error('[mp-chat-telegram]', mp, c.chatId, err instanceof Error ? err.message : err);
@@ -178,7 +195,9 @@ export async function reviseDraftFromTelegram(replyToMessageId: number, instruct
     if (chatId) await editTelegramMessage(chatId, replyToMessageId, buildDraftAlertHtml(input), buildDraftAlertKeyboard(input));
     return { ok: true, message: 'Переписано' };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const kind = await reportAiFailure(err, 'переписування чернетки з Telegram');
+    // Збій ШІ — коротко й по-людськи; інші помилки (покупець дописав тощо) — як є
+    const msg = kind === 'other' ? (err instanceof Error ? err.message : String(err)) : aiFailureShort(kind);
     if (chatId) await sendTelegram(chatId, `✏️ Не вдалося переписати чернетку: ${msg.replace(/[<>&]/g, ' ')}`);
     return { ok: false, message: msg };
   }

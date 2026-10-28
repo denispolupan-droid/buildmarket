@@ -17,6 +17,8 @@ export type DraftAlertInput = {
   link: string;
   /** остання вказівка менеджера, за якою чернетку переписано */
   revisedBy?: string | null;
+  /** ШІ недоступний: алерт про повідомлення без чернетки, з причиною */
+  unavailable?: string | null;
 };
 
 const MP_NAME = { rozetka: 'Rozetka', prom: 'Prom' } as const;
@@ -25,6 +27,10 @@ const CB_PREFIX = 'mpd';
 export function buildDraftAlertHtml(i: DraftAlertInput): string {
   const head = `💬 <b>${MP_NAME[i.mp]} · ${escTg(i.contact ?? 'покупець')}</b>${i.orderNumber ? ` · №${i.orderNumber}` : ''}`;
   const q = i.lastIncoming.length > 350 ? i.lastIncoming.slice(0, 349) + '…' : i.lastIncoming;
+  // Без чернетки (ШІ недоступний) — головне, щоб саме повідомлення покупця не загубилось
+  if (i.unavailable) {
+    return [head, `<i>«${escTg(q)}»</i>`, '', `⚠️ Чернетку не підготовлено: ${escTg(i.unavailable)}. Дайте відповідь в адмінці або в кабінеті площадки.`, '', `<a href="${i.link}">Відкрити чат в адмінці</a>`].join('\n');
+  }
   const lines = [head, `<i>«${escTg(q)}»</i>`, '', `✨ <b>Чернетка</b> · ${escTg(CATEGORY_LABELS[i.draft.category] ?? i.draft.category)}`];
   if (i.revisedBy) lines.push(`✏️ <i>переписано: «${escTg(i.revisedBy)}»</i>`);
   lines.push(escTg(i.draft.reply));
@@ -35,6 +41,7 @@ export function buildDraftAlertHtml(i: DraftAlertInput): string {
 
 /** Кнопки: «Надіслати як є» лише коли людина не потрібна; «Пропустити» завжди. */
 export function buildDraftAlertKeyboard(i: DraftAlertInput): { inline_keyboard: TelegramInlineButton[][] } {
+  if (i.unavailable) return { inline_keyboard: [[{ text: 'Відкрити в адмінці', url: i.link }]] };
   const row: TelegramInlineButton[] = [];
   if (!i.draft.needsHuman) row.push({ text: '✅ Надіслати як є', callback_data: `${CB_PREFIX}:send:${i.draft.id}` });
   row.push({ text: '✖ Пропустити', callback_data: `${CB_PREFIX}:skip:${i.draft.id}` });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runAutodraft } from '../../../../lib/blog-autodraft';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { reportAiFailure } from '../../../../lib/ai-health';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,8 +21,11 @@ export async function GET(req: NextRequest) {
   }
   try {
     const result = await runAutodraft({ dry: req.nextUrl.searchParams.get('dry') === '1' });
+    // Помилки автопілота текстові — якщо серед них баланс/ключ Anthropic, власник дізнається окремо
+    if (result.errors.length) await reportAiFailure(new Error(result.errors.join(' | ')), 'автопілот статей блогу');
     return NextResponse.json({ ok: result.errors.length === 0, ...result }, { status: result.errors.length ? 207 : 200 });
   } catch (e) {
+    await reportAiFailure(e, 'автопілот статей блогу');
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }

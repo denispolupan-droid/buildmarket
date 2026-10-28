@@ -338,6 +338,34 @@ export async function draftMarketplaceReply(ctx: DraftContext): Promise<DraftRun
 
 export type StoredDraft = DraftReply & { id: string | null; cached: boolean; costUsd: number };
 
+/** Позначка рядка-заглушки: алерт про повідомлення пішов, а чернетки не було (ШІ недоступний). */
+export const AI_UNAVAILABLE_MODEL = 'none';
+
+/**
+ * ШІ не відповів (баланс, ключ, перевантаження) — записуємо заглушку за тим самим
+ * ключем вхідного, щоб алерт про повідомлення покупця пішов рівно один раз і без
+ * чернетки. Коли ШІ повернеться, getOrCreateDraft не вважає заглушку кешем і
+ * перезаписує її справжньою чернеткою (alerted_at при цьому лишається).
+ */
+export async function recordUnavailableDraft(
+  key: { mp: MarketplaceId; chatId: string; lastIncomingAt: string },
+  ctx: Pick<DraftContext, 'orderNumber' | 'ourOrderId' | 'subject'>,
+  reason: string,
+): Promise<string | null> {
+  const db = createServiceClient();
+  const { data: existing } = await db.from('marketplace_chat_drafts').select('id')
+    .eq('mp', key.mp).eq('chat_id', key.chatId).eq('last_incoming_at', key.lastIncomingAt).maybeSingle();
+  if (existing) return existing.id as string;
+  const { data, error } = await db.from('marketplace_chat_drafts').insert({
+    mp: key.mp, chat_id: key.chatId, last_incoming_at: key.lastIncomingAt,
+    category: 'other', summary: 'Чернетку не підготовлено', draft: '', needs_human: true, reason,
+    model: AI_UNAVAILABLE_MODEL, cost_usd: 0, input_tokens: 0, output_tokens: 0, tool_calls: 0,
+    order_number: ctx.orderNumber, our_order_id: ctx.ourOrderId, subject: ctx.subject ?? null,
+  }).select('id').single();
+  if (error) { console.error('[mp-chat-assistant] placeholder failed:', error.message); return null; }
+  return data?.id ?? null;
+}
+
 /**
  * Чернетка для треда: з журналу, якщо для цього самого останнього вхідного
  * вже є; інакше — новий запуск і запис. Журнал необовʼязковий: якщо таблиці
@@ -353,10 +381,11 @@ export async function getOrCreateDraft(
 
   if (!opts?.force) {
     const { data } = await db.from('marketplace_chat_drafts')
-      .select('id, category, summary, draft, needs_human, reason, cost_usd')
+      .select('id, category, summary, draft, needs_human, reason, cost_usd, model')
       .eq('mp', key.mp).eq('chat_id', key.chatId).eq('last_incoming_at', key.lastIncomingAt)
       .maybeSingle();
-    if (data) {
+    // Заглушка «ШІ був недоступний» — не кеш: пробуємо зробити справжню чернетку
+    if (data && data.model !== AI_UNAVAILABLE_MODEL) {
       return {
         id: data.id, cached: true,
         category: data.category as DraftCategory, summary: data.summary, reply: data.draft,
