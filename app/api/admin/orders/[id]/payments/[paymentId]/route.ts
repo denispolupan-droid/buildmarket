@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../../../lib/accounting/documents';
+import { requireStaff } from '../../../../../../../lib/auth-guard';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> = {
   cash:      'cash',
@@ -16,11 +16,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; paymentId: string }> },
 ) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const { id: orderId, paymentId } = await params;
   const db = createServiceClient();

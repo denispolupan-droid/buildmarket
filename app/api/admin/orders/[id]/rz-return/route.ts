@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { RZ_DELIVERY_TYPE } from '../../../../../../lib/rz-delivery';
 import { rzReturnTrack } from '../../../../../../lib/rz-delivery-api';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 /**
  * Повернення відправлення «ROZETKA Доставки» (заборона видачі).
@@ -16,11 +16,8 @@ import { rzReturnTrack } from '../../../../../../lib/rz-delivery-api';
  * розбіжності між тим, що в базі, і тим, що з посилкою насправді.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   const { reason } = await req.json().catch(() => ({})) as { reason?: string };

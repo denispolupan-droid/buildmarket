@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 // GET /api/admin/procurement/demand?skus=SKU1,SKU2
 // Повертає кількість замовлень і потрібну кількість по кожному SKU
 export async function GET(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin', 'manager');
+  if (!auth.ok) return auth.response;
 
   const skusParam = new URL(req.url).searchParams.get('skus') ?? '';
   const skus = skusParam.split(',').map(s => s.trim()).filter(Boolean);

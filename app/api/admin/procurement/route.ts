@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createDocument } from '../../../../lib/accounting/documents';
 import { createServiceClient } from '../../../../lib/supabase';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 async function getOrCreateSupplierContract(db: ReturnType<typeof createServiceClient>, supplierId: number): Promise<string | null> {
   const { data: existing } = await db
@@ -29,11 +29,9 @@ async function getOrCreateSupplierContract(db: ReturnType<typeof createServiceCl
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const db = createServiceClient();
   const body = await req.json() as {

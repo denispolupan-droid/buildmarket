@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { Resend } from 'resend';
 import { buildInvoiceHtml, orderMarketplace } from '../../../../../../lib/invoice-html';
@@ -9,15 +8,13 @@ import { SELLER, SELLER_SIGNER } from '../../../../../../lib/company';
 import { SITE_URL } from '../../../../../../lib/site';
 import { formatDocDate } from '../../../../../../lib/doc-format';
 import { invoiceDate } from '../../../../../../lib/invoice-doc';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin', 'manager');
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   const body = await req.json() as { email?: string };

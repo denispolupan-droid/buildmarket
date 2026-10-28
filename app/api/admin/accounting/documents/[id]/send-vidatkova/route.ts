@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildVidatkovaHtml } from '../../../../../../../lib/vidatkova-html';
@@ -7,16 +6,14 @@ import { buildVidatkovaPdf } from '../../../../../../../lib/vidatkova-pdf';
 import { SELLER } from '../../../../../../../lib/company';
 import { loadVidatkova, vidatkovaRenderParams } from '../../../../../../../lib/vidatkova-doc';
 import { formatDocDate } from '../../../../../../../lib/doc-format';
+import { requireStaff } from '../../../../../../../lib/auth-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin', 'manager');
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   const body = await req.json() as { email?: string };

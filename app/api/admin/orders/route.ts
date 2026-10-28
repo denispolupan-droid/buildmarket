@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../lib/supabase';
 import { buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -112,11 +112,8 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const body = await req.json();
   const {

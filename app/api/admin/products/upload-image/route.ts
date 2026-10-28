@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { normalizeProductImage } from '../../../../../lib/product-image';
 import { uploadToR2 } from '../../../../../lib/r2';
 import { brandFolder } from '../../../../../lib/seo/slug';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const formData = await req.formData();
   const file  = formData.get('file') as File | null;

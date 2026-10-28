@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { createDocument, confirmDocument, cancelDocument, correctDocument } from '../../../../../lib/accounting/documents';
 import type { CreateDocumentInput } from '../../../../../lib/accounting/types';
 import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';
 import { checkSaleEdit, recordSaleEdit } from '../../../../../lib/accounting/edit-journal';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const body = await req.json();
   const { action, document_id, reason, ...input } = body;

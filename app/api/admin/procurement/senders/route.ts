@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 // Список дозволених відправників для вибору при надсиланні замовлень постачальникам:
 // основний (orders_from_*) + додаткові (extra_senders, JSON [{name,email}]).
@@ -10,11 +10,8 @@ import { createServiceClient } from '../../../../../lib/supabase';
 // Обирається в Налаштуваннях → Пошта; порожньо означає основну.
 
 export async function GET() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin', 'manager');
+  if (!auth.ok) return auth.response;
 
   const db = createServiceClient();
   const { data: rows } = await db.from('app_settings').select('key, value')

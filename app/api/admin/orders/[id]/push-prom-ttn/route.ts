@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { setPromTTN } from '../../../../../../lib/prom-api';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const supabase = await createSupabaseServer();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.app_metadata?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const auth = await requireStaff('admin');
+    if (!auth.ok) return auth.response;
 
     const { id } = await params;
     const db = createServiceClient();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { parseWeightKg } from '../../../../lib/parcel-weight';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 // Розбір фасування живе в lib/parcel-weight: ту саму вагу тепер рахує і чекаут
 // (ліміт точки видачі ROZETKA), і серверна перевірка замовлення. Дві копії
@@ -13,11 +13,8 @@ const serviceClient = createClient(
 );
 
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { items }: { items: { sku: string; qty: number }[] } = await req.json();
   if (!items?.length) return NextResponse.json({ totalWeightKg: 0, lines: [] });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { rzSenderDepartments, rzVerify, rzBalance } from '../../../../lib/rz-delivery-api';
 import { rzDepartmentLabel, rzWeightLimitKg } from '../../../../lib/rz-delivery';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 // Службові дані для екрана «Налаштування → ROZETKA Доставка».
 //
@@ -14,11 +14,8 @@ import { rzDepartmentLabel, rzWeightLimitKg } from '../../../../lib/rz-delivery'
 // приймаючі (can_receive_tracks) і разом з лімітами.
 
 export async function GET(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const action = req.nextUrl.searchParams.get('action');
 

@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { Resend } from 'resend';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
 import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 const db     = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseServer();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const auth = await requireStaff('admin', 'manager');
+    if (!auth.ok) return auth.response;
 
     const body = await req.json();
     const email: string = body.email ?? '';

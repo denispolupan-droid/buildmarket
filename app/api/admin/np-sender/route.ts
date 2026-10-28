@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
+import { requireStaff } from '../../../../lib/auth-guard';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -19,11 +19,8 @@ async function npCall(apiKey: string, modelName: string, calledMethod: string, m
 }
 
 export async function GET() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   const { data: rows } = await serviceClient.from('app_settings').select('key, value');
   const cfg: Record<string, string> = {};

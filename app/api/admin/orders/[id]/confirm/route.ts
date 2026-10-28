@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { createReservation, getReservationTtlDays, computeExpiresAt } from '../../../../../../lib/accounting/reservations';
@@ -8,16 +7,15 @@ import { notifyCustomerStatus } from '../../../../../../lib/telegram';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../../lib/prom-api';
 import { transitionOrder } from '../../../../../../lib/orders/status';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const { id } = await params;
   const { fulfillment_mode } = await req.json() as { fulfillment_mode: 'supplier' | 'own' | 'mixed' };

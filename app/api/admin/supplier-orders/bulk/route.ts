@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { resolveSender } from '../../../../../lib/email-sender';
 import { orderItemSources } from '../../../../../lib/orders/item-sources';
+import { requireStaff } from '../../../../../lib/auth-guard';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -57,11 +57,9 @@ function extractEmail(text: string): string | null {
  * поштучної розсилки.
  */
 export async function POST(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const body = await req.json().catch(() => ({}));
   const orderIds: string[] = body.orderIds ?? [];
