@@ -261,6 +261,8 @@ export type CreateTtnParams = {
   length: number;   // см
   width: number;
   height: number;
+  /** м³; для кількох місць — сума об'ємів (aggregateRozetkaSeats), інакше рахуємо з габаритів */
+  volume?: number;
 };
 
 /**
@@ -280,7 +282,7 @@ export async function createRozetkaDeliveryTtn(opts: {
   hasPaid: boolean;
   codAmount: number;
 }): Promise<RozetkaDeliveryTtn> {
-  const { weight, length, width, height } = opts.params;
+  const { weight, length, width, height, volume } = opts.params;
   const body = {
     order_id: opts.orderId,
     payer: 'sender',            // організацію видачі оплачує продавець — це умови Rozetka
@@ -288,7 +290,7 @@ export async function createRozetkaDeliveryTtn(opts: {
     params: {
       weight, length, width, height,
       // об'єм у м³ — Rozetka чекає його окремим полем разом із габаритами
-      volume: Number(((length * width * height) / 1_000_000).toFixed(6)),
+      volume: volume ?? Number(((length * width * height) / 1_000_000).toFixed(6)),
     },
     sender: apiSender(opts.sender),
     ...(opts.description ? { description: opts.description.slice(0, 100) } : {}),

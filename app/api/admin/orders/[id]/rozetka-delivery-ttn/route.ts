@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRozetkaDeliveryTtnPdf, getRzSettingsSender, getRzSettingsContact, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
-import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
+import { ROZETKA_DELIVERY_TYPE, aggregateRozetkaSeats, type RozetkaSeat } from '../../../../../../lib/rozetka-delivery';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
 import { mergedDescription } from '../../../../../../lib/orders/merge-ttn';
@@ -131,6 +131,8 @@ export async function POST(
   const body = await req.json().catch(() => ({})) as {
     weight?: number; length?: number; width?: number; height?: number;
     places?: number; description?: string;
+    /** Кілька місць зі своїми вагою й габаритами; тоді weight/габарити/places з них */
+    seats?: Partial<RozetkaSeat>[];
     /** Об'єднана посилка: усі замовлення, що їдуть цією накладною (включно з id) */
     mergedIds?: string[];
     /** Післяплата, виправлена менеджером у вікні; без поля — рахуємо з БД */
@@ -143,13 +145,18 @@ export async function POST(
     }
   }
 
-  const weight = Number(body.weight);
-  const length = Number(body.length);
-  const width  = Number(body.width);
-  const height = Number(body.height);
-  if (![weight, length, width, height].every(n => Number.isFinite(n) && n > 0)) {
-    return NextResponse.json({ error: 'Вкажіть вагу і всі три габарити' }, { status: 400 });
+  const seats: RozetkaSeat[] = Array.isArray(body.seats) && body.seats.length > 0
+    ? body.seats.map(s => ({ weight: Number(s?.weight), length: Number(s?.length), width: Number(s?.width), height: Number(s?.height) }))
+    : [{ weight: Number(body.weight), length: Number(body.length), width: Number(body.width), height: Number(body.height) }];
+  if (seats.length > 50) return NextResponse.json({ error: 'Забагато місць' }, { status: 400 });
+  for (const [i, s] of seats.entries()) {
+    if (![s.weight, s.length, s.width, s.height].every(n => Number.isFinite(n) && n > 0)) {
+      const tag = seats.length > 1 ? `Місце ${i + 1}: в` : 'В';
+      return NextResponse.json({ error: `${tag}кажіть вагу і всі три габарити` }, { status: 400 });
+    }
   }
+  const { weight, length, width, height, volume } = aggregateRozetkaSeats(seats);
+  const places = seats.length > 1 ? seats.length : (Number(body.places) > 0 ? Number(body.places) : 1);
 
   // Об'єднана посилка. Seller API створює накладну з ОДНОГО замовлення Rozetka
   // (order_id), тож виписуємо її з основного, а решті прописуємо той самий номер
@@ -223,8 +230,8 @@ export async function POST(
     const ttn = await createRozetkaDeliveryTtn({
       orderId:     Number(order.rozetka_order_id),
       sender,
-      params:      { weight, length, width, height },
-      places:      Number(body.places) > 0 ? Number(body.places) : 1,
+      params:      { weight, length, width, height, volume },
+      places,
       description: body.description ?? description,
       hasPaid:     codAmount <= 0,
       codAmount,
@@ -239,7 +246,7 @@ export async function POST(
         cod: codAmount, cod_manual: body.codAmount != null,
         declared: numOrNull(ttn.declared_price),
         weight, dims: { length, width, height },
-        places: Number(body.places) > 0 ? Number(body.places) : 1,
+        places, seats: seats.length > 1 ? seats : null,
         payer: 'sender', description: body.description ?? description,
         sender: { name: sender.name, phone: sender.phones?.[0] ?? null, point: sender.address ?? null },
         recipient: {

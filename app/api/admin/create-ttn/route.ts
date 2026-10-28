@@ -60,16 +60,30 @@ export async function POST(req: NextRequest) {
     senderRef, senderCityRef, senderWarehouseRef, senderStreet, senderContactRef, senderPhone,
     lastName, firstName, middleName, recipientPhone,
     cityRecipientRef, recipientAddressRef, recipientAddress,
-    weight, seatsAmount, cost, description,
+    seatsAmount, cost, description,
     serviceType, payerType, paymentMethod,
     codEnabled, codAmount,
     dimensions,
   } = body;
+  let { weight } = body;
+
+  // Кілька місць зі своєю вагою й габаритами (вікно — рядок на місце, як у кабінеті НП)
+  type SeatOpt = { weight: number; width: number; height: number; length: number };
+  const seatsOptions: SeatOpt[] | null = Array.isArray(body.seatsOptions) && body.seatsOptions.length > 0
+    ? (body.seatsOptions as Partial<SeatOpt>[]).map(s => ({ weight: Number(s?.weight), width: Number(s?.width), height: Number(s?.height), length: Number(s?.length) }))
+    : null;
+  if (seatsOptions) {
+    if (seatsOptions.length > 50) return NextResponse.json({ error: 'Забагато місць' }, { status: 400 });
+    const bad = seatsOptions.findIndex(s => ![s.weight, s.width, s.height, s.length].every(n => Number.isFinite(n) && n > 0));
+    if (bad >= 0) return NextResponse.json({ error: `Місце ${bad + 1}: вкажіть вагу і всі три габарити` }, { status: 400 });
+    // Вага накладної — сума місць, а не те, що прийшло окремим полем
+    weight = Number(seatsOptions.reduce((s, x) => s + x.weight, 0).toFixed(3));
+  }
 
   const resolvedServiceType = serviceType ?? 'WarehouseWarehouse';
   // Кількість місць: захист від 0/NaN/від'ємного — НП на такому падає з
   // невиразною помилкою, і менеджер бачить «Помилка створення ТТН».
-  const seatCount = Math.max(1, Math.floor(Number(seatsAmount) || 1));
+  const seatCount = seatsOptions ? seatsOptions.length : Math.max(1, Math.floor(Number(seatsAmount) || 1));
 
   // API key: app_settings takes priority over env var — same precedence as /api/admin/np-sender,
   // which is what resolved senderRef/senderContactRef/etc. for this same request.
@@ -193,7 +207,14 @@ export async function POST(req: NextRequest) {
     RecipientsPhone: normalizePhone(recipientPhone),
   };
 
-  if (dimensions?.width && dimensions?.height && dimensions?.length) {
+  if (seatsOptions) {
+    ttnPayload.OptionsSeat = seatsOptions.map(s => ({
+      volumetricWidth:  String(Math.round(s.width)),
+      volumetricHeight: String(Math.round(s.height)),
+      volumetricLength: String(Math.round(s.length)),
+      weight:           String(s.weight),
+    }));
+  } else if (dimensions?.width && dimensions?.height && dimensions?.length) {
     // НП очікує в OptionsSeat рівно SeatsAmount елементів — по одному на місце.
     // Один елемент на кілька місць вона приймала як одне, і об'ємна вага
     // рахувалась по одній коробці замість усіх.
@@ -242,6 +263,7 @@ export async function POST(req: NextRequest) {
     dims: dimensions?.width && dimensions?.height && dimensions?.length
       ? { length: Number(dimensions.length), width: Number(dimensions.width), height: Number(dimensions.height) } : null,
     places: seatCount,
+    seats: seatsOptions,
     payer: payerType ?? null,
     payment_method: paymentMethod ?? null,
     service_type: resolvedServiceType,

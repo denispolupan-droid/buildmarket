@@ -25,6 +25,8 @@ export type TtnSnapshot = {
   weight?:     number | null;   // кг
   dims?:       { length: number; width: number; height: number } | null; // см
   places?:     number | null;
+  /** Розбивка по місцях, якщо їх кілька й кожне вводили окремо (weight/dims тоді — зведені) */
+  seats?:      { weight: number; length: number; width: number; height: number }[] | null;
   payer?:      string | null;   // хто платить доставку: 'sender' | 'receiver' | НП PayerType
   payment_method?: string | null;
   service_type?:   string | null;

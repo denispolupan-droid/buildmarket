@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { X, Search, MapPin, Check } from 'lucide-react';
+import SeatsStepper, { SameSeatsToggle, sameSeatsLabel, useSeats } from './SeatsStepper';
 import type { RozetkaSenderPickup } from '../../../lib/rozetka-delivery';
 
 /**
@@ -41,12 +42,13 @@ const fieldLabel: React.CSSProperties = { fontSize: '12px', fontWeight: 600, col
 const unit: React.CSSProperties = { position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '11.5px', color: 'var(--text-muted)', pointerEvents: 'none' };
 const section: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '10px' };
 
+type SeatInput = { weight: string; length: string; width: string; height: string };
+
 export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: Props) {
-  const [weight, setWeight] = useState('');
-  const [length, setLength] = useState('30');
-  const [width,  setWidth]  = useState('20');
-  const [height, setHeight] = useState('15');
-  const [places, setPlaces] = useState('1');
+  // Місце = рядок із власною вагою й габаритами, як у накладній НП
+  const seatsCtl = useSeats<SeatInput>({ weight: '', length: '30', width: '20', height: '15' });
+  const { seats, editRows, same: sameSeats, setAutoWeight, setField: setSeatField } = seatsCtl;
+  const multiSeat = seatsCtl.count > 1;
   // Післяплата: сервер підставляє суму неоплачених замовлень, менеджер може
   // виправити (домовленість з покупцем) — як у накладній Нової Пошти.
   const [cod, setCod] = useState('');
@@ -177,9 +179,11 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
       body: JSON.stringify({ items: order.items.map(i => ({ sku: i.sku, qty: i.qty })) }),
     })
       .then(r => r.json())
-      .then(d => { if (d.totalWeightKg > 0) setWeight(String(d.totalWeightKg)); })
+      .then(d => {
+        if (d.totalWeightKg > 0) setAutoWeight(d.totalWeightKg);
+      })
       .catch(() => { /* вагу введуть руками */ });
-  }, [order.items]);
+  }, [order.items, setAutoWeight]);
 
   async function submit() {
     setError(''); setBusy(true);
@@ -188,9 +192,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          weight: parseFloat(weight), length: parseFloat(length),
-          width: parseFloat(width), height: parseFloat(height),
-          places: parseInt(places) || 1,
+          seats: seatNums,
           // Лише виправлена сума: інакше сервер рахує сам із БД
           ...(codChanged ? { codAmount: codNum } : {}),
           ...(order.mergedIds?.length ? { mergedIds: order.mergedIds } : {}),
@@ -207,12 +209,17 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   }
 
   const limitKg = sender?.weight_limit_kg ?? null;
-  const weightNum = parseFloat(weight);
-  const overLimit = limitKg != null && Number.isFinite(weightNum) && weightNum > limitKg;
+  const toNum = (s: string) => parseFloat(s.replace(',', '.'));
+  const seatNums = seats.map(s => ({ weight: toNum(s.weight), length: toNum(s.length), width: toNum(s.width), height: toNum(s.height) }));
+  const seatBad = (s: (typeof seatNums)[number]) => ![s.weight, s.length, s.width, s.height].every(n => Number.isFinite(n) && n > 0);
+  const seatsInvalid = seatNums.some(seatBad);
+  // Rozetka отримує одну вагу на всю накладну — суму місць; ліміт точки перевіряємо по ній
+  const weightNum = Number(seatNums.reduce((s, x) => s + (Number.isFinite(x.weight) ? x.weight : 0), 0).toFixed(3));
+  const overLimit = limitKg != null && weightNum > limitKg;
   const codNum = cod.trim() === '' ? NaN : parseFloat(cod.replace(',', '.'));
   const codInvalid = !Number.isFinite(codNum) || codNum < 0;
   const codChanged = codDefault != null && !codInvalid && Math.abs(codNum - codDefault) > 0.005;
-  const canSubmit = !busy && !!sender && !senderSaving && !overLimit && !codInvalid;
+  const canSubmit = !busy && !!sender && !senderSaving && !overLimit && !codInvalid && !seatsInvalid;
 
   const num = (v: string, set: (s: string) => void, label: string, suffix: string, warn?: boolean, width?: string) => (
     <label style={{ flex: width ? `0 0 ${width}` : 1, minWidth: 0 }}>
@@ -226,10 +233,38 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
   );
 
   // Габарити — одне поле «Д × Ш × В», а не три окремі на всю ширину
-  const dimInput = (v: string, set: (s: string) => void, title: string) => (
-    <input value={v} onChange={e => set(e.target.value)} inputMode="decimal" aria-label={title} title={title}
+  const dimInput = (i: number, key: 'length' | 'width' | 'height', title: string) => (
+    <input value={seats[i][key]} onChange={e => setSeatField(i, key, e.target.value)} inputMode="decimal" aria-label={title} title={title}
       style={{ width: 0, flex: 1, minWidth: 0, height: '100%', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '13.5px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }} />
   );
+  const dimsField = (i: number) => {
+    const s = seatNums[i];
+    const bad = multiSeat && ![s.length, s.width, s.height].every(n => Number.isFinite(n) && n > 0);
+    return (
+      <div style={{ ...field, height: '38px', display: 'flex', alignItems: 'center', padding: '0 30px 0 4px', position: 'relative', borderColor: bad ? '#DC2626' : 'var(--border)' }}>
+        {dimInput(i, 'length', 'Довжина, см')}
+        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>×</span>
+        {dimInput(i, 'width', 'Ширина, см')}
+        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>×</span>
+        {dimInput(i, 'height', 'Висота, см')}
+        <span style={unit}>см</span>
+      </div>
+    );
+  };
+  const weightField = (i: number) => {
+    const w = seatNums[i].weight;
+    const bad = (multiSeat && !(w > 0)) || (!multiSeat && overLimit);
+    return (
+      <div style={{ position: 'relative' }}>
+        <input value={seats[i].weight} onChange={e => setSeatField(i, 'weight', e.target.value)} inputMode="decimal"
+          aria-label={!multiSeat ? 'Вага, кг' : sameSeats ? 'Вага одного місця, кг' : `Вага місця ${i + 1}, кг`}
+          style={{ ...field, height: '38px', padding: '0 30px 0 10px', fontSize: '13.5px', fontVariantNumeric: 'tabular-nums', borderColor: bad ? '#DC2626' : 'var(--border)' }} />
+        <span style={unit}>кг</span>
+      </div>
+    );
+  };
+
+  const placesStepper = <SeatsStepper value={seatsCtl.count} onChange={seatsCtl.setCount} style={{ ...field, height: '38px', padding: 0 }} />;
 
   const filtered = pickupFilter.trim()
     ? pickups.filter(p => p.label.toLowerCase().includes(pickupFilter.trim().toLowerCase()))
@@ -328,7 +363,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
                     </div>
                   ) : filtered.map(p => {
                     const active = p.id === sender?.department;
-                    const tooLight = p.limitKg != null && Number.isFinite(weightNum) && weightNum > p.limitKg;
+                    const tooLight = p.limitKg != null && weightNum > p.limitKg;
                     return (
                       <button key={p.id} type="button" disabled={senderSaving} onClick={() => pickSender(p)}
                         style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: active ? 'var(--bg-soft)' : 'none', border: 'none', borderBottom: '1px solid var(--border-light)', cursor: senderSaving ? 'wait' : 'pointer', textAlign: 'left' }}>
@@ -348,24 +383,69 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
             )}
           </div>
 
-          {/* Посилка: вага, місця, габарити — один рядок */}
+          {/* Посилка: одне місце — вага, місця, габарити одним рядком;
+              кілька однакових — один рядок «кожне місце»; різні — рядок на місце */}
           <div style={section}>
             <div style={caps}>Посилка</div>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {num(weight, setWeight, 'Вага', 'кг', overLimit, '96px')}
-              {num(places, setPlaces, 'Місць', 'шт', false, '80px')}
-              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <div style={fieldLabel}>Габарити, Д × Ш × В</div>
-                <div style={{ ...field, height: '38px', display: 'flex', alignItems: 'center', padding: '0 30px 0 4px', position: 'relative' }}>
-                  {dimInput(length, setLength, 'Довжина, см')}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>×</span>
-                  {dimInput(width, setWidth, 'Ширина, см')}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>×</span>
-                  {dimInput(height, setHeight, 'Висота, см')}
-                  <span style={unit}>см</span>
+            {!multiSeat ? (
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '0 0 96px', minWidth: 0 }}>
+                  <div style={fieldLabel}>Вага</div>
+                  {weightField(0)}
+                </div>
+                <div style={{ flex: '0 0 100px', minWidth: 0 }}>
+                  <div style={fieldLabel}>Місць</div>
+                  {placesStepper}
+                </div>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <div style={fieldLabel}>Габарити, Д × Ш × В</div>
+                  {dimsField(0)}
                 </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                  <div style={{ flex: '0 0 100px', minWidth: 0 }}>
+                    <div style={fieldLabel}>Місць</div>
+                    {placesStepper}
+                  </div>
+                  <div style={{ minHeight: '38px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                    <SameSeatsToggle checked={sameSeats} onChange={seatsCtl.setSame} />
+                    <span style={{ fontSize: '12px', color: overLimit ? '#DC2626' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                      Разом {weightNum || '—'} кг
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {!sameSeats && <div style={{ flex: '0 0 18px' }} />}
+                    <div style={{ ...fieldLabel, marginBottom: 0, flex: '0 0 96px' }}>{sameSeats ? 'Вага одного' : 'Вага'}</div>
+                    <div style={{ ...fieldLabel, marginBottom: 0, flex: 1 }}>Габарити{sameSeats ? ' кожного' : ''}, Д × Ш × В</div>
+                    {!sameSeats && <div style={{ flex: '0 0 24px' }} />}
+                  </div>
+                  {editRows.map((_, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {!sameSeats && <div style={{ flex: '0 0 18px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</div>}
+                      <div style={{ flex: '0 0 96px', minWidth: 0 }}>{weightField(i)}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>{dimsField(i)}</div>
+                      {!sameSeats && (
+                        <button type="button" onClick={() => seatsCtl.remove(i)} aria-label={`Прибрати місце ${i + 1}`} title="Прибрати місце"
+                          style={{ flex: '0 0 24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: '11.5px', color: seatsInvalid ? '#DC2626' : 'var(--text-muted)', lineHeight: 1.45 }}>
+                  {seatsInvalid
+                    ? (sameSeats ? 'Вкажіть вагу й габарити місця' : 'Вкажіть вагу й габарити кожного місця')
+                    : sameSeats
+                      ? `${sameSeatsLabel(seatsCtl.count)} — зніміть галочку, щоб вказати кожне окремо`
+                      : 'Rozetka приймає одну вагу на накладну — передамо суму місць і їхній загальний об’єм'}
+                </div>
+              </>
+            )}
             {overLimit && (
               <div style={{ fontSize: '12px', color: '#DC2626' }}>
                 Точка приймає до {limitKg} кг — зменште вагу або оберіть інше відділення.

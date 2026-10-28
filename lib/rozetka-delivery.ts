@@ -142,3 +142,25 @@ export function rozetkaPickupAddress(d: {
     landmark || null,
   ].filter(Boolean).join(', ');
 }
+
+/** Одне місце посилки: вага в кг, габарити в см */
+export type RozetkaSeat = { weight: number; length: number; width: number; height: number };
+
+/**
+ * Кілька місць → один params для create-order-ttn.
+ *
+ * Розбивки по місцях (як OptionsSeat у НП) в API Rozetka немає: лише places і
+ * один набір ваги/габаритів. Тож вага — сума, об'єм (м³) — сума об'ємів усіх
+ * коробок, а Д×Ш×В — найбільшого місця: так об'єм не занижується, а габарит не
+ * виходить вигаданим («зліпленим» з кількох коробок).
+ */
+export function aggregateRozetkaSeats(seats: RozetkaSeat[]): RozetkaSeat & { volume: number } {
+  const round = (n: number, d: number) => Number(n.toFixed(d));
+  const vol = (s: RozetkaSeat) => s.length * s.width * s.height;
+  const biggest = seats.reduce((a, b) => (vol(b) > vol(a) ? b : a));
+  return {
+    weight: round(seats.reduce((s, x) => s + x.weight, 0), 3),
+    length: biggest.length, width: biggest.width, height: biggest.height,
+    volume: round(seats.reduce((s, x) => s + vol(x), 0) / 1_000_000, 6),
+  };
+}

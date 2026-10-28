@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { resolveDeliverySubtype } from '../../../lib/np-postomat';
 import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote } from 'lucide-react';
+import SeatsStepper, { SameSeatsToggle, sameSeatsLabel, useSeats } from './SeatsStepper';
+
+type SeatRow = { weight: string; width: string; height: string; length: string };
 
 type Settlement = { Ref: string; Present: string; MainDescription: string; Area: string; RegionsDescription: string };
 type Warehouse  = { Ref: string; Description: string; Number: string; CityRef: string };
@@ -77,6 +80,8 @@ const lbl: React.CSSProperties = {
   marginBottom: '4px', display: 'block',
   textTransform: 'uppercase', letterSpacing: '0.04em',
 };
+/** Рядок місця: № · вага · Ш · В · Д · прибрати */
+const seatGrid = '16px 1.3fr 1fr 1fr 1fr 22px';
 const secTitle: React.CSSProperties = {
   fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
   textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -144,21 +149,25 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [senderWhQ,     setSenderWhQ]     = useState('');
   const [senderWhOpen,  setSenderWhOpen]  = useState(false);
 
-  const [weight,        setWeight]        = useState('');
   const [weightLines,   setWeightLines]   = useState<WeightLine[]>([]);
   const [weightLoading, setWeightLoading] = useState(false);
-  const [seats,         setSeats]         = useState('1');
-  // Місць у відправленні. НП рахує об'ємну вагу по кожному місцю окремо, тож
-  // ділимо загальну вагу порівну — так само, як роут будує OptionsSeat.
-  const seatCount = Math.max(1, Math.floor(Number(seats) || 1));
-  const perSeatWeight = parseFloat(weight) > 0
-    ? Math.round((parseFloat(weight) / seatCount) * 100) / 100
-    : 0;
+  // Місця відправлення, як у кабінеті НП: у кожного своя вага й габарити — НП
+  // рахує об'ємну вагу по кожному окремо (OptionsSeat). Одне місце — перший рядок:
+  // його вага — поле «Вага», габарити — блок поштомату.
+  // Однакові місця (частіше так) — один рядок на всі; різні — рядок на кожне.
+  const seatsCtl = useSeats<SeatRow>({ weight: '', width: '', height: '', length: '' });
+  const { seats: seatRows, editRows, same: sameSeats, setAutoWeight, setField: setSeatField } = seatsCtl;
+  const seatCount = seatsCtl.count;
+  const multiSeat = seatCount > 1;
+  const toNum = (s: string) => parseFloat(s.replace(',', '.'));
+  const seatNums = seatRows.map(r => ({ weight: toNum(r.weight), width: toNum(r.width), height: toNum(r.height), length: toNum(r.length) }));
+  const totalWeight = Number(seatNums.reduce((s, r) => s + (r.weight > 0 ? r.weight : 0), 0).toFixed(3));
+  const dimsOk = (r: (typeof seatNums)[number]) => [r.width, r.height, r.length].every(n => Number.isFinite(n) && n > 0);
+  // Габарити місць: усі або жодного (тоді НП візьме лише вагу); для поштомату — обов'язково
+  const anyDims = seatRows.some(r => r.width || r.height || r.length);
+  const needSeatDims = isPostomat || (multiSeat && anyDims);
   const [cost,          setCost]          = useState(String(Math.ceil(order.total_price)));
   const [description,   setDescription]   = useState('Будівельні матеріали');
-  const [dimWidth,  setDimWidth]  = useState('');
-  const [dimHeight, setDimHeight] = useState('');
-  const [dimLength, setDimLength] = useState('');
 
   const [payerType, setPayerType] = useState<'Sender' | 'Recipient'>('Recipient');
   const paymentMethod = 'Cash';
@@ -267,7 +276,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
       .then(r => r.json())
       .then(d => {
         setWeightLines(d.lines ?? []);
-        if (d.totalWeightKg > 0) setWeight(String(d.totalWeightKg));
+        if (d.totalWeightKg > 0) setAutoWeight(d.totalWeightKg);
       })
       .finally(() => setWeightLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -319,8 +328,15 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     if (!senderInfo)      { setError('Дані відправника не завантажені'); return; }
     if (senderInfo.senderType === 'warehouse' && !senderWH && senderInfo.warehouses.length > 0) { setError('Оберіть відділення відправника'); return; }
     if (!lastName || !firstName) { setError('Вкажіть прізвище та ім\'я одержувача'); return; }
-    if (!weight || parseFloat(weight) <= 0) { setError('Вкажіть вагу відправлення'); return; }
-    if (isPostomat && (!dimWidth || !dimHeight || !dimLength)) { setError('Для поштомату вкажіть габарити посилки (ш × в × д)'); return; }
+    const badWeight = seatNums.findIndex(r => !(r.weight > 0));
+    if (badWeight >= 0) { setError(multiSeat && !sameSeats ? `Вкажіть вагу місця ${badWeight + 1}` : 'Вкажіть вагу відправлення'); return; }
+    const badDims = needSeatDims ? seatNums.findIndex(r => !dimsOk(r)) : -1;
+    if (badDims >= 0) {
+      setError(multiSeat && !sameSeats
+        ? `Вкажіть габарити місця ${badDims + 1} (ш × в × д) — або приберіть їх в усіх місцях`
+        : 'Для поштомату вкажіть габарити посилки (ш × в × д)');
+      return;
+    }
     if (codEnabled && (!codAmount || parseFloat(codAmount) <= 0)) { setError('Вкажіть суму накладеного платежу'); return; }
 
     setSubmitting(true); setError('');
@@ -344,11 +360,12 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         cityRecipientRef: isCourier ? selectedCity.Ref : (selectedWH?.CityRef || selectedCity.Ref),
         recipientAddressRef: isCourier ? '' : selectedWH?.Ref,
         recipientAddress: isCourier ? recipientAddress : undefined,
-        weight: parseFloat(weight), seatsAmount: seatCount,
+        weight: totalWeight, seatsAmount: seatCount,
         cost: parseFloat(cost) || 0, description,
         serviceType, payerType, paymentMethod,
         codEnabled, codAmount: codEnabled ? parseFloat(codAmount) : 0,
-        ...(isPostomat && { dimensions: { width: parseFloat(dimWidth), height: parseFloat(dimHeight), length: parseFloat(dimLength) } }),
+        ...(multiSeat && needSeatDims && { seatsOptions: seatNums }),
+        ...(!multiSeat && isPostomat && { dimensions: { width: seatNums[0].width, height: seatNums[0].height, length: seatNums[0].length } }),
       }),
     });
 
@@ -604,37 +621,76 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
           <section>
             <div style={secTitle}><Package size={11} /><span>Вантаж</span></div>
 
-            {/* Вага + місць в одному рядку */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: '8px', marginBottom: '8px' }}>
+            {/* Вага + місць в одному рядку; кілька місць — загальна вага рахується з рядків */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 104px', gap: '8px', marginBottom: '8px' }}>
               <div>
                 <label style={lbl}>
-                  Вага, кг <span style={{ color: '#EF4444' }}>*</span>
+                  {multiSeat ? 'Загальна вага, кг' : <>Вага, кг <span style={{ color: '#EF4444' }}>*</span></>}
                   {weightLoading && <Loader2 size={11} className="spin" style={{ marginLeft: '6px', verticalAlign: 'middle' }} />}
                 </label>
-                <input
-                  style={{ ...inp, borderColor: !weight ? '#FCA5A5' : undefined, background: !weight ? 'rgba(239,68,68,0.06)' : undefined }}
-                  type="number" min="0.1" step="0.1" value={weight}
-                  onChange={e => setWeight(e.target.value)}
-                  placeholder="кг"
-                />
+                {multiSeat ? (
+                  <div style={{ ...inp, display: 'flex', alignItems: 'center', background: 'transparent', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                    {totalWeight || '—'}
+                  </div>
+                ) : (
+                  <input
+                    style={{ ...inp, borderColor: !seatRows[0].weight ? '#FCA5A5' : undefined, background: !seatRows[0].weight ? 'rgba(239,68,68,0.06)' : undefined }}
+                    type="number" min="0.1" step="0.1" value={seatRows[0].weight}
+                    onChange={e => setSeatField(0, 'weight', e.target.value)}
+                    placeholder="кг"
+                  />
+                )}
               </div>
               <div>
                 <label style={lbl}>Місць</label>
-                <input style={inp} type="number" min="1" step="1" value={seats} onChange={e => setSeats(e.target.value)} />
+                <SeatsStepper value={seatCount} onChange={seatsCtl.setCount} style={{ ...inp, padding: 0 }} />
               </div>
             </div>
 
-            {/* Скільки місць — видно лише в дрібному полі, тож коли їх більше
-                одного, показуємо, що саме поїде в НП: вага ділиться порівну,
-                габарити застосовуються до кожного місця. */}
-            {seatCount > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', padding: '6px 10px',
-                background: '#EFF4FF', border: '1px solid #C7D8F0', borderRadius: '6px', fontSize: '11.5px', color: '#1E3A5F' }}>
-                <Package size={12} style={{ flexShrink: 0 }} />
-                <span>
-                  {seatCount} місця · по {perSeatWeight || '—'} кг на кожне
-                  {isPostomat && ' · габарити нижче застосуються до кожного місця'}
-                </span>
+            {/* Кілька місць: однакові — один рядок «кожне місце»; різні — рядок на
+                кожне, як у накладній НП, зі своєю вагою й габаритами */}
+            {multiSeat && (
+              <div style={{ marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <SameSeatsToggle checked={sameSeats} onChange={seatsCtl.setSame} />
+                <div style={{ display: 'grid', gridTemplateColumns: seatGrid, gap: '6px' }}>
+                  <span />
+                  <span style={{ ...lbl, marginBottom: 0 }}>{sameSeats ? 'Вага 1 місця' : 'Вага, кг'}</span>
+                  <span style={{ ...lbl, marginBottom: 0 }}>Ш</span>
+                  <span style={{ ...lbl, marginBottom: 0 }}>В</span>
+                  <span style={{ ...lbl, marginBottom: 0 }}>Д, см</span>
+                  <span />
+                </div>
+                {editRows.map((r, i) => {
+                  const n = seatNums[i];
+                  const redIf = (bad: boolean): React.CSSProperties => (bad ? { borderColor: '#FCA5A5', background: 'rgba(239,68,68,0.06)' } : {});
+                  const dimBad = (v: number) => needSeatDims && !(v > 0);
+                  return (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: seatGrid, gap: '6px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{sameSeats ? `×${seatCount}` : i + 1}</span>
+                      <input style={{ ...inp, ...redIf(!(n.weight > 0)) }} type="number" min="0.1" step="0.1" placeholder="кг" aria-label={`Вага місця ${i + 1}, кг`}
+                        value={r.weight} onChange={e => setSeatField(i, 'weight', e.target.value)} />
+                      <input style={{ ...inp, ...redIf(dimBad(n.width)) }} type="number" min="1" step="1" placeholder="см" aria-label={`Ширина місця ${i + 1}, см`}
+                        value={r.width} onChange={e => setSeatField(i, 'width', e.target.value)} />
+                      <input style={{ ...inp, ...redIf(dimBad(n.height)) }} type="number" min="1" step="1" placeholder="см" aria-label={`Висота місця ${i + 1}, см`}
+                        value={r.height} onChange={e => setSeatField(i, 'height', e.target.value)} />
+                      <input style={{ ...inp, ...redIf(dimBad(n.length)) }} type="number" min="1" step="1" placeholder="см" aria-label={`Довжина місця ${i + 1}, см`}
+                        value={r.length} onChange={e => setSeatField(i, 'length', e.target.value)} />
+                      {sameSeats ? <span /> : (
+                        <button type="button" onClick={() => seatsCtl.remove(i)} aria-label={`Прибрати місце ${i + 1}`} title="Прибрати місце"
+                          style={{ width: '22px', height: '22px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                  {sameSeats
+                    ? `${sameSeatsLabel(seatCount)} з цією вагою й габаритами${isPostomat ? '' : ' (габарити можна не вказувати)'} — зніміть галочку, щоб вказати кожне окремо`
+                    : isPostomat
+                      ? 'Поштомат вимагає габарити кожного місця'
+                      : 'Габарити — для всіх місць або для жодного: без них НП рахує лише за вагою'}
+                </div>
               </div>
             )}
 
@@ -669,13 +725,13 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             </div>
 
             {/* Габарити для поштомату */}
-            {isPostomat && (
+            {isPostomat && !multiSeat && (
               <div style={{ marginTop: '10px', padding: '10px 12px', background: 'var(--brand-blue-light)', border: '1.5px solid var(--border)', borderRadius: '8px' }}>
                 <div style={{ ...lbl, color: 'var(--brand-blue)', marginBottom: '8px' }}>📐 Габарити, см <span style={{ color: '#EF4444' }}>*</span></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                  <div><label style={lbl}>Ширина</label><input style={inp} type="number" min="1" step="1" placeholder="см" value={dimWidth}  onChange={e => setDimWidth(e.target.value)} /></div>
-                  <div><label style={lbl}>Висота</label> <input style={inp} type="number" min="1" step="1" placeholder="см" value={dimHeight} onChange={e => setDimHeight(e.target.value)} /></div>
-                  <div><label style={lbl}>Довжина</label><input style={inp} type="number" min="1" step="1" placeholder="см" value={dimLength} onChange={e => setDimLength(e.target.value)} /></div>
+                  <div><label style={lbl}>Ширина</label><input style={inp} type="number" min="1" step="1" placeholder="см" value={seatRows[0].width}  onChange={e => setSeatField(0, 'width', e.target.value)} /></div>
+                  <div><label style={lbl}>Висота</label> <input style={inp} type="number" min="1" step="1" placeholder="см" value={seatRows[0].height} onChange={e => setSeatField(0, 'height', e.target.value)} /></div>
+                  <div><label style={lbl}>Довжина</label><input style={inp} type="number" min="1" step="1" placeholder="см" value={seatRows[0].length} onChange={e => setSeatField(0, 'length', e.target.value)} /></div>
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>Поштомат вимагає габарити для створення ТТН</div>
               </div>
