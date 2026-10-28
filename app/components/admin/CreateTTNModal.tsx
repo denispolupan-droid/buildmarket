@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { resolveDeliverySubtype } from '../../../lib/np-postomat';
+import type { CourierAddressResult, StreetSuggestion } from '../../../lib/np-address';
 import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote } from 'lucide-react';
 import SeatsStepper, { SameSeatsToggle, sameSeatsLabel, useSeats } from './SeatsStepper';
 
@@ -122,6 +123,13 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [recipientAddress, setRecipientAddress] = useState(
     initialSubtype === 'courier' ? streetFromAddress(order.delivery_address, order.delivery_city_name) : '',
   );
+  // Перевірка адреси в довіднику НП ДО створення ЕН: менеджер бачить, яку саме
+  // вулицю НП підставить (або список схожих, якщо не знайшло) і може обрати
+  // з них. Раніше про «Вулицю не знайдено» дізнавались лише з помилки кнопки.
+  const [addrCheck, setAddrCheck] = useState<{ status: 'idle' | 'loading' | 'done'; result: CourierAddressResult | null }>({ status: 'idle', result: null });
+  const [chosenStreet, setChosenStreet] = useState<StreetSuggestion | null>(null);
+  const addrDebRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addrSeq = useRef(0);
 
   // Sender type override — null means "use whatever senderInfo says"
   const [senderTypeOverride, setSenderTypeOverride] = useState<'warehouse' | 'address' | null>(null);
@@ -292,6 +300,36 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  // Підказка вулиці: та сама логіка, що й у /api/admin/create-ttn, тож у
+  // накладну піде рівно те, що тут показано. Дебаунс 500 мс, стара відповідь
+  // (менеджер ще друкує) ігнорується за лічильником.
+  useEffect(() => {
+    if (addrDebRef.current) clearTimeout(addrDebRef.current);
+    setChosenStreet(null);
+    if (!isCourier || !selectedCity || !recipientAddress.trim()) { setAddrCheck({ status: 'idle', result: null }); return; }
+    const seq = ++addrSeq.current;
+    setAddrCheck(s => ({ status: 'loading', result: s.result }));
+    const settlementRef = selectedCity.Ref;
+    const text = recipientAddress;
+    addrDebRef.current = setTimeout(() => {
+      fetch('/api/admin/np-street-resolve', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id, settlementRef, text }),
+      })
+        .then(r => r.json())
+        .then((d: CourierAddressResult | { error: string }) => {
+          if (seq !== addrSeq.current) return;
+          if (!('ok' in d)) {
+            setAddrCheck({ status: 'done', result: { ok: false, reason: 'not_found', error: d.error, parsed: { street: '', streetType: null, house: '', flat: '' }, suggestions: [] } });
+            return;
+          }
+          setAddrCheck({ status: 'done', result: d });
+        })
+        .catch(() => { if (seq === addrSeq.current) setAddrCheck({ status: 'idle', result: null }); });
+    }, 500);
+    return () => { if (addrDebRef.current) clearTimeout(addrDebRef.current); };
+  }, [isCourier, selectedCity, recipientAddress, order.id]);
+
   const searchCities = useCallback((q: string) => {
     if (q.length < 2) { setSettlements([]); return; }
     setCityLoading(true);
@@ -338,6 +376,17 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
       return;
     }
     if (codEnabled && (!codAmount || parseFloat(codAmount) <= 0)) { setError('Вкажіть суму накладеного платежу'); return; }
+    // Кур'єр: не відправляємо те, що НП уже не знайшла, — хай менеджер обере
+    // зі схожих або виправить адресу (інакше ту саму помилку віддасть сервер).
+    const addr = addrCheck.result;
+    if (isCourier && addrCheck.status === 'loading') { setError('Зачекайте, адреса ще перевіряється в довіднику НП'); return; }
+    if (isCourier && addr && !addr.ok && !chosenStreet) { setError(addr.error); return; }
+    const recipientStreet = !isCourier ? undefined
+      : chosenStreet && addr && !addr.ok
+        ? { ref: chosenStreet.ref, label: chosenStreet.label, kind: chosenStreet.kind, house: addr.parsed.house, flat: addr.parsed.flat }
+        : addr?.ok
+          ? { ref: addr.streetRef, label: addr.streetLabel, kind: addr.kind, house: addr.house, flat: addr.flat }
+          : undefined;
 
     setSubmitting(true); setError('');
 
@@ -360,6 +409,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         cityRecipientRef: isCourier ? selectedCity.Ref : (selectedWH?.CityRef || selectedCity.Ref),
         recipientAddressRef: isCourier ? '' : selectedWH?.Ref,
         recipientAddress: isCourier ? recipientAddress : undefined,
+        recipientStreet,
         weight: totalWeight, seatsAmount: seatCount,
         cost: parseFloat(cost) || 0, description,
         serviceType, payerType, paymentMethod,
@@ -524,9 +574,36 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                   style={inp} placeholder="вул. Шевченка, 12, кв. 5"
                   value={recipientAddress} onChange={e => setRecipientAddress(e.target.value)}
                 />
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Вкажіть вулицю, номер будинку та квартиру. НП узгодить деталі з одержувачем.
-                </div>
+                {(() => {
+                  const r = addrCheck.result;
+                  const okStyle: React.CSSProperties = { fontSize: '11px', color: '#16A34A', marginTop: '4px', lineHeight: 1.4 };
+                  const badStyle: React.CSSProperties = { fontSize: '11px', color: '#DC2626', marginTop: '4px', lineHeight: 1.4 };
+                  const chip: React.CSSProperties = { fontSize: '11px', padding: '2px 8px', borderRadius: '999px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#991B1B', cursor: 'pointer' };
+                  if (addrCheck.status === 'loading') {
+                    return <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}><Loader2 size={11} className="spin" />Перевіряємо адресу в довіднику НП…</div>;
+                  }
+                  if (addrCheck.status === 'done' && r?.ok) {
+                    return <div style={okStyle}>НП: <b>{r.label}</b>{r.kind === 'settlement' ? ' — вулиця лише в довіднику населеного пункту, НП може не прийняти її кур\'єром' : ''}</div>;
+                  }
+                  if (addrCheck.status === 'done' && r && !r.ok && chosenStreet) {
+                    return <div style={okStyle}>НП: <b>{chosenStreet.label}, {r.parsed.house}{r.parsed.flat ? `, кв. ${r.parsed.flat}` : ''}</b></div>;
+                  }
+                  if (addrCheck.status === 'done' && r && !r.ok) {
+                    return (
+                      <div style={badStyle}>
+                        {r.reason === 'parse' || !r.parsed.street ? r.error : <>Вулицю «{r.parsed.street}» не знайдено в НП для цього міста.{r.suggestions.length ? ' Схожі — оберіть:' : ' Перевірте місто й назву вулиці.'}</>}
+                        {r.suggestions.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '5px' }}>
+                            {r.suggestions.map(s => (
+                              <button key={s.ref} type="button" onClick={() => setChosenStreet(s)} style={chip}>{s.label}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Вкажіть вулицю, номер будинку та квартиру. НП узгодить деталі з одержувачем.</div>;
+                })()}
               </div>
             ) : null}
             {!isCourier && <div ref={whRef} style={{ position: 'relative' }}>

@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import { syncDraftShipmentTracking } from '../../../../lib/accounting/completion';
 import { numOrNull, type TtnSnapshot } from '../../../../lib/ttn-snapshot';
 import {
-  parseAddress, resolveStreet, structuredFromRozetka, structuredFromProm, textKeepsHouse, addressLabel,
-  type ParsedAddress, type RozetkaDelivery, type PromProviderData,
+  prepareCourierAddress, addressLabel, normalizeHouse,
+  type RozetkaDelivery, type PromProviderData,
 } from '../../../../lib/np-address';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
@@ -124,49 +124,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Не вдалося визначити місто НП для адресної доставки. Оберіть місто зі списку НП у полі «Місто».' }, { status: 400 });
     }
 
-    // Джерела адреси за пріоритетом (lib/np-address): Prom віддає готові
-    // NP-референси міста й вулиці; Rozetka — вулицю/будинок/квартиру окремими
-    // полями; інакше розбираємо текст із модалки. Структуровані дані беремо
-    // лише поки менеджер не змінив номер будинку в полі — інакше вірити треба
-    // тому, що він ввів.
-    const { data: ord } = await serviceClient
-      .from('orders')
-      .select('delivery_city_name, rz:rozetka_data->delivery, pm:prom_data->delivery_provider_data')
-      .eq('id', orderId)
-      .maybeSingle();
-    const typed = parseAddress(recipientAddress, (ord?.delivery_city_name as string | null) ?? null);
-    const promRefs = structuredFromProm(ord?.pm as PromProviderData);
-    const rzParsed = structuredFromRozetka(ord?.rz as RozetkaDelivery);
-
-    if (promRefs && promRefs.cityRef === finalCityRecipient && textKeepsHouse(recipientAddress, promRefs.house)) {
-      streetRef = promRefs.streetRef;
-      streetLabel = promRefs.streetName;
-      parsedHouse = promRefs.house;
-      parsedFlat = typed.flat || promRefs.flat;
+    // Модалка вже показала менеджеру вулицю з довідника НП (/api/admin/np-street-resolve)
+    // і передає її сюди — беремо її як є, щоб у накладну пішло рівно те, що він бачив.
+    const chosen = body.recipientStreet as { ref?: string; label?: string; kind?: string; house?: string; flat?: string } | undefined;
+    if (chosen?.ref && chosen.house) {
+      streetRef = chosen.ref;
+      streetLabel = chosen.label ?? '';
+      parsedHouse = normalizeHouse(String(chosen.house));
+      parsedFlat = String(chosen.flat ?? '').trim();
+      streetFromSettlementDirectory = chosen.kind === 'settlement';
     } else {
-      const parsed: ParsedAddress = rzParsed && textKeepsHouse(recipientAddress, rzParsed.house)
-        ? { ...rzParsed, flat: typed.flat || rzParsed.flat }
-        : typed;
-      if (!parsed.street || !parsed.house) {
-        return NextResponse.json({ error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).' }, { status: 400 });
-      }
-      parsedHouse = parsed.house;
-      parsedFlat = parsed.flat;
-      // Спершу міський довідник (його Ref приймає Address.save), потім довідник
-      // населеного пункту — у селах вулиці є лише там.
-      const found = await resolveStreet(
-        (m, c, p) => npCall(apiKey, m, c, p),
-        { cityRef: finalCityRecipient, settlementRef: cityRecipientRef, parsed },
-      );
-      if (found.kind === 'none') {
-        const hint = found.suggestions.length
-          ? ` Схожі вулиці в довіднику НП: ${found.suggestions.join('; ')}. Виправте назву в полі адреси.`
-          : ' Перевірте місто й назву вулиці в полі адреси.';
-        return NextResponse.json({ error: `Вулицю «${parsed.street}» не знайдено в Новій Пошті для цього міста.${hint}` }, { status: 400 });
-      }
-      streetRef = found.ref;
-      streetLabel = found.label;
-      streetFromSettlementDirectory = found.kind === 'settlement';
+      // Без підказки (стара модалка, мережа) — та сама логіка на сервері:
+      // Prom-референси → поля Rozetka → розбір тексту (lib/np-address).
+      const { data: ord } = await serviceClient
+        .from('orders')
+        .select('delivery_city_name, rz:rozetka_data->delivery, pm:prom_data->delivery_provider_data')
+        .eq('id', orderId)
+        .maybeSingle();
+      const prepared = await prepareCourierAddress((m, c, p) => npCall(apiKey, m, c, p), {
+        text: recipientAddress,
+        cityName: (ord?.delivery_city_name as string | null) ?? null,
+        rz: ord?.rz as RozetkaDelivery,
+        pm: ord?.pm as PromProviderData,
+        settlementRef: cityRecipientRef,
+        cityRef: finalCityRecipient,
+      });
+      if (!prepared.ok) return NextResponse.json({ error: prepared.error }, { status: 400 });
+      streetRef = prepared.streetRef;
+      streetLabel = prepared.streetLabel;
+      parsedHouse = prepared.house;
+      parsedFlat = prepared.flat;
+      streetFromSettlementDirectory = prepared.kind === 'settlement';
     }
   }
 
@@ -203,10 +191,12 @@ export async function POST(req: NextRequest) {
     });
     if (!aRes.success || !aRes.data?.[0]?.Ref) {
       const npMsg = aRes.errors?.filter(Boolean).join('; ') || 'Не вдалося створити адресу одержувача у НП';
-      // Ref із довідника населеного пункту НП не завжди приймає в Address.save —
-      // кажемо прямо, що вулицю знайшли, але далі треба руками.
+      // Перевірено наживо 28.10.2026: Ref із довідника населеного пункту (села)
+      // Address.save не приймає — «Street doesn't exists», і з CityRef, і без;
+      // варіант ЕН «адреса рядком» (NewAddress=1) таку вулицю теж не знаходить.
+      // Кажемо прямо: кур'єром через API сюди не виписати.
       const detail = streetFromSettlementDirectory
-        ? ` Вулицю «${streetLabel}» НП знає лише в довіднику населеного пункту і не прийняла її для адреси. Створіть ЕН у кабінеті НП або оформіть доставку у відділення.`
+        ? ` Вулицю «${streetLabel}» НП знає лише в довіднику населеного пункту і через API не приймає її для кур'єрської адреси. Оформіть доставку у відділення або створіть ЕН у кабінеті НП.`
         : '';
       return NextResponse.json({ error: `${npMsg}.${detail}`.replace('..', '.') }, { status: 400 });
     }

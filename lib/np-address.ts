@@ -183,10 +183,12 @@ export type NpCall = (modelName: string, calledMethod: string, props: Record<str
 type NpStreetRow = { Ref: string; Description: string; StreetsType: string };
 type NpSettlementStreetRow = { SettlementStreetRef: string; SettlementStreetDescription: string; StreetsType: string; Present: string };
 
+export type StreetSuggestion = { ref: string; label: string; kind: 'city' | 'settlement' };
+
 export type ResolvedStreet =
   | { kind: 'city'; ref: string; label: string }
   | { kind: 'settlement'; ref: string; label: string }
-  | { kind: 'none'; suggestions: string[] };
+  | { kind: 'none'; suggestions: StreetSuggestion[] };
 
 /**
  * Пошук вулиці в НП. Спочатку міський довідник (Address.getStreet за CityRef —
@@ -200,14 +202,14 @@ export async function resolveStreet(
   opts: { cityRef: string | null; settlementRef: string | null; parsed: Pick<ParsedAddress, 'street' | 'streetType'> },
 ): Promise<ResolvedStreet> {
   const terms = [...new Set([...significantStems(opts.parsed.street), opts.parsed.street.toLowerCase()])].filter(Boolean);
-  const seen = new Map<string, string>();
+  const seen = new Map<string, StreetSuggestion>();
 
   if (opts.cityRef) {
     for (const term of terms) {
       const res = await np('Address', 'getStreet', { CityRef: opts.cityRef, FindByString: term, Limit: 50, Page: 1 });
       const rows = ((res.data ?? []) as NpStreetRow[]).filter(r => r?.Ref && r?.Description);
       const cands = rows.map(r => ({ ref: r.Ref, description: r.Description, type: r.StreetsType ?? '' }));
-      for (const c of cands) seen.set(c.ref, `${c.type} ${c.description}`.trim());
+      for (const c of cands) seen.set(c.ref, { ref: c.ref, label: `${c.type} ${c.description}`.trim(), kind: 'city' });
       const best = rankStreets(cands, opts.parsed);
       if (best) return { kind: 'city', ref: best.ref, label: `${best.type} ${best.description}`.trim() };
     }
@@ -219,13 +221,103 @@ export async function resolveStreet(
       const first = (res.data ?? [])[0] as { Addresses?: NpSettlementStreetRow[] } | undefined;
       const rows = (first?.Addresses ?? []).filter(r => r?.SettlementStreetRef);
       const cands = rows.map(r => ({ ref: r.SettlementStreetRef, description: r.SettlementStreetDescription ?? r.Present, type: r.StreetsType ?? '' }));
-      for (const c of cands) seen.set(c.ref, `${c.type} ${c.description}`.trim());
+      for (const c of cands) seen.set(c.ref, { ref: c.ref, label: `${c.type} ${c.description}`.trim(), kind: 'settlement' });
       const best = rankStreets(cands, opts.parsed);
       if (best) return { kind: 'settlement', ref: best.ref, label: `${best.type} ${best.description}`.trim() };
     }
   }
 
   return { kind: 'none', suggestions: [...seen.values()].slice(0, 6) };
+}
+
+/**
+ * SettlementRef (те, що обирає модалка через searchSettlements) → CityRef, який
+ * потрібен Counterparty.save, Address.save і CityRecipient. Найнадійніше —
+ * CityRef будь-якого складу цього населеного пункту; у селах без відділень —
+ * DeliveryCity із getSettlements.
+ */
+export async function resolveCityRef(np: NpCall, settlementRef: string): Promise<string | null> {
+  const wh = await np('Address', 'getWarehouses', { SettlementRef: settlementRef, Limit: 1, Page: 1 });
+  const fromWh = (wh.data?.[0] as { CityRef?: string } | undefined)?.CityRef;
+  if (fromWh) return fromWh;
+  const st = await np('Address', 'getSettlements', { Ref: settlementRef, Limit: 1 });
+  const delivery = (st.data?.[0] as { DeliveryCity?: string } | undefined)?.DeliveryCity;
+  return delivery && delivery !== settlementRef ? delivery : null;
+}
+
+export type CourierAddressInput = {
+  /** Текст із поля модалки (авто-підставлений із замовлення або виправлений менеджером) */
+  text: string;
+  cityName: string | null;
+  rz: RozetkaDelivery;
+  pm: PromProviderData;
+  settlementRef: string;
+  cityRef: string;
+};
+
+export type CourierAddressOk = {
+  ok: true;
+  source: 'prom' | 'rozetka' | 'text';
+  kind: 'city' | 'settlement';
+  streetRef: string;
+  streetLabel: string;
+  house: string;
+  flat: string;
+  /** «просп. Полтавський, 2, кв. а» — що піде в НП */
+  label: string;
+};
+export type CourierAddressFail = {
+  ok: false;
+  reason: 'parse' | 'not_found';
+  error: string;
+  parsed: ParsedAddress;
+  suggestions: StreetSuggestion[];
+};
+export type CourierAddressResult = CourierAddressOk | CourierAddressFail;
+
+/**
+ * Повний шлях від того, що є в замовленні й полі модалки, до вулиці/будинку/
+ * квартири для НП. Джерела за пріоритетом: Prom (готові NP-референси) →
+ * Rozetka (окремі поля) → розбір тексту. Структуровані дані беремо лише поки
+ * менеджер не змінив номер будинку в полі — інакше вірити треба йому.
+ * Одна й та сама функція обслуговує і підказку в модалці, і створення ЕН —
+ * менеджер бачить саме те, що піде в накладну.
+ */
+export async function prepareCourierAddress(np: NpCall, input: CourierAddressInput): Promise<CourierAddressResult> {
+  const typed = parseAddress(input.text, input.cityName);
+  const promRefs = structuredFromProm(input.pm);
+  if (promRefs && promRefs.cityRef === input.cityRef && textKeepsAddress(input.text, promRefs.house, promRefs.streetName)) {
+    const flat = typed.flat || promRefs.flat;
+    return {
+      ok: true, source: 'prom', kind: 'city', streetRef: promRefs.streetRef, streetLabel: promRefs.streetName,
+      house: promRefs.house, flat, label: addressLabel(promRefs.streetName, promRefs.house, flat),
+    };
+  }
+
+  const rzParsed = structuredFromRozetka(input.rz);
+  const fromRz = !!rzParsed && textKeepsAddress(input.text, rzParsed.house, rzParsed.street);
+  const parsed: ParsedAddress = fromRz ? { ...rzParsed!, flat: typed.flat || rzParsed!.flat } : typed;
+  if (!parsed.street || !parsed.house) {
+    return {
+      ok: false, reason: 'parse', parsed, suggestions: [],
+      error: 'Не вдалося розібрати адресу. Вкажіть вулицю та номер будинку (напр. «вул. Калинова, 104»).',
+    };
+  }
+
+  const found = await resolveStreet(np, { cityRef: input.cityRef, settlementRef: input.settlementRef, parsed });
+  if (found.kind === 'none') {
+    const hint = found.suggestions.length
+      ? ` Схожі вулиці в довіднику НП: ${found.suggestions.map(s => s.label).join('; ')} — оберіть одну або виправте назву.`
+      : ' Перевірте місто й назву вулиці в полі адреси.';
+    return {
+      ok: false, reason: 'not_found', parsed, suggestions: found.suggestions,
+      error: `Вулицю «${parsed.street}» не знайдено в Новій Пошті для цього міста.${hint}`,
+    };
+  }
+  return {
+    ok: true, source: fromRz ? 'rozetka' : 'text', kind: found.kind, streetRef: found.ref, streetLabel: found.label,
+    house: parsed.house, flat: parsed.flat, label: addressLabel(found.label, parsed.house, parsed.flat),
+  };
 }
 
 // ── Структуровані дані маркетплейсів ────────────────────────────────────────
@@ -282,6 +374,19 @@ export function textKeepsHouse(text: string | null | undefined, house: string): 
   if (!text || !house) return false;
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '');
   return norm(text).includes(norm(house));
+}
+
+/**
+ * Те саме, але ще й вулиця: менеджер міг лишити будинок і замінити вулицю
+ * («вул. Соборна, 2» замість «просп. Полтавський, 2») — тоді дані маркетплейсу
+ * вже не про цю адресу. Порівнюємо за основою найдовшого слова, щоб відмінок
+ * і тип («Полтавська» / «Полтавський») не вважались іншою вулицею.
+ */
+export function textKeepsAddress(text: string | null | undefined, house: string, street: string): boolean {
+  if (!textKeepsHouse(text, house)) return false;
+  const [mainStem] = significantStems(street);
+  if (!mainStem) return true;
+  return (text ?? '').toLowerCase().replace(/[’`]/g, "'").includes(mainStem);
 }
 
 /** Людський підпис адреси для снапшоту ЕН і повідомлень. */

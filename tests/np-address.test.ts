@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   parseAddress, normalizeHouse, stem, significantStems, rankStreets, resolveStreet,
-  structuredFromRozetka, structuredFromProm, textKeepsHouse, addressLabel,
+  structuredFromRozetka, structuredFromProm, textKeepsHouse, textKeepsAddress, addressLabel,
+  prepareCourierAddress, resolveCityRef,
 } from '../lib/np-address';
 
 // Реальні рядки delivery_address кур'єрських замовлень з бази (Rozetka/Prom),
@@ -137,7 +138,78 @@ describe('resolveStreet', () => {
       ? { success: true, data: [{ Ref: '1', Description: 'Надії', StreetsType: 'пров.' }] }
       : { success: true, data: [] });
     const r = await resolveStreet(np, { cityRef: 'CITY', settlementRef: null, parsed: { street: 'Надії Алексєєнко', streetType: null } });
-    expect(r).toEqual({ kind: 'none', suggestions: ['пров. Надії'] });
+    expect(r).toEqual({ kind: 'none', suggestions: [{ ref: '1', label: 'пров. Надії', kind: 'city' }] });
+  });
+});
+
+describe('resolveCityRef', () => {
+  it('CityRef зі складу населеного пункту', async () => {
+    const np = vi.fn(async () => ({ success: true, data: [{ CityRef: 'CITY' }] }));
+    expect(await resolveCityRef(np, 'SET')).toBe('CITY');
+  });
+  it('село без відділень — DeliveryCity із getSettlements', async () => {
+    const np = vi.fn(async (_m: string, method: string) => method === 'getWarehouses'
+      ? { success: true, data: [] }
+      : { success: true, data: [{ DeliveryCity: 'DELIV' }] });
+    expect(await resolveCityRef(np, 'SET')).toBe('DELIV');
+  });
+  it('нічого — null (роут покаже «оберіть місто зі списку»)', async () => {
+    const np = vi.fn(async () => ({ success: true, data: [] }));
+    expect(await resolveCityRef(np, 'SET')).toBeNull();
+  });
+});
+
+describe('prepareCourierAddress — повний шлях модалки/роуту', () => {
+  const noNp = vi.fn(async () => ({ success: true, data: [] }));
+  const promPd = { provider: 'nova_poshta', recipient_address: { city_id: 'CITY', street_id: 'STREET', street_name: 'площа Паланок', building_number: '27', apartment_number: '4' } };
+
+  it('Prom: референси беруться без жодного пошуку в НП', async () => {
+    const r = await prepareCourierAddress(noNp, { text: 'площа Паланок, буд.27', cityName: 'Мукачево', rz: null, pm: promPd, settlementRef: 'SET', cityRef: 'CITY' });
+    expect(r).toEqual({ ok: true, source: 'prom', kind: 'city', streetRef: 'STREET', streetLabel: 'площа Паланок', house: '27', flat: '4', label: 'площа Паланок, 27, кв. 4' });
+    expect(noNp).not.toHaveBeenCalled();
+  });
+
+  it('Prom, але менеджер змінив будинок — референс не підходить, шукаємо за текстом', async () => {
+    const np = vi.fn(async (_m: string, method: string) => method === 'getStreet'
+      ? { success: true, data: [{ Ref: 'P', Description: 'Паланок', StreetsType: 'площа' }] }
+      : { success: true, data: [] });
+    const r = await prepareCourierAddress(np, { text: 'площа Паланок, 29', cityName: 'Мукачево', rz: null, pm: promPd, settlementRef: 'SET', cityRef: 'CITY' });
+    expect(r).toMatchObject({ ok: true, source: 'text', streetRef: 'P', house: '29', flat: '', label: 'площа Паланок, 29' });
+  });
+
+  it('Rozetka: поля замовлення + вулиця з довідника; квартира «а» зберігається', async () => {
+    const np = vi.fn(async (_m: string, method: string) => method === 'getStreet'
+      ? { success: true, data: [
+        { Ref: 'a', Description: 'Полтавський', StreetsType: 'пров.' },
+        { Ref: 'b', Description: 'Полтавський', StreetsType: 'просп.' },
+      ] }
+      : { success: true, data: [] });
+    const rz = { place_street: 'просп. Полтавський', place_house: '2', place_flat: 'а', place_number: '' };
+    const r = await prepareCourierAddress(np, { text: 'просп. Полтавський, 2, кв. а', cityName: 'Кременчук', rz, pm: null, settlementRef: 'SET', cityRef: 'CITY' });
+    expect(r).toMatchObject({ ok: true, source: 'rozetka', kind: 'city', streetRef: 'b', house: '2', flat: 'а', label: 'просп. Полтавський, 2, кв. а' });
+  });
+
+  it('Rozetka, але менеджер замінив вулицю при тому самому будинку — шукаємо за його текстом', async () => {
+    const np = vi.fn(async (_m: string, method: string) => method === 'getStreet'
+      ? { success: true, data: [{ Ref: 's', Description: 'Соборна', StreetsType: 'вул.' }] }
+      : { success: true, data: [] });
+    const rz = { place_street: 'просп. Полтавський', place_house: '2', place_flat: 'а', place_number: '' };
+    const r = await prepareCourierAddress(np, { text: 'вул. Соборна, 2', cityName: 'Кременчук', rz, pm: null, settlementRef: 'SET', cityRef: 'CITY' });
+    expect(r).toMatchObject({ ok: true, source: 'text', streetRef: 's', house: '2', flat: '', label: 'вул. Соборна, 2' });
+  });
+
+  it('без будинку — зрозуміла помилка розбору', async () => {
+    const r = await prepareCourierAddress(noNp, { text: 'вул. Хрещатик', cityName: 'Київ', rz: null, pm: null, settlementRef: 'SET', cityRef: 'CITY' });
+    expect(r).toMatchObject({ ok: false, reason: 'parse' });
+  });
+
+  it('вулиці немає — помилка зі схожими, які можна обрати', async () => {
+    const np = vi.fn(async (_m: string, method: string) => method === 'getStreet'
+      ? { success: true, data: [{ Ref: 'n', Description: 'Надії', StreetsType: 'пров.' }] }
+      : { success: true, data: [] });
+    const r = await prepareCourierAddress(np, { text: 'вул. Надії Алексеенко, 84', cityName: 'Дніпро', rz: null, pm: null, settlementRef: 'SET', cityRef: 'CITY' });
+    expect(r).toMatchObject({ ok: false, reason: 'not_found', suggestions: [{ ref: 'n', label: 'пров. Надії', kind: 'city' }] });
+    if (!r.ok) expect(r.error).toContain('пров. Надії');
   });
 });
 
@@ -162,6 +234,13 @@ describe('структуровані дані маркетплейсів', () =>
     expect(textKeepsHouse('просп. Богдана Хмельницького, 24 А', '24А')).toBe(true);
     expect(textKeepsHouse('просп. Полтавський, 4', '2')).toBe(false);
     expect(textKeepsHouse('', '2')).toBe(false);
+  });
+
+  it('textKeepsAddress: заміна вулиці при тому самому будинку — теж правка менеджера', () => {
+    expect(textKeepsAddress('просп. Полтавський, 2, кв. а', '2', 'Полтавський')).toBe(true);
+    expect(textKeepsAddress('вул. Полтавська, 2', '2', 'Полтавський')).toBe(true);   // відмінок/тип — та сама вулиця
+    expect(textKeepsAddress('вул. Соборна, 2', '2', 'Полтавський')).toBe(false);
+    expect(textKeepsAddress('площа Паланок, буд.27', '27', 'площа Паланок')).toBe(true);
   });
 
   it('addressLabel', () => {
