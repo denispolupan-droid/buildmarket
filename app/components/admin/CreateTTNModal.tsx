@@ -162,6 +162,27 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [selectedWH,   setSelectedWH]   = useState<Warehouse | null>(null);
   const [whDropOpen,   setWhDropOpen]   = useState(false);
   const [whLoading,    setWhLoading]    = useState(false);
+  // Пошук відділення за номером з адреси: що шукали і чи не знайшли — щоб під
+  // полем сказати про це й дати повторити (НП могла відповісти лімітом запитів).
+  const [whResolve, setWhResolve] = useState<{ settlementRef: string; num: string | null; failed: boolean }>({ settlementRef: '', num: null, failed: false });
+
+  async function retryWhByNumber() {
+    if (!whResolve.settlementRef || !whResolve.num) return;
+    const num = whResolve.num;
+    setWhLoading(true);
+    try {
+      const data: Warehouse[] = await npRequest('Address', 'getWarehouses', { SettlementRef: whResolve.settlementRef, FindByString: num, Limit: 5, Page: 1 });
+      const filtered = isPostomat ? data.filter(w => w.Description.toLowerCase().includes('поштомат')) : data;
+      const wh = filtered.find(w => w.Number === num);
+      if (wh) {
+        setWarehouses(prev => prev.some(p => p.Ref === wh.Ref) ? prev : [wh, ...prev]);
+        setSelectedWH(wh); setWhQuery(wh.Description);
+        setWhResolve(s => ({ ...s, failed: false }));
+      }
+    } finally {
+      setWhLoading(false);
+    }
+  }
 
   const [senderInfo,    setSenderInfo]    = useState<SenderInfo | null>(null);
   const [senderLoading, setSenderLoading] = useState(true);
@@ -265,24 +286,29 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         // server-side FindByString search for the parsed number alongside the regular browse
         // list and merge them — guarantees the exact match is found regardless of city size,
         // while still leaving the full list available for a manual override.
-        const numMatch = order.delivery_address?.match(/№\s*(\d+)/);
-        const num = numMatch?.[1];
-        const bulkPromise = npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, Limit: 500, Page: 1 });
-        const targetedPromise = num
-          ? npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, FindByString: num, Limit: 5, Page: 1 })
-          : Promise.resolve([] as Warehouse[]);
+        const num = order.delivery_address?.match(/№\s*(\d+)/)?.[1] ?? null;
+        setWhResolve({ settlementRef: match.Ref, num, failed: false });
 
-        return Promise.all([bulkPromise, targetedPromise])
-          .then(([bulkData, targetedData]: [Warehouse[], Warehouse[]]) => {
-            const merged = [...targetedData, ...bulkData.filter(w => !targetedData.some(t => t.Ref === w.Ref))];
-            const filtered = isPostomat ? merged.filter(w => w.Description.toLowerCase().includes('поштомат')) : merged;
-            setWarehouses(filtered);
-            if (num) {
-              const wh = filtered.find(w => w.Number === num);
-              if (wh) { setSelectedWH(wh); setWhQuery(wh.Description); }
-              else setWhQuery(num);
-              return;
-            }
+        // Спершу точковий пошук за номером (саме він і потрібен), потім загальний
+        // список — послідовно, а не залпом: НП обмежує запити на ключ за секунду,
+        // і паралельна пара частково верталась із «To many requests» — поштомат
+        // «не знаходився», у полі лишався голий номер (29.10.2026, Київ, №57517).
+        // Проксі тепер і сам повторює такі відповіді (lib/np-retry); якщо й це не
+        // допомогло — кажемо про це під полем і даємо «Повторити пошук».
+        return (async () => {
+          const targetedData: Warehouse[] = num
+            ? await npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, FindByString: num, Limit: 5, Page: 1 })
+            : [];
+          const bulkData: Warehouse[] = await npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, Limit: 500, Page: 1 });
+          const merged = [...targetedData, ...bulkData.filter(w => !targetedData.some(t => t.Ref === w.Ref))];
+          const filtered = isPostomat ? merged.filter(w => w.Description.toLowerCase().includes('поштомат')) : merged;
+          setWarehouses(filtered);
+          if (num) {
+            const wh = filtered.find(w => w.Number === num);
+            if (wh) { setSelectedWH(wh); setWhQuery(wh.Description); }
+            else { setWhQuery(num); setWhResolve(s => ({ ...s, failed: true })); }
+            return;
+          }
             // У селах відділення без «№» в адресі: «Пункт приймання-видачі (до 30 кг):
             // вул. Шкільна, 1-А» — парсити нема чого, і автопідбір мовчки не спрацьовував.
             const candidates = isPostomat ? filtered : filtered.filter(w => !w.Description.toLowerCase().includes('поштомат'));
@@ -294,7 +320,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             const addr = norm(order.delivery_address ?? '');
             const byDesc = candidates.filter(w => addr.includes(norm(w.Description)));
             if (byDesc.length === 1) { setSelectedWH(byDesc[0]); setWhQuery(byDesc[0].Description); }
-          }).finally(() => setWhLoading(false));
+        })().finally(() => setWhLoading(false));
       })
       .finally(() => setCityLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -689,6 +715,15 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                   {filteredWH.slice(0, 50).map(w => (
                     <button key={w.Ref} onMouseDown={() => { setSelectedWH(w); setWhQuery(w.Description); setWhDropOpen(false); }} style={dropBtn}>{w.Description}</button>
                   ))}
+                </div>
+              )}
+              {whResolve.failed && !selectedWH && !whLoading && (
+                <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px', lineHeight: 1.4 }}>
+                  №{whResolve.num} НП не віддала — зазвичай це ліміт запитів, а не відсутній {isPostomat ? 'поштомат' : 'пункт'}.{' '}
+                  <button type="button" onClick={retryWhByNumber}
+                    style={{ border: 'none', background: 'none', padding: 0, color: '#1E3A5F', fontWeight: 700, cursor: 'pointer', fontSize: '11px' }}>
+                    Повторити пошук
+                  </button>
                 </div>
               )}
             </div>}

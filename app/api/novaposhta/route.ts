@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withNpRetry } from '../../../lib/np-retry';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -36,20 +37,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const response = await fetch(NP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey, ...rest }),
+    // «To many requests» від НП повторюємо з паузою тут, у проксі, — тоді це
+    // покриває всіх клієнтів (модалка ТТН, вибір відділення, кошик) одразу.
+    const data = await withNpRetry(async () => {
+      const response = await fetch(NP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, ...rest }),
+      });
+      if (!response.ok) return { success: false, errors: [], _upstreamStatus: response.status };
+      return response.json() as Promise<{ success?: boolean; errors?: unknown[]; _upstreamStatus?: number }>;
     });
 
-    if (!response.ok) {
+    if (data._upstreamStatus) {
       return NextResponse.json(
-        { success: false, error: `Nova Poshta upstream error: ${response.status}` },
+        { success: false, error: `Nova Poshta upstream error: ${data._upstreamStatus}` },
         { status: 502 }
       );
     }
-
-    const data = await response.json();
     return NextResponse.json(data);
   } catch (err) {
     console.error('[novaposhta route]', err);

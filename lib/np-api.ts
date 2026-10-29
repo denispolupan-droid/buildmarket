@@ -5,6 +5,8 @@
 // (повернення, видалення ЕН) чужий ключ дає «Документ не належить даному
 // користувачу» — тому precedence саме такий, як у /api/admin/create-ttn.
 
+import { withNpRetry } from './np-retry';
+
 export const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
 export type NpResponse<T> = {
@@ -21,12 +23,15 @@ export async function npCall<T = Record<string, unknown>>(
   calledMethod: string,
   methodProperties: object = {},
 ): Promise<NpResponse<T>> {
-  const res = await fetch(NP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
+  // Ліміт запитів НП («To many requests») — повторюємо з паузою, див. lib/np-retry
+  return withNpRetry(async () => {
+    const res = await fetch(NP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
+    });
+    return res.json() as Promise<NpResponse<T>>;
   });
-  return res.json() as Promise<NpResponse<T>>;
 }
 
 export async function getNpApiKey(): Promise<string> {

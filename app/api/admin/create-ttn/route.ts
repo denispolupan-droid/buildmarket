@@ -8,6 +8,7 @@ import {
   type RozetkaDelivery, type PromProviderData,
 } from '../../../../lib/np-address';
 import { legalRecipientFromCustomer, taxNumberLabel } from '../../../../lib/np-legal-recipient';
+import { withNpRetry } from '../../../../lib/np-retry';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -16,13 +17,18 @@ const serviceClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+// Кілька викликів поспіль (місто, контрагент, адреса, ЕН) впираються в ліміт
+// НП «To many requests» — повторюємо з паузою (lib/np-retry), інакше накладна
+// падала б із цією помилкою посеред ланцюжка.
 async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {
-  const res = await fetch(NP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
+  return withNpRetry(async () => {
+    const res = await fetch(NP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
+    });
+    return res.json();
   });
-  return res.json();
 }
 
 function normalizePhone(phone: string): string {
