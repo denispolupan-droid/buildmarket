@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, X, ArrowLeftRight, Landmark, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
 import type { LedgerRow, InTransit } from './page';
+import SmartSecurityCheck from './SmartSecurityCheck';
 
 type CabinetRow = {
   rozetkaOrderId: number;
@@ -607,6 +608,8 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
 
               {/* Звірка по статтях — комісія це лише частина того, що площадка з нас бере */}
               <ArticlesTable articles={cabinetData.articles ?? []} total={cabinetData.articlesTotal} theirLabel="Rozetka" />
+
+              <SmartSecurityCheck />
 
               <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-card)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 110px 110px 90px 190px', padding: '8px 14px', background: 'var(--bg-soft)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
