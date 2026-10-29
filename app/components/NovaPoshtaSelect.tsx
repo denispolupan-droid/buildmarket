@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, Loader2 } from 'lucide-react';
+import { pickWarehouseByAddress, warehouseNumberFromAddress } from '../../lib/np-resolve';
 
 type Settlement = {
   Ref: string;
@@ -31,6 +32,11 @@ type Props = {
   initialCityRef?: string;
   initialWarehouseRef?: string;
   initialAddress?: string;
+  /** Текст відділення/поштомату з вихідного замовлення («Відділення №4, вул. …»),
+   *  коли Ref немає (копія замовлення з Rozetka/Prom): місто тоді шукаємо за
+   *  назвою, а відділення підбираємо за цим текстом — і повідомляємо батьку
+   *  через колбеки, бо в нього Ref ще немає. */
+  initialPoint?: string;
   onCityChange?: (city: string) => void;
   onWarehouseChange?: (warehouse: string) => void;
   onAddressChange?: (address: string) => void;
@@ -78,7 +84,7 @@ async function npRequest(modelName: string, calledMethod: string, methodProperti
   return data.success ? data.data : [];
 }
 
-export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', initialCityRef = '', initialWarehouseRef = '', initialAddress = '', onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
+export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', initialCityRef = '', initialWarehouseRef = '', initialAddress = '', initialPoint = '', onCityChange, onWarehouseChange, onAddressChange, onCityRefChange, onWarehouseRefChange }: Props) {
   const tr = NP_T[lang];
   const [cityQuery,      setCityQuery]      = useState(initialCity);
   const [settlements,    setSettlements]    = useState<Settlement[]>([]);
@@ -130,6 +136,62 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
       .finally(() => setWhLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCityRef, initialWarehouseRef, mode]);
+
+  // Є назва міста, але немає Ref — так приходить копія замовлення з Rozetka/Prom
+  // (маркетплейси Ref НП не віддають). Раніше назва лишалась просто текстом у
+  // полі: місто «не вибране», список відділень не вантажився, і поле відділення
+  // взагалі не з'являлось. Тепер робимо те саме, що модалка ТТН: шукаємо місто
+  // за назвою, беремо перший збіг, підбираємо відділення за текстом адреси
+  // (lib/np-resolve) і віддаємо Ref батьку. Якщо відділення не підібралось,
+  // у поле лягає його номер — менеджеру лишається підтвердити зі списку.
+  const resolvedByName = useRef(false);
+  useEffect(() => {
+    if (resolvedByName.current || restored.current || initialCityRef || !initialCity) return;
+    resolvedByName.current = true;
+    let alive = true;
+    setCityLoading(true);
+    npRequest('Address', 'searchSettlements', { CityName: initialCity, Limit: 5, Page: 1 })
+      .then(async (data: { Addresses: Settlement[] }[]) => {
+        const match = data[0]?.Addresses?.[0];
+        if (!match || !alive) return;
+        setSelectedCity(match);
+        setCityQuery(match.Present);
+        onCityChange?.(match.Present);
+        onCityRefChange?.(match.Ref);
+        if (mode !== 'warehouse' && mode !== 'postomat') return;
+
+        // У великих містах відділень більше, ніж одна сторінка на 500, тож
+        // потрібний номер шукаємо ще й окремо (FindByString) і зливаємо списки.
+        setWhLoading(true);
+        try {
+          const num = warehouseNumberFromAddress(initialPoint);
+          const [bulk, targeted]: [Warehouse[], Warehouse[]] = await Promise.all([
+            npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, Limit: 500, Page: 1 }),
+            num ? npRequest('Address', 'getWarehouses', { SettlementRef: match.Ref, FindByString: num, Limit: 5, Page: 1 }) : Promise.resolve([]),
+          ]);
+          if (!alive) return;
+          const merged = [...targeted, ...bulk.filter(w => !targeted.some(t => t.Ref === w.Ref))];
+          const filtered = mode === 'postomat'
+            ? merged.filter(w => w.Description.toLowerCase().includes('поштомат'))
+            : merged;
+          setWarehouses(filtered);
+          const wh = pickWarehouseByAddress(filtered, initialPoint, mode === 'postomat');
+          if (wh) {
+            setSelectedWH(wh);
+            setWarehouseQuery(wh.Description);
+            onWarehouseChange?.(wh.Description);
+            onWarehouseRefChange?.(wh.Ref);
+          } else if (num) {
+            setWarehouseQuery(num);
+          }
+        } finally {
+          if (alive) setWhLoading(false);
+        }
+      })
+      .finally(() => { if (alive) setCityLoading(false); });
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCity, initialCityRef, mode]);
 
   const searchCities = useCallback((q: string) => {
     if (q.length < 2) { setSettlements([]); return; }

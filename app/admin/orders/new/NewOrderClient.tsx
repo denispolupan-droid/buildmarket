@@ -155,7 +155,8 @@ export default function NewOrderClient() {
           contact, phone, email,
           deliveryType:         delivery,
           deliverySubtype:      delivery === 'nova' ? novaSubtype : null,
-          deliveryAddress:      delivery === 'nova' && novaSubtype === 'courier' ? address : (delivery === 'kharkiv' ? address : null),
+          // Для відділення/поштомату в address — назва точки НП, інакше картка показує лише місто
+          deliveryAddress:      delivery === 'nova' || delivery === 'kharkiv' ? (address || null) : null,
           deliveryCityRef:      delivery === 'nova' ? novaCityRef : null,
           deliveryCityName:     delivery === 'nova' ? novaCityName : null,
           deliveryWarehouseRef: delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') ? novaWarehouseRef : null,
@@ -372,8 +373,9 @@ export default function NewOrderClient() {
             {novaSubtype && (
               <NovaPoshtaSelect
                 mode={novaSubtype}
-                onCityChange={setNovaCityName}
+                onCityChange={city => { setNovaCityName(city); if (novaSubtype !== 'courier') setAddress(''); }}
                 onCityRefChange={setNovaCityRef}
+                onWarehouseChange={setAddress}
                 onWarehouseRefChange={setNovaWarehouseRef}
                 onAddressChange={setAddress}
               />

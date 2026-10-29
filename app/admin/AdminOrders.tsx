@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff, Clock, FileText, House, RefreshCw } from 'lucide-react';
+import { MapPin, CreditCard, Phone, Building2, Package, Hash, Truck, Pencil, Trash2, Plus, X, Check, TrendingUp, ChevronDown, ChevronUp, Search, Printer, ShoppingCart, Mail, Send, Copy, ClipboardList, MoreHorizontal, Save, Wallet, Tag, MessageSquare, UserPlus, Zap, AlertTriangle, Settings, ExternalLink, RotateCcw, PhoneOff, Clock, FileText, House, RefreshCw, Info } from 'lucide-react';
 import type { OrderFulfillmentInfo } from '../../lib/accounting/dropship';
 import type { FulfillmentSource } from '../../lib/accounting/fulfillment';
 
@@ -34,6 +34,7 @@ type FulfillmentData = OrderFulfillmentInfo & {
 import CreateTTNModal from '../components/admin/CreateTTNModal';
 import { phoneLocal, phoneLocalDigits } from '../../lib/notify/phone';
 import { buildCopyLines, describeCopy, mapCopyDelivery, mapCopyPayment, copyComment, type CopyProduct } from '../../lib/order-copy';
+import { formNovaSubtype } from '../../lib/np-resolve';
 import { ttnFollowUpAction, type TtnSource } from '../../lib/orders/ttn-followup';
 import { storageDaysLeft, returnTrackingLabel, type ReturnTracking } from '../../lib/np-return-tracking';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -1408,6 +1409,11 @@ export default function AdminOrders({
       const dlv = mapCopyDelivery(order.delivery_type);
       const pay = mapCopyPayment(order.payment_type);
       const place = [order.delivery_city_name, order.delivery_address].filter(Boolean).join(' · ');
+      // Підтип у БД буває 'address'/'doors' (Prom/Rozetka), а поштомат у Prom
+      // видно лише з тексту адреси — форма ж знає тільки свої три вкладки.
+      const novaSubtype = dlv.kept && dlv.delivery === 'nova'
+        ? formNovaSubtype(order.delivery_subtype, order.delivery_address)
+        : '';
 
       window.dispatchEvent(new CustomEvent('open-order-draft', {
         detail: {
@@ -1419,7 +1425,9 @@ export default function AdminOrders({
           channelCode:      'retail',
           priceTier:        tier,
           delivery:         dlv.delivery,
-          novaSubtype:      dlv.kept ? (order.delivery_subtype ?? '') : '',
+          novaSubtype,
+          // Ref міста/відділення в маркетплейсних замовленнях порожні — тоді
+          // форма (NovaPoshtaSelect) підбирає їх за назвою міста і текстом адреси.
           novaCityRef:      dlv.kept ? (order.delivery_city_ref ?? '') : '',
           novaCityName:     dlv.kept ? (order.delivery_city_name ?? '') : '',
           novaWarehouseRef: dlv.kept ? (order.delivery_warehouse_ref ?? '') : '',
@@ -5135,16 +5143,26 @@ export default function AdminOrders({
                             <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
                             <input type="text" value={ttnValues[order.id] ?? ''} onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value }))}
                               placeholder="59000000000000"
-                              style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: order.tracking_number ? '28px' : '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
-                            {/* Швидке копіювання збереженої ТТН — щоб не виділяти номер мишкою (прохання власника 02.09) */}
+                              style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: order.tracking_number ? '52px' : '8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                            {/* Усередині поля, біля самого номера: «Деталі ЕН» (що вписано в
+                                накладну) і швидке копіювання (прохання власника 02.09). Деталі
+                                раніше стояли окремою кнопкою в ряду дій і губились серед них —
+                                це довідка про номер, а не дія з ним (29.10). */}
                             {order.tracking_number && (
-                              <button onClick={() => copyTtn(order.tracking_number!)} title="Копіювати ТТН"
-                                style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
-                                  width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-                                  color: copiedTtn === order.tracking_number ? '#15803D' : 'var(--text-muted)' }}>
-                                {copiedTtn === order.tracking_number ? <Check size={13} /> : <Copy size={13} />}
-                              </button>
+                              <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '2px' }}>
+                                <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
+                                  title="Деталі ЕН: післяплата, отримувач, відділення, вага, статус"
+                                  style={{ width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--brand-blue)' }}>
+                                  <Info size={14} />
+                                </button>
+                                <button onClick={() => copyTtn(order.tracking_number!)} title="Копіювати ТТН"
+                                  style={{ width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                                    color: copiedTtn === order.tracking_number ? '#15803D' : 'var(--text-muted)' }}>
+                                  {copiedTtn === order.tracking_number ? <Check size={13} /> : <Copy size={13} />}
+                                </button>
+                              </div>
                             )}
                           </div>
                           {(() => {
@@ -5200,16 +5218,6 @@ export default function AdminOrders({
                             );
                           })()}
                           {order.tracking_number && (
-                            <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
-                              title="Деталі ЕН: післяплата, отримувач, відділення, вага, статус"
-                              style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
-                                background: 'var(--bg-card)', color: 'var(--text-secondary)',
-                                border: '1.5px solid var(--border)', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <FileText size={14} />
-                            </button>
-                          )}
-                          {order.tracking_number && (
                             <button onClick={() => printLabel(order.id, 'ttn')} disabled={rzLabelBusy === order.id}
                               className="oc-ttn-label"
                               title="Друк етикетки НП 100×100 (PDF)"
@@ -5255,13 +5263,14 @@ export default function AdminOrders({
                             // Номер і кнопка — одним рядком: місце дозволяє
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ТТН: <strong>{order.tracking_number}</strong></div>
+                              {/* Деталі ЕН — значком одразу біля номера, як і в блоці НП */}
                               <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
                                 title="Деталі ЕН: післяплата, отримувач, точка, вага, статус"
-                                style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                                Деталі
+                                style={{ width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-blue)', flexShrink: 0 }}>
+                                <Info size={14} />
                               </button>
                               <button onClick={() => printLabel(order.id, 'rozetka-delivery-ttn')} disabled={rzLabelBusy === order.id}
-                                style={{ height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                                style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                 {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                               </button>
                             </div>
@@ -5328,12 +5337,13 @@ export default function AdminOrders({
                               {/* ЕН і кнопки — одним рядком: кнопки праворуч, місце дозволяє */}
                               <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ flexShrink: 0 }}>ЕН: <strong>{order.tracking_number}</strong></div>
+                              {/* Деталі ЕН — значком одразу біля номера, як і в блоці НП */}
+                              <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
+                                title="Деталі ЕН: післяплата, отримувач, точка, вага, статус"
+                                style={{ width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-blue)', flexShrink: 0 }}>
+                                <Info size={14} />
+                              </button>
                               <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-                                <button onClick={() => setTtnDetailsFor({ id: order.id, number: order.order_number })}
-                                  title="Деталі ЕН: післяплата, отримувач, точка, вага, статус"
-                                  style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                                  Деталі
-                                </button>
                                 <button onClick={() => printLabel(order.id, 'rz-ttn')} disabled={rzLabelBusy === order.id}
                                   style={{ height: '32px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}

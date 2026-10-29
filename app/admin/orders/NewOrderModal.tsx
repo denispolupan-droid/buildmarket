@@ -591,7 +591,10 @@ export default function NewOrderModal({
       company: company || null, contact, phone, email,
       deliveryType:         delivery,
       deliverySubtype:      delivery === 'nova' ? novaSubtype : null,
-      deliveryAddress:      delivery === 'nova' && novaSubtype === 'courier' ? address
+      // Для відділення/поштомату в address лежить назва точки НП («Відділення
+      // №4: вул. …») — без неї картка замовлення показувала саме місто, хоч
+      // Ref відділення й був збережений (помічено 29.10.2026).
+      deliveryAddress:      delivery === 'nova' ? (address || null)
                             : delivery === RZ_DELIVERY_TYPE ? (address || null)
                             : delivery === 'kharkiv' ? address : null,
       deliveryCityRef:      delivery === 'nova' ? novaCityRef
@@ -1246,8 +1249,11 @@ export default function NewOrderModal({
                     initialCityRef={novaCityRef}
                     initialWarehouseRef={novaWarehouseRef}
                     initialAddress={novaSubtype === 'courier' ? address : ''}
-                    onCityChange={setNovaCityName}
+                    initialPoint={novaSubtype === 'courier' ? '' : address}
+                    // Нове місто — стара назва відділення вже не дійсна
+                    onCityChange={city => { setNovaCityName(city); if (novaSubtype !== 'courier') setAddress(''); }}
                     onCityRefChange={setNovaCityRef}
+                    onWarehouseChange={setAddress}
                     onWarehouseRefChange={setNovaWarehouseRef}
                     onAddressChange={setAddress}
                   />
