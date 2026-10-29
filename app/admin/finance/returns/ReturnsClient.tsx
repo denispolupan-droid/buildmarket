@@ -40,7 +40,7 @@ function StageBadge({ stage, status }: { stage: ReturnStage; status: string }) {
 function KindBadge({ kind }: { kind: ReturnKind }) {
   return (
     <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 7px', borderRadius: '6px',
-      background: kind === 'customer' ? '#FFFBEB' : '#EFF6FF', color: kind === 'customer' ? '#B45309' : '#1E3A5F', whiteSpace: 'nowrap' }}>
+      background: kind === 'customer' ? '#FFFBEB' : '#EFF6FF', color: kind === 'customer' ? '#B45309' : '#1E3A5F', whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>
       {kind === 'customer' ? 'ПВ · від покупця' : 'ПП · постачальнику'}
     </span>
   );
@@ -117,17 +117,17 @@ export default function ReturnsClient() {
         <div className="fin-card fin-kpi">
           <div className="fin-kpi-label"><span className={`fin-dot ${kpi?.awaiting.count ? 'orange' : 'green'}`} />Очікуємо від покупців</div>
           <div className="fin-kpi-value">{kpi ? fmt(kpi.awaiting.total) : '—'} ₴</div>
-          <div className="fin-kpi-foot">{kpi?.awaiting.count ?? 0} заяв(ок) — товар ще не отримано, проводок немає</div>
+          <div className="fin-kpi-foot"><span className="fin-kpi-cmp" title="Товар ще не отримано — проводок немає">{kpi?.awaiting.count ?? 0} заяв(ок) · товар ще не отримано</span></div>
         </div>
         <div className="fin-card fin-kpi">
           <div className="fin-kpi-label"><span className={`fin-dot ${kpi?.in_transit.count ? 'orange' : 'green'}`} />В дорозі до постачальника</div>
           <div className="fin-kpi-value">{kpi ? fmt(kpi.in_transit.total) : '—'} ₴</div>
-          <div className="fin-kpi-foot">{kpi?.in_transit.count ?? 0} відправлено, ще не прийнято — за собівартістю</div>
+          <div className="fin-kpi-foot"><span className="fin-kpi-cmp" title="Відправлено постачальнику, ще не прийнято — сума за собівартістю">{kpi?.in_transit.count ?? 0} відправлено · ще не прийнято</span></div>
         </div>
         <div className="fin-card fin-kpi">
           <div className="fin-kpi-label">Цього місяця</div>
           <div className="fin-kpi-value">{kpi?.month.count ?? 0}</div>
-          <div className="fin-kpi-foot">від покупців {kpi ? fmt(kpi.month.customer_total) : '—'} ₴ · постачальникам {kpi ? fmt(kpi.month.supplier_total) : '—'} ₴</div>
+          <div className="fin-kpi-foot"><span className="fin-kpi-cmp">від покупців {kpi ? fmt(kpi.month.customer_total) : '—'} ₴ · постачальникам {kpi ? fmt(kpi.month.supplier_total) : '—'} ₴</span></div>
         </div>
       </div>
 
