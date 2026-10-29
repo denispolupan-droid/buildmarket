@@ -158,12 +158,18 @@ async function payoutFindings(db: Db, now: Date): Promise<ReconFinding[]> {
     if (!entries.length) continue;
     const open = openItemsByOrder(entries).filter(i => i.orderId);
     const ids = open.map(i => i.orderId!) ;
-    const nums = new Map<string, number>();
+    // Борг виникає при відвантаженні, а платити площадка починає від вручення —
+    // тож відлік від пізнішої з дат (29.10: №26101139 «6 дн», а вручено вчора).
+    const nums = new Map<string, { n: number; delivered: string | null }>();
     for (let i = 0; i < ids.length; i += 200) {
-      const { data } = await db.from('orders').select('id, order_number').in('id', ids.slice(i, i + 200)).limit(200);
-      for (const o of data ?? []) nums.set(o.id, o.order_number);
+      const { data } = await db.from('orders').select('id, order_number, delivered_at').in('id', ids.slice(i, i + 200)).limit(200);
+      for (const o of data ?? []) nums.set(o.id, { n: o.order_number, delivered: o.delivered_at ? String(o.delivered_at).slice(0, 10) : null });
     }
-    out.push(payoutFinding(cp.id, cp.label, open.map(i => ({ orderNumber: nums.get(i.orderId!) ?? null, net: i.net, lastDate: i.lastDate })), now));
+    out.push(payoutFinding(cp.id, cp.label, open.map(i => {
+      const o = nums.get(i.orderId!);
+      const lastDate = o?.delivered && o.delivered > i.lastDate ? o.delivered : i.lastDate;
+      return { orderNumber: o?.n ?? null, net: i.net, lastDate };
+    }), now));
   }
   return out;
 }
