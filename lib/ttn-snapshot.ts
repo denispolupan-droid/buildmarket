@@ -32,7 +32,11 @@ export type TtnSnapshot = {
   service_type?:   string | null;
   description?:    string | null;
   sender?:    { name?: string | null; phone?: string | null; city?: string | null; point?: string | null } | null;
-  recipient?: { name?: string | null; phone?: string | null; city?: string | null; point?: string | null; address?: string | null } | null;
+  recipient?: {
+    name?: string | null; phone?: string | null; city?: string | null; point?: string | null; address?: string | null;
+    /** Одержувач-юрособа (НП: Counterparty Organization за ЄДРПОУ); name тоді — контактна особа */
+    company?: string | null; edrpou?: string | null;
+  } | null;
   /** Об'єднана посилка: номери замовлень, що їдуть цією накладною */
   orders?:    number[] | null;
   /** Що повернув перевізник при створенні (вартість доставки, комісія, дата) */

@@ -166,7 +166,11 @@ export function buildTtnDetails(input: TtnDetailsInput): TtnDetails {
   // ── Отримувач ──────────────────────────────────────────────────────────────
   const rcp: TtnRow[] = [];
   const rd = o.rozetka_delivery ?? null;
-  push(rcp, 'ПІБ', first(np?.RecipientFullName, np?.RecipientFullNameEW, s?.recipient?.name, rd?.recipient_title, o.contact));
+  // Юрособа: НП заводить її за ЄДРПОУ, ПІБ нижче — контактна особа
+  push(rcp, 'Юрособа', s?.recipient?.company
+    ? [s.recipient.company, s.recipient.edrpou ? `код ${s.recipient.edrpou}` : null].filter(Boolean).join(' · ')
+    : null);
+  push(rcp, s?.recipient?.company ? 'Контактна особа' : 'ПІБ', first(np?.RecipientFullName, np?.RecipientFullNameEW, s?.recipient?.name, rd?.recipient_title, o.contact));
   push(rcp, 'Телефон', first(np?.PhoneRecipient, s?.recipient?.phone, rd?.recipient_phone, o.phone));
   push(rcp, 'Місто', first(np?.CityRecipient, s?.recipient?.city, rd?.city?.title, rd?.city?.city_name, o.delivery_city_name));
   push(rcp, carrier === 'np' && np?.RecipientAddress && !np?.WarehouseRecipient ? 'Адреса' : 'Точка / відділення',

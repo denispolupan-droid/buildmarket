@@ -26,9 +26,10 @@ export async function GET(req: NextRequest) {
     .limit(limit);
 
   if (id) {
+    // Реквізити юрособи — для одержувача-юрособи в модалці ТТН (lib/np-legal-recipient)
     const { data } = await serviceClient
       .from('customers')
-      .select('id, name, company, phone, email, type, price_tier, city')
+      .select('id, name, company, phone, email, type, price_tier, city, legal_name, tax_number, legal_address')
       .eq('id', id)
       .limit(1);
     return NextResponse.json(data ?? []);

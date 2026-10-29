@@ -2020,6 +2020,8 @@ export default function AdminOrders({
       delivery_warehouse_ref: primary.delivery_warehouse_ref,
       delivery_subtype: primary.delivery_subtype,
       delivery_address: primary.delivery_address,
+      customer_id: primary.customer_id,
+      invoice_as_company: primary.invoice_as_company,
     });
   }
 
@@ -6398,6 +6400,8 @@ export default function AdminOrders({
             delivery_warehouse_ref: ttnModalOrder.delivery_warehouse_ref,
             delivery_subtype: ttnModalOrder.delivery_subtype,
             delivery_address: ttnModalOrder.delivery_address,
+            customer_id: ttnModalOrder.customer_id,
+            invoice_as_company: ttnModalOrder.invoice_as_company,
           }}
           onClose={() => setTtnModalOrder(null)}
           onCreated={async (ttn) => {

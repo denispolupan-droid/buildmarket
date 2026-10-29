@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { resolveDeliverySubtype } from '../../../lib/np-postomat';
 import type { CourierAddressResult, StreetSuggestion } from '../../../lib/np-address';
-import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote } from 'lucide-react';
+import { legalRecipientFromCustomer, taxNumberLabel, type LegalRecipient } from '../../../lib/np-legal-recipient';
+import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote, Building2, User } from 'lucide-react';
 import SeatsStepper, { SameSeatsToggle, sameSeatsLabel, useSeats } from './SeatsStepper';
 
 type SeatRow = { weight: string; width: string; height: string; length: string };
@@ -37,6 +38,10 @@ type OrderSnap = {
   delivery_warehouse_ref: string | null;
   delivery_subtype?: string | null;
   delivery_address?: string | null;
+  /** Прив'язаний контрагент — з його картки беремо юрособу-одержувача */
+  customer_id?: string | null;
+  /** Рахунок на підприємство — тоді й накладну за замовчуванням на юрособу */
+  invoice_as_company?: boolean | null;
 };
 
 type Props = { order: OrderSnap; onClose: () => void; onCreated: (ttn: string) => void };
@@ -139,6 +144,14 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [middleName, setMiddleName] = useState(initial.middleName);
   const [phone,      setPhone]      = useState(order.phone);
 
+  // Одержувач-юрособа з картки контрагента (ЄДРПОУ/РНОКПП). НП заводить її за
+  // кодом, ПІБ і телефон вище стають контактною особою. За замовчуванням
+  // вмикається, коли замовлення вже йде «на підприємство» (рахунок на юрособу).
+  const [legal,         setLegal]         = useState<LegalRecipient | null>(null);
+  const [legalLoading,  setLegalLoading]  = useState(!!order.customer_id);
+  const [recipientType, setRecipientType] = useState<'private' | 'organization'>('private');
+  const isOrganization = recipientType === 'organization';
+
   const [cityQuery,    setCityQuery]    = useState('');
   const [settlements,  setSettlements]  = useState<Settlement[]>([]);
   const [selectedCity, setSelectedCity] = useState<Settlement | null>(null);
@@ -198,6 +211,20 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
       if (d.warehouses?.length === 1) setSenderWH(d.warehouses[0]);
     }).catch(() => setSenderError('Не вдалося завантажити дані відправника'))
       .finally(() => setSenderLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!order.customer_id) return;
+    fetch(`/api/admin/customers/search?id=${encodeURIComponent(order.customer_id)}`)
+      .then(r => r.json())
+      .then((rows: unknown) => {
+        const lr = legalRecipientFromCustomer(Array.isArray(rows) ? rows[0] : null);
+        setLegal(lr);
+        if (lr && order.invoice_as_company) setRecipientType('organization');
+      })
+      .catch(() => {})
+      .finally(() => setLegalLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -365,7 +392,8 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     if (isCourier && !recipientAddress.trim()) { setError('Вкажіть адресу доставки кур\'єром'); return; }
     if (!senderInfo)      { setError('Дані відправника не завантажені'); return; }
     if (senderInfo.senderType === 'warehouse' && !senderWH && senderInfo.warehouses.length > 0) { setError('Оберіть відділення відправника'); return; }
-    if (!lastName || !firstName) { setError('Вкажіть прізвище та ім\'я одержувача'); return; }
+    if (!lastName || !firstName) { setError(isOrganization ? 'Вкажіть прізвище та ім\'я контактної особи' : 'Вкажіть прізвище та ім\'я одержувача'); return; }
+    if (isOrganization && !legal) { setError('У картці контрагента немає ЄДРПОУ — оберіть одержувача «Фізособа»'); return; }
     const badWeight = seatNums.findIndex(r => !(r.weight > 0));
     if (badWeight >= 0) { setError(multiSeat && !sameSeats ? `Вкажіть вагу місця ${badWeight + 1}` : 'Вкажіть вагу відправлення'); return; }
     const badDims = needSeatDims ? seatNums.findIndex(r => !dimsOk(r)) : -1;
@@ -406,6 +434,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         senderContactRef:   senderInfo.contactRef,
         senderPhone:        senderInfo.phone,
         lastName, firstName, middleName, recipientPhone: phone,
+        recipientType,
         cityRecipientRef: isCourier ? selectedCity.Ref : (selectedWH?.CityRef || selectedCity.Ref),
         recipientAddressRef: isCourier ? '' : selectedWH?.Ref,
         recipientAddress: isCourier ? recipientAddress : undefined,
@@ -519,6 +548,39 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
           {/* Одержувач */}
           <section>
             <div style={secTitle}><span>Одержувач</span></div>
+            {/* Фізособа / юрособа — лише коли в картці контрагента є код; без
+                картки або коду перемикач не потрібен, але причину кажемо */}
+            {(legal || legalLoading || order.customer_id) && (
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button style={{ ...radio(!isOrganization), fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                    onClick={() => setRecipientType('private')}>
+                    <User size={12} /> Фізособа
+                  </button>
+                  <button
+                    style={{ ...radio(isOrganization), fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', opacity: legal ? 1 : 0.5, cursor: legal ? 'pointer' : 'default' }}
+                    disabled={!legal}
+                    title={legal ? `${legal.legalName || 'Юрособа'} · ${taxNumberLabel(legal.taxNumber)} ${legal.taxNumber}` : legalLoading ? 'Завантаження картки контрагента…' : 'У картці контрагента немає ЄДРПОУ/РНОКПП'}
+                    onClick={() => legal && setRecipientType('organization')}>
+                    {legalLoading ? <Loader2 size={12} className="spin" /> : <Building2 size={12} />} Юрособа
+                  </button>
+                </div>
+                {isOrganization && legal ? (
+                  <div style={{ marginTop: '8px', padding: '9px 12px', background: '#EFF4FF', border: '1px solid #C7D7F5', borderRadius: '8px', fontSize: '12px', color: '#1E3A5F', lineHeight: 1.45 }}>
+                    <div style={{ fontWeight: 700 }}>{legal.legalName || 'Юрособа з картки контрагента'}</div>
+                    <div>{taxNumberLabel(legal.taxNumber)} {legal.taxNumber}{legal.legalAddress ? ` · ${legal.legalAddress}` : ''}</div>
+                    <div style={{ fontSize: '11px', color: '#4880B8', marginTop: '3px' }}>
+                      НП знайде підприємство за кодом у своєму реєстрі; ПІБ і телефон нижче — контактна особа одержувача.
+                    </div>
+                  </div>
+                ) : !legal && !legalLoading ? (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '5px' }}>
+                    Щоб відправляти на юрособу, заповніть ЄДРПОУ/РНОКПП у картці контрагента.
+                  </div>
+                ) : null}
+              </div>
+            )}
+            {isOrganization && <div style={{ ...lbl, marginBottom: '6px' }}>Контактна особа</div>}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <div>
                 <label style={lbl}>Прізвище</label>

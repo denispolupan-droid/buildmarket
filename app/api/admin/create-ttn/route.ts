@@ -7,6 +7,7 @@ import {
   prepareCourierAddress, addressLabel, normalizeHouse, npFlatFields,
   type RozetkaDelivery, type PromProviderData,
 } from '../../../../lib/np-address';
+import { legalRecipientFromCustomer, taxNumberLabel } from '../../../../lib/np-legal-recipient';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -158,26 +159,74 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Step 1: Create recipient counterparty
-  const cRes = await npCall(apiKey, 'Counterparty', 'save', {
-    FirstName: firstName,
-    LastName: lastName,
-    MiddleName: middleName ?? '',
-    Phone: normalizePhone(recipientPhone),
-    CounterpartyType: 'PrivatePerson',
-    CounterpartyProperty: 'Recipient',
-    CityRef: finalCityRecipient,
-  });
-
-  if (!cRes.success) {
-    return NextResponse.json(
-      { error: cRes.errors?.join('; ') ?? 'Помилка створення одержувача у НП' },
-      { status: 400 },
-    );
+  // Одержувач-юрособа: код беремо з картки контрагента в БД, а не з форми —
+  // модалка лише каже «юрособа». Назву НП підставить зі свого реєстру.
+  const asOrganization = body.recipientType === 'organization';
+  let legal: ReturnType<typeof legalRecipientFromCustomer> = null;
+  if (asOrganization) {
+    const { data: ord } = await serviceClient.from('orders').select('customer_id').eq('id', orderId).maybeSingle();
+    const customerId = (ord?.customer_id as string | null) ?? null;
+    const { data: cust } = customerId
+      ? await serviceClient.from('customers').select('company, legal_name, tax_number, legal_address').eq('id', customerId).maybeSingle()
+      : { data: null };
+    legal = legalRecipientFromCustomer(cust);
+    if (!legal) {
+      return NextResponse.json(
+        { error: 'У картці контрагента немає ЄДРПОУ (8 цифр) або РНОКПП ФОП (10 цифр) — одержувача-юрособу в НП не створити. Заповніть код у картці або відправте на фізособу.' },
+        { status: 400 },
+      );
+    }
   }
 
-  const recipientRef = cRes.data[0].Ref;
-  const contactRecipientRef = cRes.data[0].ContactPerson?.data?.[0]?.Ref ?? cRes.data[0].Ref;
+  // Step 1: Create recipient counterparty.
+  // Фізособа — одним викликом (НП повертає й контактну особу). Юрособа — за
+  // ЄДРПОУ/РНОКПП, контактну особу (ПІБ + телефон з форми) заводимо окремо:
+  // саме її Ref іде в ContactRecipient накладної.
+  const cRes = await npCall(apiKey, 'Counterparty', 'save', asOrganization && legal
+    ? {
+        CounterpartyType: 'Organization',
+        CounterpartyProperty: 'Recipient',
+        EDRPOU: legal.taxNumber,
+        CityRef: finalCityRecipient,
+      }
+    : {
+        FirstName: firstName,
+        LastName: lastName,
+        MiddleName: middleName ?? '',
+        Phone: normalizePhone(recipientPhone),
+        CounterpartyType: 'PrivatePerson',
+        CounterpartyProperty: 'Recipient',
+        CityRef: finalCityRecipient,
+      });
+
+  if (!cRes.success || !cRes.data?.[0]?.Ref) {
+    const npMsg = cRes.errors?.filter(Boolean).join('; ') || 'Помилка створення одержувача у НП';
+    const hint = asOrganization && legal
+      ? ` Перевірте ${taxNumberLabel(legal.taxNumber)} ${legal.taxNumber} у картці контрагента — НП шукає юрособу за ним у своєму реєстрі.`
+      : '';
+    return NextResponse.json({ error: `${npMsg}.${hint}`.replace('..', '.') }, { status: 400 });
+  }
+
+  const recipientRef: string = cRes.data[0].Ref;
+  // Назва юрособи, як її знає НП (із реєстру) — у знімок накладної
+  const orgDescription: string | null = asOrganization ? (cRes.data[0].Description ?? null) : null;
+  let contactRecipientRef: string = cRes.data[0].ContactPerson?.data?.[0]?.Ref ?? cRes.data[0].Ref;
+  if (asOrganization) {
+    const pRes = await npCall(apiKey, 'ContactPerson', 'save', {
+      CounterpartyRef: recipientRef,
+      FirstName: firstName,
+      LastName: lastName,
+      MiddleName: middleName ?? '',
+      Phone: normalizePhone(recipientPhone),
+    });
+    if (!pRes.success || !pRes.data?.[0]?.Ref) {
+      return NextResponse.json(
+        { error: pRes.errors?.filter(Boolean).join('; ') || 'Не вдалося створити контактну особу юрособи у НП' },
+        { status: 400 },
+      );
+    }
+    contactRecipientRef = pRes.data[0].Ref;
+  }
 
   // Адресна (кур'єрська) доставка: створюємо адресу-Ref у НП (потрібен CounterpartyRef одержувача,
   // тому — після Step 1). CityRef та вулицю вже зарезолвили вище.
@@ -293,6 +342,7 @@ export async function POST(req: NextRequest) {
     recipient: {
       name: [lastName, firstName, middleName].filter(Boolean).join(' '),
       phone: normalizePhone(recipientPhone),
+      ...(legal ? { company: orgDescription || legal.legalName || null, edrpou: legal.taxNumber } : {}),
       // Що реально пішло в НП (вулиця з довідника, будинок, квартира), а не сирий текст
       address: recipientIsDoors ? (streetLabel ? addressLabel(streetLabel, parsedHouse, parsedFlat) : (recipientAddress ?? null)) : null,
     },
