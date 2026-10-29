@@ -2,6 +2,7 @@ import { createServiceClient } from '../supabase';
 import { recordTxn } from './money';
 import { createPaymentVoucher, resolveSaleDebitParty } from './documents';
 import { isSpecialDebtor } from './sale-party';
+import { transitionOrder } from '../orders/status';
 
 // Єдина точка проведення оплати замовлення: рядок order_payments + оновлення
 // amount_paid/payment_confirmed + грошовий леджер (ваучер + DR метод / CR клієнт).
@@ -38,6 +39,8 @@ export type ApplyOrderPaymentResult = {
   paymentId?: string;
   amountPaid?: number;
   isFullyPaid?: boolean;
+  /** Замовлення чекало оплату (pending_payment) і цією оплатою закрите — переведено в confirmed */
+  confirmed?: boolean;
 };
 
 export async function applyOrderPayment(
@@ -51,7 +54,7 @@ export async function applyOrderPayment(
 
   const { data: order, error: orderErr } = await db
     .from('orders')
-    .select('order_number, total_price, amount_paid, customer_id, payment_type, channel_code')
+    .select('order_number, total_price, amount_paid, customer_id, payment_type, channel_code, status')
     .eq('id', orderId)
     .single();
   if (orderErr || !order) return { ok: false, error: 'Замовлення не знайдено' };
@@ -83,6 +86,21 @@ export async function applyOrderPayment(
     amount_paid:       newAmountPaid,
     payment_confirmed: isFullyPaid,
   }).eq('id', orderId);
+
+  // «Очікує оплати» закривається саме оплатою: повна сума (з виписки Monobank
+  // чи внесена вручну) переводить замовлення в «Підтверджено» — так само, як
+  // карткова оплата рахунку у вебхуку. Раніше це працювало лише для картки, і
+  // рахунок на переказ висів у pending_payment після зарахування (29.10.2026).
+  // Резерв/режим виконання тут не визначаються — як і у вебхуку; це робить /confirm.
+  let confirmed = false;
+  if (isFullyPaid && order.status === 'pending_payment') {
+    try {
+      const t = await transitionOrder(db, orderId, 'confirmed', createdBy, 'order-payment');
+      confirmed = t.changed;
+    } catch (err) {
+      console.error('[applyOrderPayment] pending_payment → confirmed failed:', err);
+    }
+  }
 
   // Грошовий леджер: сторона оплати = сторона продажу (Варіант B). Для гостя /
   // np:cod / mp:* — теж проводимо, інакше оплата губиться, а борг висить.
@@ -136,5 +154,5 @@ export async function applyOrderPayment(
     }
   }
 
-  return { ok: true, payment, paymentId: payment.id, amountPaid: newAmountPaid, isFullyPaid };
+  return { ok: true, payment, paymentId: payment.id, amountPaid: newAmountPaid, isFullyPaid, confirmed };
 }

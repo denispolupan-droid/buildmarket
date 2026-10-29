@@ -161,4 +161,33 @@ describe('Варіант B — дебітор продажу за каналом
 
     await assertInvariants();
   }, 30000);
+
+  it('«Очікує оплати»: часткова оплата лишає статус, повна — переводить у «Підтверджено»', async () => {
+    const order = await makeOrder({ status: 'pending_payment', channel_code: 'website', delivery_type: 'nova_poshta', payment_type: 'invoice', customer_id: customerId, tracking_number: null }, '');
+
+    const part = await applyOrderPayment(db, { orderId: order.id, amount: 100, paymentMode: 'transfer', createdBy: 'test' });
+    expect(part.ok).toBe(true);
+    expect(part.isFullyPaid).toBe(false);
+    expect(part.confirmed).toBe(false);
+    const { data: afterPart } = await db.from('orders').select('status, payment_confirmed').eq('id', order.id).single();
+    expect(afterPart?.status).toBe('pending_payment');
+    expect(afterPart?.payment_confirmed).toBe(false);
+
+    const rest = await applyOrderPayment(db, { orderId: order.id, amount: 200, paymentMode: 'transfer', createdBy: 'mono-ingest' });
+    expect(rest.ok).toBe(true);
+    expect(rest.isFullyPaid).toBe(true);
+    expect(rest.confirmed).toBe(true);
+    const { data: row } = await db.from('orders').select('status, payment_confirmed, confirmed_at, status_history').eq('id', order.id).single();
+    expect(row?.status).toBe('confirmed');
+    expect(row?.payment_confirmed).toBe(true);
+    expect(row?.confirmed_at).toBeTruthy();
+    const last = (row?.status_history as { status: string; by: string; via?: string }[] | null)?.at(-1);
+    expect(last).toMatchObject({ status: 'confirmed', by: 'mono-ingest', via: 'order-payment' });
+
+    // Повторна оплата вже підтвердженого — статус не чіпає
+    const extra = await applyOrderPayment(db, { orderId: order.id, amount: 1, paymentMode: 'transfer', createdBy: 'test' });
+    expect(extra.confirmed).toBe(false);
+    await markOrderDocsAsTest(order.id);
+    await assertInvariants();
+  }, 30000);
 });
