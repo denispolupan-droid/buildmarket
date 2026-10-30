@@ -5650,33 +5650,41 @@ export default function AdminOrders({
                                       <div className="oc-sub-lbl">
                                         Документи
                                       </div>
+                                      {/* Рядки документів — у тій самій формі, що й інструменти вище
+                                          (btnMuted): дрібний жирний напис іншого розміру вибивався з
+                                          панелі (зауваження власника 30.10.2026). Стан документа —
+                                          значком праворуч: галочка «проведена», годинник «чернетка»;
+                                          пояснення — у підказці. */}
                                       {rnDocs.map(doc => (
                                         <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank" rel="noopener noreferrer"
                                           title={doc.status === 'draft'
                                             ? `Видаткова накладна ${doc.number} — чернетка. Номер і дата вже фінальні, можна друкувати; виручка, собівартість і комісія проведуться при підтвердженні доставки.`
                                             : `Видаткова накладна ${doc.number} — проведена: виручка, собівартість і комісія враховані в обліку.`}
-                                          style={{ fontSize: '11.5px', color: '#1E3A5F', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                          <Printer size={11} /> {doc.number}
-                                          {/* Стан документа — значком: галочка «проведена», годинник
-                                              «чернетка». Слова «до проведення» займали пів рядка й
-                                              однаково потребували пояснення — воно тепер у підказці. */}
-                                          {doc.status === 'draft'
-                                            ? <Clock size={11} color="#B45309" aria-label="Чернетка" />
-                                            : <Check size={11} color="#15803D" aria-label="Проведена" />}
+                                          style={{ ...btnMuted, color: 'var(--text-primary)' }}>
+                                          <Printer size={13} /> {doc.number}
+                                          <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+                                            {doc.status === 'draft'
+                                              ? <Clock size={13} color="#B45309" aria-label="Чернетка" />
+                                              : <Check size={13} color="#15803D" aria-label="Проведена" />}
+                                          </span>
                                         </a>
                                       ))}
                                       {retDocs.map(doc => (
                                         <a key={doc.id} href={`/admin/accounting/documents/${doc.id}`} target="_blank" rel="noopener noreferrer"
                                           title="Документ повернення від покупця"
-                                          style={{ fontSize: '11.5px', color: '#B45309', fontWeight: 700, textDecoration: 'none' }}>
-                                          ↩ {doc.number}
+                                          style={{ ...btnMuted, color: '#B45309' }}>
+                                          <RotateCcw size={13} /> {doc.number}
                                         </a>
                                       ))}
                                     </div>
                                   );
                                 })()}
                                 {/* Доставлено / повернення — дії, що закривають замовлення
-                                    документами, тож стоять під самими документами. */}
+                                    документами, тож стоять під самими документами, але окремим
+                                    блоком: документи — це посилання для перегляду, а тут — дії,
+                                    що міняють облік; без розділювача вони зливались в один список. */}
+                                {(order.status === 'shipped' || (isAdmin && ['shipped', 'delivered'].includes(order.status))) && (
+                                <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px dashed var(--border)', paddingTop: '8px' }}>
                                 {order.status === 'shipped' && (
                                   <button
                                     onClick={() => {
@@ -5706,6 +5714,8 @@ export default function AdminOrders({
                                     style={{ ...btn, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontWeight: 600 }}>
                                     <RotateCcw size={13} /> Повернення
                                   </button>
+                                )}
+                                </div>
                                 )}
                                 {/* Скасували вже відвантажене — товар десь їде або вже в нас.
                                     Компонент сам зникає, якщо в дорозі нічого не висить. */}
