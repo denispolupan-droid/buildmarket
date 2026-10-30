@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -19,10 +19,8 @@ const TARGET_LABEL: Record<string, string> = {
 };
 
 async function getAdmin() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) return null;
-  return user;
+  const auth = await requireStaff('admin', 'manager');
+  return auth.ok ? auth.user : null;
 }
 
 export async function POST(req: NextRequest) {

@@ -1,12 +1,7 @@
 {
-  "generated": "2026-10-28",
-  "note": "Адмінські роути, які ще не на requireStaff (lib/auth-guard). Список лише зменшується: нові роути сюди не додаються, виправлені — прибираються. Ці 6 правляться в гілці feat/returns-journal — переводити після її злиття.",
+  "generated": "2026-10-30",
+  "note": "Адмінські роути, які ще не на requireStaff (lib/auth-guard). Список лише зменшується: нові роути сюди не додаються, виправлені — прибираються. create-ttn зараз правиться в паралельній сесії — переводити, коли файл звільниться.",
   "adminRoutesWithoutRequireStaff": [
-    "app/api/admin/create-ttn/route.ts",
-    "app/api/admin/orders/[id]/rozetka-delivery-ttn/route.ts",
-    "app/api/admin/orders/[id]/ship/route.ts",
-    "app/api/admin/prices/log/route.ts",
-    "app/api/admin/suppliers/[id]/route.ts",
-    "app/api/admin/suppliers/route.ts"
+    "app/api/admin/create-ttn/route.ts"
   ]
 }

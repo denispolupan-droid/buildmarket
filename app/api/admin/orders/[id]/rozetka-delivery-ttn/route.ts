@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServer } from '../../../../../../lib/supabase-server';
+import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRozetkaDeliveryTtnPdf, getRzSettingsSender, getRzSettingsContact, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE, aggregateRozetkaSeats, type RozetkaSeat } from '../../../../../../lib/rozetka-delivery';
@@ -23,11 +23,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
 
   if (new URL(req.url).searchParams.get('label')) {
     const { id } = await params;
@@ -79,11 +76,8 @@ function defaultCod(orders: { payment_type: unknown; payment_confirmed: unknown;
  *  кабінет пише в sender.city uuid з іншого довідника, ніж find-pickup-cities
  *  (d12cbd6b… проти e1d394d7… для Харкова), і перевірений варіант надійніший. */
 export async function PUT(req: NextRequest) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => ({})) as { sender?: RozetkaSender };
   const s = body.sender;
   if (!s?.department || !s?.city || !s?.name) {
@@ -121,11 +115,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireStaff('admin');
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
 
   const { id } = await params;
   const body = await req.json().catch(() => ({})) as {
