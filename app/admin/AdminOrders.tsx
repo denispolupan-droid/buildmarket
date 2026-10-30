@@ -2974,15 +2974,26 @@ export default function AdminOrders({
               ? `Немає замовлень зі статусом «${currentStatus === 'ready_to_ship' ? 'До відправки' : (STATUSES.find(s => s.value === currentStatus)?.label ?? currentStatus)}»`
               : 'Замовлень немає'}
           </p>
-          {/* Банер з підказкою про інші статуси */}
+          {/* Банер з підказкою про інші статуси. Посилання зберігає ВЕСЬ чинний зріз
+              (пошук, канал, перевізник, оплата, дати), а не лише дати: раніше при
+              пошуку за номером клік вів у повний журнал статусу, і знайдене
+              замовлення доводилось шукати заново (30.10.2026). Якщо в результаті
+              лишається одне замовлення, page.tsx сам його розкриває. */}
           {currentStatus && Object.keys(statusCounts).length > 0 && (() => {
             const others = STATUSES.filter(s => s.value && s.value !== currentStatus && (statusCounts[s.value] ?? 0) > 0);
             if (!others.length) return null;
+            const hrefFor = (status: string) => {
+              const p = new URLSearchParams(searchParams.toString());
+              p.set('status', status);
+              p.delete('page');
+              p.delete('expand');
+              return `/admin?${p.toString()}`;
+            };
             return (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-secondary)', alignSelf: 'center' }}>Є замовлення в:</span>
                 {others.map(s => (
-                  <a key={s.value} href={`/admin?status=${s.value}${dateFrom ? `&dateFrom=${dateFrom}` : ''}${dateTo ? `&dateTo=${dateTo}` : ''}`}
+                  <a key={s.value} href={hrefFor(s.value)}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '8px', background: s.bg, color: s.color, fontSize: '13px', fontWeight: 700, textDecoration: 'none', border: `1px solid ${s.color}22` }}>
                     {s.label} <span style={{ background: s.color, color: '#fff', borderRadius: '10px', padding: '0 6px', fontSize: '11px' }}>{statusCounts[s.value]}</span>
                   </a>
