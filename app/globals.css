@@ -3268,7 +3268,10 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
     border-top-color: var(--border-light) !important;
   }
   .oc-sheet-row:first-child { border-top: 0 !important; }
-  .oc-sheet-row:not(.is-open):not(.is-picked) > .order-compact-row:hover { background: var(--bg-soft) !important; }
+  /* Наведення — темніший відтінок ТОГО Ж тону рядка (--row-hover ставить AdminOrders:
+     неоплачений/терміновий/проблемний), а не нейтральний: інакше попередження
+     зникало рівно тоді, коли на рядок дивились (30.10.2026). */
+  .oc-sheet-row:not(.is-open):not(.is-picked) > .order-compact-row:hover { background: var(--row-hover, var(--bg-soft)) !important; }
   /* Розгорнутий запис — власна картка всередині аркуша: відступи від країв,
      синьо-сіра рамка й тінь, щоб не зливався з сусідніми рядками */
   .oc-sheet-row.is-open {

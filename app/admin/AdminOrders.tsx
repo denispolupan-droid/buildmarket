@@ -3214,9 +3214,18 @@ export default function AdminOrders({
                   ? { bg: '#FFFBF0', bgOpen: '#FEF9EC', bar: '#FCD34D', edge: '#FDE8B0' }
                   : null;
 
+            // Тон рядка (неоплачений рахунок, терміново, проблемний) — це попередження,
+            // і воно не має зникати ні під курсором, ні у виборі. Раніше наведення
+            // перефарбовувало рядок у нейтральний, а вибір — у бірюзову заливку, і
+            // неоплачене в пачці з оплаченими виглядало однаково (30.10.2026): так
+            // його легко було відправити на збірку разом з усіма. Тепер вибір —
+            // бірюзовий контур і смуга зліва, а заливка лишається тоном рядка.
+            const pickedBg = rowTone ? rowTone.bgOpen : 'var(--brand-teal-light)';
+            const rowBg = isFlashing ? '#F0FDF4' : isPicked ? pickedBg : rowTone?.bg ?? 'var(--bg-card)';
+
             return (
               <div key={order.id} id={`order-${order.id}`} className={`oc-sheet-row${isExpanded ? ' is-open' : ''}${isPicked ? ' is-picked' : ''}`} style={{
-                background: isFlashing ? '#F0FDF4' : isPicked ? 'var(--brand-teal-light)' : rowTone?.bg ?? 'var(--bg-card)',
+                background: rowBg,
                 // Відкрита картка виділяється висотою, а не кольором: синій контур
                 // читався як «виділено мишею», хоча це просто розгорнутий запис.
                 border: `1px solid ${isFlashing ? '#86EFAC' : isPicked ? 'var(--brand-teal)' : isExpanded ? '#D8DEE7' : rowTone?.edge ?? 'var(--border-light)'}`,
@@ -3225,6 +3234,8 @@ export default function AdminOrders({
                 boxShadow: isExpanded ? '0 2px 4px rgba(16,24,40,0.04), 0 24px 48px -16px rgba(16,24,40,0.28)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
                 transition: 'box-shadow 0.3s, border-color 0.3s, opacity 0.15s, background 0.3s',
+                // Наведення — темніший відтінок того ж тону (CSS читає змінну), а не нейтральний
+                ['--row-hover' as string]: rowTone?.bgOpen ?? 'var(--bg-soft)',
               }}>
 
                 {/* ── Compact row ── */}
@@ -3239,7 +3250,7 @@ export default function AdminOrders({
                     // три рядки (ПІБ / телефон / товар).
                     padding: '9px 16px', minHeight: '70px', boxSizing: 'border-box', cursor: 'pointer',
                     background: isPicked
-                      ? 'var(--brand-teal-light)'
+                      ? pickedBg
                       : isExpanded
                         ? (rowTone?.bgOpen ?? 'var(--bg-soft)')
                         : (rowTone?.bg ?? 'var(--bg-card)'),
@@ -5923,6 +5934,14 @@ export default function AdminOrders({
         <div className="oc-merge-bar">
           <span className="oc-merge-title">
             Вибрано <b>{selectedIds.size}</b> · <b>{Math.round(orders.filter(o => selectedIds.has(o.id)).reduce((s, o) => s + o.total_price, 0)).toLocaleString('uk-UA')} ₴</b>
+            {/* Неоплачені в пачці — окремим словом: масова зміна статусу чи відправка
+                постачальнику стосується і їх, а в довгому виборі тон рядка можна не помітити */}
+            {(() => {
+              const unpaid = orders.filter(o => selectedIds.has(o.id) && !o.payment_confirmed && o.payment_type !== 'cod' && !['delivered', 'cancelled'].includes(o.status)).length;
+              return unpaid > 0
+                ? <span style={{ color: '#B45309', marginLeft: '6px' }} title="Рахунок ще не оплачено">· неоплачених <b>{unpaid}</b></span>
+                : null;
+            })()}
           </span>
           <div className="oc-merge-actions">
             {/* 1. Статус */}
