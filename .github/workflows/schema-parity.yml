@@ -5,6 +5,11 @@ name: Schema parity prod vs test
 # і таблицю, /admin на тесті падав, а інтеграційні тести були зелені.
 # Порівнюємо information_schema.columns обох проєктів через Management API
 # (секрет SUPABASE_ACCESS_TOKEN) і падаємо з переліком розбіжностей.
+#
+# 31.10.2026: додано порівняння RLS (увімкнено/ні на таблиці) і політик (ім'я, команда,
+# ролі, USING/WITH CHECK). Знахідка того дня: на тесті RLS був вимкнений на 23 таблицях
+# і бракувало 30 політик — колонкова перевірка цього не бачила
+# (supabase/schema/test-sync-2026-10-31.sql).
 
 on:
   schedule:
@@ -19,37 +24,53 @@ jobs:
       PROD_REF: boaztnparrdoeknajprn
       TEST_REF: mdrextghmuzkyelpqsgp
     steps:
-      - name: Compare columns
+      - name: Compare columns, RLS and policies
         env:
           TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           test -n "$TOKEN" || { echo "::error::SUPABASE_ACCESS_TOKEN secret is not set"; exit 1; }
-          Q='{"query":"SELECT table_name, column_name, udt_name, is_nullable FROM information_schema.columns WHERE table_schema='"'"'public'"'"' ORDER BY 1,2"}'
+          QCOLS='{"query":"SELECT table_name, column_name, udt_name, is_nullable FROM information_schema.columns WHERE table_schema='"'"'public'"'"' ORDER BY 1,2"}'
+          QRLS='{"query":"SELECT c.relname AS table_name, c.relrowsecurity AS rls FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = '"'"'public'"'"' AND c.relkind IN ('"'"'r'"'"','"'"'p'"'"') ORDER BY 1"}'
+          QPOL='{"query":"SELECT tablename, policyname, permissive, cmd, array_to_string(roles, '"'"','"'"') AS roles, coalesce(qual, '"'"''"'"') AS qual, coalesce(with_check, '"'"''"'"') AS with_check FROM pg_policies WHERE schemaname = '"'"'public'"'"' ORDER BY 1,2"}'
           for ref in "$PROD_REF" "$TEST_REF"; do
             curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$Q" > "cols-$ref.json"
+              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$QCOLS" > "cols-$ref.json"
+            curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$QRLS" > "rls-$ref.json"
+            curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$QPOL" > "pol-$ref.json"
           done
           node - <<'EOF'
           const fs = require('fs');
-          const prod = JSON.parse(fs.readFileSync(`cols-${process.env.PROD_REF}.json`));
-          const test = JSON.parse(fs.readFileSync(`cols-${process.env.TEST_REF}.json`));
-          const key = c => `${c.table_name}.${c.column_name}`;
-          const sig = c => `${c.udt_name}${c.is_nullable === 'NO' ? ' NOT NULL' : ''}`;
-          const P = new Map(prod.map(c => [key(c), sig(c)])), T = new Map(test.map(c => [key(c), sig(c)]));
-          const missing = [...P.keys()].filter(k => !T.has(k));
-          const extra   = [...T.keys()].filter(k => !P.has(k));
-          const typed   = [...P.keys()].filter(k => T.has(k) && T.get(k) !== P.get(k));
-          console.log(`prod: ${prod.length} columns, test: ${test.length} columns`);
-          const report = [
-            ...missing.map(k => `missing in test: ${k} (${P.get(k)})`),
-            ...typed.map(k => `type differs: ${k} prod=${P.get(k)} test=${T.get(k)}`),
-            ...extra.map(k => `only in test: ${k}`),
-          ];
+          const load = (kind, ref) => JSON.parse(fs.readFileSync(`${kind}-${ref}.json`));
+          const P = process.env.PROD_REF, T = process.env.TEST_REF;
+          const report = [];
+
+          // Порівняння двох списків за ключем і «підписом»: що бракує в тесті, що інше, що зайве.
+          function compare(label, prod, test, key, sig) {
+            const pm = new Map(prod.map(r => [key(r), sig(r)])), tm = new Map(test.map(r => [key(r), sig(r)]));
+            for (const k of pm.keys()) {
+              if (!tm.has(k)) report.push(`${label} missing in test: ${k} (${pm.get(k)})`);
+              else if (tm.get(k) !== pm.get(k)) report.push(`${label} differs: ${k} prod=${pm.get(k)} test=${tm.get(k)}`);
+            }
+            for (const k of tm.keys()) if (!pm.has(k)) report.push(`${label} only in test: ${k}`);
+            console.log(`${label}: prod ${prod.length}, test ${test.length}`);
+          }
+
+          compare('column', load('cols', P), load('cols', T),
+            c => `${c.table_name}.${c.column_name}`,
+            c => `${c.udt_name}${c.is_nullable === 'NO' ? ' NOT NULL' : ''}`);
+          compare('rls', load('rls', P), load('rls', T),
+            r => r.table_name, r => r.rls ? 'enabled' : 'disabled');
+          compare('policy', load('pol', P), load('pol', T),
+            p => `${p.tablename}.${p.policyname}`,
+            p => `${p.permissive} ${p.cmd} TO ${p.roles} USING ${p.qual.replace(/\s+/g, ' ')} CHECK ${p.with_check.replace(/\s+/g, ' ')}`);
+
           if (report.length) {
             for (const r of report) console.log('::error::' + r);
             process.exit(1);
           }
-          console.log('✓ schemas match');
+          console.log('✓ schemas, RLS and policies match');
           EOF
 
       - name: Alert on drift
@@ -59,4 +80,4 @@ jobs:
           TG_CHAT:  ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
         run: |
           [ -n "$TG_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
-            -d chat_id="$TG_CHAT" -d text="⚠️ Схема тестової бази розійшлась із продом: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
+            -d chat_id="$TG_CHAT" -d text="⚠️ Схема тестової бази розійшлась із продом (колонки/RLS/політики): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
