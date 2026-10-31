@@ -15,7 +15,7 @@ SELECT cron.schedule(
   $$
     SELECT net.http_post(
       url     := 'https://fixline.com.ua/api/cron/rozetka-orders',
-      headers := '{"Authorization": "Bearer d942e43e7d4bbfd439a568bc6d34a553d445ce5db3314269b4c041484aee25c7"}'::jsonb,
+      headers := '{"Authorization": "Bearer <CRON_SECRET-rotated-2026-10-31>"}'::jsonb,
       body    := '{}'::jsonb
     )
   $$
@@ -29,7 +29,7 @@ SELECT cron.schedule(
   $$
     SELECT net.http_post(
       url     := 'https://fixline.com.ua/api/cron/prom-orders',
-      headers := '{"Authorization": "Bearer d942e43e7d4bbfd439a568bc6d34a553d445ce5db3314269b4c041484aee25c7"}'::jsonb,
+      headers := '{"Authorization": "Bearer <CRON_SECRET-rotated-2026-10-31>"}'::jsonb,
       body    := '{}'::jsonb
     )
   $$

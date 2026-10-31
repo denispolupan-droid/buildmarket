@@ -11,7 +11,8 @@ const TABS = [
   { href: '/admin/settings/rz-delivery',  label: 'ROZETKA Доставка' },
   { href: '/admin/settings/mail',         label: 'Пошта' },
   { href: '/admin/settings/reservations', label: 'Резерв' },
-  { href: '/admin/settings/marketplaces', label: 'Маркетплейси' },
+  // «Маркетплейси» (інтервал pg_cron-синку) прибрано 31.10.2026: синки живуть
+  // у vercel.json, а функція set_marketplace_sync_interval видалена (міграція 138).
   { href: '/admin/settings/users',        label: 'Користувачі' },
 ];
 

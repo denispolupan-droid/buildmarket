@@ -18,7 +18,7 @@ set search_path = public, cron, net
 as $fn$
 declare
   v_expr  text;
-  v_token text := 'd942e43e7d4bbfd439a568bc6d34a553d445ce5db3314269b4c041484aee25c7';
+  v_token text := '<CRON_SECRET-rotated-2026-10-31>';
   v_base  text := 'https://fixline.com.ua/api/cron/';
   v_ch    text;
 begin
