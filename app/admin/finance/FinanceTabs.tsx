@@ -31,6 +31,7 @@ const GROUPS: Group[] = [
   { label: 'Звітність', children: [
     { href: '/admin/finance/reports',       label: 'Звіти' },
     { href: '/admin/finance/trial-balance', label: 'ОСВ' },
+    { href: '/admin/finance/income-book',   label: 'Книга доходів' },
     { href: '/admin/finance/periods',       label: 'Періоди' },
   ] },
 ];

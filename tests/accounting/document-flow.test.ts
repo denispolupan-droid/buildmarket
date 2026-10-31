@@ -752,3 +752,52 @@ describe('Inventory count (inventory doc)', () => {
     await assertInvariants();
   });
 });
+
+// Аудит 31.10.2026, C1: складська частина проведення — одна транзакція
+// (міграція 144). Раніше збій на другому рядку лишав партії першого рядка
+// списаними без рухів, а повтор списував їх удруге.
+describe('Atomic posting — збій на рядку не лишає часткового списання', () => {
+  let rcptId: string;
+  let badSaleId: string;
+
+  it('sale з двох рядків, другий без залишку: падає і не чіпає партії', async () => {
+    const rcpt = await createDocument({
+      doc_type: 'receipt', warehouse_id: warehouseId, supplier_id: supplierId,
+      notes: '[TEST] atomic posting receipt', meta: { test: true },
+      lines: [{ sku: testSku, qty: 3, price: 100, cost_price: 100 }],
+    });
+    rcptId = rcpt.id;
+    await confirmDocument(rcptId, 'test-user');
+
+    const before = await getStockBalance(testSku, warehouseId);
+    const { data: batchesBefore } = await db.from('stock_batches').select('id, remaining_qty').eq('sku', testSku).eq('warehouse_id', warehouseId).order('id');
+
+    const sale = await createDocument({
+      doc_type: 'sale', warehouse_id: warehouseId, customer_id: customerId || undefined,
+      notes: '[TEST] atomic posting sale', meta: { test: true },
+      lines: [
+        { sku: testSku, qty: 2, price: 200, cost_price: 100 },
+        { sku: testSku, qty: 99999, price: 200, cost_price: 100 },
+      ],
+    });
+    badSaleId = sale.id;
+    await expect(confirmDocument(badSaleId, 'test-user')).rejects.toThrow(/FIFO|недостатньо|qty_total|check/i);
+
+    const after = await getStockBalance(testSku, warehouseId);
+    expect(after?.qty_total).toBe(before?.qty_total);
+    const { data: batchesAfter } = await db.from('stock_batches').select('id, remaining_qty').eq('sku', testSku).eq('warehouse_id', warehouseId).order('id');
+    expect(batchesAfter).toEqual(batchesBefore);
+    const { count } = await db.from('stock_movements').select('id', { count: 'exact', head: true }).eq('document_id', badSaleId);
+    expect(count ?? 0).toBe(0);
+    const { data: doc } = await db.from('acc_documents').select('status').eq('id', badSaleId).single();
+    expect(doc?.status).toBe('draft');
+
+    await assertInvariants();
+  });
+
+  it('cleanup: скасувати чернетку і прихід', async () => {
+    await cancelDocument(badSaleId, 'test-user', 'Тест: прибирання');
+    await cancelDocument(rcptId, 'test-user', 'Тест: прибирання');
+    await assertInvariants();
+  });
+});

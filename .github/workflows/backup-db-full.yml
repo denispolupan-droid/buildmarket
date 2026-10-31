@@ -7,7 +7,19 @@ name: Nightly full database dump
 #
 # Потрібен секрет SUPABASE_DB_URL — рядок підключення до прода
 # (Project Settings → Database → Connection string, режим Session pooler,
-# порт 5432, з паролем БД). Артефакт лежить у приватному репозиторії 30 днів.
+# порт 5432, з паролем БД). Артефакт лежить у приватному репозиторії 30 днів;
+# недільний — ще й окремим артефактом на 90 днів (більше GitHub не дає).
+#
+# Аудит 31.10.2026 додав:
+#  • дані auth (auth.users / identities): без них після відновлення зникають
+#    логіни, ролі персоналу в app_metadata і звʼязок customers.auth_user_id.
+#    Схему auth веде сама Supabase, тому зберігаємо лише ДАНІ — вони
+#    відновлюються в новий проєкт Supabase, де схема вже є (docs/RESTORE.md);
+#  • метадані storage (бакети й записи обʼєктів; самі файли — у Storage/R2);
+#  • зашифровану копію поза GitHub у Cloudflare R2. Крок вмикається, щойно
+#    заведені секрети: R2_BACKUP_BUCKET, R2_BACKUP_ENDPOINT,
+#    R2_BACKUP_ACCESS_KEY_ID, R2_BACKUP_SECRET_ACCESS_KEY, BACKUP_PASSPHRASE.
+#    Розшифрування: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in X.enc -out X
 
 on:
   schedule:
@@ -18,6 +30,8 @@ jobs:
   dump:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      R2_BACKUP_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
     steps:
       # Сервер — PostgreSQL 17, а на ubuntu-latest стоїть клієнт 16: pg_dump
       # відмовляється («server version mismatch»). Ставимо 17 з офіційного
@@ -56,6 +70,28 @@ jobs:
             UNION ALL SELECT 'customers', count(*) FROM customers" > dump/counts.txt
           cat dump/counts.txt
 
+      - name: pg_dump auth + storage (data only)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PG: /usr/lib/postgresql/17/bin
+        run: |
+          STAMP=$(ls dump/*.dump | head -1 | sed -E 's#.*fixline-(.*)\.dump#\1#')
+          "$PG/pg_dump" "$DB_URL" --data-only --no-owner --no-privileges \
+            --table=auth.users --table=auth.identities \
+            --format=custom --compress=9 --file "dump/fixline-$STAMP.auth.dump"
+          "$PG/pg_dump" "$DB_URL" --data-only --no-owner --no-privileges \
+            --table=storage.buckets --table=storage.objects \
+            --format=custom --compress=9 --file "dump/fixline-$STAMP.storage.dump"
+          "$PG/psql" "$DB_URL" -At -c "SELECT 'auth.users', count(*) FROM auth.users" > dump/auth-counts.txt
+          cat dump/auth-counts.txt
+          # Санітарна перевірка: користувачі в дампі є
+          "$PG/pg_restore" --list "dump/fixline-$STAMP.auth.dump" | grep -q "TABLE DATA auth users"
+          ls -lh dump/
+
+      - name: Is it Sunday?
+        id: dow
+        run: echo "sunday=$([ "$(date -u +%u)" = 7 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -63,6 +99,36 @@ jobs:
           path: dump/
           retention-days: 30
           if-no-files-found: error
+
+      - name: Upload weekly artifact (90 days)
+        if: steps.dow.outputs.sunday == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-db-dump-${{ github.run_number }}
+          path: dump/
+          retention-days: 90
+          if-no-files-found: error
+
+      # Копія поза GitHub: якщо втратимо доступ до акаунта чи репозиторію, артефакти
+      # зникнуть разом із ним. Шифруємо до вивантаження — у дампі ПДн і гроші.
+      - name: Off-site copy to R2 (encrypted)
+        if: env.R2_BACKUP_BUCKET != ''
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION:    auto
+          R2_ENDPOINT:           ${{ secrets.R2_BACKUP_ENDPOINT }}
+          BACKUP_PASSPHRASE:     ${{ secrets.BACKUP_PASSPHRASE }}
+          SUNDAY:                ${{ steps.dow.outputs.sunday }}
+        run: |
+          test -n "$BACKUP_PASSPHRASE" || { echo "::error::BACKUP_PASSPHRASE is not set"; exit 1; }
+          KIND=daily; [ "$SUNDAY" = "true" ] && KIND=weekly
+          for f in dump/*.dump; do
+            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_PASSPHRASE -in "$f" -out "$f.enc"
+            aws s3 cp "$f.enc" "s3://$R2_BACKUP_BUCKET/$KIND/$(basename "$f").enc" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          done
+          aws s3 cp dump/counts.txt "s3://$R2_BACKUP_BUCKET/$KIND/counts-$(date -u +%Y%m%d).txt" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          echo "uploaded to r2://$R2_BACKUP_BUCKET/$KIND/"
 
   # Бекап, який жодного разу не відновлювали, — не бекап. Розгортаємо дамп у
   # чистий PostgreSQL 17 і звіряємо кількість рядків ключових таблиць з еталоном.
@@ -106,7 +172,9 @@ jobs:
             CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS \$\$ SELECT '{}'::jsonb \$\$;
             CREATE SCHEMA extensions; CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA extensions; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA extensions;
             ALTER DATABASE postgres SET search_path TO public, extensions;"
-          DUMP=$(ls dump/*.dump)
+          # Відновлюємо лише public: auth/storage — дані для живого проєкту Supabase,
+          # у голому PG17 їхньої схеми немає (вміст перевірено в dump через pg_restore --list).
+          DUMP=$(ls dump/*.dump | grep -vE '\.(auth|storage)\.dump$')
           # Окремі помилки (напр., FK на auth.users через заглушку) не валять відновлення —
           # далі звіряємо дані, а повний лог лишається в кроці.
           "$PG/pg_restore" --dbname "$URL" --no-owner --no-privileges --jobs 2 "$DUMP" 2> restore.log || true

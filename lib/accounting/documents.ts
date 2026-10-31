@@ -4,6 +4,7 @@ import {
   recordReturn, recordSupplierReturn, recordTxn,
 } from './money';
 import { releaseReservation } from './reservations';
+import { kyivYmd } from '../kyiv-date';
 import { SALE_DEBTOR, saleDebitPartyFor, type SalePartyOrder } from './sale-party';
 import type {
   AccDocument,
@@ -11,7 +12,6 @@ import type {
   AccDocumentWithLines,
   CreateDocumentInput,
   DocType,
-  MovementInsert,
 } from './types';
 
 // Направление движения по типу документа
@@ -138,6 +138,18 @@ export async function confirmDocument(
     throw new Error(`Cannot confirm document with status '${doc.status}'`);
   }
 
+  // Закритий період — до ПЕРШОГО запису (міграція 143). Партії FIFO списуються
+  // раніше за рухи й проводки, тож тригери закритого періоду спрацювали б уже
+  // після списання. Перевіряємо обидві дати: київську (тригер складу) і ту,
+  // що піде в business_date проводок (зріз ISO нижче).
+  {
+    const docDate = doc.doc_date ?? new Date().toISOString();
+    for (const d of new Set([kyivYmd(new Date(docDate)), docDate.slice(0, 10)])) {
+      const { error: periodErr } = await db.rpc('assert_period_open', { p_date: d });
+      if (periodErr) throw new Error(periodErr.message);
+    }
+  }
+
   const direction: Direction = DIRECTION[doc.doc_type as DocType] ?? 'none';
   const lines = doc.lines ?? [];
   if (lines.length === 0 && direction !== 'none') throw new Error('Document has no lines');
@@ -179,12 +191,15 @@ export async function confirmDocument(
   let fifoCost    = 0;
 
   if (direction !== 'none' && (existingMoves ?? 0) === 0) {
-    const result = await buildMovements(db, doc, lines, direction);
-    if (result.movements.length > 0) {
-      const { error } = await db.from('stock_movements').insert(result.movements);
-      if (error) throw error;
-    }
-    fifoCost = result.fifoCost;
+    // Партії FIFO + рухи документа — одна транзакція в БД (міграція 144): збій
+    // на будь-якому рядку відкочує весь склад документа, і повтор не спише
+    // партії двічі. Раніше це був цикл REST-викликів (buildMovements) і окремий
+    // insert рухів у кінці; помилки FIFO при цьому не перевірялись.
+    const { data: cost, error } = await db.rpc('post_document_movements', {
+      p_doc_id: documentId, p_direction: direction,
+    });
+    if (error) throw new Error(error.message);
+    fifoCost = Number(cost ?? 0);
   } else if ((existingMoves ?? 0) > 0 && (direction === 'out' || direction === 'transfer')) {
     const { data: existingMovs } = await db
       .from('stock_movements')
@@ -896,181 +911,4 @@ export async function maybeAutoClose(id: string): Promise<void> {
 //   'out' + qty>0: -qty  (витрата)      'out' + qty<0: +|qty| (сторно витрати — create batch)
 // 'transfer' аналогічно: обидва напрямки обертаються при сторно.
 
-async function buildMovements(
-  db: ReturnType<typeof createServiceClient>,
-  doc: AccDocumentWithLines,
-  lines: AccDocumentLine[],
-  direction: Direction,
-): Promise<{ movements: MovementInsert[]; fifoCost: number }> {
-  const movements: MovementInsert[] = [];
-  let totalFifoCost = 0;
-
-  for (const line of lines) {
-    const qtyInBase = line.qty_in_base ?? (line.qty * (line.uom_factor ?? 1));
-
-    if (line.fulfillment_type === 'dropship') continue;
-    if (qtyInBase === 0) continue;
-
-    const lineWarehouseId = line.warehouse_id ?? doc.warehouse_id;
-    const base = {
-      document_id:      doc.id,
-      document_line_id: line.id,
-      doc_type:         doc.doc_type,
-      order_id:         doc.order_id    ?? null,
-      supplier_id:      doc.supplier_id ?? null,
-    };
-
-    if (direction === 'in') {
-      if (qtyInBase > 0) {
-        // Нормальний приход — створюємо FIFO-партію
-        movements.push({
-          ...base,
-          warehouse_id: lineWarehouseId,
-          sku:          line.sku,
-          qty:          qtyInBase,
-          cost_price:   line.cost_price ?? null,
-          sale_price:   null,
-        });
-        await db.rpc('create_stock_batch', {
-          p_sku:          line.sku,
-          p_warehouse_id: lineWarehouseId,
-          p_supplier_id:  doc.supplier_id ?? line.supplier_id ?? null,
-          p_document_id:  doc.id,
-          p_qty:          qtyInBase,
-          p_cost_price:   line.cost_price ?? 0,
-          p_received_at:  doc.doc_date ?? new Date().toISOString(),
-        });
-      } else {
-        // Сторно приходу — consume FIFO, рух від'ємний (склад зменшується)
-        const absQty = Math.abs(qtyInBase);
-        const { data: batchCost } = await db.rpc('consume_stock_fifo', {
-          p_sku:          line.sku,
-          p_warehouse_id: lineWarehouseId,
-          p_qty:          absQty,
-        });
-        movements.push({
-          ...base,
-          warehouse_id: lineWarehouseId,
-          sku:          line.sku,
-          qty:          -absQty,
-          cost_price:   absQty > 0 ? ((batchCost as number) ?? 0) / absQty : (line.cost_price ?? 0),
-          sale_price:   null,
-          batch_cost:   (batchCost as number) ?? null,
-        });
-      }
-
-    } else if (direction === 'out') {
-      if (qtyInBase > 0) {
-        // Нормальний розхід — consume FIFO
-        const { data: lineBatchCost } = await db.rpc('consume_stock_fifo', {
-          p_sku:          line.sku,
-          p_warehouse_id: lineWarehouseId,
-          p_qty:          qtyInBase,
-        });
-        const costPerUnit = ((lineBatchCost as number) ?? 0) / qtyInBase;
-        movements.push({
-          ...base,
-          warehouse_id: lineWarehouseId,
-          sku:          line.sku,
-          qty:          -qtyInBase,
-          cost_price:   costPerUnit,
-          sale_price:   line.price,
-          batch_cost:   (lineBatchCost as number) ?? null,
-        });
-        totalFifoCost += (lineBatchCost as number) ?? 0;
-      } else {
-        // Сторно розходу — повертаємо товар на склад як нову FIFO-партію
-        const absQty = Math.abs(qtyInBase);
-        const costPerUnit = line.cost_price ?? 0;
-        await db.rpc('create_stock_batch', {
-          p_sku:          line.sku,
-          p_warehouse_id: lineWarehouseId,
-          p_supplier_id:  doc.supplier_id ?? null,
-          p_document_id:  doc.id,
-          p_qty:          absQty,
-          p_cost_price:   costPerUnit,
-          p_received_at:  doc.doc_date ?? new Date().toISOString(),
-        });
-        movements.push({
-          ...base,
-          warehouse_id: lineWarehouseId,
-          sku:          line.sku,
-          qty:          absQty,
-          cost_price:   costPerUnit,
-          sale_price:   null,
-          batch_cost:   null,
-        });
-      }
-
-    } else if (direction === 'transfer') {
-      const absQty = Math.abs(qtyInBase);
-      if (qtyInBase > 0) {
-        // Нормальне переміщення: списати з source, оприбуткувати на dest
-        const { data: lineBatchCost } = await db.rpc('consume_stock_fifo', {
-          p_sku:          line.sku,
-          p_warehouse_id: doc.warehouse_id,
-          p_qty:          absQty,
-        });
-        const costPerUnit = absQty > 0 ? ((lineBatchCost as number) ?? 0) / absQty : 0;
-        movements.push({ ...base, warehouse_id: doc.warehouse_id,      sku: line.sku, qty: -absQty, cost_price: costPerUnit, sale_price: null });
-        movements.push({ ...base, warehouse_id: doc.warehouse_to_id!,  sku: line.sku, qty:  absQty, cost_price: costPerUnit, sale_price: null });
-        await db.rpc('create_stock_batch', {
-          p_sku: line.sku, p_warehouse_id: doc.warehouse_to_id!,
-          p_supplier_id: null, p_document_id: doc.id,
-          p_qty: absQty, p_cost_price: costPerUnit,
-          p_received_at: doc.doc_date ?? new Date().toISOString(),
-        });
-      } else {
-        // Сторно переміщення: consume з dest, відновити source
-        const { data: lineBatchCost } = await db.rpc('consume_stock_fifo', {
-          p_sku:          line.sku,
-          p_warehouse_id: doc.warehouse_to_id!,
-          p_qty:          absQty,
-        });
-        const costPerUnit = absQty > 0 ? ((lineBatchCost as number) ?? 0) / absQty : 0;
-        movements.push({ ...base, warehouse_id: doc.warehouse_id,      sku: line.sku, qty:  absQty, cost_price: costPerUnit, sale_price: null });
-        movements.push({ ...base, warehouse_id: doc.warehouse_to_id!,  sku: line.sku, qty: -absQty, cost_price: costPerUnit, sale_price: null });
-        await db.rpc('create_stock_batch', {
-          p_sku: line.sku, p_warehouse_id: doc.warehouse_id,
-          p_supplier_id: null, p_document_id: doc.id,
-          p_qty: absQty, p_cost_price: costPerUnit,
-          p_received_at: doc.doc_date ?? new Date().toISOString(),
-        });
-      }
-
-    } else if (direction === 'inventory') {
-      if (qtyInBase < 0) {
-        const absQty = Math.abs(qtyInBase);
-        const { data: lineInventoryCost } = await db.rpc('consume_stock_fifo', {
-          p_sku: line.sku, p_warehouse_id: lineWarehouseId, p_qty: absQty,
-        });
-        movements.push({
-          ...base,
-          warehouse_id: lineWarehouseId,
-          sku:          line.sku,
-          qty:          -absQty,
-          cost_price:   line.cost_price ?? null,
-          sale_price:   null,
-          batch_cost:   (lineInventoryCost as number) ?? null,
-        });
-      } else {
-        movements.push({
-          ...base,
-          warehouse_id: lineWarehouseId,
-          sku:          line.sku,
-          qty:          qtyInBase,
-          cost_price:   line.cost_price ?? null,
-          sale_price:   null,
-        });
-        await db.rpc('create_stock_batch', {
-          p_sku: line.sku, p_warehouse_id: lineWarehouseId,
-          p_supplier_id: null, p_document_id: doc.id,
-          p_qty: qtyInBase, p_cost_price: line.cost_price ?? 0,
-          p_received_at: doc.doc_date ?? new Date().toISOString(),
-        });
-      }
-    }
-  }
-
-  return { movements, fifoCost: totalFifoCost };
-}
+// Складська частина проведення — SQL-функція post_document_movements (міграція 144).
