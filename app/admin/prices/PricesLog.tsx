@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Tag, RotateCcw, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Clock, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Tag, RotateCcw, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Clock, X, Undo2 } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { isMpTarget } from '../../../lib/mp-reprice';
 
 type LogEntry = {
   id: number;
@@ -24,17 +25,36 @@ const TYPE_LABEL: Record<string, string> = {
   multiply_cost: '× від собівартості',
   increase_pct:  '% зміна',
   fixed:         'Фіксована ціна',
+  set_markup:    'Націнка = N %',
+  mp_revert:     'Відкат переоцінки МП',
   manual:        'Ручна правка',
   promo_cancel:  'Завершення акції',
   supplier_discount: 'Знижка постачальника',
 };
 
 const TARGET_LABEL: Record<string, string> = {
-  retail: 'Роздріб',
-  unit:   'Опт',
-  drop:   'Дроп',
-  all:    'Всі',
+  retail:  'Роздріб',
+  unit:    'Опт',
+  drop:    'Дроп',
+  all:     'Всі',
+  rozetka: 'Rozetka',
+  prom:    'Prom',
+  mp:      'Prom + Rozetka',
 };
+
+// Знімок переоцінки МП: ціна фіда й товарна націнка (null = категорійна) по каналах
+const MP_COLS: Record<string, { price: string; markup: string; label: string }[]> = {
+  rozetka: [{ price: 'rz_price', markup: 'rz_markup', label: 'Rozetka' }],
+  prom:    [{ price: 'prom_price', markup: 'prom_markup', label: 'Prom' }],
+  mp:      [{ price: 'prom_price', markup: 'prom_markup', label: 'Prom' }, { price: 'rz_price', markup: 'rz_markup', label: 'Rozetka' }],
+};
+
+function mpCell(rec: Record<string, number | null> | undefined, col: { price: string; markup: string }) {
+  if (!rec || (!(col.price in rec) && !(col.markup in rec))) return '—';
+  const price  = rec[col.price];
+  const markup = rec[col.markup];
+  return `${price != null ? `${price} ₴` : '—'} · ${markup != null ? `${markup}%` : 'кат.'}`;
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString('uk-UA', {
@@ -60,6 +80,7 @@ export default function PricesLog() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [cancelling, setCancelling] = useState<number | null>(null);
+  const [reverting, setReverting]   = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/prices/log')
@@ -94,6 +115,37 @@ export default function PricesLog() {
     }
   }
 
+  // Відкат переоцінки маркетплейсів: сервер повертає товарні націнки «до» зі
+  // знімка (null → знову категорійна), позначає запис і пише окремий рядок
+  // «Відкат». Для цін сайту такого відкату немає — там інший механізм (наценки
+  // постачальника, акції з датою повернення).
+  async function revertMp(entry: LogEntry) {
+    const when = formatDate(entry.created_at);
+    if (!confirm(`Відкотити переоцінку від ${when} (${entry.count ?? 0} товарів)?\n\nНацінки Prom/Rozetka повернуться до значень, що були до неї; фіди перерахують ціни від поточної собівартості.`)) return;
+    setReverting(entry.id);
+    try {
+      const res = await fetch('/api/admin/prices/log', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: entry.id, action: 'revert' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? 'Помилка відкату');
+      // Перечитуємо журнал: з'явився рядок відкату, а вихідний позначено
+      const fresh = await fetch('/api/admin/prices/log').then(r => r.json()).catch(() => null);
+      if (Array.isArray(fresh)) setEntries(fresh);
+      else setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, status: 'reverted', reverted_at: data.reverted_at ?? new Date().toISOString() } : e));
+      const drifted = Array.isArray(data.drifted) ? data.drifted.length : 0;
+      showToast(
+        `Відкочено ${data.reverted ?? entry.count ?? 0} товарів` + (drifted ? ` · ${drifted} з них змінювали після переоцінки — їх теж повернуто до «до»` : ''),
+        drifted ? 'warning' : 'success', drifted ? 7000 : 4000);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Помилка відкату', 'error');
+    } finally {
+      setReverting(null);
+    }
+  }
+
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Завантаження...</div>;
   }
@@ -106,12 +158,14 @@ export default function PricesLog() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {entries.map(entry => {
         const isOpen = expanded.has(entry.id);
-        const valStr = entry.type === 'manual' || entry.type === 'promo_cancel'
+        const valStr = entry.type === 'manual' || entry.type === 'promo_cancel' || entry.type === 'mp_revert'
           ? ''
           : entry.type === 'increase_pct'
           ? (entry.value >= 0 ? `+${entry.value}%` : `${entry.value}%`)
           : entry.type === 'multiply_cost'
           ? `×${entry.value}`
+          : entry.type === 'set_markup'
+          ? `${entry.value}%`
           : entry.type === 'supplier_discount'
           ? `−${entry.value}%`
           : `${entry.value} ₴`;
@@ -121,6 +175,10 @@ export default function PricesLog() {
         const hasSnapshot = (entry.snapshot?.length ?? 0) > 0;
         const isPending   = entry.status === 'pending';
         const isCancelled = entry.status === 'cancelled';
+        const isMp        = isMpTarget(entry.target);
+        const isReverted  = entry.status === 'reverted';
+        const canRevert   = isMp && entry.type !== 'mp_revert' && entry.status === 'applied' && !entry.reverted_at && hasSnapshot;
+        const mpCols      = isMp ? (MP_COLS[entry.target] ?? []) : [];
 
         return (
           <div key={entry.id} style={{
@@ -165,6 +223,18 @@ export default function PricesLog() {
                     Скасовано
                   </span>
                 )}
+                {isMp && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#5B21B6', background: '#F5F3FF', border: '1px solid #DDD6FE',
+                    padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
+                    {entry.type === 'mp_revert' ? 'Відкат' : 'Націнка МП'}
+                  </span>
+                )}
+                {isReverted && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#6B7280', background: '#F3F4F6',
+                    padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
+                    <Undo2 size={10} /> Відкочено{entry.reverted_at ? ` ${formatDateOnly(entry.reverted_at)}` : ''}
+                  </span>
+                )}
                 {entry.is_promo && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700,
                     color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74',
@@ -188,7 +258,7 @@ export default function PricesLog() {
                     <RotateCcw size={10} /> до {formatDateOnly(entry.revert_at)}
                   </span>
                 )}
-                {entry.reverted_at && (
+                {entry.reverted_at && !isReverted && (
                   <span style={{ fontSize: 11, color: '#9CA3AF' }}>скасовано {formatDateOnly(entry.reverted_at)}</span>
                 )}
                 {entry.comment && (
@@ -208,6 +278,15 @@ export default function PricesLog() {
                     <X size={10} /> {cancelling === entry.id ? '...' : 'Скасувати'}
                   </button>
                 )}
+                {canRevert && (
+                  <button
+                    onClick={() => revertMp(entry)}
+                    disabled={reverting === entry.id}
+                    title="Повернути націнки Prom/Rozetka, що були до цієї переоцінки"
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid #DDD6FE', background: '#F5F3FF', color: '#5B21B6', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    <Undo2 size={10} /> {reverting === entry.id ? '...' : 'Відкотити'}
+                  </button>
+                )}
                 {hasSnapshot && (
                   <div style={{ color: 'var(--text-secondary)' }}>
                     {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -222,6 +301,45 @@ export default function PricesLog() {
                 <div style={{ fontSize: 11, color: '#9CA3AF', padding: '8px 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {TYPE_LABEL[entry.type] ?? entry.type}
                 </div>
+                {isMp ? (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: '#F8FAFC' }}>
+                        {['Артикул', 'Назва', ...mpCols.flatMap(c => [`${c.label}: до`, `${c.label}: після`])].map((h, i) => (
+                          <th key={h} style={{ padding: '5px 10px', textAlign: i < 2 ? 'left' : 'right',
+                            color: '#94A3B8', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entry.snapshot!.slice(0, 100).map(row => (
+                        <tr key={row.sku} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '4px 10px', fontFamily: 'monospace', color: '#6B7280' }}>{row.sku}</td>
+                          <td style={{ padding: '4px 10px' }}>{row.name}</td>
+                          {mpCols.map(c => {
+                            const bp = row.before?.[c.price] ?? null;
+                            const ap = row.after?.[c.price] ?? null;
+                            const color = bp != null && ap != null ? (ap > bp ? '#15803D' : ap < bp ? '#DC2626' : '#111') : '#111';
+                            return (
+                              <React.Fragment key={c.price}>
+                                <td style={{ padding: '4px 10px', textAlign: 'right', color: '#6B7280', whiteSpace: 'nowrap' }}>{mpCell(row.before, c)}</td>
+                                <td style={{ padding: '4px 10px', textAlign: 'right', fontWeight: 600, color, whiteSpace: 'nowrap' }}>{mpCell(row.after, c)}</td>
+                              </React.Fragment>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                      {(entry.snapshot?.length ?? 0) > 100 && (
+                        <tr><td colSpan={2 + mpCols.length * 2} style={{ padding: '6px 10px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                          + ще {entry.snapshot!.length - 100} позицій
+                        </td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                  <div style={{ fontSize: 11, color: '#9CA3AF', padding: '6px 0 0' }}>ціна фіда · товарна націнка («кат.» — рахувалась від націнки категорії)</div>
+                </div>
+                ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
@@ -258,6 +376,7 @@ export default function PricesLog() {
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
             )}
           </div>

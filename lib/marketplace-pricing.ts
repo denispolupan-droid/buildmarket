@@ -159,6 +159,20 @@ export function epicentrMargin(inp: EpicentrInputs): { uah: number; pct: number 
   return { uah: net - inp.cost, pct: ((net - inp.cost) / net) * 100 };
 }
 
+// ── Переоцінка МП через націнку ───────────────────────────────────────────────
+
+/**
+ * Націнка, за якої ціна каналу зросте на changePct %. Ціна МП пропорційна
+ * (1 + націнка), тож (1 + m′) = (1 + m) × (1 + Δ). Від'ємний Δ — зниження.
+ * Результат округлено до 0,01 (products.*_markup_pct — NUMERIC(6,2)). Фактична
+ * зміна ціни у фіді буде близька до Δ, не точна: Rozetka округлює до 5 грн і
+ * додає Smart-надбавку, Prom — до 1 грн.
+ */
+export function markupForPriceChange(currentMarkupPct: number, changePct: number): number {
+  const m = (1 + currentMarkupPct / 100) * (1 + changePct / 100) - 1;
+  return Math.round(m * 10000) / 100;
+}
+
 // ── Сайт ──────────────────────────────────────────────────────────────────────
 
 /** Маржа роздрібної ціни сайту (без комісій). */

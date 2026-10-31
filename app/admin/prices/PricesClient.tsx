@@ -17,7 +17,8 @@ type ProductMarkupRow = {
 };
 import { showToast } from '../../../lib/toast';
 import PricesLog from './PricesLog';
-import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin, type PromPlan } from '../../../lib/marketplace-pricing';
+import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin, resolveMarkup, markupForPriceChange, type PromPlan } from '../../../lib/marketplace-pricing';
+import { isMpTarget, type MpSnapshotRow, type MpMarkupItem } from '../../../lib/mp-reprice';
 import { formatPricelistPrice, pricelistCategoryMatch } from '../../../lib/pricelist-rules';
 import type { SmartBracket } from '../../../lib/rozetka-smart-tariff';
 
@@ -94,8 +95,14 @@ interface LocalOverride {
   price_promo?:  number;
 }
 
-type RepricingType = 'multiply_cost' | 'increase_pct' | 'fixed';
-type RepricingTarget = 'retail' | 'unit' | 'drop' | 'all';
+// set_markup — лише для маркетплейсів: «націнка = N %» замість зміни ціни
+type RepricingType = 'multiply_cost' | 'increase_pct' | 'fixed' | 'set_markup';
+// rozetka / prom / mp — переоцінка маркетплейсів: міняється товарна націнка
+// (products.*_markup_pct), ціну від неї рахує фід (lib/marketplace-pricing)
+type RepricingTarget = 'retail' | 'unit' | 'drop' | 'all' | 'rozetka' | 'prom' | 'mp';
+
+/** Локальна зміна товарних націнок МП цієї сесії (undefined = не чіпали). */
+type MpLocal = { rz?: number | null; prom?: number | null };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -161,6 +168,9 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
   const [editState, setEditState]       = useState<EditState | null>(null);
   const [saving, setSaving]             = useState(false);
   const [overrides, setOverrides]       = useState<Map<string, LocalOverride>>(new Map());
+  // Товарні націнки МП, змінені переоцінкою в цій сесії — щоб колонки
+  // «Ціна Prom/Rozetka» оновились одразу, без перезавантаження
+  const [mpLocal, setMpLocal]           = useState<Map<string, MpLocal>>(new Map());
 
   // Repricing panel
   const [repricingType, setRepricingType]     = useState<RepricingType>('multiply_cost');
@@ -221,10 +231,13 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 
         // Ціни МП — ЄДИНОЮ формулою фідів (lib/marketplace-pricing):
         // ціна входу → націнка (товарна ?? категорійна) → комісія (+Smart для Rozetka)
+        const mp = mpLocal.get(p.sku);
+        const promProdMarkup = mp && 'prom' in mp ? (mp.prom ?? null) : n(p.prom_markup_pct);
+        const rzProdMarkup   = mp && 'rz'   in mp ? (mp.rz   ?? null) : n(p.rozetka_markup_pct);
         const promInputs = {
           cost, retail: retail ?? unit ?? 0,
           manualOverride: n(s?.price_wholesale),
-          productMarkupPct: n(p.prom_markup_pct),
+          productMarkupPct: promProdMarkup,
           categoryMarkupPct: n(cat?.prom_markup_pct),
           commissionPct: promCommissionOf(cat, promPlan),
         };
@@ -234,7 +247,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 
         const rzInputs = {
           cost, retail: retail ?? 0,
-          productMarkupPct: n(p.rozetka_markup_pct),
+          productMarkupPct: rzProdMarkup,
           categoryMarkupPct: n(cat?.rozetka_markup_pct),
           commissionPct: n(cat?.rozetka_commission_pct) ?? 0,
           smart: p.rozetka_smart === true,
@@ -250,14 +263,19 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
         // завершені акції — null
         const promo = promoCancelled.has(p.sku) ? null : n(ov?.price_promo ?? s?.price_promo);
 
-        return { p, cost, unit, retail, drop, locked, cat, promPrice, promMrg, rzPrice, rzMrg, retailMrg, promo, s };
+        return {
+          p, cost, unit, retail, drop, locked, cat, promPrice, promMrg, rzPrice, rzMrg, retailMrg, promo, s,
+          // для переоцінки МП: вхідні дані формули й товарні націнки (null = категорійна)
+          promInputs, rzInputs, hasPromBase, hasRzBase, promProdMarkup, rzProdMarkup,
+          promManual: (promInputs.manualOverride ?? 0) > 0,
+        };
       })
       .filter(r => filterStock === 'all' ? true : filterStock === 'in_stock' ? r.s?.stock_status === 'in_stock' : r.s?.stock_status !== 'in_stock')
       .filter(r => !filterBrand || r.p.brand === filterBrand)
       .filter(r => !filterNoPrice || r.cost == null || r.retail == null)
       .filter(r => !filterLocked || r.locked)
       .filter(r => !filterPromo || r.promo != null);
-  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, stockMap, catMap, promoCancelled, smartTariff, promPlan]);
+  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, mpLocal, stockMap, catMap, promoCancelled, smartTariff, promPlan]);
 
   // Group by category
   const grouped = useMemo(() => {
@@ -412,6 +430,114 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     });
   }, [showPreview, previewKey, selectedRows, applyFormula]);
 
+  // ── Переоцінка маркетплейсів ────────────────────────────────────────────────
+  //
+  // Ціна МП не зберігається — її рахує фід від собівартості через націнку
+  // (товарну, а без неї категорійну). Тому тут міняємо товарну націнку:
+  // «+N % до ціни» → markupForPriceChange від ЧИННОЇ націнки (категорійна теж
+  // рахується), «націнка = N %» → просто число. Знімок для журналу зберігає
+  // товарну націнку «до» (null = була категорійна) — відкат повертає її як є.
+
+  const mpWantsRz   = repricingTarget === 'rozetka' || repricingTarget === 'mp';
+  const mpWantsProm = repricingTarget === 'prom'    || repricingTarget === 'mp';
+  const isMp        = isMpTarget(repricingTarget);
+
+  const mpAfter = useCallback((r: typeof rows[0]) => {
+    const val = parseFloat(repricingValue);
+    const ok  = !isNaN(val);
+    const calc = (cur: number) => repricingType === 'set_markup' ? Math.round(val * 100) / 100 : markupForPriceChange(cur, val);
+
+    const rzMarkup   = ok && mpWantsRz   ? calc(resolveMarkup(r.rzInputs.productMarkupPct,   r.rzInputs.categoryMarkupPct))   : r.rzProdMarkup;
+    const promMarkup = ok && mpWantsProm ? calc(resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct)) : r.promProdMarkup;
+    const rzPrice    = r.hasRzBase   ? libRozetkaPrice({ ...r.rzInputs,   productMarkupPct: rzMarkup })   : null;
+    const promPrice  = r.hasPromBase ? libPromPrice({ ...r.promInputs, productMarkupPct: promMarkup }) : null;
+    return { rzMarkup, rzPrice, promMarkup, promPrice };
+  }, [repricingValue, repricingType, mpWantsRz, mpWantsProm]);
+
+  const mpPreview = useMemo(() => {
+    if (!showPreview || !isMp) return [];
+    return selectedRows.map(r => ({
+      sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume,
+      promManual: r.promManual,
+      before: { rzMarkup: r.rzProdMarkup, rzPrice: r.rzPrice, promMarkup: r.promProdMarkup, promPrice: r.promPrice,
+                rzEff: resolveMarkup(r.rzInputs.productMarkupPct, r.rzInputs.categoryMarkupPct),
+                promEff: resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct) },
+      after: mpAfter(r),
+    }));
+  }, [showPreview, isMp, selectedRows, mpAfter]);
+
+  // Перемикання цілі: формули цін і формули націнок не перетинаються
+  function changeTarget(t: RepricingTarget) {
+    setRepricingTarget(t);
+    const mp = isMpTarget(t);
+    if (mp && (repricingType === 'multiply_cost' || repricingType === 'fixed')) setRepricingType('increase_pct');
+    if (!mp && repricingType === 'set_markup') setRepricingType('increase_pct');
+    if (mp) { setRepricingIsPromo(false); setRepricingEffectiveFrom(''); setRepricingRevertAt(''); }
+  }
+
+  async function applyMpRepricing() {
+    setSaving(true);
+    try {
+      const items: MpMarkupItem[] = [];
+      const snapshot: MpSnapshotRow[] = [];
+      for (const r of selectedRows) {
+        const a = mpAfter(r);
+        const item: MpMarkupItem = { sku: r.p.sku };
+        const before: MpSnapshotRow['before'] = {};
+        const after:  MpSnapshotRow['after']  = {};
+        if (mpWantsRz)   { item.rozetka_markup_pct = a.rzMarkup;   before.rz_markup   = r.rzProdMarkup;   before.rz_price   = r.rzPrice;   after.rz_markup   = a.rzMarkup;   after.rz_price   = a.rzPrice; }
+        if (mpWantsProm) { item.prom_markup_pct    = a.promMarkup; before.prom_markup = r.promProdMarkup; before.prom_price = r.promPrice; after.prom_markup = a.promMarkup; after.prom_price = a.promPrice; }
+        items.push(item);
+        snapshot.push({ sku: r.p.sku, name: r.p.name, before, after });
+      }
+
+      const res = await fetch('/api/admin/prices/mp-markup', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Помилка збереження націнок');
+
+      setMpLocal(prev => {
+        const next = new Map(prev);
+        for (const it of items) {
+          const cur = { ...(next.get(it.sku) ?? {}) };
+          if ('rozetka_markup_pct' in it) cur.rz   = it.rozetka_markup_pct ?? null;
+          if ('prom_markup_pct'    in it) cur.prom = it.prom_markup_pct    ?? null;
+          next.set(it.sku, cur);
+        }
+        return next;
+      });
+
+      // Журнал тут — не лише історія, а й єдиний шлях відкату, тому чекаємо
+      // відповіді й кажемо, якщо запис не вдався.
+      const logRes = await fetch('/api/admin/prices/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: repricingType, value: repricingValue, target: repricingTarget,
+          is_promo: false, comment: repricingComment || null, status: 'applied',
+          count: items.length, snapshot,
+        }),
+      }).catch(() => null);
+
+      const manual = selectedRows.filter(r => mpWantsProm && r.promManual).length;
+      cancelRepricing();
+      if (!logRes || !logRes.ok) {
+        showToast(`Націнки ${items.length} товарів змінено, але запис у журнал не вдався — відкат через журнал буде недоступний`, 'warning', 8000);
+      } else {
+        showToast(
+          `Переоцінено ${items.length} товарів на маркетплейсах · відкат — у журналі переоцінок` +
+          (manual ? ` · у ${manual} ручна ціна Prom, вона не змінилась` : ''),
+          manual ? 'warning' : 'success', manual ? 7000 : 4000);
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Помилка переоцінки', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function cancelRepricing() {
     setSelected(new Set());
     setShowPreview(false);
@@ -425,7 +551,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 
   // Debounced revenue preview
   useEffect(() => {
-    if (!repricingValue || isNaN(parseFloat(repricingValue)) || selected.size === 0) {
+    // Для МП виручка «ціна × залишок» не рахується: ціна там не зберігається
+    if (!repricingValue || isNaN(parseFloat(repricingValue)) || selected.size === 0 || isMpTarget(repricingTarget)) {
       setPreviewRevenue(null);
       return;
     }
@@ -444,6 +571,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
   }, [repricingType, repricingValue, repricingTarget, selected]);
 
   async function applyRepricing() {
+    if (isMpTarget(repricingTarget)) return applyMpRepricing();
     setSaving(true);
     try {
       const updates = selectedRows.map(r => {
@@ -1080,31 +1208,47 @@ async function sendEmail(){
             <div>
               <label style={smallLabel}>Формула</label>
               <select value={repricingType} onChange={e => setRepricingType(e.target.value as RepricingType)} style={selectStyle}>
-                <option value="multiply_cost">Собівартість × N</option>
-                <option value="increase_pct">Збільшити поточну на %</option>
-                <option value="fixed">Фіксована ціна</option>
+                {isMp ? (
+                  <>
+                    <option value="increase_pct">Збільшити поточну ціну на %</option>
+                    <option value="set_markup">Націнка = N %</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="multiply_cost">Собівартість × N</option>
+                    <option value="increase_pct">Збільшити поточну на %</option>
+                    <option value="fixed">Фіксована ціна</option>
+                  </>
+                )}
               </select>
             </div>
             {/* Value */}
             <div>
               <label style={smallLabel}>
-                {repricingType === 'multiply_cost' ? 'Множник' : repricingType === 'increase_pct' ? 'Відсоток (%)' : 'Ціна (₴)'}
+                {repricingType === 'multiply_cost' ? 'Множник' : repricingType === 'increase_pct' ? 'Відсоток (%)' : repricingType === 'set_markup' ? 'Націнка (%)' : 'Ціна (₴)'}
               </label>
               <input
-                type="number" step="0.01" min="0"
+                type="number" step="0.01" min={isMp && repricingType === 'increase_pct' ? undefined : 0}
                 value={repricingValue} onChange={e => setRepricingValue(e.target.value)}
-                placeholder={repricingType === 'multiply_cost' ? '1.8' : repricingType === 'increase_pct' ? '10' : '150'}
+                placeholder={repricingType === 'multiply_cost' ? '1.8' : repricingType === 'increase_pct' ? (isMp ? '5' : '10') : repricingType === 'set_markup' ? '12' : '150'}
                 style={{ ...inputSmall, width: 90 }}
               />
             </div>
             {/* Target */}
             <div>
               <label style={smallLabel}>Оновити</label>
-              <select value={repricingTarget} onChange={e => setRepricingTarget(e.target.value as RepricingTarget)} style={selectStyle}>
-                <option value="retail">Роздрібну</option>
-                <option value="unit">Оптову</option>
-                <option value="drop">Дроп</option>
-                <option value="all">Всі три</option>
+              <select value={repricingTarget} onChange={e => changeTarget(e.target.value as RepricingTarget)} style={selectStyle}>
+                <optgroup label="Сайт">
+                  <option value="retail">Роздрібну</option>
+                  <option value="unit">Оптову</option>
+                  <option value="drop">Дроп</option>
+                  <option value="all">Всі три</option>
+                </optgroup>
+                <optgroup label="Маркетплейси (націнка)">
+                  <option value="rozetka">Rozetka</option>
+                  <option value="prom">Prom</option>
+                  <option value="mp">Prom + Rozetka</option>
+                </optgroup>
               </select>
             </div>
             {/* Comment */}
@@ -1118,7 +1262,8 @@ async function sendEmail(){
                 style={{ ...inputSmall, width: '100%', height: 32 }}
               />
             </div>
-            {/* Акція */}
+            {/* Акція, дати — лише для цін сайту: у МП немає ні акційної ціни, ні планувальника */}
+            {!isMp && <>
             <div>
               <label style={smallLabel}>Тип</label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '5px 10px', border: `1.5px solid ${repricingIsPromo ? '#F97316' : '#E5E7EB'}`, borderRadius: 7, background: repricingIsPromo ? '#FFF7ED' : '#fff', color: repricingIsPromo ? '#C2410C' : '#6B7280', whiteSpace: 'nowrap', height: 32, boxSizing: 'border-box' }}>
@@ -1160,10 +1305,20 @@ async function sendEmail(){
                 )}
               </div>
             </div>
+            </>}
           </div>
 
+          {/* Як працює переоцінка МП */}
+          {isMp && (
+            <div style={{ marginTop: 10, padding: '7px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 7, fontSize: 12, color: '#5B21B6', lineHeight: 1.5 }}>
+              Ціна на маркетплейсі не зберігається — зміниться <b>націнка товару</b>, а ціну фід далі рахує від поточної собівартості
+              (Rozetka округлює до 5 ₴ і додає Smart, тому фактична зміна ≈ заданій). Товари з ручною ціною Prom не змінюються.
+              Відкат — у «Журналі переоцінок»: він повертає попередні націнки, зокрема категорійні.
+            </div>
+          )}
+
           {/* Revenue preview widget */}
-          {repricingValue && (
+          {repricingValue && !isMp && (
             <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
               {previewLoading ? (
                 <span style={{ color: '#9CA3AF' }}>Розрахунок...</span>
@@ -1198,8 +1353,43 @@ async function sendEmail(){
             )}
           </div>
 
+          {/* Preview table — маркетплейси: ціна фіда і націнка до → після */}
+          {showPreview && isMp && mpPreview.length > 0 && (
+            <div style={{ marginTop: 16, maxHeight: 300, overflowY: 'auto', borderRadius: 8, border: '1px solid #BFDBFE', background: '#fff' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #BFDBFE' }}>
+                    <th style={thSmall}>Товар</th>
+                    {mpWantsRz   && <th style={thSmall}>Rozetka: до → після</th>}
+                    {mpWantsRz   && <th style={thSmall}>Націнка Rozetka</th>}
+                    {mpWantsProm && <th style={thSmall}>Prom: до → після</th>}
+                    {mpWantsProm && <th style={thSmall}>Націнка Prom</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {mpPreview.map(row => (
+                    <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF', background: row.promManual && mpWantsProm ? '#FFFBEB' : undefined }}>
+                      <td style={{ padding: '5px 10px' }}>
+                        <span>{row.brand} {row.name}{row.volume && !row.name.includes(row.volume) ? ` ${row.volume}` : ''}</span>
+                        {row.promManual && mpWantsProm && (
+                          <span title="Ціна Prom задана вручну (price_wholesale) — націнка на неї не впливає" style={{ marginLeft: 5, fontSize: 10, fontWeight: 600, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '1px 5px', borderRadius: 3, verticalAlign: 'middle' }}>
+                            ручна ціна Prom
+                          </span>
+                        )}
+                      </td>
+                      {mpWantsRz   && <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.rzPrice} after={row.after.rzPrice} /></td>}
+                      {mpWantsRz   && <td style={{ padding: '5px 10px' }}><MarkupChange before={row.before.rzEff} beforeIsCat={row.before.rzMarkup == null} after={row.after.rzMarkup} /></td>}
+                      {mpWantsProm && <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.promPrice} after={row.after.promPrice} /></td>}
+                      {mpWantsProm && <td style={{ padding: '5px 10px' }}><MarkupChange before={row.before.promEff} beforeIsCat={row.before.promMarkup == null} after={row.after.promMarkup} /></td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* Preview table */}
-          {showPreview && repricingPreview.length > 0 && (
+          {showPreview && !isMp && repricingPreview.length > 0 && (
             <div style={{ marginTop: 16, maxHeight: 300, overflowY: 'auto', borderRadius: 8, border: '1px solid #BFDBFE', background: '#fff' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
@@ -1672,6 +1862,19 @@ function PreviewChange({ before, after }: { before: number | null; after: number
       <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>{fmt(before)}</span>
       {' → '}
       <span style={{ color: after != null && before != null && after > before ? '#16A34A' : '#EA580C', fontWeight: 600 }}>{fmt(after)}</span>
+    </span>
+  );
+}
+
+/** Націнка МП до → після; «кат.» — товар рахувався від націнки категорії. */
+function MarkupChange({ before, beforeIsCat, after }: { before: number; beforeIsCat: boolean; after: number | null }) {
+  const b = `${before}%${beforeIsCat ? ' кат.' : ''}`;
+  if (after == null || after === before) return <span style={{ color: '#9CA3AF' }}>{b}</span>;
+  return (
+    <span>
+      <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>{b}</span>
+      {' → '}
+      <span style={{ color: after > before ? '#16A34A' : '#EA580C', fontWeight: 600 }}>{after}%</span>
     </span>
   );
 }
