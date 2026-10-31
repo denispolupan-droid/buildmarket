@@ -33,17 +33,14 @@ export async function GET() {
     cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  // Обороти по місяцях (одним проходом)
-  const { data: entries } = await db
-    .from('money_entries')
-    .select('business_date, amount, account_type');
+  // Обороти по місяцях — агрегат у базі (acc_period_turnover, міграція 140).
+  // Раніше читався весь леджер без меж: PostgREST віддає лише перші 1000
+  // рядків, і обороти рахувались по них (аудит 31.10.2026).
+  const { data: turnoverRows, error: turnoverErr } = await db.rpc('acc_period_turnover');
+  if (turnoverErr) return NextResponse.json({ error: turnoverErr.message }, { status: 500 });
   const turnover = new Map<string, { txns: number; revenue: number }>();
-  for (const e of entries ?? []) {
-    const key = String(e.business_date).slice(0, 7) + '-01';
-    const t = turnover.get(key) ?? { txns: 0, revenue: 0 };
-    t.txns += 1;
-    if (e.account_type === 'revenue') t.revenue += -Number(e.amount);
-    turnover.set(key, t);
+  for (const r of (turnoverRows ?? []) as { month: string; txns: number; revenue: number }[]) {
+    turnover.set(String(r.month).slice(0, 10), { txns: Number(r.txns), revenue: Number(r.revenue) });
   }
 
   return NextResponse.json({

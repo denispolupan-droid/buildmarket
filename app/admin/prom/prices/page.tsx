@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import PromPricesClient from './PromPricesClient';
+import { fetchAllRows } from '../../../../lib/db-paginate';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,14 +16,19 @@ export default async function PromPricesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
-  const [{ data: products }, { data: stock }, { data: categories }, { data: planRow }] = await Promise.all([
-    db.from('products')
+  // Сторінками: ліміт PostgREST 1000 рядків (каталог ~800 SKU і росте)
+  const [products, stock, { data: categories }, { data: planRow }] = await Promise.all([
+    fetchAllRows((f, t) => db.from('products')
       .select('sku, name, brand, category_slug, volume, prom_markup_pct, on_prom, prom_portal_url')
       .eq('is_active', true)
       .order('category_slug', { nullsFirst: false })
-      .order('name'),
-    db.from('product_stock')
-      .select('sku, price_cost, price_retail, price_unit, price_wholesale'),
+      .order('name')
+      .order('sku')
+      .range(f, t)),
+    fetchAllRows((f, t) => db.from('product_stock')
+      .select('sku, price_cost, price_retail, price_unit, price_wholesale')
+      .order('id')
+      .range(f, t)),
     db.from('categories')
       .select('slug, name, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct, prom_section_url'),
     db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
@@ -32,8 +38,8 @@ export default async function PromPricesPage() {
 
   return (
     <PromPricesClient
-      products={products ?? []}
-      stock={stock ?? []}
+      products={products}
+      stock={stock}
       categories={categories ?? []}
       plan={plan}
     />

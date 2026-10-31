@@ -62,6 +62,8 @@ export async function GET(req: NextRequest) {
         .select('day, bot, section, hits')
         .gte('day', iso(prevFrom))
         .lte('day', iso(today))
+        // ORDER по первинному ключу — без нього сторінки range() нестабільні
+        .order('day').order('bot').order('section')
         .range(a, b),
     ),
     fetchAllRows<RefRow>((a, b) =>
@@ -69,6 +71,7 @@ export async function GET(req: NextRequest) {
         .select('day, source, landing_path, hits')
         .gte('day', iso(prevFrom))
         .lte('day', iso(today))
+        .order('day').order('source').order('landing_path')
         .range(a, b),
     ),
   ]);

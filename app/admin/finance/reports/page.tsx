@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import FinanceTabs from '../FinanceTabs';
 import ReportsClient, { type PLData, type CFData } from './ReportsClient';
 import { computePL } from '../../../../lib/accounting/profit';
+import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +25,11 @@ export default async function ReportsPage({
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   const { from, to } = await searchParams;
+  // Типові межі — за Києвом: після 21:00/22:00 UTC-«сьогодні» вже вчора, і
+  // проводки поточного дня випадали зі звіту (аудит 31.10.2026, R5).
   const now        = new Date();
-  const dateFrom   = from ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const dateTo     = to   ?? now.toISOString().slice(0, 10);
+  const dateFrom   = from ?? kyivMonthStart(now);
+  const dateTo     = to   ?? kyivYmd(now);
 
   // ══ P&L DATA ════════════════════════════════════════════════════════════════
   // Прибуток — ЄДИНИМ визначенням з lib/accounting/profit (те саме на «Огляді»):

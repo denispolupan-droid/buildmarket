@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { kyivDayBounds } from '../../../../../lib/kyiv-date';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,12 +30,16 @@ export async function GET(req: NextRequest) {
   const dateFrom = searchParams.get('dateFrom') ?? '';
   const dateTo   = searchParams.get('dateTo')   ?? '';
 
-  let query = db.from('orders').select('*').order('created_at', { ascending: false }).limit(5000);
-  if (status)   query = query.eq('status', status);
-  if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00`);
-  if (dateTo)   query = query.lte('created_at', `${dateTo}T23:59:59`);
-
-  const { data: orders } = await query;
+  // Межі доби — київські (created_at — timestamptz; рядок без зони PostgREST
+  // читає як UTC). Без limit(5000): повна вибірка сторінками, інакше експорт
+  // мовчки обрізався (аудит 31.10.2026).
+  const orders = await fetchAllRows((f, t) => {
+    let query = db.from('orders').select('*').order('created_at', { ascending: false }).order('id');
+    if (status)   query = query.eq('status', status);
+    if (dateFrom) query = query.gte('created_at', kyivDayBounds(dateFrom).start);
+    if (dateTo)   query = query.lt('created_at', kyivDayBounds(dateTo).end);
+    return query.range(f, t);
+  });
 
   const rows = (orders ?? []).map(o => {
     const items = (o.items ?? []) as { name?: string; qty?: number; price?: number }[];

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { fetchAllRows } from '../../../../../lib/db-paginate';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,12 +13,16 @@ export async function GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
-  const [{ data: categories }, { data: products }] = await Promise.all([
+  // Сторінками: ліміт PostgREST 1000 рядків — експорт мовчки обрізався б на 1000-му SKU
+  const [{ data: categories }, products] = await Promise.all([
     serviceClient.from('categories').select('*').order('sort_order'),
-    serviceClient
+    fetchAllRows((f, t) => serviceClient
       .from('products')
       .select('*, stock:product_stock(*), characteristics:product_characteristics(*)')
-      .order('category_slug, name'),
+      .order('category_slug')
+      .order('name')
+      .order('sku')
+      .range(f, t)),
   ]);
 
   const wb = XLSX.utils.book_new();
@@ -25,7 +30,7 @@ export async function GET(req: NextRequest) {
   // ── Збираємо всі унікальні характеристики відсортовані за частотою ──────────
 
   const labelFreq: Record<string, number> = {};
-  (products ?? []).forEach(p => {
+  products.forEach(p => {
     const chars = Array.isArray(p.characteristics) ? p.characteristics : [];
     chars.forEach((c: { label: string }) => {
       labelFreq[c.label] = (labelFreq[c.label] ?? 0) + 1;
@@ -37,7 +42,7 @@ export async function GET(req: NextRequest) {
 
   // ── Аркуш "Товари" ──────────────────────────────────────────────────────────
 
-  const rows = (products ?? []).map(p => {
+  const rows = products.map(p => {
     const stock = Array.isArray(p.stock) ? p.stock[0] : p.stock;
     const chars: { label: string; value: string; sort_order: number }[] =
       Array.isArray(p.characteristics) ? [...p.characteristics] : [];

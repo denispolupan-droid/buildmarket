@@ -35,6 +35,26 @@ export function kyivDayRange(now: Date, offsetDays = 0): { start: Date; end: Dat
   return { start, end, ymd: kyivYmd(start) };
 }
 
+/**
+ * Межі київської доби для дати YYYY-MM-DD як ISO-рядки в UTC: [start, end).
+ * Для фільтрів по timestamptz (`gte(start)` + `lt(end)`): рядок
+ * `'2026-10-31T00:00:00'` без зони PostgREST трактує як UTC, і київська доба
+ * зсувається на 2–3 години (аудит 31.10.2026, R3).
+ */
+export function kyivDayBounds(ymd: string): { start: string; end: string } {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const guess = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+  const start = new Date(guess.getTime() - kyivOffsetMs(guess));
+  const nextGuess = new Date(Date.UTC(y, m - 1, d + 1, 0, 0, 0));
+  const end = new Date(nextGuess.getTime() - kyivOffsetMs(nextGuess));
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+/** Перший день київського місяця для цієї миті: YYYY-MM-01. */
+export function kyivMonthStart(at: Date): string {
+  return kyivYmd(at).slice(0, 7) + '-01';
+}
+
 /** «03.10.2026, пʼятниця» для заголовків. */
 export function kyivHuman(at: Date): string {
   return at.toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric', weekday: 'long' });

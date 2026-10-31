@@ -4,6 +4,7 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
 import CashflowClient, { type CashflowEntry } from './CashflowClient';
+import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,8 +24,9 @@ export default async function CashflowPage({
 
   const params = await searchParams;
   const now    = new Date();
-  const from   = params.from ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const to     = params.to   ?? now.toISOString().slice(0, 10);
+  // Типові межі — за Києвом (аудит 31.10.2026, R5)
+  const from   = params.from ?? kyivMonthStart(now);
+  const to     = params.to   ?? kyivYmd(now);
 
   // ── 1. Fetch cash/bank/acquiring entries for the period ──────────────────────
   //    Пагінація: за широкий період кількість проводок легко перевищить 1000.

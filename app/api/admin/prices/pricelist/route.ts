@@ -8,6 +8,9 @@ import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
 import { promPrice, promCommissionOf, type PromPlan } from '../../../../../lib/marketplace-pricing';
 import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
+import { fetchAllRows } from '../../../../../lib/db-paginate';
+
+type StockRow = { sku: string; price_unit: number | null; price_retail: number | null; price_drop: number | null; price_cost: number | null; price_promo?: number | null; price_wholesale: number | null; stock_status: string | null };
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,16 +61,17 @@ export async function GET(req: NextRequest) {
     });
 
     type PdfProdRow = { sku: string; name: string; brand: string; volume: string | null; category_slug: string | null; image: string | null; prom_markup_pct: number | null };
-    const [products, { data: stock }] = await Promise.all([
+    const [products, stock] = await Promise.all([
       fetchProductsInCatalogOrder<PdfProdRow>(
         db, 'sku, name, brand, volume, category_slug, image, prom_markup_pct', sortedCats.map(c => c.slug),
       ),
-      db.from('product_stock')
+      fetchAllRows<StockRow>((f, t) => db.from('product_stock')
         .select('sku, price_unit, price_retail, price_drop, price_cost, price_promo, price_wholesale, stock_status')
-        .limit(2000),
+        .order('id')
+        .range(f, t)),
     ]);
 
-    const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
+    const stockMap = new Map(stock.map(s => [s.sku as string, s]));
     const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
 
     const grouped = new Map<string, PdfGroup>();
@@ -151,15 +155,17 @@ export async function GET(req: NextRequest) {
   });
 
   type XlsxProdRow = { sku: string; name: string; brand: string; volume: string | null; category_slug: string | null; is_active: boolean; prom_markup_pct: number | null };
-  const [products, { data: stock }] = await Promise.all([
+  const [products, stock] = await Promise.all([
     fetchProductsInCatalogOrder<XlsxProdRow>(
       db, 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct', xlsxSortedCats.map(c => c.slug),
     ),
-    db.from('product_stock')
-      .select('sku, price_unit, price_retail, price_drop, price_cost, price_wholesale, stock_status'),
+    fetchAllRows<StockRow>((f, t) => db.from('product_stock')
+      .select('sku, price_unit, price_retail, price_drop, price_cost, price_wholesale, stock_status')
+      .order('id')
+      .range(f, t)),
   ]);
 
-  const stockMap = new Map((stock ?? []).map(s => [s.sku, s]));
+  const stockMap = new Map(stock.map(s => [s.sku as string, s]));
   const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
 
   const grouped = new Map<string, { catName: string; rows: { name: string; brand: string; volume: string | null; price: number | null }[] }>();

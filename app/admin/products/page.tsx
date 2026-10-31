@@ -26,16 +26,16 @@ export default async function AdminProductsPage() {
   // представленні admin_products_list (міграція 116): довжини описів, наявність
   // keywords і рос. версії, кількість характеристик. Тексти (5 із 5,5 МБ
   // каталогу) не залишають Postgres. Залишки — окремим запитом, склеюємо по SKU.
-  const [rows, { data: stockRows }] = await Promise.all([
+  const [rows, stockRows] = await Promise.all([
     fetchAllRows<Omit<AdminProductRow, 'stock'>>((f, t) => serviceClient
       .from('admin_products_list')
       .select('*')
       .order('category_slug', { ascending: true })
       .order('sku', { ascending: true })
       .range(f, t)),
-    serviceClient.from('product_stock').select('*'),
+    fetchAllRows((f, t) => serviceClient.from('product_stock').select('*').order('id').range(f, t)),
   ]);
-  const stockBySku = new Map((stockRows ?? []).map(s => [s.sku as string, s as AdminProductRow['stock']]));
+  const stockBySku = new Map(stockRows.map(s => [s.sku as string, s as AdminProductRow['stock']]));
   const products: AdminProductRow[] = rows.map(p => ({ ...p, stock: stockBySku.get(p.sku) ?? null }));
 
   const { data: categories } = await serviceClient
@@ -44,16 +44,19 @@ export default async function AdminProductsPage() {
     .order('sort_order');
 
   // SKU з прайсів постачальників (supplier_stock) — для фільтра "сиріт".
-  // Пагінація: supabase обрізає вибірки до 1000 рядків
+  // Сторінками і З ORDER BY (ключ sku+supplier_id): range() без порядку губить
+  // і дублює рядки між сторінками (інциденти 30.08, 29.09).
   const supplierSkuSet = new Set<string>();
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await serviceClient
+  try {
+    const supplierRows = await fetchAllRows<{ sku: string }>((f, t) => serviceClient
       .from('supplier_stock')
       .select('sku')
-      .range(from, from + 999);
-    if (error) break;
-    for (const r of data ?? []) supplierSkuSet.add(r.sku);
-    if (!data || data.length < 1000) break;
+      .order('sku')
+      .order('supplier_id')
+      .range(f, t));
+    for (const r of supplierRows) supplierSkuSet.add(r.sku);
+  } catch (err) {
+    console.error('[admin/products] supplier_stock read failed:', err);
   }
 
   const { data: brandLogoRows } = await serviceClient

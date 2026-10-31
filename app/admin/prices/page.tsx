@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import PricesClient from './PricesClient';
 import { fetchProductsInCatalogOrder } from '../../api/admin/prices/_catalog-order';
 import { getSmartTariff } from '../../../lib/rozetka-smart';
+import { fetchAllRows } from '../../../lib/db-paginate';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,9 +20,12 @@ export default async function PricesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');
 
-  const [{ data: stock }, { data: categories }, { data: activePromos }, smartTariff, { data: promPlanRow }, { data: overrides }] = await Promise.all([
-    db.from('product_stock')
-      .select('sku, price_cost, price_unit, price_retail, price_drop, price_promo, price_wholesale, price_locked, stock_status, stock_qty, updated_at'),
+  // product_stock — сторінками (ліміт PostgREST 1000 рядків; каталог ~800 SKU і росте)
+  const [stock, { data: categories }, { data: activePromos }, smartTariff, { data: promPlanRow }, { data: overrides }] = await Promise.all([
+    fetchAllRows((f, t) => db.from('product_stock')
+      .select('sku, price_cost, price_unit, price_retail, price_drop, price_promo, price_wholesale, price_locked, stock_status, stock_qty, updated_at')
+      .order('id')
+      .range(f, t)),
     db.from('categories')
       .select('slug, name, parent_slug, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct, rozetka_commission_pct, rozetka_markup_pct, description, sort_order'),
     db.from('price_change_log')
@@ -59,11 +63,11 @@ export default async function PricesPage() {
   // pricelist actually uses. Inactive ones are appended after (order doesn't matter,
   // they never appear in a generated pricelist) purely so the admin table can still
   // show/edit them via the "Неактивні" filter.
-  const [activeProducts, { data: inactiveProducts }] = await Promise.all([
+  const [activeProducts, inactiveProducts] = await Promise.all([
     fetchProductsInCatalogOrder<AdminProdRow>(db, PRODUCT_SELECT, sortedCats.map(c => c.slug)),
-    db.from('products').select(PRODUCT_SELECT).eq('is_active', false),
+    fetchAllRows<AdminProdRow>((f, t) => db.from('products').select(PRODUCT_SELECT).eq('is_active', false).order('sku').range(f, t)),
   ]);
-  const products = [...activeProducts, ...(inactiveProducts ?? [])];
+  const products = [...activeProducts, ...inactiveProducts];
 
   // sku → revert_at (null = indefinite). Latest/longest revert_at wins; null (indefinite) always wins.
   const promoMap: Record<string, string | null> = {};

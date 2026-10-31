@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { generateProductSlug } from '../../../../../lib/seo/slug';
 import { requireStaff } from '../../../../../lib/auth-guard';
 
@@ -95,27 +96,32 @@ export async function GET(req: NextRequest) {
       .map(c => c.slug);
 
     if (slugs.length > 0) {
-      const { data: productsInCat } = await serviceClient
+      const productsInCat = await fetchAllRows<{ sku: string }>((f, t) => serviceClient
         .from('products')
         .select('sku')
-        .in('category_slug', slugs);
+        .in('category_slug', slugs)
+        .order('sku')
+        .range(f, t));
 
-      const skus = (productsInCat ?? []).map((p: { sku: string }) => p.sku);
+      const skus = productsInCat.map(p => p.sku);
 
       if (skus.length > 0) {
-        const { data } = await serviceClient
+        charsData = await fetchAllRows<{ label: string }>((f, t) => serviceClient
           .from('product_characteristics')
           .select('label')
-          .in('product_sku', skus);
-        charsData = data ?? [];
+          .in('product_sku', skus)
+          .order('id')
+          .range(f, t));
       }
     }
   } else {
-    // Загальний шаблон — всі характеристики
-    const { data } = await serviceClient
+    // Загальний шаблон — всі характеристики (сторінками: їх 10+ тис., PostgREST
+    // віддає 1000 — список колонок шаблону був неповний; аудит 31.10.2026)
+    charsData = await fetchAllRows<{ label: string }>((f, t) => serviceClient
       .from('product_characteristics')
-      .select('label');
-    charsData = data ?? [];
+      .select('label')
+      .order('id')
+      .range(f, t));
   }
 
   const labelFreq: Record<string, number> = {};
@@ -398,9 +404,10 @@ export async function POST(req: NextRequest) {
     .select('sku, name, brand, volume')
     .is('slug', null);
   if (noSlug?.length) {
-    const { data: allSlugs } = await serviceClient
-      .from('products').select('slug').not('slug', 'is', null);
-    const used = new Set((allSlugs ?? []).map(r => r.slug as string));
+    // Усі зайняті слаги — сторінками: обрізана на 1000 вибірка дала б дублі slug
+    const allSlugs = await fetchAllRows<{ slug: string }>((f, t) => serviceClient
+      .from('products').select('slug').not('slug', 'is', null).order('sku').range(f, t));
+    const used = new Set(allSlugs.map(r => r.slug));
     for (const p of noSlug) {
       let slug = generateProductSlug(p) || p.sku.toLowerCase();
       if (used.has(slug)) slug = `${slug}-${p.sku.toLowerCase()}`;

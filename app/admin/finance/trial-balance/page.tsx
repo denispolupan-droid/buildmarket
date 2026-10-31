@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
+import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,9 +49,10 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
 
   const sp = await searchParams;
   const now = new Date();
-  const defFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  // Типові межі — за Києвом (business_date — київська дата; аудит 31.10.2026, R5)
+  const defFrom = kyivMonthStart(now);
   const from = /^\d{4}-\d{2}-\d{2}$/.test(sp.from ?? '') ? sp.from! : defFrom;
-  const to   = /^\d{4}-\d{2}-\d{2}$/.test(sp.to ?? '')   ? sp.to!   : now.toISOString().slice(0, 10);
+  const to   = /^\d{4}-\d{2}-\d{2}$/.test(sp.to ?? '')   ? sp.to!   : kyivYmd(now);
 
   type Entry = { account_type: string; counterparty_id: string | null; amount: number; business_date: string };
   const entries = await fetchAllRows<Entry>((f, t) => db
