@@ -218,11 +218,10 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       if (periodTo) q = q.lt('created_at', periodTo.toISOString());
       return q.order('id').range(f, t);
     }),
-    // 3. Залишки грошових рахунків (за весь час, як у Звітах)
-    fetchAllRows<{ account_type: string; amount: number }>((f, t) => db
-      .from('money_entries').select('account_type, amount')
-      .in('account_type', ['bank', 'acquiring', 'novapay', 'cash'])
-      .order('id').range(f, t)),
+    // 3. Залишки грошових рахунків (за весь час, як у Звітах) — сума в базі
+    // (acc_account_totals, міграція 145), а не всі проводки сторінками
+    db.rpc('acc_account_totals', { p_accounts: ['bank', 'acquiring', 'novapay', 'cash'] })
+      .then(r => { if (r.error) throw new Error(r.error.message); return (r.data ?? []) as { account_type: string; amount: number }[]; }),
     // 4. Дебіторка (customer_id потрібен, щоб відсіяти службових дебіторів)
     db.from('ar_balances').select('customer_id, balance').then(r => r.data ?? []),
     // 5. Прострочена дебіторка

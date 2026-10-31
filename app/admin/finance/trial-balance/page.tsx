@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
 import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
@@ -54,25 +53,14 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
   const from = /^\d{4}-\d{2}-\d{2}$/.test(sp.from ?? '') ? sp.from! : defFrom;
   const to   = /^\d{4}-\d{2}-\d{2}$/.test(sp.to ?? '')   ? sp.to!   : kyivYmd(now);
 
-  type Entry = { account_type: string; counterparty_id: string | null; amount: number; business_date: string };
-  const entries = await fetchAllRows<Entry>((f, t) => db
-    .from('money_entries')
-    .select('account_type, counterparty_id, amount, business_date')
-    .lte('business_date', to)
-    .order('id', { ascending: true })
-    .range(f, t));
-
-  // Агрегація: opening (до from), обороти в періоді
+  // Агрегація — у базі (acc_trial_balance, міграція 145): раніше тут читався весь
+  // леджер від початку часів сторінками по 1000 і згортався в JS.
   type Agg = { opening: number; debit: number; credit: number };
+  const { data: tbRows, error: tbErr } = await db.rpc('acc_trial_balance', { p_from: from, p_to: to });
+  if (tbErr) throw new Error(tbErr.message);
   const byKey = new Map<string, Agg>(); // key = account|counterparty
-  for (const e of entries) {
-    const key = `${e.account_type}|${e.counterparty_id ?? ''}`;
-    const a = byKey.get(key) ?? { opening: 0, debit: 0, credit: 0 };
-    const amt = Number(e.amount);
-    if (e.business_date < from) a.opening += amt;
-    else if (amt >= 0) a.debit += amt;
-    else a.credit += -amt;
-    byKey.set(key, a);
+  for (const r of (tbRows ?? []) as { account_type: string; counterparty_id: string; opening: number; debit: number; credit: number }[]) {
+    byKey.set(`${r.account_type}|${r.counterparty_id ?? ''}`, { opening: Number(r.opening), debit: Number(r.debit), credit: Number(r.credit) });
   }
 
   // Імена контрагентів
