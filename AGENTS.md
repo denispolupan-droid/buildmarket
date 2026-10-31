@@ -23,6 +23,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **БД.** Зміни схеми — тільки через міграційні файли `supabase/migrations/`; після застосування на prod негайно синкай test. Не використовуй raw SQL для prod-схеми.
 
+**Рядки замовлення.** Позиції й далі пишуться в `orders.items` (jsonb). Таблиця `order_lines` — дзеркало, яке веде тригер БД: з коду в неї **не писати** (insert/update/delete), читати можна лише в звітах і лише після етапу B (`docs/ORDER-LINES-PLAN.md`). Розходження ловлять інваріанти I9/I10.
+
 **Безпека вводу.** Екрануй користувацький текст перед вставкою в HTML/`document.write`/JSON у `<script>`. Fetch за користувацьким URL — через `assertPublicUrl` (`lib/safe-fetch-url`).
 
 **UI-регресії.** Правки, які видно тільки в браузері (скрол, ховер, лейаут), перевіряй через

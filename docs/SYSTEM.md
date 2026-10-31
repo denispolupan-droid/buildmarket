@@ -22,7 +22,7 @@ GitHub Actions (тести, інваріанти, нічний дамп, health-
 
 | Домен | Де | Суть |
 |---|---|---|
-| Облік | `lib/accounting/*` | подвійний запис через функцію БД `record_money_txn`; документи (`acc_documents` + рядки), FIFO-склад, резерви, партнерський леджер, коригування боргу, закриття періодів. Інваріанти I1–I8 (`check_invariants`) |
+| Облік | `lib/accounting/*` | подвійний запис через функцію БД `record_money_txn`; документи (`acc_documents` + рядки), FIFO-склад, резерви, партнерський леджер, коригування боргу, закриття періодів. Інваріанти I1–I10 (`check_invariants`) |
 | Замовлення | `lib/orders/*`, роути `app/api/admin/orders/[id]/*` | статуси й переходи (`status.ts`), запобіжники відгрузки (`ship-guards.ts`), режим виконання, об'єднання посилок |
 | Маркетплейси | `lib/prom-*`, `lib/rozetka-*`, `lib/epicentr-*`, `lib/marketplace-*` | імпорт замовлень, пуш статусів/ТТН, фіди, комісії (`lib/marketplace-pricing.ts` — єдина формула цін), чати, сторож скасувань/повернень |
 | Доставка | `lib/delivery-sync.ts`, `lib/np-*`, `lib/rz-delivery*`, `lib/rozetka-delivery*` | Нова Пошта, точки видачі Rozetka, ROZETKA Доставка власного договору; синк руху посилок → проведення продажу |
@@ -39,8 +39,9 @@ GitHub Actions (тести, інваріанти, нічний дамп, health-
   Зміни схеми лише міграціями, prod → одразу test. Типи — `types/database.types.ts` (генеруються).
 - Гроші: `money_entries` append-only, ідемпотентні ключі, баланси контрагентів тригером.
 - Склад: `stock_movements` append-only, `stock_balance` тригером, партії FIFO, резерви.
-- Замовлення: `orders` (позиції поки в jsonb `items`; перехід на `order_lines` — етап 1),
-  `order_status_history` веде тригер незалежно від коду.
+- Замовлення: `orders` (позиції в jsonb `items`); `order_lines` — дзеркало цього jsonb
+  тригером (з 31.10.2026, етап A `docs/ORDER-LINES-PLAN.md`): код його поки не читає й
+  не пише, I9/I10 стежать за збігом; `order_status_history` веде тригер незалежно від коду.
 - RLS увімкнений на всіх таблицях; публічно читаються лише каталог, категорії, контент, бренди.
   Сервер ходить із service role; браузер — лише anon/user.
 

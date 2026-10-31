@@ -13,6 +13,8 @@ import path from 'node:path';
  *    lib/accounting (подвійний запис, ідемпотентність).
  * 3. Крон-роути авторизуються через cronAuthorized, а не порівнянням рядків із
  *    CRON_SECRET (без змінної те порівняння пропускало всіх).
+ * 4. order_lines — дзеркало orders.items тригером БД (етап A, 31.10.2026): код у
+ *    таблицю не пише, інакше I9 розійдеться з jsonb (docs/ORDER-LINES-PLAN.md).
  */
 
 const ROOT = process.cwd();
@@ -72,6 +74,16 @@ describe('архітектурні межі (AGENTS.md)', () => {
     }
     expect(offenders, 'використовуй cronAuthorized з lib/cron-auth:\n' + offenders.join('\n')).toEqual([]);
   });
+  it('order_lines не пишуться з коду (дзеркало веде тригер БД)', () => {
+    const re = /\.from\(\s*['"]order_lines['"]\s*\)[\s\S]{0,200}?\.(insert|upsert|update|delete)\(/g;
+    const offenders: string[] = [];
+    for (const f of files) {
+      const src = read(f);
+      for (const m of src.matchAll(re)) offenders.push(`${rel(f)}:${src.slice(0, m.index).split('\n').length}`);
+    }
+    expect(offenders, 'order_lines пише лише тригер trg_order_lines_mirror; правь orders.items:\n' + offenders.join('\n')).toEqual([]);
+  });
+
   it('нові адмінські роути авторизуються через requireStaff (lib/auth-guard)', () => {
     // Старі роути з checkAdmin / ручним getUser зафіксовані в baseline і переводяться
     // поступово; тут ловимо лише НОВІ роути повз guard і нагадуємо прибрати з baseline
