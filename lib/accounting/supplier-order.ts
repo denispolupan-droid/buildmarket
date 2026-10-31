@@ -18,7 +18,7 @@
 
 import * as XLSX from 'xlsx';
 import { Resend } from 'resend';
-import { createServiceClient } from '../supabase';
+import { createTypedServiceClient } from '../supabase';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -63,7 +63,7 @@ export type SendSupplierOrderInput = {
 };
 
 export async function sendSupplierOrder(input: SendSupplierOrderInput): Promise<void> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { data: supplier } = await db
     .from('suppliers')

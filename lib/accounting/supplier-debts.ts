@@ -4,7 +4,7 @@
 // або РН із дропшип-рядками). Оплата — та сама проводка зі знаком плюс.
 // Скільки по боргу лишилось = |сума| − рознесене на нього.
 
-import { createServiceClient } from '../supabase';
+import { createTypedServiceClient } from '../supabase';
 import { fetchAllRows } from '../db-paginate';
 import type { OpenCharge } from './allocation';
 
@@ -23,7 +23,7 @@ export type SupplierCharge = OpenCharge & {
  * платити (для вікна оплати); повний список потрібен історії розрахунків.
  */
 export async function supplierCharges(supplierId: number, onlyOpen = true): Promise<SupplierCharge[]> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   // Через сторінки: PostgREST мовчки віддає лише перші 1000 рядків, а сортування
   // тут за датою зростання — обрізало б саме НАЙНОВІШІ накладні, тобто ті, які
@@ -95,7 +95,7 @@ export async function supplierCharges(supplierId: number, onlyOpen = true): Prom
 
 /** Скільки з оплати ще не рознесено (аванс). */
 export async function paymentUnallocated(paymentEntryId: string, paymentAmount: number): Promise<number> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { data } = await db
     .from('supplier_payment_allocations')
     .select('amount')

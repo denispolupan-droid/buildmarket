@@ -7,7 +7,7 @@
 // Групування дзеркалить syncDropshipPayable: постачальник = line.supplier_id,
 // інакше — мапінг SKU.
 
-import { createServiceClient } from '../supabase';
+import { createTypedServiceClient } from '../supabase';
 import { fetchAllRows } from '../db-paginate';
 
 export type TransitItem = {
@@ -31,7 +31,7 @@ function chunks<T>(arr: T[], size = 200): T[][] {
 }
 
 export async function supplierInTransit(supplierId: number): Promise<TransitItem[]> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const draftDocs = await fetchAllRows<{ id: string; order_id: string | null; doc_number: string | null; doc_date: string | null; tracking_number: string | null }>((f, t) => db
     .from('acc_documents')

@@ -17,7 +17,7 @@
  *   priority=3, warehouse=supplier-xyz (supplier) → потом поставщик B
  */
 
-import { createServiceClient } from '../supabase';
+import { createServiceClient, createTypedServiceClient } from '../supabase';
 
 export type FulfillmentSource = {
   sku:              string;
@@ -43,7 +43,7 @@ export async function resolveOrderFulfillment(
     customer_type?:  string;
   } = {},
 ): Promise<FulfillmentPlan> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   // 1. Загружаем правила маршрутизации (активные, по приоритету)
   //    Фильтруем на стороне приложения — правила с NULL применяются ко всем
@@ -185,7 +185,7 @@ export async function resolveOrderFulfillment(
 async function fallbackAllDropship(
   items: Array<{ sku: string; qty: number }>,
 ): Promise<FulfillmentPlan> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const result: FulfillmentSource[] = [];
   const unresolved: string[] = [];
 

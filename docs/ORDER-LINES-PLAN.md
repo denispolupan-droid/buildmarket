@@ -93,6 +93,23 @@ brand, qty, price, price_base, is_promo, is_bonus` + допоміжні у `meta
 
 ### B. Читачі переходять на таблицю
 
+Перевірка готовності (31.10.2026, прод, лише читання): звіт продажів по артикулах для
+`delivered`-замовлень двома шляхами — з jsonb і з `order_lines` — дав 301 артикул і
+445 265,70 ₴ в обох, 0 розходжень. Запит для повторної перевірки перед кожним кроком B:
+
+```sql
+WITH j AS (
+  SELECT i->>'sku' AS sku, SUM((i->>'qty')::numeric) AS qty,
+         SUM((i->>'qty')::numeric * (i->>'price')::numeric) AS amount
+  FROM orders o, jsonb_array_elements(o.items) i WHERE o.status = 'delivered' GROUP BY 1),
+l AS (
+  SELECT l.sku, SUM(l.qty) AS qty, SUM(l.amount) AS amount
+  FROM order_lines l JOIN orders o ON o.id = l.order_id WHERE o.status = 'delivered' GROUP BY 1)
+SELECT COUNT(*) AS mismatched
+FROM j FULL JOIN l ON l.sku = j.sku
+WHERE j.qty IS DISTINCT FROM l.qty OR ABS(COALESCE(j.amount,0) - COALESCE(l.amount,0)) > 0.005;
+```
+
 Порядок за користю й ризиком:
 1. Аналітика й звіти (продажі по SKU, постачальникам, «Огляд») — SQL замість jsonb.
 2. Резервування (`reserve_order_items` читає `jsonb_array_elements` — переписати на

@@ -18,7 +18,7 @@
  * дивимось лише коли замовлення вже доставлене.
  */
 
-import { createServiceClient } from '../supabase';
+import { createTypedServiceClient } from '../supabase';
 import { fetchAllRows } from '../db-paginate';
 import { saleLinePrice } from './sale-party';
 
@@ -51,7 +51,7 @@ export function orderGoodsAmount(channelCode: string | null | undefined, items: 
 }
 
 export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergence[]> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString();
 
   const docs = await fetchAllRows<{ id: string; order_id: string | null; doc_number: string }>(

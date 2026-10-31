@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../lib/supabase', () => ({ createServiceClient: () => ({}) }));
+vi.mock('../lib/supabase', () => ({ createServiceClient: () => ({}), createTypedServiceClient: () => ({}) }));
 
 import { orderGoodsAmount } from '../lib/accounting/reconcile-sale-docs';
 

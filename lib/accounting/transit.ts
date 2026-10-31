@@ -10,7 +10,7 @@
 // Модуль дає три речі: скільки транзиту висить по замовленню, список того, що
 // чекає рішення, і саме проведення рішення.
 
-import { createServiceClient } from '../supabase';
+import { createTypedServiceClient } from '../supabase';
 import { recordTxn } from './money';
 import { createDocument, confirmDocument, cancelDocument } from './documents';
 import { planAllocation } from './allocation';
@@ -31,7 +31,7 @@ export type PendingTransit = {
 
 /** Скільки товару по замовленню зараз висить «у дорозі» (0 — нічого не висить). */
 export async function transitBalanceForOrder(orderId: string): Promise<number> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { data } = await db
     .from('money_entries')
     .select('amount')
@@ -48,7 +48,7 @@ export async function transitBalanceForOrder(orderId: string): Promise<number> {
  * там транзит закритий собівартістю.
  */
 export async function pendingTransitDecisions(): Promise<PendingTransit[]> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { data: entries } = await db
     .from('money_entries')
@@ -142,7 +142,7 @@ async function releaseTransitToSupplier(params: {
   description: string;
   createdBy:   string;
 }): Promise<number> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const today = new Date().toISOString().slice(0, 10);
   const by = params.createdBy;
 
@@ -230,7 +230,7 @@ export async function redirectTransit(params: {
   toDocId:       string;
   createdBy?:    string;
 }): Promise<{ released: number; docIds: string[] }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const by = params.createdBy ?? 'admin';
 
   const { data: entries } = await db
@@ -283,7 +283,7 @@ export async function resolveTransit(params: {
   decision:  TransitDecision;
   createdBy?: string;
 }): Promise<{ amount: number }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const by = params.createdBy ?? 'admin';
 
   const { data: doc } = await db

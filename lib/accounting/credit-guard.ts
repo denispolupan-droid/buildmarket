@@ -1,4 +1,4 @@
-import { createServiceClient } from '../supabase';
+import { createTypedServiceClient } from '../supabase';
 import { checkCreditAvailability } from './money';
 
 // Контроль кредитного ліміту перед відгрузкою (бэклог аудиту: checkCreditAvailability
@@ -6,7 +6,7 @@ import { checkCreditAvailability } from './money';
 // платежу (payment_type='deferred') і клієнтом з активним договором:
 // перевищення ліміту або прострочення по договору блокує відгрузку.
 export async function checkOrderCredit(orderId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { data: order } = await db
     .from('orders')

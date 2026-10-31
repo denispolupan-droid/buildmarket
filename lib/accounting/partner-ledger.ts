@@ -22,7 +22,7 @@
  *
  * Усі проводки ідемпотентні за ключем (record_money_txn повертає наявну).
  */
-import { createServiceClient } from '../supabase';
+import { createServiceClient, createTypedServiceClient } from '../supabase';
 import { recordTxn } from './money';
 import { SALE_DEBTOR } from './sale-party';
 
@@ -62,7 +62,7 @@ export async function recordPartnerCardTopup(params: {
 export async function recordPartnerBankTopup(params: {
   customerId: string; amount: number; monoTxnId: string; businessDate: string; createdBy: string; description?: string;
 }): Promise<{ txnId: string; balanceCredited: boolean }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const amount = round2(params.amount);
   const extRef = `mono-txn:${params.monoTxnId}`;
 
@@ -111,7 +111,7 @@ export async function recordPartnerBankTopup(params: {
 export async function recordPartnerBankPayout(params: {
   customerId: string; amount: number; monoTxnId: string; businessDate: string; createdBy: string; description?: string;
 }): Promise<string> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const amount = round2(params.amount);
   const since = new Date(Date.parse(params.businessDate) - 45 * 86400000).toISOString();
   const { data: req } = await db
@@ -143,7 +143,7 @@ export async function recordPartnerBankPayout(params: {
  */
 export async function postPartnerSaleOffset(docId: string, orderId: string | null, opts: { businessDate?: string; createdBy?: string } = {}): Promise<void> {
   if (!orderId) return;
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const p = await dropshipPartnerOf(db, orderId);
   if (!p) return;
   const { data: doc } = await db.from('acc_documents').select('total_amount, status').eq('id', docId).maybeSingle();
@@ -159,7 +159,7 @@ export async function postPartnerSaleOffset(docId: string, orderId: string | nul
 
 /** Сторно заліку при скасуванні проведеного продажу. */
 export async function reversePartnerSaleOffset(docId: string, opts: { createdBy?: string } = {}): Promise<void> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { data: legs } = await db
     .from('money_entries')
     .select('txn_id, counterparty_id, amount, order_id')
@@ -186,7 +186,7 @@ export async function reversePartnerSaleOffset(docId: string, opts: { createdBy?
  * щоб облік збігався з тим, що бачить партнер у кабінеті.
  */
 export async function recordPartnerCodCollected(orderId: string, opts: { businessDate?: string; createdBy?: string } = {}): Promise<void> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const p = await dropshipPartnerOf(db, orderId);
   if (!p || p.paymentType !== 'cod') return;
   const { data: txs } = await db

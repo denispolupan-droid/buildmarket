@@ -17,6 +17,7 @@ const mockRpc = vi.fn();
 
 vi.mock('../lib/supabase', () => ({
   createServiceClient: () => ({ rpc: mockRpc }),
+  createTypedServiceClient: () => ({ rpc: mockRpc }),
 }));
 
 import { createReservation, releaseReservation } from '../lib/accounting/reservations';

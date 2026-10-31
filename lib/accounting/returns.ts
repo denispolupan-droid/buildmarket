@@ -11,7 +11,7 @@
 // → одразу проводиться (склад OUT + DR supplier / CR inventory_asset), стадія
 // «відправлено»; acceptSupplierReturn лише фіксує дату прийняття.
 
-import { createServiceClient } from '../supabase';
+import { createServiceClient, createTypedServiceClient } from '../supabase';
 import { createDocument, confirmDocument, cancelDocument, getDocument, resolveSaleDebitParty } from './documents';
 import { recordTxn, reverseMarketplaceCommission } from './money';
 import type { AccDocumentWithLines } from './types';
@@ -110,7 +110,7 @@ export async function getReturnableItems(orderId: string): Promise<{
   items: ReturnableItem[]; hasSale: boolean; channel_code: string | null; is_marketplace: boolean;
   existing: Array<{ id: string; doc_number: string; stage: ReturnStage; status: string }>;
 }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { state, hasSale } = await loadOrderReturnState(db, orderId);
   const { data: order } = await db.from('orders').select('items, channel_code').eq('id', orderId).single();
   const names = new Map(((order?.items ?? []) as { sku: string; name: string; brand?: string }[])
@@ -158,7 +158,7 @@ export type CreateCustomerReturnInput = {
 };
 
 export async function createCustomerReturn(input: CreateCustomerReturnInput): Promise<{ id: string; doc_number: string; total: number }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const items = input.items.filter(i => Number(i.qty) > 0).map(i => ({ sku: i.sku, qty: Number(i.qty) }));
   if (!items.length) throw new Error('Не обрано позицій');
 
@@ -234,7 +234,7 @@ export async function receiveCustomerReturn(input: {
   refund?: { method: RefundMethod } | null;
   confirmedBy: string;
 }): Promise<{ doc_number: string; total: number; commission_reversed: number; refunded: number }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const doc = await getDocument(input.docId);
   if (!doc) throw new Error('Документ не знайдено');
   if (doc.doc_type !== 'return_in' || doc.reversal_of) throw new Error('Це не повернення від покупця');
@@ -345,7 +345,7 @@ async function supplierReturnableFromCustomerReturn(db: Db, pv: AccDocumentWithL
 }
 
 export async function createSupplierReturn(input: CreateSupplierReturnInput): Promise<{ id: string; doc_number: string; total: number }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const lines = input.lines.filter(l => Number(l.qty) > 0).map(l => ({ sku: l.sku, qty: Number(l.qty) }));
   if (!lines.length) throw new Error('Не обрано позицій');
   if (!input.supplierId) throw new Error('Не вказано постачальника');
@@ -442,7 +442,7 @@ export async function createSupplierReturn(input: CreateSupplierReturnInput): Pr
 }
 
 export async function acceptSupplierReturn(docId: string, acceptedAt: string | null | undefined): Promise<void> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { data: doc } = await db.from('acc_documents').select('id, doc_type, status, meta').eq('id', docId).single();
   if (!doc || doc.doc_type !== 'supplier_return') throw new Error('Це не повернення постачальнику');
   if (doc.status !== 'confirmed') throw new Error('Документ не проведено');
@@ -451,7 +451,7 @@ export async function acceptSupplierReturn(docId: string, acceptedAt: string | n
 }
 
 export async function updateReturnDetails(docId: string, patch: { ttn?: string | null; reason?: ReturnReason; reason_text?: string | null }): Promise<void> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { data: doc } = await db.from('acc_documents').select('id, doc_type, status').eq('id', docId).single();
   if (!doc || !RETURN_TYPES.includes(doc.doc_type)) throw new Error('Документ не є поверненням');
   if (doc.status === 'cancelled') throw new Error('Документ скасовано');
@@ -466,7 +466,7 @@ export async function updateReturnDetails(docId: string, patch: { ttn?: string |
 // ── Скасування ───────────────────────────────────────────────────────────────
 
 export async function cancelReturn(docId: string, reason: string | null, cancelledBy: string): Promise<void> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const doc = await getDocument(docId);
   if (!doc || !RETURN_TYPES.includes(doc.doc_type)) throw new Error('Документ не є поверненням');
   if (doc.status === 'cancelled') throw new Error('Документ уже скасовано');
@@ -581,7 +581,7 @@ function labelFor(d: RawDoc, maps: Awaited<ReturnType<typeof counterpartyLabels>
 }
 
 export async function listReturns(opts: { limit?: number; from?: string | null; to?: string | null } = {}): Promise<{ rows: ReturnRow[]; kpi: ReturnsKpi }> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   let q = db.from('acc_documents').select(RAW_COLS)
     .in('doc_type', RETURN_TYPES).is('reversal_of', null)
     .order('doc_date', { ascending: false }).order('id')
@@ -690,7 +690,7 @@ export type ReturnCard = ReturnRow & {
 };
 
 export async function getReturnCard(id: string): Promise<ReturnCard | null> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { data } = await db.from('acc_documents').select(`${RAW_COLS}, warehouse_id`).eq('id', id).maybeSingle();
   if (!data || !RETURN_TYPES.includes(data.doc_type)) return null;
   const d = data as RawDoc & { warehouse_id: number };

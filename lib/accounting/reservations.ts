@@ -18,12 +18,12 @@
  *   выполняются последовательно — oversell невозможен.
  */
 
-import { createServiceClient } from '../supabase';
+import { createTypedServiceClient } from '../supabase';
 import type { CreateReservationInput, ReservationResult } from './types';
 
 /** Читає reservation_ttl_days з app_settings. Дефолт — 7. */
 export async function getReservationTtlDays(): Promise<number> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
   const { data } = await db
     .from('app_settings')
     .select('value')
@@ -45,7 +45,7 @@ export function computeExpiresAt(ttlDays: number): string {
 export async function createReservation(
   input: CreateReservationInput,
 ): Promise<ReservationResult> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { data, error } = await db.rpc('reserve_order_items', {
     p_order_id:     input.order_id,
@@ -75,7 +75,7 @@ export async function releaseReservation(
   orderId: string,
   reason: 'shipped' | 'cancelled' | 'manual',
 ): Promise<void> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { error } = await db.rpc('release_order_reservations', {
     p_order_id: orderId,
@@ -88,7 +88,7 @@ export async function releaseReservation(
 // ── Текущий резерв заказа ─────────────────────────────────────────────────────
 
 export async function getOrderReservations(orderId: string) {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { data, error } = await db
     .from('stock_reservations')
@@ -103,7 +103,7 @@ export async function getOrderReservations(orderId: string) {
 // ── Проверка: есть ли активный резерв для заказа ─────────────────────────────
 
 export async function hasActiveReservation(orderId: string): Promise<boolean> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { count, error } = await db
     .from('stock_reservations')
@@ -118,7 +118,7 @@ export async function hasActiveReservation(orderId: string): Promise<boolean> {
 // ── Истечение просроченных резервов (вызывать из cron) ────────────────────────
 
 export async function expireReservations(): Promise<number> {
-  const db = createServiceClient();
+  const db = createTypedServiceClient();
 
   const { data, error } = await db.rpc('expire_stock_reservations');
   if (error) throw error;
