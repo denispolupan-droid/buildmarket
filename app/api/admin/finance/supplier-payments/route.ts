@@ -5,6 +5,7 @@ import { recordTxn } from '../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
 import { supplierCharges } from '../../../../../lib/accounting/supplier-debts';
 import { planAllocation, validateManual } from '../../../../../lib/accounting/allocation';
+import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/validate';
 
 // GET — що саме винні цьому постачальнику: список боргів із залишками.
 // Потрібен вікну оплати, щоб показати, на що ляже сума.
@@ -27,16 +28,18 @@ export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
-  const body = await req.json().catch(() => ({})) as {
-    supplier_id?:  number;
-    amount?:       number;
-    payment_mode?: 'transfer' | 'cash';
-    payment_date?: string;
-    note?:         string;
+  const parsed = await parseBody(req, z.object({
+    supplier_id:  z.coerce.number().int('невірний постачальник').positive('невірний постачальник'),
+    amount:       zMoney,
+    payment_mode: z.enum(['transfer', 'cash']).optional(),
+    payment_date: zYmdOpt,
+    note:         zText(500),
     /** Як рознести оплату по боргах: найстаріші / найновіші / вручну */
-    allocation_mode?: 'oldest' | 'newest' | 'manual';
-    allocations?: { charge_id: string; amount: number }[];
-  };
+    allocation_mode: z.enum(['oldest', 'newest', 'manual']).optional(),
+    allocations:  z.array(z.object({ charge_id: z.string().min(1), amount: zMoney })).max(500).optional(),
+  }));
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const supplierId  = body.supplier_id;
   const amount      = Number(body.amount);

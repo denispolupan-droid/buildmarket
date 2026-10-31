@@ -2,23 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { recordTxn } from '../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { parseBody, zMoney, zYmd, zText, z } from '../../../../../lib/validate';
 
 export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
 
-  const { direction, amount, description, category, business_date } = await req.json() as {
-    direction:     'in' | 'out';
-    amount:        number;
-    description:   string;
-    category?:     string;
-    business_date: string;
-  };
-
-  if (!direction || !amount || amount <= 0 || !description || !business_date) {
-    return NextResponse.json({ error: 'Невірні параметри' }, { status: 400 });
-  }
+  // Раніше сума «abc» проходила перевірку: касовий ордер створювався, а
+  // проводка падала — у касовій книзі лишався документ без грошей.
+  const body = await parseBody(req, z.object({
+    direction:     z.enum(['in', 'out']),
+    amount:        zMoney,
+    description:   z.string().trim().min(1, 'опис обовʼязковий').max(500),
+    category:      zText(100),
+    business_date: zYmd,
+  }));
+  if (!body.ok) return body.response;
+  const { direction, amount, description, category, business_date } = body.data;
 
   try {
     const voucherType = direction === 'in' ? 'cash_in' as const : 'cash_out' as const;

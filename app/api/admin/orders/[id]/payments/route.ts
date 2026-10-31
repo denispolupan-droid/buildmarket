@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { applyOrderPayment } from '../../../../../../lib/accounting/order-payment';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../../lib/validate';
 
 export async function GET(
   _req: NextRequest,
@@ -32,15 +33,14 @@ export async function POST(
   const { user } = auth;
 
   const { id } = await params;
-  const { amount, payment_mode, payment_date, note } = await req.json() as {
-    amount:       number;
-    payment_mode: string;
-    payment_date: string;
-    note?:        string;
-  };
-
-  if (!amount || amount <= 0)  return NextResponse.json({ error: 'Сума має бути більше 0' }, { status: 400 });
-  if (!payment_mode)           return NextResponse.json({ error: 'Вкажіть спосіб оплати' }, { status: 400 });
+  const body = await parseBody(req, z.object({
+    amount:       zMoney,
+    payment_mode: z.enum(['cash', 'transfer', 'bank', 'card', 'acquiring']),
+    payment_date: zYmdOpt,
+    note:         zText(500),
+  }));
+  if (!body.ok) return body.response;
+  const { amount, payment_mode, payment_date, note } = body.data;
 
   const db = createServiceClient();
   const res = await applyOrderPayment(db, {

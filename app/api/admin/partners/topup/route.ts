@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { parseBody, zMoney, zYmd, zText, z } from '../../../../../lib/validate';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,11 +13,14 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
   const user = auth.user;
 
-  const { customer_id, amount, description } = await req.json().catch(() => ({}));
-  const sum = Math.round(Number(amount) * 100) / 100;
-  if (!customer_id || !Number.isFinite(sum) || sum <= 0 || sum > 1_000_000) {
-    return NextResponse.json({ error: 'Невірні параметри' }, { status: 400 });
-  }
+  const body = await parseBody(req, z.object({
+    customer_id: z.string().uuid('невірний партнер'),
+    amount:      zMoney.refine(n => n <= 1_000_000, 'занадто велика сума'),
+    description: zText(300),
+  }));
+  if (!body.ok) return body.response;
+  const { customer_id, description } = body.data;
+  const sum = body.data.amount;
 
   // Ручне зарахування переказу нічим не прив'язане до рядка виписки, тож подвійний
   // клік або повторне зарахування того самого переказу давало партнеру гроші двічі.

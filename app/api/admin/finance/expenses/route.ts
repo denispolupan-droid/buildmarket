@@ -4,6 +4,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase';
 import { recordTxn, type AccountType } from '../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
+import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/validate';
 
 // Ручне додавання операційної витрати (бэклог аудиту: раніше витрати потрапляли
 // лише автоматично — landed cost при прийманні та касові РКО).
@@ -20,14 +21,16 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
 
-  const body = await req.json().catch(() => ({})) as {
-    expense_type?:   string;
-    amount?:         number;
-    description?:    string;
-    counterparty?:   string;
-    payment_method?: 'bank' | 'cash' | 'acquiring' | 'novapay';
-    business_date?:  string;
-  };
+  const parsed = await parseBody(req, z.object({
+    expense_type:   z.string(),
+    amount:         zMoney,
+    description:    z.string().trim().min(1, 'опис обовʼязковий').max(500),
+    counterparty:   zText(200),
+    payment_method: z.enum(['bank', 'cash', 'acquiring', 'novapay']).optional(),
+    business_date:  zYmdOpt,
+  }));
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const expenseType = body.expense_type as AccountType;
   const amount = Number(body.amount);

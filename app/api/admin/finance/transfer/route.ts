@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { recordTxn } from '../../../../../lib/accounting/money';
+import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/validate';
 
 // Переказ між власними грошовими рахунками (напр. NovaPay → Монобанк, або внесення/зняття
 // готівки). Проводка: DR <куди> / CR <звідки>. Обидві сторони — грошові рахунки, тому в
@@ -13,9 +14,11 @@ export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
-  const body = await req.json().catch(() => ({})) as {
-    from?: string; to?: string; amount?: number; business_date?: string; note?: string;
-  };
+  const parsed = await parseBody(req, z.object({
+    from: z.string(), to: z.string(), amount: zMoney, business_date: zYmdOpt, note: zText(300),
+  }));
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const from = body.from as MoneyAccount;
   const to   = body.to   as MoneyAccount;
   const amount = Number(body.amount);

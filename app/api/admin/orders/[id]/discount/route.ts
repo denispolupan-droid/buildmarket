@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase';
 import { applyOrderDiscount, type DiscountItem } from '../../../../../../lib/pricing';
+import { parseBody, zMoney, zYmd, zText, z } from '../../../../../../lib/validate';
 
 // Ручна знижка по замовленню (Варіант A): знижку «зашиваємо» в построчну ціну
 // items[].price. Оскільки вся облікова гілка (РН, виручка, дебіторка, рахунок)
@@ -24,7 +25,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const body = await req.json().catch(() => ({})) as { pct?: number; amount?: number };
+  const parsed = await parseBody(req, z.object({
+    pct:    z.coerce.number().min(0, 'від 0').max(100, 'не більше 100').optional(),
+    amount: z.coerce.number().min(0, 'не менше 0').max(10_000_000).optional(),
+  }));
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const db = createServiceClient();
   const { data: order } = await db

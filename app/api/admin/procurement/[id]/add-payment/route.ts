@@ -4,6 +4,7 @@ import { recordTxn } from '../../../../../../lib/accounting/money';
 import { createPaymentVoucher, maybeAutoClose } from '../../../../../../lib/accounting/documents';
 import { procurementPaymentOr, netPaidToSupplier } from '../../../../../../lib/accounting/procurement-payments';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../../lib/validate';
 
 const db = createServiceClient();
 
@@ -13,13 +14,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { user } = auth;
 
   const { id } = await params;
-  const { amount, payment_mode, payment_date, payment_defer_date, note } = await req.json() as {
-    amount?: number;
-    payment_mode: 'transfer' | 'cash' | 'deferred';
-    payment_date?: string;
-    payment_defer_date?: string;
-    note?: string;
-  };
+  const body = await parseBody(req, z.object({
+    amount:             zMoney.optional(),
+    payment_mode:       z.enum(['transfer', 'cash', 'deferred']),
+    payment_date:       zYmdOpt,
+    payment_defer_date: zYmdOpt,
+    note:               zText(500),
+  }));
+  if (!body.ok) return body.response;
+  const { amount, payment_mode, payment_date, payment_defer_date, note } = body.data;
 
   const { data: doc } = await db
     .from('acc_documents')
