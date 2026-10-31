@@ -22,13 +22,26 @@ export type {
 import type { Category, CategoryFacet, Product, ProductFull, ProductListItem, ProductStock, ProductPublic, ProductB2B } from '../types';
 import { computeCategoryFacets, type FacetDefinitionRow, type FacetCategoryRow, type FacetValueRow } from './facets';
 
-// ── Клієнт для браузера / Server Components ───────────────────────────────────
-
+// ── Клієнт для Server Components / роутів вітрини ─────────────────────────────
+//
+// Історично це був анонімний клієнт, і весь шар читання вітрини (getProducts*,
+// getProductBySku/Slug, getRelatedProducts, sitemap, search-index, llms.txt)
+// ходив у базу anon-ключем. З міграції 137 anon/authenticated бачать лише
+// публічні колонки products/product_stock, а ці функції читають `product_stock(*)`
+// (price_unit для опту, собівартість зрізає publicProduct()) — під anon вони
+// падають з 42501, що 31.10.2026 поклало пререндер блогу в білді на Vercel.
+//
+// На сервері беремо service role (як createServiceClient): публічні таблиці
+// мають політики `USING (true)`, тож RLS тут і так нічого не ховала; у браузері
+// (getSupabase ніхто з 'use client' не викликає, але про всяк випадок) — anon.
 let _supabase: ReturnType<typeof createClient> | null = null;
 
 export function getSupabase() {
   if (!_supabase) {
-    _supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    const serverKey = typeof window === 'undefined' ? env.SUPABASE_SERVICE_ROLE_KEY : undefined;
+    _supabase = serverKey
+      ? createClient(env.NEXT_PUBLIC_SUPABASE_URL, serverKey, { auth: { persistSession: false } })
+      : createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   }
   return _supabase;
 }
