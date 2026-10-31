@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Minus, Search, Trash2, Send, AlertCircle } from 'lucide-react';
 import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
 import { Save } from 'lucide-react';
-import { getSupabaseBrowser } from '../../../lib/supabase-browser';
 
 export type StockDocType = 'write_off' | 'transfer';
 
@@ -82,18 +81,15 @@ export default function NewStockDocModal({
   useEffect(() => {
     if (prodSearch.length < 2) { setProdResults([]); return; }
     const t = setTimeout(async () => {
-      const sb = getSupabaseBrowser();
-      const { data } = await sb
-        .from('products')
-        .select('sku, name, brand, stock:product_stock(price_cost)')
-        .or(`name.ilike.%${prodSearch}%,sku.ilike.%${prodSearch}%`)
-        .eq('is_active', true)
-        .limit(10);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setProdResults((data ?? []).map((p: any) => ({
+      // Через адмін-роут, а не напряму в PostgREST: собівартість з браузера
+      // більше не читається (міграція 137), а роут ще й екранує пошуковий рядок.
+      const res = await fetch(`/api/admin/products/search?prices=1&active=1&q=${encodeURIComponent(prodSearch)}`);
+      const data: { sku: string; name: string; brand: string | null; price_cost: number }[] =
+        res.ok ? await res.json() : [];
+      setProdResults(data.slice(0, 10).map(p => ({
         sku:  p.sku,
         name: `${p.brand ?? ''} ${p.name ?? ''}`.trim(),
-        cost: p.stock?.[0]?.price_cost ?? 0,
+        cost: p.price_cost,
       })));
       setProdOpen(true);
       if (searchRef.current) {

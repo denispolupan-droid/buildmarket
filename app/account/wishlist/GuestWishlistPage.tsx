@@ -20,9 +20,15 @@ export default function GuestWishlistPage() {
 
     setFetching(true);
     const supabase = getSupabaseBrowser();
+    // Запит іде з браузера анонімним ключем: з міграції 137 anon бачить лише
+    // публічні колонки products/product_stock, тож «*» тут упав би з 42501.
+    // Перелік — те, що потрібно WishlistCard, і публічні ціни зі складу.
     supabase
       .from('products')
-      .select('*, stock:product_stock(*), characteristics:product_characteristics(*)')
+      .select(
+        'sku, name, brand, volume, pack_qty, min_order, image, nl1, nl2, bc, ac, img_type, slug, ' +
+        'stock:product_stock(price_retail, price_retail_old, price_promo, price_old, stock_status, stock_qty)',
+      )
       .in('sku', [...skus])
       .eq('is_active', true)
       .then(({ data }: { data: ProductFull[] | null }) => {
