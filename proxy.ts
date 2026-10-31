@@ -36,6 +36,8 @@ const AUTH_ROUTES = ['/login', '/register'];
 // Старі товарні URL /product/{SKU} → 308 на ЧПУ-слаг. Робимо це в proxy, бо
 // кореневий app/loading.tsx вмикає стрімінг і redirect() зі сторінки віддає
 // статус 200 з meta refresh — Google це "м'який" редірект, а не справжній 308.
+const PRODUCT_PAGE = /^\/(ru\/)?product\/[^/.]+$/;
+
 const LEGACY_PRODUCT_URL = /^\/(ru\/)?product\/(\d{4}-\d{3})$/;
 
 async function legacyProductRedirect(request: NextRequest): Promise<NextResponse | null> {
@@ -108,6 +110,15 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-pathname', pathname);
   const nextWithPathname = { request: { headers: requestHeaders } };
+
+  // Картка товару — ISR, однакова для всіх (аудит 31.10.2026). Оптовий перегляд
+  // із /catalog (?from=catalog) тихо переписуємо на динамічну гілку ./b2b, де
+  // читається сесія й рахується персональна ціна; адреса в браузері та сама.
+  if (PRODUCT_PAGE.test(pathname) && request.nextUrl.searchParams.get('from') === 'catalog') {
+    const url = request.nextUrl.clone();
+    url.pathname = `${pathname}/b2b`;
+    return NextResponse.rewrite(url, nextWithPathname);
+  }
 
   // Rate limiting. Prefer x-real-ip (set by the trusted Vercel edge); for
   // x-forwarded-for take the LAST entry — leading entries are client-spoofable

@@ -186,6 +186,24 @@ async function loadProducts<T>(build: () => PostgrestList, limit?: number): Prom
   return fetchAllRows<T>((f, t) => build().order('sku').range(f, t) as PromiseLike<{ data: T[] | null; error: unknown }>);
 }
 
+/** Ключ «без категорії» для кешу по категоріях (товари з category_slug = null). */
+const NO_CATEGORY = '__none__';
+
+type Sortable = { sku: string; sort_order?: number | null; stock?: { stock_status?: string } | null };
+
+/**
+ * Той самий порядок, що дає getProducts* для всього каталогу: sort_order
+ * (null — у кінці, як ORDER BY у Postgres), далі sku, а товари без наявності —
+ * у кінець (стабільно). Потрібен, щоб каталог, зібраний з кешів по категоріях,
+ * не відрізнявся від колишньої однієї вибірки.
+ */
+export function sortCatalog<T extends Sortable>(rows: T[]): T[] {
+  const so = (r: T) => (r.sort_order ?? Number.POSITIVE_INFINITY);
+  return [...rows]
+    .sort((a, b) => (so(a) - so(b)) || (a.sku < b.sku ? -1 : a.sku > b.sku ? 1 : 0))
+    .sort((a, b) => (a.stock?.stock_status !== 'in_stock' ? 1 : 0) - (b.stock?.stock_status !== 'in_stock' ? 1 : 0));
+}
+
 export async function getProducts(opts?: {
   category?: string;
   search?: string;
@@ -198,7 +216,9 @@ export async function getProducts(opts?: {
       .select(PRODUCT_LIST_SELECT)
       .eq('is_active', true)
       .order('sort_order');
-    if (opts?.category) {
+    if (opts?.category === NO_CATEGORY) {
+      query = query.is('category_slug', null);
+    } else if (opts?.category) {
       query = query.eq('category_slug', opts.category);
     }
     if (opts?.search) {
@@ -227,12 +247,17 @@ export async function getProducts(opts?: {
  * Окрема функція, а не прапорець: прапорець легко передати випадково,
  * а окремий імпорт видно на очі при рев'ю.
  */
-export async function getProductsB2B(): Promise<ProductB2B[]> {
-  const data = await loadProducts<ProductB2B>(() => supabase
-    .from('products')
-    .select(PRODUCT_LIST_SELECT_B2B)
-    .eq('is_active', true)
-    .order('sort_order') as unknown as PostgrestList);
+export async function getProductsB2B(opts?: { category?: string }): Promise<ProductB2B[]> {
+  const data = await loadProducts<ProductB2B>(() => {
+    let query = supabase
+      .from('products')
+      .select(PRODUCT_LIST_SELECT_B2B)
+      .eq('is_active', true)
+      .order('sort_order');
+    if (opts?.category === NO_CATEGORY) query = query.is('category_slug', null);
+    else if (opts?.category) query = query.eq('category_slug', opts.category);
+    return query as unknown as PostgrestList;
+  });
 
   const sorted = (data ?? []).sort((a, b) => {
     const aOut = (a as { stock?: { stock_status?: string } }).stock?.stock_status !== 'in_stock' ? 1 : 0;
@@ -258,7 +283,9 @@ export async function getProductsLight(opts?: {
       `)
       .eq('is_active', true)
       .order('sort_order');
-    if (opts?.category) {
+    if (opts?.category === NO_CATEGORY) {
+      query = query.is('category_slug', null);
+    } else if (opts?.category) {
       query = query.eq('category_slug', opts.category);
     }
     if (opts?.search) {
@@ -412,25 +439,71 @@ export const getCategoriesCached = unstable_cache(
  * запит бази — саме цей листинг зі stock і характеристиками (1 737 викликів,
  * 402 с за три доби). Година — запобіжник на випадок запису скриптом повз теги.
  */
-export const getProductsCached = unstable_cache(
-  async (opts?: { category?: string; limit?: number }) => getProducts(opts),
-  ['products'],
-  { revalidate: 3600, tags: ['products'] }
-);
+//
+// Кеш — ПО КАТЕГОРІЯХ, а весь каталог збирається з них (аудит 31.10.2026).
+// unstable_cache не зберігає значення понад 2 МБ і мовчки віддає некешоване:
+// публічний каталог важив 1,36 МБ на 773 товари, тобто ліміт настав би біля
+// 1 130 SKU — і з того моменту кожен рендер /shop/*, sitemap,
+// generateStaticParams і сторінки товару тягнув би весь каталог із nano-бази
+// (сценарій інциденту 27.10). Категорія важить десятки кілобайт, тож межі
+// немає, а інвалідація та сама — тег 'products'.
+const CACHE_OPTS = { revalidate: 3600, tags: ['products'] };
 
+const getActiveCategorySlugsCached = unstable_cache(async (): Promise<string[]> => {
+  const rows = await fetchAllRows<{ category_slug: string | null }>((f, t) => supabase
+    .from('products')
+    .select('category_slug')
+    .eq('is_active', true)
+    .order('sku')
+    .range(f, t) as unknown as PromiseLike<{ data: { category_slug: string | null }[] | null; error: unknown }>);
+  return [...new Set(rows.map(r => r.category_slug ?? NO_CATEGORY))].sort();
+}, ['product-category-slugs'], CACHE_OPTS);
+
+const getProductsByCategoryCached = unstable_cache(
+  async (category: string) => getProducts({ category }), ['products-by-cat'], CACHE_OPTS);
 // ОКРЕМИЙ ключ кешу — інакше публічна сторінка може отримати з кешу B2B-дані
 // (або навпаки), і оптова ціна поїде анонімам тихо й непередбачувано.
-export const getProductsB2BCached = unstable_cache(
-  async () => getProductsB2B(),
-  ['products-b2b'],
-  { revalidate: 3600, tags: ['products'] }
-);
+const getProductsB2BByCategoryCached = unstable_cache(
+  async (category: string) => getProductsB2B({ category }), ['products-b2b-by-cat'], CACHE_OPTS);
+const getProductsLightByCategoryCached = unstable_cache(
+  async (category: string) => getProductsLight({ category }), ['products-light-by-cat'], CACHE_OPTS);
+const getProductsLimitedCached = unstable_cache(
+  async (opts: { category?: string; limit?: number }) => getProducts(opts), ['products-limited'], CACHE_OPTS);
+const getProductsLightLimitedCached = unstable_cache(
+  async (opts: { category?: string; limit?: number }) => getProductsLight(opts), ['products-light-limited'], CACHE_OPTS);
 
-export const getProductsLightCached = unstable_cache(
-  async (opts?: { category?: string; limit?: number }) => getProductsLight(opts),
-  ['products-light'],
-  { revalidate: 3600, tags: ['products'] }
-);
+// Не більше 6 одночасних запитів: на холодному кеші всі 60+ категорій інакше
+// пішли б у nano-базу разом і забили пул PostgREST (інцидент 27.10.2026).
+const CATALOG_CONCURRENCY = 6;
+
+async function wholeCatalog<T extends Sortable>(byCategory: (slug: string) => Promise<T[]>): Promise<T[]> {
+  const slugs = await getActiveCategorySlugsCached();
+  const chunks: T[][] = new Array(slugs.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(CATALOG_CONCURRENCY, slugs.length) }, async () => {
+    while (next < slugs.length) {
+      const i = next++;
+      chunks[i] = await byCategory(slugs[i]);
+    }
+  }));
+  return sortCatalog(chunks.flat());
+}
+
+export async function getProductsCached(opts?: { category?: string; limit?: number }): Promise<ProductPublic[]> {
+  if (opts?.limit) return getProductsLimitedCached(opts);
+  if (opts?.category) return getProductsByCategoryCached(opts.category);
+  return wholeCatalog(getProductsByCategoryCached as unknown as (s: string) => Promise<(ProductPublic & Sortable)[]>);
+}
+
+export async function getProductsB2BCached(): Promise<ProductB2B[]> {
+  return wholeCatalog(getProductsB2BByCategoryCached as unknown as (s: string) => Promise<(ProductB2B & Sortable)[]>);
+}
+
+export async function getProductsLightCached(opts?: { category?: string; limit?: number }): Promise<ProductListItem[]> {
+  if (opts?.limit) return getProductsLightLimitedCached(opts);
+  if (opts?.category) return getProductsLightByCategoryCached(opts.category);
+  return wholeCatalog(getProductsLightByCategoryCached as unknown as (s: string) => Promise<(ProductListItem & Sortable)[]>);
+}
 
 /**
  * Товари для sitemap: лише те, що потрібно карті сайту, — адреса, бренд,

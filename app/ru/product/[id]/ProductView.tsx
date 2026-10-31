@@ -1,0 +1,334 @@
+// Тіло сторінки товару (аудит 31.10.2026): спільне для ISR-сторінки (роздріб)
+// і динамічної b2b-гілки (оптова ціна з /catalog). Request-time API тут не читаємо.
+import { publicProduct } from '../../../../lib/public-product';
+import Link from 'next/link';
+import { notFound, permanentRedirect } from 'next/navigation';
+
+import { getProductBySkuCached, getProductBySlugCached, getRelatedProductsCached, getCategoriesCached, getReviewStatsCached, getProductsLightCached, getProductFaqCached } from '../../../../lib/supabase';
+import { googleProductCategoryPath } from '../../../../lib/google-product-category';
+import { getCategoryNameRu } from '../../../../lib/ru';
+import { getCategoryMeta } from '../../../../lib/category-content';
+import { productMeta, productDisplayName, productH1, findVariants, productPath } from '../../../../lib/seo/meta';
+import { isLineMain, isLineVariant, groupId, productGroupLd } from '../../../../lib/seo/variants';
+import ProductTabs from '../../../product/[id]/ProductTabs';
+import ProductOrderPanel from '../../../product/[id]/ProductOrderPanel';
+import ProductGallery from '../../../product/[id]/ProductGallery';
+import ProductImage from '../../../components/ProductImage';
+import RelatedCarousel from '../../../product/[id]/RelatedCarousel';
+import BackButton from '../../../product/[id]/BackButton';
+import CoverageCalculator from '../../../product/[id]/CoverageCalculator';
+import CalculatorLink from '../../../product/[id]/CalculatorLink';
+import DeliveryInfo from '../../../product/[id]/DeliveryInfo';
+import ProductFaq, { faqText } from '../../../product/[id]/ProductFaq';
+import ArticleLink from '../../../product/[id]/ArticleLink';
+import { Tag, BadgeCheck, Box, Truck } from 'lucide-react';
+import Footer from '../../../components/Footer';
+import ProductReviews from '../../../product/[id]/ProductReviews';
+import { RatingBadge } from '../../../components/StarRating';
+import { tFilterValue } from '../../../../lib/translations-ru';
+import '../../../product/[id]/product.css';
+
+const BASE = 'https://fixline.com.ua';
+
+
+// URL товару — ЧПУ-слаг; старі SKU-адреси 308-редіректяться на слаг
+export async function resolveProduct(id: string) {
+  return (await getProductBySlugCached(id)) ?? (await getProductBySkuCached(id));
+}
+
+
+import { brandSlug as brandToSlug } from '../../../../lib/seo/slug';
+import { offerExtras } from '../../../../lib/seo/offer-ld';
+
+// Подпись к фасовке по единице: у лент это размер, а не объём —
+// «Объём: 30 мм» читалось как ошибка данных.
+function volLabel(v: string) {
+  if (/ммs*$/.test(v)) return 'Ширина';
+  if (/dмs*$|s+мs*$/.test(v)) return 'Длина';
+  return /кг|г$/.test(v) ? 'Вес' : 'Объём';
+}
+
+function isInStock(stockStatus: string | undefined, stockQty: number, minOrder: number) {
+  if (stockStatus === 'in_stock')     return true;
+  if (stockStatus === 'out_of_stock') return false;
+  return stockQty >= minOrder;
+}
+
+function stockLabel(stockStatus: string | undefined, stockQty: number, minOrder: number) {
+  return isInStock(stockStatus, stockQty, minOrder) ? 'В наличии' : 'Нет в наличии';
+}
+
+function stockDot(stockStatus: string | undefined, stockQty: number, minOrder: number) {
+  return isInStock(stockStatus, stockQty, minOrder) ? 'stock-dot' : 'stock-dot out';
+}
+
+export default async function ProductView({ id, from, isRetail }: { id: string; from?: string; isRetail: boolean }) {
+  const sp = { from };
+
+  const product = await resolveProduct(id);
+  if (!product) notFound();
+  if (product.slug && id !== product.slug) {
+    permanentRedirect(`/ru/product/${product.slug}${sp.from ? `?from=${sp.from}` : ''}`);
+  }
+  const sku = product.sku;
+  // Стаття категорії — з ru-контенту, інакше з uk (стаття двомовна, посилання те саме)
+  const categoryBlogSlug = product.category_slug
+    ? (await getCategoryMeta(product.category_slug, 'ru'))?.blogSlug ?? (await getCategoryMeta(product.category_slug, 'uk'))?.blogSlug ?? null
+    : null;
+
+  const [related, categoryProducts, faq, categories, reviewStats] = await Promise.all([
+    product.category_slug ? getRelatedProductsCached(product.category_slug, product.sku, 5) : Promise.resolve([]),
+    // Лише для findVariants (список фасовок) — легка вибірка тієї ж категорії.
+    product.category_slug ? getProductsLightCached({ category: product.category_slug }) : Promise.resolve([]),
+    getProductFaqCached(sku),
+    getCategoriesCached(),
+    getReviewStatsCached(),
+  ]);
+
+  // Рейтинг — з кешованої статистики, як в українській картці (app/product/[id]/page.tsx)
+  const reviewCount = reviewStats[sku]?.count ?? 0;
+  const reviewAvg = reviewStats[sku]?.avg ?? 0;
+
+  const pricePromo = isRetail ? (product.stock?.price_promo ?? null) : null;
+  const priceUnit = isRetail
+    ? (pricePromo ?? product.stock?.price_retail ?? 0)
+    : (product.stock?.price_unit ?? 0);
+  const priceOld = isRetail
+    ? (pricePromo ? (product.stock?.price_retail ?? null) : (product.stock?.price_retail_old ?? null))
+    : (product.stock?.price_old ?? null);
+  const stockQty    = product.stock?.stock_qty    ?? 0;
+  const stockStatus = product.stock?.stock_status;
+  const minOrder    = isRetail ? 1 : product.min_order;
+  const inStock     = isInStock(stockStatus, stockQty, minOrder);
+  const pricePack   = isRetail ? priceUnit : priceUnit * product.pack_qty;
+
+  const variants = findVariants(categoryProducts, product);
+  const lineMain = isLineMain(product) ? product : isLineVariant(product) ? (categoryProducts.find(p => p.sku === product.variant_main_sku) ?? null) : null;
+  const lineMembers = lineMain ? [product, ...variants].filter(p => p.variant_main_sku === lineMain.sku) : [];
+
+  const productCat   = categories.find((c) => c.slug === product.category_slug);
+  const categoryName = productCat
+    ? getCategoryNameRu(productCat.slug, productCat.name)
+    : 'Каталог';
+  const parentCat    = productCat?.parent_slug ? categories.find(c => c.slug === productCat.parent_slug) : null;
+  const parentNameRu = parentCat ? getCategoryNameRu(parentCat.slug, parentCat.name) : null;
+
+  const nameRu = (product as { name_ru?: string | null }).name_ru ?? product.name;
+
+  const breadcrumbItems: { '@type': string; position: number; name: string; item: string }[] = [
+    { '@type': 'ListItem', position: 1, name: 'Главная', item: `${BASE}/ru` },
+  ];
+  if (parentCat) {
+    breadcrumbItems.push({ '@type': 'ListItem', position: 2, name: getCategoryNameRu(parentCat.slug, parentCat.name), item: `${BASE}/ru/shop/${parentCat.slug}` });
+  }
+  if (productCat) {
+    breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: categoryName, item: `${BASE}/ru/shop/${productCat.slug}` });
+  }
+  breadcrumbItems.push({ '@type': 'ListItem', position: breadcrumbItems.length + 1, name: productDisplayName(product, 'ru'), item: `${BASE}${productPath(product, 'ru')}` });
+
+  const breadcrumbLd = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems };
+
+  const productFullName = productDisplayName(product, 'ru');
+  const rawImage = (product as { image?: string }).image;
+  const productImage = rawImage
+    ? (rawImage.startsWith('http') ? rawImage : `${BASE}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`)
+    : `${BASE}/product/${product.sku}/opengraph-image`;
+
+  const descriptionRu = (product as { description_ru?: string | null }).description_ru ?? product.description ?? undefined;
+  // Product.category за таксономією Google — див. app/product/[id]/page.tsx
+  const catRow = (await getCategoriesCached()).find(c => c.slug === product.category_slug);
+  const googleCategory = googleProductCategoryPath(product.category_slug ?? null, catRow?.parent_slug ?? null);
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: productFullName,
+    sku: product.sku,
+    ...(googleCategory ? { category: googleCategory } : {}),
+    brand: { '@type': 'Brand', name: product.brand },
+    description: descriptionRu,
+    image: productImage,
+    url: `${BASE}${productPath(product, 'ru')}`,
+    // Без ціни offers не публікуємо — price: 0 читається як «безкоштовно».
+    // Див. коментар в українській версії сторінки.
+    ...(priceUnit && priceUnit > 0 ? {
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'UAH',
+        price: priceUnit,
+        availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        ...offerExtras(`${BASE}${productPath(product, 'ru')}`),
+      },
+    } : {}),
+    ...(lineMain && isLineVariant(product) ? { isVariantOf: { '@type': 'ProductGroup', '@id': groupId(lineMain, 'ru') } } : {}),
+    ...(product.characteristics.length > 0 ? {
+      additionalProperty: product.characteristics.map((c) => ({
+        '@type': 'PropertyValue',
+        name: c.label,
+        value: c.value,
+      })),
+    } : {}),
+    ...(reviewCount >= 1 ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: reviewAvg,
+        reviewCount,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    } : {}),
+  };
+
+  const descriptionFullRu = (product as { description_full_ru?: string | null }).description_full_ru ?? null;
+
+  const faqLd = faq.length ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map(f => {
+      const { q, a } = faqText(f, 'ru');
+      return { '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } };
+    }),
+  } : null;
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      {isLineMain(product) && lineMembers.length > 1 && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productGroupLd(product, lineMembers, 'ru', (product as { description_ru?: string | null }).description_ru ?? product.description)).replace(/</g, '\\u003c') }} />}
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }} />}
+      <BackButton breadcrumbId="product-breadcrumb" />
+      <div style={{ background: 'var(--bg-page)', minHeight: '100vh' }}>
+      <div className="page-container" style={{paddingTop: '8px', paddingBottom: '48px'}}>
+
+        <div className="breadcrumb" id="product-breadcrumb">
+          <Link href="/ru">Главная</Link>
+          <span>›</span>
+          <Link href={isRetail ? '/ru/shop' : '/ru/catalog'}>{isRetail ? 'Магазин' : 'Каталог'}</Link>
+          {parentCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${parentCat.slug}` : `/ru/catalog?category=${parentCat.slug}`}>{parentNameRu}</Link></>)}
+          {productCat && (<><span>›</span><Link href={isRetail ? `/ru/shop/${productCat.slug}` : `/ru/catalog?category=${productCat.slug}`}>{categoryName}</Link></>)}
+          <span>›</span>
+          <span>{nameRu}</span>
+        </div>
+
+        <div className="product-layout">
+
+          <ProductGallery product={publicProduct(product, !isRetail)} priceOld={priceOld} priceUnit={priceUnit} />
+
+          <div className="product-info">
+            <div className="product-info__brand">{product.brand}</div>
+            <h1 className="product-info__title">{productH1(product, 'ru')}</h1>
+
+            {reviewCount > 0 && (
+              <a href="#reviews" style={{ display: 'inline-block', textDecoration: 'none', marginBottom: '4px' }}>
+                <RatingBadge avg={reviewAvg} count={reviewCount} />
+              </a>
+            )}
+
+            <div className="product-info__badges">
+              {product.volume && <span className="badge">{volLabel(product.volume)}: {product.volume}</span>}
+              {(() => { const c = product.color ?? product.characteristics.find(ch => /^Колір/i.test(ch.label))?.value ?? null; return c ? <span className="badge">Цвет: {tFilterValue(c, 'ru')}</span> : null; })()}
+            </div>
+
+            {variants.length > 0 && (
+              <div className="product-info__badges" style={{ alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Другие фасовки:</span>
+                {variants.map(v => (
+                  <Link key={v.sku} href={sp.from ? `${productPath(v, 'ru')}?from=${sp.from}` : productPath(v, 'ru')} className="badge" style={{ textDecoration: 'none', color: 'var(--brand-main)' }}>
+                    {v.volume}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            <div className="product-info__stock-row">
+              <div className="product-info__stock">
+                <span className={stockDot(stockStatus, stockQty, product.min_order)}></span>
+                {stockLabel(stockStatus, stockQty, product.min_order)}
+              </div>
+              <div className="product-info__sku">Артикул: {product.sku}</div>
+            </div>
+
+            <hr className="product-info__divider" />
+
+            {priceUnit > 0 ? (
+              <>
+                <div className="product-info__price-unit">{priceUnit} грн / шт</div>
+                <div className="product-info__price-row-sub">
+                  {priceOld && <span className="product-info__price-old">{priceOld} грн</span>}
+                  {!isRetail && (
+                    <span className="product-info__price-pack">
+                      {pricePack.toLocaleString('uk-UA')} грн / уп ({product.pack_qty} шт)
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="product-info__price-unit" style={{fontSize:'20px',color:'var(--text-muted)'}}>Цена по запросу</div>
+            )}
+
+            <hr className="product-info__divider" />
+
+            <ProductOrderPanel
+              priceUnit={priceUnit}
+              minOrder={minOrder}
+              isRetailPage={isRetail}
+              inStock={inStock}
+              sku={product.sku}
+              name={nameRu}
+              brand={product.brand}
+              volume={product.volume}
+              nl1={product.nl1}
+              nl2={product.nl2}
+              bc={product.bc}
+              ac={product.ac}
+              imgType={product.img_type}
+            />
+
+            <CoverageCalculator
+              characteristics={product.characteristics}
+              volume={product.volume}
+              priceUnit={priceUnit}
+            />
+
+            <CalculatorLink categorySlug={product.category_slug} locale="ru" />
+          </div>
+        </div>
+
+        {/* Compact meta strip — moved out of the above-the-fold hero card (it's
+            the least purchase-critical info) so the hero stays short enough
+            for the Описание/Характеристики tabs below to land in view without
+            scrolling on most products. */}
+        <div className="product-meta-strip">
+          <span><Tag size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Категория:</span> <Link href={productCat ? `/ru/shop/${productCat.slug}` : '/ru/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
+          <span><BadgeCheck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Бренд:</span> <Link href={`/ru/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
+          <span><Box size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
+          <span><Truck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Доставка:</span> Новая Почта · ROZETKA</span>
+        </div>
+
+        <ProductTabs
+          description={descriptionRu ?? null}
+          descriptionFull={descriptionFullRu}
+          characteristics={product.characteristics}
+        />
+
+        <ProductFaq faq={faq} lang="ru" />
+
+        <DeliveryInfo lang="ru" />
+
+        {/* Статья по теме */}
+        {(() => { const blogSlug = categoryBlogSlug; return blogSlug ? (
+          <ArticleLink blogSlug={blogSlug} lang="ru" />
+        ) : null; })()}
+
+        {related.length > 0 && <RelatedCarousel products={related.map(p => publicProduct(p, !isRetail))} retail={isRetail} reviewStats={reviewStats} />}
+
+        <div id="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', marginTop: '32px' }}>
+          <ProductReviews sku={product.sku} productName={`${product.brand} ${nameRu}`} />
+        </div>
+
+      </div>
+      </div>
+      <Footer />
+    </>
+  );
+}
