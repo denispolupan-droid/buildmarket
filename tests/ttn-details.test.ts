@@ -62,6 +62,26 @@ describe('buildTtnDetails', () => {
     expect(row(d, 'Посилка', 'Тип доставки')?.value).toBe('Відділення → відділення');
   });
 
+  it('кілька місць: однакові — одним рядком, різні — по кожному; зведені габарити не показуються', () => {
+    const box = { weight: 5, length: 30, width: 30, height: 35 };
+    const same = buildTtnDetails({
+      carrier: 'rozetka_delivery', ttn: 'RMP-2', order: {},
+      snapshot: { carrier: 'rozetka_delivery', ttn: 'RMP-2', created_at: '2026-10-28T09:00:00Z', cod: 0, weight: 10, dims: box, places: 2, seats: [box, box] },
+    });
+    expect(row(same, 'Посилка', 'Місця')?.value).toBe('2 × (5 кг, 30 × 30 × 35 см)');
+    expect(row(same, 'Посилка', 'Габарити')).toBeUndefined();
+
+    const diff = buildTtnDetails({
+      carrier: 'rozetka_delivery', ttn: 'RMP-3', order: {},
+      snapshot: {
+        carrier: 'rozetka_delivery', ttn: 'RMP-3', created_at: '2026-10-28T09:00:00Z', cod: 0, weight: 7, dims: box, places: 2,
+        seats: [box, { weight: 2, length: 20, width: 10, height: 10 }],
+      },
+    });
+    expect(row(diff, 'Посилка', 'Місця')?.value).toBe('1) 5 кг, 30 × 30 × 35 см; 2) 2 кг, 20 × 10 × 10 см');
+    expect(row(diff, 'Посилка', 'Місць')?.value).toBe('2');
+  });
+
   it('Rozetka маркетплейс: післяплата 0 — «без післяплати», отримувач із замовлення Rozetka', () => {
     const d = buildTtnDetails({
       carrier: 'rozetka_delivery', ttn: 'RMP-1', snapshot: null,

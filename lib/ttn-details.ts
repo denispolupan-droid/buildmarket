@@ -192,7 +192,18 @@ export function buildTtnDetails(input: TtnDetailsInput): TtnDetails {
   const w = first(carrier === 'np' ? first(num(np?.FactualWeight), num(np?.DocumentWeight)) : null, s?.weight ?? null);
   push(parcel, 'Вага', w != null ? `${w} кг` : null,
     { hint: carrier === 'np' && num(np?.VolumeWeight) ? `об'ємна ${num(np?.VolumeWeight)} кг` : undefined });
-  push(parcel, 'Габарити', s?.dims ? `${s.dims.length} × ${s.dims.width} × ${s.dims.height} см` : null);
+  // Кілька місць зі своєю вагою й габаритами — показуємо розбивку, а не зведені
+  // числа (для Rozetka в s.dims лежать габарити найбільшої коробки)
+  const seats = s?.seats && s.seats.length > 1 ? s.seats : null;
+  const dimStr = (d: { length: number; width: number; height: number }) => `${d.length} × ${d.width} × ${d.height}`;
+  if (seats) {
+    const same = seats.every(x => x.weight === seats[0].weight && dimStr(x) === dimStr(seats[0]));
+    push(parcel, 'Місця', same
+      ? `${seats.length} × (${seats[0].weight} кг, ${dimStr(seats[0])} см)`
+      : seats.map((x, i) => `${i + 1}) ${x.weight} кг, ${dimStr(x)} см`).join('; '));
+  } else {
+    push(parcel, 'Габарити', s?.dims ? `${dimStr(s.dims)} см` : null);
+  }
   push(parcel, 'Місць', (() => { const p = first(num(np?.SeatsAmount), s?.places ?? null); return p != null ? String(p) : null; })());
   push(parcel, 'Тип доставки', (() => { const t = first(np?.ServiceType, s?.service_type); return t ? (SERVICE_LABEL[t] ?? t) : null; })());
   push(parcel, 'Опис', first(np?.CargoDescriptionString, s?.description));
