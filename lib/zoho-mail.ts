@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetch-timeout';
 import { createClient } from '@supabase/supabase-js';
 
 const ZOHO_AUTH = 'https://accounts.zoho.eu/oauth/v2';
@@ -34,7 +35,7 @@ export async function getAccessToken(): Promise<string> {
   const expiresAt = new Date(row.expires_at).getTime();
   if (Date.now() < expiresAt - 5 * 60 * 1000) return row.access_token;
 
-  const res = await fetch(`${ZOHO_AUTH}/token`, {
+  const res = await fetchWithTimeout(`${ZOHO_AUTH}/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -56,7 +57,7 @@ export async function getAccountId(): Promise<string> {
   if (row?.account_id) return row.account_id;
 
   const token = await getAccessToken();
-  const res = await fetch(`${ZOHO_MAIL}/accounts`, {
+  const res = await fetchWithTimeout(`${ZOHO_MAIL}/accounts`, {
     headers: { Authorization: `Zoho-oauthtoken ${token}` },
   });
   const data = await res.json();
@@ -74,7 +75,7 @@ export type ZohoSender = { email: string; name: string; isDefault: boolean };
 
 export async function getSendAddresses(): Promise<ZohoSender[]> {
   const token = await getAccessToken();
-  const res = await fetch(`${ZOHO_MAIL}/accounts`, {
+  const res = await fetchWithTimeout(`${ZOHO_MAIL}/accounts`, {
     headers: { Authorization: `Zoho-oauthtoken ${token}` },
   });
   const data = await res.json();
@@ -105,14 +106,14 @@ export async function getSendAddresses(): Promise<ZohoSender[]> {
 /** Бінарна відповідь Zoho (вкладення листа). */
 export async function zohoFetchBinary(path: string): Promise<Buffer> {
   const token = await getAccessToken();
-  const res = await fetch(`${ZOHO_MAIL}${path}`, { headers: { Authorization: `Zoho-oauthtoken ${token}` } });
+  const res = await fetchWithTimeout(`${ZOHO_MAIL}${path}`, { headers: { Authorization: `Zoho-oauthtoken ${token}` } });
   if (!res.ok) throw new Error(`Zoho API error ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return Buffer.from(await res.arrayBuffer());
 }
 
 export async function zohoFetch(path: string, options: RequestInit = {}) {
   const token = await getAccessToken();
-  const res = await fetch(`${ZOHO_MAIL}${path}`, {
+  const res = await fetchWithTimeout(`${ZOHO_MAIL}${path}`, {
     ...options,
     headers: {
       Authorization: `Zoho-oauthtoken ${token}`,

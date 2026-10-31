@@ -11,6 +11,7 @@
  * Ключі — в app_settings (rozetkapay_api_login / rozetkapay_api_password), як
  * токен Prom; env ROZETKAPAY_API_LOGIN / ROZETKAPAY_API_PASSWORD — запасний варіант.
  */
+import { fetchWithTimeout } from './fetch-timeout';
 import { createServiceClient } from './supabase';
 
 const BASE = 'https://api.rozetkapay.com';
@@ -30,7 +31,7 @@ export async function getRzPayCreds(): Promise<RzPayCreds | null> {
 
 async function rzFetch<T>(creds: RzPayCreds, path: string, init?: RequestInit): Promise<T> {
   const auth = Buffer.from(`${creds.login}:${creds.password}`).toString('base64');
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithTimeout(`${BASE}${path}`, {
     ...init,
     headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });

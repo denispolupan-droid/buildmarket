@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetch-timeout';
 import { carrierInfo } from './delivery-label';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
@@ -39,7 +40,7 @@ export async function sendTelegramResult(
   if (!TOKEN) return { messageId: null, error: 'TELEGRAM_BOT_TOKEN не заданий' };
   if (!chatId) return { messageId: null, error: 'chat_id порожній' };
   try {
-    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    const res = await fetchWithTimeout(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -67,7 +68,7 @@ export async function editTelegramMessage(
 ): Promise<void> {
   if (!TOKEN || !chatId) return;
   try {
-    await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageText`, {
+    await fetchWithTimeout(`https://api.telegram.org/bot${TOKEN}/editMessageText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -84,7 +85,7 @@ export async function editTelegramMessage(
 export async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
   if (!TOKEN) return;
   try {
-    await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
+    await fetchWithTimeout(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ callback_query_id: callbackQueryId, ...(text ? { text } : {}) }),

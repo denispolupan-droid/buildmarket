@@ -5,13 +5,14 @@ import { syncSupplier } from '../../../../lib/supplier-sync';
 import { pushPromStock } from '../../../../lib/prom-stock-push';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { withCronLock } from '../../../../lib/cron-lock';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export async function GET(req: NextRequest) {
+async function run(req: NextRequest) {
   // Vercel cron передає секретний токен через Authorization header
   const authHeader = req.headers.get('authorization');
   if (!cronAuthorized(authHeader)) {
@@ -73,6 +74,20 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, synced: results, promPush });
+}
+
+
+// Тік не стартує поверх ще живого попереднього (lib/cron-lock, міграція 141,
+// аудит 31.10.2026). Зайнятий лок — це не збій: відповідаємо 200 без алерту.
+export const maxDuration = 300;
+
+export async function GET(req: NextRequest) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const locked = await withCronLock('sync-suppliers', 900, () => run(req));
+  if (locked.skipped) return NextResponse.json({ ok: true, skipped: 'locked' });
+  return locked.result;
 }
 
 export const POST = GET;

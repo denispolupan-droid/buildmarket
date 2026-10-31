@@ -1,3 +1,4 @@
+import { findCustomerIdByPhone } from './customers';
 import { createClient } from '@supabase/supabase-js';
 import { getPromOrders, getPromOrder, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus, type PromOrder } from './prom-api';
 import { computePromCommission } from './prom-commission';
@@ -183,12 +184,8 @@ export async function syncPromOrders() {
 
     let customerId: string | null = null;
     if (mapped.phone) {
-      const { data: cust } = await db
-        .from('customers')
-        .select('id')
-        .eq('phone', mapped.phone)
-        .maybeSingle();
-      customerId = cust?.id ?? null;
+      // Нормалізований номер (lib/customers): «+380…» і «0…» — той самий клієнт
+      customerId = await findCustomerIdByPhone(db, mapped.phone);
     }
 
     if (!customerId) {

@@ -1,3 +1,4 @@
+import { findCustomerIdByPhone } from './customers';
 import { createClient } from '@supabase/supabase-js';
 import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, type RozetkaOrder } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
@@ -299,12 +300,8 @@ export async function syncRozetkaOrders() {
 
     let customerId: string | null = null;
     if (mapped.phone) {
-      const { data: cust } = await db
-        .from('customers')
-        .select('id')
-        .eq('phone', mapped.phone)
-        .maybeSingle();
-      customerId = cust?.id ?? null;
+      // Нормалізований номер (lib/customers): «+380…» і «0…» — той самий клієнт
+      customerId = await findCustomerIdByPhone(db, mapped.phone);
     }
 
     if (!customerId) {

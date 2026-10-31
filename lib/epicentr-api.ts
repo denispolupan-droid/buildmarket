@@ -18,6 +18,7 @@
  *
  * Усі дати API — UTC.
  */
+import { fetchWithTimeout } from './fetch-timeout';
 import { createClient } from '@supabase/supabase-js';
 import { resolveDeliverySubtype } from './np-postomat';
 import { fromEpicentrId, toEpicentrId } from './epicentr-availability';
@@ -43,7 +44,7 @@ export async function hasEpicentrToken(): Promise<boolean> {
 }
 
 export async function epicentrFetch<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
-  const res = await fetch(`${EPICENTR_BASE}${path}`, {
+  const res = await fetchWithTimeout(`${EPICENTR_BASE}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token ?? await getToken()}`,

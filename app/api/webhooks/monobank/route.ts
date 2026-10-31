@@ -289,6 +289,11 @@ export async function POST(req: NextRequest) {
     try {
       await recordCustomerPayment({
         customerId:     party,
+        // Без order_id оплата лягала на покупця, але не на замовлення: загальне
+        // сальдо клієнта було 0, а в розрізі замовлення («Взаєморозрахунки»,
+        // «що не закрито») замовлення висіло неоплаченим. Так сталося з 12
+        // оплатами 28.08–29.10.2026; перепривʼязано 31.10.2026 (аудит).
+        orderId:        orderId,
         amount:         amountUah,
         paymentMethod:  'acquiring',
         businessDate:   businessDate(body),

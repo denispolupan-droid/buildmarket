@@ -9,12 +9,27 @@
 
 import { createServiceClient } from './supabase';
 
-export function normalizeCustomerPhone(raw?: string | null): string | null {
-  const d = (raw ?? '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('380')) return d;
-  if (d.length === 10 && d.startsWith('0'))   return `38${d}`;
-  if (d.length === 11 && d.startsWith('80'))  return `3${d}`;
-  return null;
+export { normalizeCustomerPhone, phoneDigitVariants } from './phone-variants';
+import { normalizeCustomerPhone, phoneDigitVariants } from './phone-variants';
+
+/**
+ * Найстаріший контрагент із цим номером (у будь-якому записі). Раніше
+ * `.maybeSingle()` при двох збігах повертав помилку → null → синк створював
+ * ще одного; тепер беремо найдавнішого.
+ */
+export async function findCustomerIdByPhone(
+  db: ReturnType<typeof createServiceClient>,
+  phone?: string | null,
+): Promise<string | null> {
+  const variants = phoneDigitVariants(phone);
+  if (!variants.length) return null;
+  const { data } = await db
+    .from('customers')
+    .select('id')
+    .in('phone_digits', variants)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  return (data?.[0] as { id: string } | undefined)?.id ?? null;
 }
 
 // Мапінг типу акаунта сайту (app_metadata.account_type) → тип контрагента.

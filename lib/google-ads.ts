@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetch-timeout';
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -41,7 +42,7 @@ export async function getAccessToken(): Promise<string> {
   for (const k of ['google_ads_client_id', 'google_ads_client_secret', 'google_ads_refresh_token']) {
     if (!s[k]) throw new Error(`У app_settings немає ${k}${k.includes('refresh') ? ' — запусти scripts/google-ads-auth.ts' : ''}`);
   }
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -89,7 +90,7 @@ async function adsCall<T>(path: string, body: unknown, customerId?: string): Pro
   const tried = s.google_ads_api_version ? [s.google_ads_api_version, ...API_VERSIONS.filter(v => v !== s.google_ads_api_version)] : API_VERSIONS;
   let lastErr = '';
   for (const v of tried) {
-    const res = await fetch(`https://googleads.googleapis.com/${v}/customers/${cid}${path}`, {
+    const res = await fetchWithTimeout(`https://googleads.googleapis.com/${v}/customers/${cid}${path}`, {
       method: 'POST', headers, body: JSON.stringify(body),
     });
     if (res.status === 404) { lastErr = `${v}: 404 (версію списано)`; continue; }

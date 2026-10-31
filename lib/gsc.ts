@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetch-timeout';
 import crypto from 'node:crypto';
 
 // Google Search Console API через сервісний акаунт (GSC_SERVICE_ACCOUNT_KEY —
@@ -50,7 +51,7 @@ async function getAccessToken(): Promise<string> {
     .toString('base64url');
   const jwt = `${header}.${claims}.${signature}`;
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=${encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer')}&assertion=${jwt}`,
@@ -124,7 +125,7 @@ export async function queryAll(opts: {
 
   const out: GscRawRow[] = [];
   for (let startRow = 0; startRow < MAX_ROWS; startRow += PAGE) {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetch-timeout';
 import { createClient } from '@supabase/supabase-js';
 
 // Назви статусів кабінету й порівняння воронок винесені в чистий модуль без
@@ -95,7 +96,7 @@ async function fetchWithRetry(url: string, init: RequestInit, tries = 3): Promis
   let lastErr: unknown;
   for (let i = 0; i < tries; i++) {
     try {
-      return await fetch(url, init);
+      return await fetchWithTimeout(url, init);
     } catch (err) {
       lastErr = err;
       await new Promise(r => setTimeout(r, 500 * (i + 1)));

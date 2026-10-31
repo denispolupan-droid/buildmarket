@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetch-timeout';
 import { createClient } from '@supabase/supabase-js';
 import { resolveDeliverySubtype } from './np-postomat';
 
@@ -21,7 +22,7 @@ async function getToken(): Promise<string> {
  */
 export async function fetchPromChatFile(uid: string): Promise<Response> {
   const token = await getToken();
-  return fetch(`https://komora.prom.ua/file/${encodeURIComponent(uid)}`, { headers: { Authorization: `Bearer ${token}` } });
+  return fetchWithTimeout(`https://komora.prom.ua/file/${encodeURIComponent(uid)}`, { headers: { Authorization: `Bearer ${token}` } });
 }
 
 async function headers() {
@@ -51,7 +52,7 @@ async function promFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const canRetry = isGet && attempt < PROM_GET_RETRIES;
     let res: Response;
     try {
-      res = await fetch(`${PROM_BASE}${path}`, {
+      res = await fetchWithTimeout(`${PROM_BASE}${path}`, {
         ...init,
         headers: { ...(await headers()), ...(init?.headers ?? {}) },
       });

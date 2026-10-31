@@ -11,6 +11,7 @@
  * анонімно, а значить публічний проксі чекауту не має жодного шансу спалити
  * ключ, навіть якщо в ньому колись знайдеться дірка.
  */
+import { fetchWithTimeout } from './fetch-timeout';
 import { createServiceClient } from './supabase';
 import {
   RZ_API_URL, RZ_CARRIER_ROZETKA, rzErrorText, rzCodAmount,
@@ -115,7 +116,7 @@ export async function rzPublicFetch<T>(path: string): Promise<T> {
 }
 
 async function rzRequest<T>(path: string, init: RequestInit, token: string | null): Promise<T> {
-  const res = await fetch(`${RZ_API_URL}${path}`, {
+  const res = await fetchWithTimeout(`${RZ_API_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',

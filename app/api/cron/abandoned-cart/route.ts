@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildAbandonedCartEmail, getAbandonedCartSubject } from '../../../../lib/abandoned-cart-email';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { alertAdmin } from '../../../../lib/alert';
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,7 +80,7 @@ function pickOnePerEmail(rows: CartRow[] | null): CartRow[] {
 
 const COLS = 'id, email, items, total_price, recover_token, last_seen_at';
 
-export async function GET(req: NextRequest) {
+async function run(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -123,4 +124,17 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(results);
+}
+
+// Збій крона раніше бачили лише в логах Vercel (аудит 31.10.2026): тепер і
+// виняток, і відповідь 5xx ідуть алертом у Telegram (з тротлінгом, lib/alert).
+export async function GET(req: NextRequest) {
+  try {
+    const res = await run(req);
+    if (res.status >= 500) alertAdmin('Cron: покинуті кошики — збій', `HTTP ${res.status}`);
+    return res;
+  } catch (err) {
+    alertAdmin('Cron: покинуті кошики впав', err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
 }

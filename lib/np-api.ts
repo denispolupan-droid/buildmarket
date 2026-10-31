@@ -5,6 +5,7 @@
 // (повернення, видалення ЕН) чужий ключ дає «Документ не належить даному
 // користувачу» — тому precedence саме такий, як у /api/admin/create-ttn.
 
+import { fetchWithTimeout } from './fetch-timeout';
 import { withNpRetry } from './np-retry';
 
 export const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
@@ -25,7 +26,7 @@ export async function npCall<T = Record<string, unknown>>(
 ): Promise<NpResponse<T>> {
   // Ліміт запитів НП («To many requests») — повторюємо з паузою, див. lib/np-retry
   return withNpRetry(async () => {
-    const res = await fetch(NP_URL, {
+    const res = await fetchWithTimeout(NP_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
@@ -59,7 +60,7 @@ export const npError = (res: NpResponse<unknown>, fallback: string) =>
 export async function npMarkingPdf(apiKey: string, ttns: string[]): Promise<Buffer> {
   if (!apiKey) throw new Error('API ключ НП не налаштовано');
   const segs = ttns.map(t => `orders[]/${encodeURIComponent(t)}`).join('/');
-  const res = await fetch(`https://my.novaposhta.ua/orders/printMarking100x100/${segs}/type/pdf/apiKey/${apiKey}`);
+  const res = await fetchWithTimeout(`https://my.novaposhta.ua/orders/printMarking100x100/${segs}/type/pdf/apiKey/${apiKey}`, undefined, 30_000);
   const buf = Buffer.from(await res.arrayBuffer());
   if (!res.ok || buf.subarray(0, 4).toString() !== '%PDF') {
     throw new Error('НП не віддала етикетки — перевірте, що ТТН створені під ключем із Налаштувань');
@@ -93,7 +94,7 @@ export async function npScanSheetPdf(apiKey: string, refs: string[]): Promise<Bu
   if (!apiKey) throw new Error('API ключ НП не налаштовано');
   if (!refs.length) throw new Error('Не вказано реєстр');
   const segs = refs.map(r => `refs[]/${encodeURIComponent(r)}`).join('/');
-  const res = await fetch(`https://my.novaposhta.ua/scanSheet/printScanSheet/${segs}/type/pdf/apiKey/${apiKey}`);
+  const res = await fetchWithTimeout(`https://my.novaposhta.ua/scanSheet/printScanSheet/${segs}/type/pdf/apiKey/${apiKey}`, undefined, 30_000);
   const buf = Buffer.from(await res.arrayBuffer());
   if (!res.ok || buf.subarray(0, 4).toString() !== '%PDF') {
     throw new Error('НП не віддала друковану форму реєстру — перевірте, що реєстр створений під ключем із Налаштувань');

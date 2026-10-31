@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { alertAdmin } from '../../../../lib/alert';
 import { MP_TARGETS, revertMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
 
 const db = createClient(
@@ -9,7 +10,7 @@ const db = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export async function GET(req: NextRequest) {
+async function run(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -91,4 +92,17 @@ export async function GET(req: NextRequest) {
     .in('id', expired.map(e => e.id));
 
   return NextResponse.json({ reverted: skusToRevert.length, processed: expired.length, mp_reverted: mpReverted, mp_errors: mpErrors.slice(0, 10) });
+}
+
+// Збій крона раніше бачили лише в логах Vercel (аудит 31.10.2026): тепер і
+// виняток, і відповідь 5xx ідуть алертом у Telegram (з тротлінгом, lib/alert).
+export async function GET(req: NextRequest) {
+  try {
+    const res = await run(req);
+    if (res.status >= 500) alertAdmin('Cron: відкат промо — збій', `HTTP ${res.status}`);
+    return res;
+  } catch (err) {
+    alertAdmin('Cron: відкат промо впав', err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
 }

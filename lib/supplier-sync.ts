@@ -5,6 +5,7 @@
  * і в cron (/api/cron/sync-suppliers).
  */
 
+import { fetchWithTimeout } from './fetch-timeout';
 import { XMLParser } from 'fast-xml-parser';
 import { priceFromMarkup, enforcePriceLadder, roundRetail, roundHalf } from './price-formula';
 import { fetchAllRows } from './db-paginate';
@@ -242,7 +243,7 @@ function normalizeUrl(url: string): { url: string; isGoogleSheets: boolean } {
 
 async function fetchFile(url: string): Promise<Buffer> {
   assertPublicUrl(url); // SSRF-захист: лише public http(s), не приватні адреси
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url, undefined, 60_000); // прайс-файл постачальника буває великим
   if (!res.ok) throw new Error(`HTTP ${res.status} при завантаженні файлу`);
   return Buffer.from(await res.arrayBuffer());
 }

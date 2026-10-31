@@ -4,8 +4,9 @@ import { watchPromCancellations } from '../../../../lib/marketplace-cancel-watch
 import { alertMarketplaceChatDrafts } from '../../../../lib/marketplace-chat-telegram';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { withCronLock } from '../../../../lib/cron-lock';
 
-export async function GET(req: NextRequest) {
+async function run(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,6 +38,20 @@ export async function GET(req: NextRequest) {
     alertAdmin('Cron: синк замовлень Prom впав', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+}
+
+
+// Тік не стартує поверх ще живого попереднього (lib/cron-lock, міграція 141,
+// аудит 31.10.2026). Зайнятий лок — це не збій: відповідаємо 200 без алерту.
+export const maxDuration = 120;
+
+export async function GET(req: NextRequest) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const locked = await withCronLock('prom-orders', 240, () => run(req));
+  if (locked.skipped) return NextResponse.json({ ok: true, skipped: 'locked' });
+  return locked.result;
 }
 
 // pg_cron дзвонить через net.http_post (POST). Без цього POST давав би 405 і синк

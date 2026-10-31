@@ -4,6 +4,7 @@ import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '..
 import { allocateRzPayPayouts } from '../../../../lib/rozetkapay-allocate';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { withCronLock } from '../../../../lib/cron-lock';
 
 // Крон-реконсиляція виписки ФОП Monobank — страховка на випадок пропущеного/
 // вимкненого вебхука. Тягне виписку за останні ~2 доби і прогоняє через той самий
@@ -12,7 +13,7 @@ import { cronAuthorized } from '../../../../lib/cron-auth';
 
 const MONO_STATEMENT_DAYS = 2;
 
-export async function GET(req: NextRequest) {
+async function run(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -33,6 +34,20 @@ export async function GET(req: NextRequest) {
     if (!/ 429 /.test(msg)) alertAdmin('Cron: реконсиляція Monobank впала', msg.slice(0, 300));
     return NextResponse.json({ error: msg.slice(0, 300) }, { status: / 429 /.test(msg) ? 200 : 500 });
   }
+}
+
+
+// Тік не стартує поверх ще живого попереднього (lib/cron-lock, міграція 141,
+// аудит 31.10.2026). Зайнятий лок — це не збій: відповідаємо 200 без алерту.
+export const maxDuration = 120;
+
+export async function GET(req: NextRequest) {
+  if (!cronAuthorized(req.headers.get('authorization'))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const locked = await withCronLock('mono-statement', 240, () => run(req));
+  if (locked.skipped) return NextResponse.json({ ok: true, skipped: 'locked' });
+  return locked.result;
 }
 
 // pg_cron дзвонить через net.http_post (POST) — потрібен той самий метод.
