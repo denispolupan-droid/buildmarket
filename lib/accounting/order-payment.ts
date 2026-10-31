@@ -3,6 +3,7 @@ import { recordTxn } from './money';
 import { createPaymentVoucher, resolveSaleDebitParty } from './documents';
 import { isSpecialDebtor } from './sale-party';
 import { transitionOrder } from '../orders/status';
+import { alertAdmin } from '../alert';
 
 // Єдина точка проведення оплати замовлення: рядок order_payments + оновлення
 // amount_paid/payment_confirmed + грошовий леджер (ваучер + DR метод / CR клієнт).
@@ -41,6 +42,8 @@ export type ApplyOrderPaymentResult = {
   isFullyPaid?: boolean;
   /** Замовлення чекало оплату (pending_payment) і цією оплатою закрите — переведено в confirmed */
   confirmed?: boolean;
+  /** Оплату записано, але проводка в леджер не пройшла (алерт уже надіслано) */
+  ledgerError?: string;
 };
 
 export async function applyOrderPayment(
@@ -149,7 +152,15 @@ export async function applyOrderPayment(
     } catch (err: unknown) {
       const msg = String(err instanceof Error ? err.message : err);
       if (!msg.includes('unique') && !msg.includes('duplicate') && !msg.includes('23505')) {
-        console.error('[applyOrderPayment] ledger write failed:', err);
+        // Рядок order_payments і amount_paid уже записані, а проводки немає —
+        // леджер розійшовся з замовленням. Раніше це йшло лише в console.error
+        // і губилось (аудит 31.10.2026, H3); тепер — алерт, щоб полагодити руками
+        // (scripts/repair-doc-ledger.ts) або повторно провести оплату.
+        alertAdmin(
+          `Оплата #${order.order_number} записана, але проводка в леджер не пройшла (order_payment ${payment.id})`,
+          err,
+        );
+        return { ok: true, payment, paymentId: payment.id, amountPaid: newAmountPaid, isFullyPaid, confirmed, ledgerError: msg };
       }
     }
   }

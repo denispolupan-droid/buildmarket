@@ -8,7 +8,7 @@ import { isSpecialDebtor } from '../../../../../lib/accounting/sale-party';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
 import { notifyCustomerStatus } from '../../../../../lib/telegram';
 import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
-import { recordCustomerPayment, recordShipment } from '../../../../../lib/accounting/money';
+import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
@@ -321,29 +321,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .eq('id', id)
         .single();
 
-      if (ord?.customer_id && ['shipped', 'delivered'].includes(ord.status ?? '')) {
-        // Перевіряємо чи вже є запис дебіторки для цього замовлення
-        const { data: existing } = await db
-          .from('money_entries')
-          .select('id')
-          .eq('order_id', id)
-          .eq('account_type', 'customer')
-          .gt('amount', 0)
-          .limit(1)
-          .maybeSingle();
-
-        if (!existing) {
-          // Замовлення відвантажили анонімно, тепер прив'язано до клієнта → фіксуємо дебіторку
-          await recordShipment({
-            customerId:     await resolveSaleDebitParty(db, { order_id: id, customer_id: ord.customer_id }, { payment_type }),
-            orderId:        id,
-            amount:         Number(ord.total_price),
-            businessDate:   ord.shipped_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
-            createdBy:      user.email ?? 'admin',
-            idempotencyKey: `shipment:payment-type:${id}`,
-          });
-        }
-      }
+      // Дебіторку тут НЕ фіксуємо. До «Варіанта 3» цей блок писав
+      // `shipment:payment-type:<order>` для відвантаженого замовлення без проводки;
+      // тепер у shipped-замовлення РН — чернетка, і при врученні confirmDocument
+      // проводить виручку сам (для будь-якого дебітора, «Варіант B»). Старий запис
+      // не мав doc_id, тож uq_money_entries_sale_shipment його не ловив — виходила
+      // подвійна виручка й дебіторка (аудит 31.10.2026, C2).
 
       // Для відстрочки: розраховуємо дату погашення з договору
       if (payment_type === 'deferred' && ord?.customer_id) {
@@ -383,62 +366,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // ── Оплата підтверджена → записуємо в леджер ─────────────────────────────
+  // ── Оплата підтверджена → проводимо ЗАЛИШОК через єдиний шлях оплати ─────
+  // Раніше тут писалась окрема проводка на повний total_price з ключем
+  // `payment:confirmed:<order>`, не зважаючи на часткові оплати через
+  // applyOrderPayment (`order_payment:<uuid>`): прапорець після ручної оплати
+  // давав подвійний прихід (аудит 31.10.2026, H2). Тепер — той самий
+  // applyOrderPayment, що й /payments і вебхук: рядок order_payments + ваучер +
+  // проводка на (total_price − amount_paid). Наложку оплачує покупець при
+  // отриманні, її закриває виписка NovaPay — для cod лише прапорець.
   if (payment_confirmed === true) {
     try {
       const { data: ord } = await db
         .from('orders')
-        .select('payment_type, total_price, customer_id, order_number')
+        .select('payment_type, total_price, amount_paid, order_number')
         .eq('id', id)
         .single();
-
-      // Всі типи оплати що закривають дебіторку
-      const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> = {
-        cash:     'cash',
-        invoice:  'bank',
-        bank:     'bank',
-        card:     'acquiring',
-        deferred: 'bank',
-        online:   'acquiring',
-        liqpay:   'acquiring',
-        mono:     'acquiring',
-      };
-
-      const payMethod = PAYMENT_METHOD_MAP[ord?.payment_type ?? ''] ?? 'bank';
-
-      if (ord) {
-        // Сторона оплати = сторона продажу (Варіант B): гість/np:cod/mp:* — теж
-        // дебітори, інакше оплата губиться, а борг висить.
-        const party = await resolveSaleDebitParty(db, { order_id: id, customer_id: ord.customer_id });
-        // Договір — лише для справжнього клієнта
-        const { data: ctr } = isSpecialDebtor(party) ? { data: null } : await db
-          .from('customer_contracts')
-          .select('id')
-          .eq('customer_id', party)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const payContractId = ctr?.id ?? undefined;
-
-        const methodLabel = payMethod === 'cash' ? 'Готівка' : payMethod === 'acquiring' ? 'Еквайринг' : 'Безготівковий';
-        await recordCustomerPayment({
-          customerId:     party,
-          contractId:     payContractId,
-          amount:         Number(ord.total_price),
-          paymentMethod:  payMethod,
-          businessDate:   new Date().toISOString().slice(0, 10),
-          description:    `${methodLabel} — замовлення #${ord.order_number}`,
-          idempotencyKey: `payment:confirmed:${id}`,
-          createdBy:      user.email,
+      const remaining = ord ? Number(ord.total_price) - Number(ord.amount_paid ?? 0) : 0;
+      if (ord && ord.payment_type !== 'cod' && remaining > 0.005) {
+        const MODE_BY_TYPE: Record<string, string> = {
+          cash: 'cash', invoice: 'transfer', bank: 'transfer', deferred: 'transfer', transfer: 'transfer',
+          card: 'card', online: 'card', liqpay: 'card', mono: 'card',
+        };
+        const res = await applyOrderPayment(db, {
+          orderId:     id,
+          amount:      Math.round(remaining * 100) / 100,
+          paymentMode: MODE_BY_TYPE[ord.payment_type ?? ''] ?? 'transfer',
+          note:        'Позначено оплаченим у журналі замовлень',
+          createdBy:   user.email ?? 'admin',
         });
+        if (!res.ok) alertAdmin(`Оплата #${ord.order_number}: прапорець «оплачено» не проведено в облік`, res.error);
       }
     } catch (err: unknown) {
-      // Ігноруємо duplicate idempotency key (вже записано раніше)
-      const msg = String(err instanceof Error ? err.message : err);
-      if (!msg.includes('unique') && !msg.includes('duplicate') && !msg.includes('23505')) {
-        console.error('[payment] recordCustomerPayment failed:', err);
-      }
+      alertAdmin(`Оплата (прапорець) по замовленню ${id} не проведена`, err);
     }
   }
 
@@ -491,15 +450,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // через reverseDropshipLedgerExtras. Без цього скасоване замовлення
     // лишало б висіти виручку в дебіторці і борг постачальнику в кредиторці.
     try {
-      const { data: saleDoc } = await db
+      // Усі проведені РН-оригінали замовлення (мультипосилка — кілька), без
+      // сторно-документів (reversal_of). Раніше тут стояв maybeSingle(): для
+      // двох РН він повертав помилку → null → сторно мовчки не робилось
+      // (аудит 31.10.2026, H4).
+      const { data: saleDocs, error: saleErr } = await db
         .from('acc_documents')
         .select('id')
         .eq('order_id', id)
         .eq('doc_type', 'sale')
         .eq('status', 'confirmed')
-        .maybeSingle();
+        .is('reversal_of', null)
+        .order('id')
+        .limit(50);
+      if (saleErr) throw saleErr;
 
-      if (saleDoc) {
+      for (const saleDoc of saleDocs ?? []) {
         await cancelDocument(saleDoc.id, user.email ?? 'admin', 'Замовлення скасовано');
         await reverseDropshipLedgerExtras({ orderId: id, docId: saleDoc.id, createdBy: user.email ?? 'admin' });
       }
