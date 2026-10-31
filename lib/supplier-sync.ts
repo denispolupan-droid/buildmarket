@@ -6,6 +6,7 @@
  */
 
 import { fetchWithTimeout } from './fetch-timeout';
+import { groupByColumnSet } from './batch-rows';
 import { XMLParser } from 'fast-xml-parser';
 import { priceFromMarkup, enforcePriceLadder, roundRetail, roundHalf } from './price-formula';
 import { fetchAllRows } from './db-paginate';
@@ -407,6 +408,21 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     .then(r => r.data?.id);
 
   let updated = 0, skipped = 0, unmapped = 0;
+  const productRows  = new Map<string, Record<string, unknown>>();
+  const supplierRows = new Map<string, Record<string, unknown>>();
+  const BATCH = 500;
+  // Повертає кількість рядків у пакетах, що впали (рахуються як skipped).
+  const upsertInBatches = async (table: 'product_stock' | 'supplier_stock', rows: Record<string, unknown>[], onConflict: string) => {
+    let failed = 0;
+    for (const g of groupByColumnSet(rows)) {
+      for (let x = 0; x < g.length; x += BATCH) {
+        const chunk = g.slice(x, x + BATCH);
+        const { error } = await supabase.from(table).upsert(chunk, { onConflict });
+        if (error) { failed += chunk.length; console.error(`[supplier-sync] ${table} batch failed:`, error.message); }
+      }
+    }
+    return failed;
+  };
   const unmappedBatch: { supplier_id: number; supplier_sku: string; sample_name?: string; price_in: number }[] = [];
 
   for (const row of parsed) {
@@ -511,25 +527,23 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     // Ціни продажу: не перезаписуємо якщо вручну заблоковані адміном і є залишок
     const isPriceLocked   = priceLockSet.has(ourSku) && physStockSet.has(ourSku);
 
-    const { error } = await supabase
-      .from('product_stock')
-      .upsert({
-        sku:          ourSku,
-        stock_qty:    stockQty,
-        stock_status: stockStatus,
-        // Довідковий артикул постачальника в картці товару — тримаємо актуальним
-        // (раніше замирав на старому коді після зміни номенклатури постачальника)
-        supplier_sku: row.supplier_sku,
-        updated_at:   rowTime,
-        ...(!isCostProtected && { price_cost: parseFloat(priceCost.toFixed(2)) }),
-        ...(!isPriceLocked && {
-          price_unit:       priceUnit,
-          price_old:        priceOld,
-          price_retail:     priceRetail,
-          price_retail_old: priceRetailOld,
-          price_drop:       priceDrop,
-        }),
-      }, { onConflict: 'sku' });
+    productRows.set(ourSku, {
+      sku:          ourSku,
+      stock_qty:    stockQty,
+      stock_status: stockStatus,
+      // Довідковий артикул постачальника в картці товару — тримаємо актуальним
+      // (раніше замирав на старому коді після зміни номенклатури постачальника)
+      supplier_sku: row.supplier_sku,
+      updated_at:   rowTime,
+      ...(!isCostProtected && { price_cost: parseFloat(priceCost.toFixed(2)) }),
+      ...(!isPriceLocked && {
+        price_unit:       priceUnit,
+        price_old:        priceOld,
+        price_retail:     priceRetail,
+        price_retail_old: priceRetailOld,
+        price_drop:       priceDrop,
+      }),
+    });
 
     // ── supplier_stock (наявність per-supplier для multi-supplier логіки) ──────
     // Пишеться БЕЗУМОВНО, навіть коли значення ті самі: last_synced_at — це пульс,
@@ -537,22 +551,30 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     // возить (last_synced_at < syncStartedAt → out_of_stock). Пропустити запис
     // «бо нічого не змінилось» означає тихо вивести з продажу весь незмінений
     // асортимент. Якщо колись оптимізуватимеш цей цикл — цей рядок не чіпай.
-    await supabase
-      .from('supplier_stock')
-      .upsert({
-        sku:            ourSku,
-        supplier_id:    supplierId,
-        supplier_sku:   row.supplier_sku,
-        stock_qty:      stockQty,
-        stock_status:   stockStatus,
-        price_unit:     priceUnit,
-        price_cost:     parseFloat(priceCost.toFixed(2)),
-        last_synced_at: syncStartedAt,
-        updated_at:     rowTime,
-      }, { onConflict: 'sku,supplier_id' });
-
-    if (error) { skipped++; } else { updated++; }
+    supplierRows.set(ourSku, {
+      sku:            ourSku,
+      supplier_id:    supplierId,
+      supplier_sku:   row.supplier_sku,
+      stock_qty:      stockQty,
+      stock_status:   stockStatus,
+      price_unit:     priceUnit,
+      price_cost:     parseFloat(priceCost.toFixed(2)),
+      last_synced_at: syncStartedAt,
+      updated_at:     rowTime,
+    });
   }
+
+  // Запис пакетами (аудит 31.10.2026): раніше — два послідовні upsert на КОЖЕН
+  // рядок прайсу (8 000 рядків = 16 000 HTTP-запитів, ризик таймауту функції).
+  // product_stock — першим, supplier_stock — другим: тригер supplier_stock →
+  // product_stock (міграція 124) має бачити вже записані ціни, як і раніше.
+  // Рядки з різним набором колонок (захищена собівартість / заблоковані ціни)
+  // пишуться окремими пакетами — інакше відсутні поля в пакеті стали б NULL.
+  // Дубль SKU у прайсі — перемагає останній рядок, як і при поштучному записі.
+  const psFailed = await upsertInBatches('product_stock', [...productRows.values()], 'sku');
+  await upsertInBatches('supplier_stock', [...supplierRows.values()], 'sku,supplier_id');
+  updated = productRows.size - psFailed;
+  skipped = psFailed;
 
   // 5. Позначаємо відсутні товари як out_of_stock (multi-supplier логіка)
   //    Захист від неповного файлу: якщо < 60% від попереднього → пропускаємо
