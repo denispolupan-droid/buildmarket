@@ -226,7 +226,7 @@ export default function PricesLog() {
                 {isMp && (
                   <span style={{ fontSize: 11, fontWeight: 600, color: '#5B21B6', background: '#F5F3FF', border: '1px solid #DDD6FE',
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
-                    {entry.type === 'mp_revert' ? 'Відкат' : 'Націнка МП'}
+                    {entry.type === 'mp_revert' ? 'Відкат' : entry.revert_at ? 'Тимчасова націнка МП' : 'Націнка МП'}
                   </span>
                 )}
                 {isReverted && (
@@ -254,7 +254,8 @@ export default function PricesLog() {
                   </span>
                 )}
                 {entry.revert_at && !entry.reverted_at && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#6B7280', flexShrink: 0 }}>
+                  <span title={isMp ? 'Автовідкат націнок кроном у цю дату' : undefined}
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#6B7280', flexShrink: 0 }}>
                     <RotateCcw size={10} /> до {formatDateOnly(entry.revert_at)}
                   </span>
                 )}

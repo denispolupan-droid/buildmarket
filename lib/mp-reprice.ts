@@ -18,6 +18,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { insertPriceChangeLog } from './price-change-log';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Db = SupabaseClient<any, any, any>;
 
 export const MP_TARGETS = ['rozetka', 'prom', 'mp'] as const;
 export type MpTarget = typeof MP_TARGETS[number];
@@ -113,12 +117,49 @@ export function mpDriftedSkus(
   return out;
 }
 
+/**
+ * Пакет для ВІДКЛАДЕНОГО застосування: націнки «після» зі знімка.
+ */
+export function mpApplyItems(snapshot: MpSnapshotRow[]): MpMarkupItem[] {
+  const out: MpMarkupItem[] = [];
+  for (const row of snapshot) {
+    const item: MpMarkupItem = { sku: row.sku };
+    let has = false;
+    if ('rz_markup' in row.after)   { item.rozetka_markup_pct = row.after.rz_markup ?? null; has = true; }
+    if ('prom_markup' in row.after) { item.prom_markup_pct    = row.after.prom_markup ?? null; has = true; }
+    if (has) out.push(item);
+  }
+  return out;
+}
+
+/**
+ * Перед відкладеним застосуванням оновлюємо «до» зі стану бази на момент
+ * застосування: між плануванням і запуском крона націнку могли змінити, а
+ * відкат має повертати саме те, що було перед цією переоцінкою. Якщо націнка
+ * розійшлась — ціну «до» прибираємо (вона рахувалась від старої націнки).
+ */
+export function refreshMpBefore(
+  snapshot: MpSnapshotRow[],
+  current: Map<string, { rozetka_markup_pct: number | null; prom_markup_pct: number | null }>,
+): MpSnapshotRow[] {
+  const same = (a: number | null | undefined, b: number | null) =>
+    (a ?? null) === null ? b === null : b != null && Math.abs(Number(a) - b) < 0.005;
+  return snapshot.map(row => {
+    const cur = current.get(row.sku);
+    if (!cur) return row;
+    const before = { ...row.before };
+    if ('rz_markup' in before && !same(before.rz_markup, cur.rozetka_markup_pct)) {
+      before.rz_markup = cur.rozetka_markup_pct; before.rz_price = null;
+    }
+    if ('prom_markup' in before && !same(before.prom_markup, cur.prom_markup_pct)) {
+      before.prom_markup = cur.prom_markup_pct; before.prom_price = null;
+    }
+    return { ...row, before };
+  });
+}
+
 /** Записує націнки в products пачками. Повертає список помилок. */
-export async function applyMpMarkups(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: SupabaseClient<any, any, any>,
-  items: MpMarkupItem[],
-): Promise<string[]> {
+export async function applyMpMarkups(db: Db, items: MpMarkupItem[]): Promise<string[]> {
   const errors: string[] = [];
   const CHUNK = 20;
   for (let i = 0; i < items.length; i += CHUNK) {
@@ -136,8 +177,7 @@ export async function applyMpMarkups(
 
 /** Поточні товарні націнки для набору SKU (для перевірки дрейфу перед відкатом). */
 export async function loadMpMarkups(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: SupabaseClient<any, any, any>,
+  db: Db,
   skus: string[],
 ): Promise<Map<string, { rozetka_markup_pct: number | null; prom_markup_pct: number | null }>> {
   const out = new Map<string, { rozetka_markup_pct: number | null; prom_markup_pct: number | null }>();
@@ -154,4 +194,78 @@ export async function loadMpMarkups(
     }
   }
   return out;
+}
+
+// ── Операції над записом журналу ─────────────────────────────────────────────
+
+export type MpLogEntry = {
+  id: number;
+  type: string;
+  target: string;
+  status: string | null;
+  reverted_at: string | null;
+  snapshot: unknown;
+  created_at: string;
+  revert_at?: string | null;
+};
+
+/**
+ * Відкат переоцінки МП: повертає націнки «до» зі знімка, позначає запис
+ * reverted і пише окремий рядок type=mp_revert (знімок дзеркальний). Спільний
+ * для кнопки в журналі (userId) і крона за датою «повернути після» (null).
+ */
+export async function revertMpEntry(
+  db: Db,
+  entry: MpLogEntry,
+  userId: string | null,
+  source: 'manual' | 'cron' = 'manual',
+): Promise<{ ok: true; reverted: number; drifted: string[]; reverted_at: string; log_error?: string } | { ok: false; error: string; status: number }> {
+  if (!isMpTarget(entry.target) || entry.type === 'mp_revert') {
+    return { ok: false, error: 'Відкат доступний лише для переоцінок маркетплейсів', status: 400 };
+  }
+  if (entry.status !== 'applied' || entry.reverted_at) {
+    return { ok: false, error: 'Цю переоцінку вже відкочено або вона не застосована', status: 409 };
+  }
+
+  const snapshot = (entry.snapshot ?? []) as MpSnapshotRow[];
+  const items = mpRevertItems(snapshot);
+  if (!items.length) return { ok: false, error: 'У знімку немає націнок для відкату', status: 400 };
+
+  const current = await loadMpMarkups(db, items.map(i => i.sku));
+  const drifted = mpDriftedSkus(snapshot, current);
+
+  const errs = await applyMpMarkups(db, items);
+  if (errs.length) return { ok: false, error: 'Відкат частково не вдався: ' + errs.slice(0, 5).join('; '), status: 500 };
+
+  const now = new Date().toISOString();
+  await db.from('price_change_log').update({ status: 'reverted', reverted_at: now }).eq('id', entry.id);
+
+  const when = new Date(entry.created_at).toLocaleDateString('uk-UA');
+  const res = await insertPriceChangeLog(db, userId, {
+    type: 'mp_revert', value: 0, target: entry.target, status: 'applied',
+    count: items.length,
+    comment: (source === 'cron' ? `Автовідкат переоцінки від ${when} (дата повернення ${entry.revert_at ?? ''})` : `Відкат переоцінки від ${when}`)
+      + (drifted.length ? ` · ${drifted.length} товарів змінювались після неї` : ''),
+    snapshot: snapshot.map(r => ({ sku: r.sku, name: r.name, before: r.after, after: r.before })),
+  });
+
+  return { ok: true, reverted: items.length, drifted, reverted_at: now, ...('error' in res ? { log_error: res.error } : {}) };
+}
+
+/**
+ * Відкладене застосування (крон): «до» оновлюємо зі стану бази, пишемо націнки
+ * «після», знімок зберігаємо оновленим. Статус на applied ставить викликач.
+ */
+export async function applyScheduledMpEntry(db: Db, entry: MpLogEntry): Promise<{ applied: number; errors: string[] }> {
+  const snapshot = (entry.snapshot ?? []) as MpSnapshotRow[];
+  const items = mpApplyItems(snapshot);
+  if (!items.length) return { applied: 0, errors: [] };
+  const current = await loadMpMarkups(db, items.map(i => i.sku));
+  const refreshed = refreshMpBefore(snapshot, current);
+  const errors = await applyMpMarkups(db, items);
+  if (!errors.length) {
+    const { error } = await db.from('price_change_log').update({ snapshot: refreshed }).eq('id', entry.id);
+    if (error) errors.push(`snapshot #${entry.id}: ${error.message}`);
+  }
+  return { applied: items.length - errors.length, errors };
 }

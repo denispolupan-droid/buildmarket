@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { markupForPriceChange, rozetkaPrice, promPrice } from '../lib/marketplace-pricing';
-import { normalizeMpItems, mpRevertItems, mpDriftedSkus, isMpTarget, type MpSnapshotRow } from '../lib/mp-reprice';
+import { normalizeMpItems, mpRevertItems, mpDriftedSkus, mpApplyItems, refreshMpBefore, isMpTarget, type MpSnapshotRow } from '../lib/mp-reprice';
 
 describe('markupForPriceChange — націнка під зміну ціни МП', () => {
   it('+5 % до ціни: 10,5 → 16,03; 12 → 17,6 (Lacrysil, Rozetka)', () => {
@@ -81,5 +81,25 @@ describe('isMpTarget', () => {
     expect(isMpTarget('mp')).toBe(true);
     expect(isMpTarget('retail')).toBe(false);
     expect(isMpTarget(null)).toBe(false);
+  });
+});
+
+describe('відкладене застосування і автовідкат за датою', () => {
+  it('mpApplyItems — націнки «після» зі знімка, лише зачеплені канали', () => {
+    expect(mpApplyItems(SNAP)).toEqual([
+      { sku: 'A', rozetka_markup_pct: 16.03 },
+      { sku: 'B', rozetka_markup_pct: 5, prom_markup_pct: 23.8 },
+    ]);
+  });
+
+  it('refreshMpBefore — «до» оновлюється зі стану бази на момент застосування, ціна «до» тоді скидається', () => {
+    const current = new Map([
+      ['A', { rozetka_markup_pct: 10.5, prom_markup_pct: 1 }],   // як у знімку → без змін
+      ['B', { rozetka_markup_pct: 7, prom_markup_pct: 17.9 }],   // rz: null → 7 (хтось поставив між плануванням і запуском)
+    ]);
+    const out = refreshMpBefore(SNAP, current);
+    expect(out[0].before).toEqual(SNAP[0].before);
+    expect(out[1].before).toEqual({ rz_markup: 7, rz_price: null, prom_markup: 17.9, prom_price: 700 });
+    expect(out[1].after).toEqual(SNAP[1].after);
   });
 });

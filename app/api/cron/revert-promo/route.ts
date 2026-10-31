@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { MP_TARGETS, revertMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,27 @@ export async function GET(req: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  // Entries that have expired and haven't been reverted yet
+  // ── Тимчасові переоцінки маркетплейсів: дата «повернути після» настала ──────
+  // Це не акції сайту (is_promo=false, price_promo не чіпаємо) — повертаються
+  // націнки «до» зі знімка тим самим кодом, що й кнопка «Відкотити» в журналі.
+  const { data: mpExpired } = await db
+    .from('price_change_log')
+    .select('id, type, target, status, reverted_at, snapshot, created_at, revert_at')
+    .in('target', [...MP_TARGETS])
+    .eq('status', 'applied')
+    .lte('revert_at', today)
+    .is('reverted_at', null);
+
+  let mpReverted = 0;
+  const mpErrors: string[] = [];
+  for (const entry of (mpExpired ?? []) as MpLogEntry[]) {
+    if (entry.type === 'mp_revert') continue;
+    const res = await revertMpEntry(db, entry, null, 'cron');
+    if (res.ok) mpReverted += res.reverted;
+    else mpErrors.push(`#${entry.id}: ${res.error}`);
+  }
+
+  // ── Акції сайту: прострочені й ще не повернуті ──────────────────────────────
   const { data: expired } = await db
     .from('price_change_log')
     .select('id, snapshot')
@@ -24,7 +45,7 @@ export async function GET(req: NextRequest) {
     .is('reverted_at', null);
 
   if (!expired?.length) {
-    return NextResponse.json({ reverted: 0 });
+    return NextResponse.json({ reverted: 0, mp_reverted: mpReverted, mp_errors: mpErrors.slice(0, 10) });
   }
 
   // SKUs from expired entries
@@ -69,5 +90,5 @@ export async function GET(req: NextRequest) {
     .update({ reverted_at: new Date().toISOString() })
     .in('id', expired.map(e => e.id));
 
-  return NextResponse.json({ reverted: skusToRevert.length, processed: expired.length });
+  return NextResponse.json({ reverted: skusToRevert.length, processed: expired.length, mp_reverted: mpReverted, mp_errors: mpErrors.slice(0, 10) });
 }

@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { markupFromPrice } from '../../../../lib/price-formula';
 import { saveProductMarkups, type ProductMarkup } from '../../../../lib/price-overrides';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { isMpTarget, applyScheduledMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   const { data: pending } = await db
     .from('price_change_log')
-    .select('id, is_promo, snapshot')
+    .select('id, is_promo, snapshot, type, target, status, reverted_at, created_at, revert_at')
     .eq('status', 'pending')
     .lte('effective_from', now)
     .is('reverted_at', null);
@@ -35,8 +36,18 @@ export async function GET(req: NextRequest) {
 
   const errors: string[] = [];
   const appliedIds: number[] = [];
+  let siteCache = false;
 
   for (const entry of pending) {
+    // Відкладена переоцінка маркетплейсів: пишуться націнки, не ціни, кеш
+    // вітрини не чіпається (lib/mp-reprice)
+    if (isMpTarget(entry.target)) {
+      const res = await applyScheduledMpEntry(db, entry as MpLogEntry);
+      errors.push(...res.errors);
+      if (!res.errors.length) appliedIds.push(entry.id);
+      continue;
+    }
+    siteCache = true;
     const snapshot = (entry.snapshot ?? []) as SnapshotRow[];
     const isPromo = !!entry.is_promo;
     const CHUNK = 20;
@@ -97,7 +108,7 @@ export async function GET(req: NextRequest) {
 
     // Ціна змінилася в обхід адмінки — без цього листинги віддавали б стару
     // ціну до природного протухання кешу (адмінські роути це вже роблять).
-    revalidateTag('products', 'max');
+    if (siteCache) revalidateTag('products', 'max');
   }
 
   console.log(`[apply-scheduled-prices] applied=${appliedIds.length} errors=${errors.length}`);

@@ -472,7 +472,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     const mp = isMpTarget(t);
     if (mp && (repricingType === 'multiply_cost' || repricingType === 'fixed')) setRepricingType('increase_pct');
     if (!mp && repricingType === 'set_markup') setRepricingType('increase_pct');
-    if (mp) { setRepricingIsPromo(false); setRepricingEffectiveFrom(''); setRepricingRevertAt(''); }
+    // «Акція» — режим цін сайту (price_promo); для МП тимчасовість задають дати
+    if (mp) setRepricingIsPromo(false);
   }
 
   async function applyMpRepricing() {
@@ -491,45 +492,61 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
         snapshot.push({ sku: r.p.sku, name: r.p.name, before, after });
       }
 
-      const res = await fetch('/api/admin/prices/mp-markup', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Помилка збереження націнок');
+      // Дата початку в майбутньому — нічого не пишемо, лише запис pending:
+      // крон apply-scheduled-prices застосує націнки «після» зі знімка.
+      const today = new Date().toISOString().split('T')[0];
+      const isFuture = !!repricingEffectiveFrom && repricingEffectiveFrom > today;
 
-      setMpLocal(prev => {
-        const next = new Map(prev);
-        for (const it of items) {
-          const cur = { ...(next.get(it.sku) ?? {}) };
-          if ('rozetka_markup_pct' in it) cur.rz   = it.rozetka_markup_pct ?? null;
-          if ('prom_markup_pct'    in it) cur.prom = it.prom_markup_pct    ?? null;
-          next.set(it.sku, cur);
-        }
-        return next;
-      });
+      if (!isFuture) {
+        const res = await fetch('/api/admin/prices/mp-markup', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Помилка збереження націнок');
 
-      // Журнал тут — не лише історія, а й єдиний шлях відкату, тому чекаємо
-      // відповіді й кажемо, якщо запис не вдався.
+        setMpLocal(prev => {
+          const next = new Map(prev);
+          for (const it of items) {
+            const cur = { ...(next.get(it.sku) ?? {}) };
+            if ('rozetka_markup_pct' in it) cur.rz   = it.rozetka_markup_pct ?? null;
+            if ('prom_markup_pct'    in it) cur.prom = it.prom_markup_pct    ?? null;
+            next.set(it.sku, cur);
+          }
+          return next;
+        });
+      }
+
+      // Журнал тут — не лише історія, а й єдиний шлях відкату (і єдиний носій
+      // відкладеного застосування), тому чекаємо відповіді й кажемо, якщо
+      // запис не вдався. «Повернути після» — дата автовідкату кроном revert-promo.
       const logRes = await fetch('/api/admin/prices/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: repricingType, value: repricingValue, target: repricingTarget,
-          is_promo: false, comment: repricingComment || null, status: 'applied',
+          is_promo: false, comment: repricingComment || null,
+          revert_at: repricingRevertAt || null,
+          effective_from: repricingEffectiveFrom ? new Date(repricingEffectiveFrom).toISOString() : null,
+          status: isFuture ? 'pending' : 'applied',
           count: items.length, snapshot,
         }),
       }).catch(() => null);
 
       const manual = selectedRows.filter(r => mpWantsProm && r.promManual).length;
+      const revertNote = repricingRevertAt ? ` · націнки повернуться ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')}` : '';
       cancelRepricing();
       if (!logRes || !logRes.ok) {
-        showToast(`Націнки ${items.length} товарів змінено, але запис у журнал не вдався — відкат через журнал буде недоступний`, 'warning', 8000);
+        showToast(isFuture
+          ? 'Не вдалося записати заплановану переоцінку — нічого не змінено'
+          : `Націнки ${items.length} товарів змінено, але запис у журнал не вдався — відкат через журнал буде недоступний`, isFuture ? 'error' : 'warning', 8000);
+      } else if (isFuture) {
+        showToast(`Заплановано переоцінку ${items.length} товарів на маркетплейсах з ${new Date(repricingEffectiveFrom).toLocaleDateString('uk-UA')}${revertNote}`, 'success', 5000);
       } else {
         showToast(
-          `Переоцінено ${items.length} товарів на маркетплейсах · відкат — у журналі переоцінок` +
+          `Переоцінено ${items.length} товарів на маркетплейсах${revertNote} · відкат — у журналі переоцінок` +
           (manual ? ` · у ${manual} ручна ціна Prom, вона не змінилась` : ''),
-          manual ? 'warning' : 'success', manual ? 7000 : 4000);
+          manual ? 'warning' : 'success', manual ? 7000 : 4500);
       }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Помилка переоцінки', 'error');
@@ -1262,8 +1279,8 @@ async function sendEmail(){
                 style={{ ...inputSmall, width: '100%', height: 32 }}
               />
             </div>
-            {/* Акція, дати — лише для цін сайту: у МП немає ні акційної ціни, ні планувальника */}
-            {!isMp && <>
+            {/* «Акція» — лише для цін сайту (price_promo); тимчасовість переоцінки МП задають дати нижче */}
+            {!isMp && (
             <div>
               <label style={smallLabel}>Тип</label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '5px 10px', border: `1.5px solid ${repricingIsPromo ? '#F97316' : '#E5E7EB'}`, borderRadius: 7, background: repricingIsPromo ? '#FFF7ED' : '#fff', color: repricingIsPromo ? '#C2410C' : '#6B7280', whiteSpace: 'nowrap', height: 32, boxSizing: 'border-box' }}>
@@ -1271,6 +1288,7 @@ async function sendEmail(){
                 <Tag size={12} /> Акція
               </label>
             </div>
+            )}
             {/* Date range: effective_from → revert_at */}
             <div>
               <label style={smallLabel}>Дата початку</label>
@@ -1289,7 +1307,7 @@ async function sendEmail(){
               </div>
             </div>
             <div>
-              <label style={smallLabel}>Повернути ціни після</label>
+              <label style={smallLabel}>{isMp ? 'Повернути націнки після' : 'Повернути ціни після'}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input
                   type="date"
@@ -1305,7 +1323,6 @@ async function sendEmail(){
                 )}
               </div>
             </div>
-            </>}
           </div>
 
           {/* Як працює переоцінка МП */}
@@ -1313,7 +1330,8 @@ async function sendEmail(){
             <div style={{ marginTop: 10, padding: '7px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 7, fontSize: 12, color: '#5B21B6', lineHeight: 1.5 }}>
               Ціна на маркетплейсі не зберігається — зміниться <b>націнка товару</b>, а ціну фід далі рахує від поточної собівартості
               (Rozetka округлює до 5 ₴ і додає Smart, тому фактична зміна ≈ заданій). Товари з ручною ціною Prom не змінюються.
-              Відкат — у «Журналі переоцінок»: він повертає попередні націнки, зокрема категорійні.
+              Тимчасова переоцінка — задайте «Повернути націнки після»: у цю дату крон поверне попередні націнки (зокрема категорійні);
+              «Дата початку» в майбутньому — застосування відкладене. Відкат будь-коли — у «Журналі переоцінок».
             </div>
           )}
 
