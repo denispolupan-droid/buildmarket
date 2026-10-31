@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import OwnStockTable from './OwnStockTable';
 import StockDocButtons from './StockDocButtons';
 import SectionBar, { plural } from '../SectionBar';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,8 @@ const db = createClient(
 );
 
 export default async function OwnStockPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const { data: physicalWarehouses } = await db
     .from('warehouses').select('id, name').eq('warehouse_type', 'physical');
   const physicalIds = (physicalWarehouses ?? []).map(w => w.id);

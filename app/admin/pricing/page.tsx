@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import PricingClient from './PricingClient';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,6 +8,8 @@ const db = createClient(
 );
 
 export default async function PricingPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   // Load all active products with their current prices
   const { data: products } = await db
     .from('products')

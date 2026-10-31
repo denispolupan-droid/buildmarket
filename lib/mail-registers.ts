@@ -17,7 +17,9 @@ import { zohoFetch, zohoFetchBinary, getAccountId } from './zoho-mail';
 import { parseNpRegisterSheet, applyNpRegister, type NpRegisterApplyResult } from './novapay-register';
 import { applyRzPayRegisterFile, type RzPayRegisterApplyResult } from './rozetkapay-register-apply';
 import { ingestNovapayStatement } from './novapay-ingest';
-import { classifyRegisterMail, extractRzPayRegisterLink, shouldReprocessMail, type MailKind, type PrevMailImport } from './mail-registers-rules';
+import { classifyRegisterMail, extractRzPayRegisterLink, shouldReprocessMail, registerMailAuthentic, REGISTER_SENDER_DOMAIN, type MailKind, type PrevMailImport } from './mail-registers-rules';
+import { alertAdmin } from './alert';
+import { fetchWithTimeout } from './fetch-timeout';
 
 export { classifyRegisterMail, extractRzPayRegisterLink, shouldReprocessMail, RETRY_UNKNOWN_DAYS } from './mail-registers-rules';
 export type { MailKind, PrevMailImport } from './mail-registers-rules';
@@ -79,6 +81,19 @@ export async function importMailRegisters(opts: { days?: number; createdBy: stri
     };
     try {
       if (cls.kind === 'rzpay-act') { await save('skipped', { reason: 'місячний акт' }); res.skipped++; continue; }
+      // Реєстр проводиться в облік лише з листа, що пройшов DMARC для домену
+      // сервісу (вердикт нашого MX, див. registerMailAuthentic). Підроблений
+      // «From» більше не дає провести виплати (аудит 31.10.2026).
+      {
+        const hdr = await zohoFetch(`/accounts/${accountId}/folders/${m.folderId}/messages/${m.messageId}/header`);
+        const raw = String(hdr?.data?.headerContent ?? '');
+        if (!registerMailAuthentic(raw, REGISTER_SENDER_DOMAIN[cls.source])) {
+          await save('error', null, 'лист не пройшов DMARC — реєстр не проведено');
+          res.errors.push(`${m.subject}: DMARC не пройдено`);
+          alertAdmin(`Реєстр з пошти відхилено: лист «${String(m.subject ?? '').slice(0, 80)}» від ${m.fromAddress} не пройшов DMARC`);
+          continue;
+        }
+      }
       if (cls.kind === 'np-register') {
         const info = await zohoFetch(`/accounts/${accountId}/folders/${m.folderId}/messages/${m.messageId}/attachmentinfo`);
         const att = ((info?.data?.attachments ?? []) as { attachmentId: string; attachmentName: string }[]).find(a => /xlsx?$/i.test(a.attachmentName));
@@ -100,7 +115,7 @@ export async function importMailRegisters(opts: { days?: number; createdBy: stri
         const content = await zohoFetch(`/accounts/${accountId}/folders/${m.folderId}/messages/${m.messageId}/content`);
         const link = extractRzPayRegisterLink(String(content?.data?.content ?? ''));
         if (!link) { await save('error', null, 'у листі немає посилання на XLSX'); res.errors.push(`${m.subject}: немає посилання`); continue; }
-        const dl = await fetch(link);
+        const dl = await fetchWithTimeout(link, undefined, 60_000);
         if (!dl.ok) { await save('error', null, `завантаження ${dl.status}`); res.errors.push(`${m.subject}: HTTP ${dl.status}`); continue; }
         const buf = Buffer.from(await dl.arrayBuffer());
         const r = await applyRzPayRegisterFile(buf, `rzpay-${cls.registerNo ?? m.messageId}.xlsx`, opts.createdBy, { dryRun: opts.dryRun });

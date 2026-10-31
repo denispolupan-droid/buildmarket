@@ -8,6 +8,7 @@ import PlanCard from './PlanCard';
 import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
 import { MonthBars, TrendBadge } from './overview-charts';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 // «Огляд» — перший екран фінансів у стилі BI (Stripe/Metabase): KPI з
 // порівнянням до попереднього періоду, воронка, динаміка, action-центр.
@@ -37,6 +38,8 @@ function staleLabel(iso: string): string {
 }
 
 export default async function FinanceOverviewPage({ searchParams }: { searchParams: Promise<{ p?: string; d?: string }> }) {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const { p, d } = await searchParams;
   const chartDays = [7, 30, 90].includes(Number(d)) ? Number(d) : undefined;
   const [ov, arContracts] = await Promise.all([

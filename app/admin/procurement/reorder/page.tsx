@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ShoppingCart, CheckCircle2, Package } from 'lucide-react';
 import SectionBar, { plural } from '../SectionBar';
 import ReorderClient from './ReorderClient';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,8 @@ const db = createClient(
 );
 
 export default async function ReorderPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — для admin і manager (аудит 31.10.2026)
+  await requireStaffPage('admin', 'manager');
   // Позиції нижче мінімального залишку
   const { data: lowStock } = await db
     .from('stock_balance')

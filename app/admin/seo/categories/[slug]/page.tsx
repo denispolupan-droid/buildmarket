@@ -10,6 +10,7 @@ import { toLangNeutralPath } from '../../../../../lib/seo/history';
 import type { PricedProduct } from '../../../../../lib/seo/guide-prices';
 import { loadProductQueue } from '../../../../../lib/seo/product-gaps';
 import CategoryEditor, { type EditorContent } from './CategoryEditor';
+import { requireStaffPage } from '../../../../../lib/auth-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,8 @@ type ProductRow = { sku: string; name: string; brand: string | null; volume: str
  * Гейт розділу — у layout /admin/seo.
  */
 export default async function CategoryEditorPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ q?: string }> }) {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const { slug } = await params;
   const { q } = await searchParams;
   const [categories, products, posts, rows, metaUa, metaRu, queue] = await Promise.all([

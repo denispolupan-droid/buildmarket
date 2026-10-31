@@ -49,3 +49,44 @@ describe('shouldReprocessMail — коли лист читаємо ще раз',
     expect(shouldReprocessMail(prev({ result: { unknown: [{ ttn: '1' }] }, received_at: null }), 'np-register', NOW)).toBe(false);
   });
 });
+
+import { registerMailAuthentic } from '../lib/mail-registers-rules';
+
+describe('registerMailAuthentic', () => {
+  const genuine = [
+    'Delivered-To: admin@fixline.com.ua',
+    'Authentication-Results: mx.zohomail.eu; dkim=pass; spf=pass (zohomail.eu: domain of mg.epprd.rozetkapay.com designates 143.55.238.7 as permitted sender) smtp.mailfrom=bounce@mg.epprd.rozetkapay.com;',
+    '\tdmarc=pass(p=quarantine dis=none) header.from=rozetkapay.com',
+    'From: reports@rozetkapay.com',
+  ].join('\r\n');
+
+  it('справжній лист RozetkaPay проходить', () => {
+    expect(registerMailAuthentic(genuine, 'rozetkapay.com')).toBe(true);
+  });
+
+  it('чужий домен — ні', () => {
+    expect(registerMailAuthentic(genuine, 'novapay.ua')).toBe(false);
+  });
+
+  it('dmarc=fail — ні, навіть якщо From правильний', () => {
+    const spoof = 'Authentication-Results: mx.zohomail.eu; dkim=none; spf=fail; dmarc=fail header.from=rozetkapay.com\r\nFrom: reports@rozetkapay.com';
+    expect(registerMailAuthentic(spoof, 'rozetkapay.com')).toBe(false);
+  });
+
+  it('підроблений заголовок відправника нижче вердикту нашого MX не рятує', () => {
+    const spoof = [
+      'Authentication-Results: mx.zohomail.eu; dkim=none; spf=softfail; dmarc=fail header.from=rozetkapay.com',
+      'Authentication-Results: mx.zohomail.eu; dkim=pass; spf=pass; dmarc=pass header.from=rozetkapay.com',
+    ].join('\r\n');
+    expect(registerMailAuthentic(spoof, 'rozetkapay.com')).toBe(false);
+  });
+
+  it('без вердикту Zoho — ні', () => {
+    expect(registerMailAuthentic('From: reports@rozetkapay.com', 'rozetkapay.com')).toBe(false);
+  });
+
+  it('header.from з адресою в кутових дужках і піддоменом', () => {
+    const h = 'Authentication-Results: mx.zohomail.eu; dmarc=pass header.from=<erp-backoffice-mailer@novapay.ua>';
+    expect(registerMailAuthentic(h, 'novapay.ua')).toBe(true);
+  });
+});

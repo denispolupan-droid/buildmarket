@@ -2,6 +2,7 @@ import { createServiceClient } from '../../../lib/supabase';
 import { siteChatTitle, siteChatPreview, siteChatState } from '../../../lib/site-chat-rules';
 import ChatInbox from './ChatInbox';
 import type { SiteChatRow } from './SiteChatsPane';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 export const metadata = { title: 'Чати | FIXLINE' };
 
@@ -10,6 +11,8 @@ export default async function AdminChatPage({
 }: {
   searchParams: Promise<{ tab?: string; order?: string; chat?: string }>;
 }) {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   // order — наш id замовлення: перехід із картки одразу відкриває його чат МП;
   // chat — «mp:id» з Telegram-алерту про чернетку або «site:id» (колишні
   // посилання /admin/chat/<id>): відкриває саме цей діалог

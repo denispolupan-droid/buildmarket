@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import DocumentsClient from './DocumentsClient';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,6 +8,8 @@ const db = createClient(
 );
 
 export default async function DocumentsPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const { data: docs } = await db
     .from('acc_documents')
     .select(`

@@ -6,6 +6,7 @@ import { CATEGORY_NAMES_RU } from '../../../../lib/ru';
 import { queryAll } from '../../../../lib/gsc';
 import { toLangNeutralPath } from '../../../../lib/seo/history';
 import CategoryAudit from './CategoryAudit';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const DAYS = 28;
 
@@ -49,6 +50,8 @@ const db = createClient(
 export const dynamic = 'force-dynamic';
 
 export default async function SeoCategoriesPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const [products, categories, posts, demand] = await Promise.all([
     fetchAllRows<{ sku: string; category_slug: string | null; brand: string | null }>((f, t) =>
       db.from('products').select('sku, category_slug, brand').eq('is_active', true).order('id').range(f, t)),

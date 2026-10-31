@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { buildSearchReport } from '../../../../lib/seo/report';
 import ReportView from './ReportView';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 // Звіт відкривається окремою вкладкою і рахується при кожному відкритті: історія
 // лежить у gsc_daily, тож перемикач періоду дає те саме, що дали б збережені
@@ -18,6 +19,8 @@ export default async function SeoReportPage({
 }: {
   searchParams: Promise<{ days?: string }>;
 }) {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const sp = await searchParams;
   const days: 28 | 90 = sp.days === '90' ? 90 : 28;
 

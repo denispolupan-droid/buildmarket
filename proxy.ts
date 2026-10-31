@@ -123,7 +123,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next(nextWithPathname);
   }
 
+  // Другий шар для адмін-API: кожен роут сам викликає requireStaff, але новий
+  // роут без нього був би відкритий (аудит 31.10.2026). Тут — лише «чи це
+  // персонал»; конкретні ролі (admin / manager) перевіряє сам роут.
+  const isAdminApi = pathname.startsWith('/api/admin/');
+
   const needsAuth =
+    isAdminApi ||
     PROTECTED_ROUTES.some(route => pathname.startsWith(route)) ||
     WHOLESALE_ROUTES.some(route => pathname.startsWith(route)) ||
     AUTH_ROUTES.some(route => pathname.startsWith(route));
@@ -154,6 +160,15 @@ export async function proxy(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+
+  if (isAdminApi) {
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const staffRole = user.app_metadata?.role as string | undefined;
+    if (staffRole !== 'admin' && staffRole !== 'manager') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    return response;
+  }
 
   if (AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     if (user) {

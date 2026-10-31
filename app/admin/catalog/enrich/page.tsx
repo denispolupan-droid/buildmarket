@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import EnrichClient from './EnrichClient';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,8 @@ const db = createClient(
 export const dynamic = 'force-dynamic';
 
 export default async function EnrichPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const { count: totalMissing } = await db
     .from('products')
     .select('*', { count: 'exact', head: true })

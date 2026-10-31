@@ -4,6 +4,7 @@ import FinanceTabs from '../FinanceTabs';
 import { DualLineChart } from '../overview-charts';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { summarizePL, PL_ACCOUNTS } from '../../../../lib/accounting/profit-rules';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,8 @@ function fmt(n: number) {
 }
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   // Останні 6 місяців
   const now      = new Date();
   const sixAgo   = new Date(now);

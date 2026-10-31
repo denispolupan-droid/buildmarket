@@ -57,3 +57,33 @@ export function extractRzPayRegisterLink(html: string): string | null {
   const m = /href="(https:\/\/storage\.googleapis\.com\/[^"]+\.xlsx[^"]*)"/i.exec(html);
   return m ? m[1].replace(/&amp;/g, '&') : null;
 }
+
+/**
+ * Чи справжній лист від платіжного сервісу — за вердиктом НАШОГО поштового
+ * сервера (Zoho), а не за полем From, яке підробляється одним рядком.
+ *
+ * Аудит 31.10.2026: реєстр виплат проводиться в облік (гроші по замовленнях), а
+ * лист класифікувався лише за адресою відправника. Беремо ПЕРШИЙ заголовок
+ * Authentication-Results від mx.zohomail — його дописує наш MX під час
+ * прийому, і він стоїть зверху; підроблені заголовки відправника опиняються
+ * нижче. Вимога: dmarc=pass і header.from — очікуваний домен (або піддомен).
+ * Перевірено на справжніх листах RozetkaPay і NovaPay: обидва dmarc=pass.
+ */
+export const REGISTER_SENDER_DOMAIN: Record<'novapay' | 'rozetkapay', string> = {
+  novapay: 'novapay.ua',
+  rozetkapay: 'rozetkapay.com',
+};
+
+export function registerMailAuthentic(rawHeaders: string, expectedDomain: string): boolean {
+  const unfolded = rawHeaders.replace(/\r?\n[ \t]+/g, ' ');
+  const line = unfolded
+    .split(/\r?\n/)
+    .find(l => /^Authentication-Results:\s*mx\.zohomail\./i.test(l));
+  if (!line) return false;
+  if (!/\bdmarc=pass\b/i.test(line)) return false;
+  const m = /header\.from=<?(?:[^@\s>;]+@)?([a-z0-9.-]+)>?/i.exec(line);
+  if (!m) return false;
+  const d = m[1].toLowerCase().replace(/\.$/, '');
+  const exp = expectedDomain.toLowerCase();
+  return d === exp || d.endsWith('.' + exp);
+}

@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import PartnersClient from './PartnersClient';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,8 @@ const db = createClient(
 );
 
 export default async function PartnersPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const [{ data: customers }, { data: payouts }] = await Promise.all([
     db.from('customers')
       .select('id, name, email, phone, company, city, type, price_tier, balance, balance_held, is_active, orders_count, total_revenue, last_order_at, created_at, partner_code, credit_limit, notes, customer_number, legal_name, tax_number, address, legal_address, bank_name, bank_iban, bank_mfo, signatory_name, signatory_position')

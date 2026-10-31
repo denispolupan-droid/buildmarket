@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Package } from 'lucide-react';
 import SyncButton from './SyncButton';
+import { requireStaffPage } from '../../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +11,8 @@ const db = createClient(
 );
 
 export default async function SupplierStockPage({ params }: { params: Promise<{ id: string }> }) {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const { id } = await params;
   const supplierId = Number(id);
 

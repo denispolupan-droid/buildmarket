@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { Package, ChevronRight, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import SectionBar, { plural } from '../SectionBar';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,8 @@ const db = createClient(
 );
 
 export default async function SuppliersStockPage() {
+  // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
+  await requireStaffPage('admin');
   const [{ data: suppliers }, { data: syncLogs }, { data: skuCounts }] = await Promise.all([
     db.from('suppliers').select('id, name, email').order('name'),
     db.from('supplier_sync_log')
