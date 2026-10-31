@@ -26,6 +26,10 @@ const eslintConfig = defineConfig([
       "react-hooks/preserve-manual-memoization": "warn",
       "react-hooks/purity": "warn",
       "react-hooks/static-components": "warn",
+      // eslint-config-next 16.4 додав react-hooks/refs (читання ref під час рендера):
+      // 3 місця з позиціонуванням дропдаунів / дзеркалом стану в ref — рефакторинг
+      // окремо, поки попередження, як і решта експериментальних правил.
+      "react-hooks/refs": "warn",
 
       // Прагматичні послаблення (нетипізований supabase-клієнт, косметика) — попередження.
       "@typescript-eslint/no-explicit-any": "warn",
