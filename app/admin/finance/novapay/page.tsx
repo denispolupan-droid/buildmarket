@@ -1,14 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import FinanceTabs from '../FinanceTabs';
 import NovapayClient, { type NovapayRow } from './NovapayClient';
 import { getNovapayLiveBalance } from '../../../../lib/novapay-api';
 import { unsettledNpCod } from '../../../../lib/novapay-ingest';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 export default async function NovapayPage() {
   const supabase = await createSupabaseServer();

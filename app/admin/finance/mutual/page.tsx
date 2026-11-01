@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { requireStaffPage } from '../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { SELLER } from '../../../../lib/company';

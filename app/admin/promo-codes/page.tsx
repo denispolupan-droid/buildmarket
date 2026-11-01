@@ -1,13 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import PromoCodesClient from './PromoCodesClient';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } },
-);
+const db = createServiceClient();
 
 export default async function PromoCodesPage() {
   const supabase = await createSupabaseServer();
@@ -19,5 +16,5 @@ export default async function PromoCodesPage() {
     .select('*')
     .order('created_at', { ascending: false });
 
-  return <PromoCodesClient initial={codes ?? []} />;
+  return <PromoCodesClient initial={(codes ?? []) as ComponentProps<typeof PromoCodesClient>['initial']} />;
 }

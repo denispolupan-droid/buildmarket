@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { getSmartTariff, SMART_TARIFF_KEY, type SmartBracket } from '../../../../../lib/rozetka-smart';
 
 // Тариф компенсації Rozetka Smart (адмінка → Товари Rozetka → «Умови Smart»).

@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import { fetchAllRows } from '../../lib/db-paginate';
 import AdminOrders from './AdminOrders';
@@ -15,11 +14,10 @@ import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
 import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
 import { kyivBounds, statusDateOrFilter, createdOrFilter, matchesEventDate, matchesCreatedDate } from '../../lib/orders/date-filter';
 import { ORDER_TAB_ORDER, ORDER_TAB_LABELS } from '../../lib/orders/status';
+import { createServiceClient } from '../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 const PAGE_SIZE = 50;
 
@@ -178,9 +176,9 @@ export default async function AdminPage({
     // Лічильники вкладок — по тому ж зрізу, що й список (пошук/канал/перевізник),
     // інакше вкладка каже «89», а в списку три рядки.
     // Дати події — щоб розкласти рядки за правилом вкладки (див. eventRows нижче)
-    fetchAllRows<{ status: string; carrier_accepted_at: string | null; total_price: number | null; created_at: string | null; delivered_at: string | null; cancelled_at: string | null; shipped_at: string | null }>((f, t) =>
+    (fetchAllRows((f, t) =>
       applyOrderFilters(serviceClient.from('orders').select('status, carrier_accepted_at, total_price, created_at, delivered_at, cancelled_at, shipped_at'), { dateMode: 'union' }).order('id').range(f, t),
-    ),
+    ) as Promise<({ status: string; carrier_accepted_at: string | null; total_price: number | null; created_at: string | null; delivered_at: string | null; cancelled_at: string | null; shipped_at: string | null })[]>),
     serviceClient.from('acc_documents')
       .select('id', { count: 'exact', head: true })
       .in('doc_type', ['receipt', 'stock_in'])
@@ -214,9 +212,9 @@ export default async function AdminPage({
   // повернень не показував її зовсім (19.10.2026).
   // Скасовані в суму не входять (вони не виручка) — окрім вкладки «Скасовано» й
   // зрізу повернень, де весь список і є скасованими.
-  const filteredRows = await fetchAllRows<{ total_price: number | null; status: string }>((f, t) =>
+  const filteredRows = await (fetchAllRows((f, t) =>
     applyStatusFilter(applyOrderFilters(serviceClient.from('orders').select('total_price, status'))).order('id').range(f, t),
-  );
+  ) as Promise<({ total_price: number | null; status: string })[]>);
   const countCancelled = status === 'cancelled' || !!ret;
   const filteredAmount = filteredRows
     .filter(r => countCancelled || r.status !== 'cancelled')
@@ -295,14 +293,14 @@ export default async function AdminPage({
 
   const initialSaleDocs: Record<string, { id: string; number: string; status: string }[]> = {};
   for (const doc of saleDocsRaw ?? []) {
-    if (!initialSaleDocs[doc.order_id]) initialSaleDocs[doc.order_id] = [];
-    initialSaleDocs[doc.order_id].push({ id: doc.id, number: doc.doc_number, status: doc.status });
+    if (!initialSaleDocs[doc.order_id as string]) initialSaleDocs[doc.order_id as string] = [];
+    initialSaleDocs[doc.order_id as string].push({ id: doc.id, number: doc.doc_number, status: doc.status });
   }
 
   const initialReturnDocs: Record<string, { id: string; number: string }[]> = {};
   for (const doc of returnDocsRaw) {
-    if (!initialReturnDocs[doc.order_id]) initialReturnDocs[doc.order_id] = [];
-    initialReturnDocs[doc.order_id].push({ id: doc.id, number: doc.doc_number });
+    if (!initialReturnDocs[doc.order_id as string]) initialReturnDocs[doc.order_id as string] = [];
+    initialReturnDocs[doc.order_id as string].push({ id: doc.id, number: doc.doc_number });
   }
 
   const docToOrder = new Map((saleDocsRaw ?? []).map(d => [d.id, d.order_id]));
@@ -419,7 +417,7 @@ export default async function AdminPage({
           AdminOrders — в одному рядку з фільтром періоду. Для зрізу повернень
           вкладки немає, тож суми не передаємо. */}
 
-      <AdminOrders key={`${curStatus}|${ret}`} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} sentFilter={sent} sentCounts={sentCounts} retFilter={ret} pendingReturns={pendingReturns} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} summaryAmount={filteredAmount} productThumbs={productThumbs} initialOrders={orders ?? []} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId ?? (search && orders?.length === 1 ? String((orders[0] as { id: string }).id) : undefined)} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={ret ? '' : curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
+      <AdminOrders key={`${curStatus}|${ret}`} initialSearch={search} channelFilter={channel} carrierFilter={carrier} payFilter={pay} sentFilter={sent} sentCounts={sentCounts} retFilter={ret} pendingReturns={pendingReturns} channelCounts={channelCounts} carrierCounts={carrierCounts} payCounts={payCounts} totalFound={count ?? 0} summaryAmount={filteredAmount} productThumbs={productThumbs} initialOrders={(orders ?? []) as unknown as ComponentProps<typeof AdminOrders>['initialOrders']} currentPage={page} totalPages={totalPages} userRole={userRole} hasRecentReceipts={(recentReceiptCount ?? 0) > 0} expandOrderId={expandOrderId ?? (search && orders?.length === 1 ? String((orders[0] as { id: string }).id) : undefined)} dateFrom={dateFrom} dateTo={dateTo} statusCounts={statusCounts} currentStatus={ret ? '' : curStatus} sortBy={sortBy} sortDir={sortAsc ? 'asc' : 'desc'} promCommissionPct={promCommissionPct} rozetkaCommissionPct={rozetkaCommissionPct} feeTariffs={feeTariffs} initialSaleDocs={initialSaleDocs} initialReturnDocs={initialReturnDocs} initialShippedQty={initialShippedQty} initialSettlement={initialSettlement} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 // Вимикач автопілота чернеток (lib/blog-autodraft, крон 1-го і 15-го):
 // app_settings.blog_autodraft_per_run — 0 = на паузі, 1 = одна чернетка за прогін.

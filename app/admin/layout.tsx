@@ -1,6 +1,5 @@
 ﻿import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 
 export const metadata: Metadata = {
   title: 'Адмін | FIXLINE',
@@ -15,11 +14,9 @@ import StockDocDraftManagerLoader from './StockDocDraftManagerLoader';
 import PageTransition from './PageTransition';
 import ToastProvider from '../components/ToastProvider';
 import ConfirmProvider from '../components/ConfirmProvider';
+import { createServiceClient } from '../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServer();

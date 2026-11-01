@@ -27,7 +27,7 @@
  *   marketplace_fee      — комісія маркетплейсу за замовлення
  */
 
-import { asJson, createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase-service';
 import { fetchAllRows } from '../db-paginate';
 
 export type AccountType =

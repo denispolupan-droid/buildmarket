@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { fetchAllRows } from './db-paginate';
 import { productRows, listDataSources, latestUpload } from './merchant';
 import { sendTelegramResult, escTg } from './telegram';

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { recordTxn, recordSupplierPayment, recordMarketplaceTopup, type AccountType } from '../../../../../lib/accounting/money';
 import { ingestNovapayStatement, postNpPayouts } from '../../../../../lib/novapay-ingest';
 import { postNovapayAutoTopups } from '../../../../../lib/novapay-autopost';

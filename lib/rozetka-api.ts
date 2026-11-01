@@ -1,5 +1,4 @@
 import { fetchWithTimeout } from './fetch-timeout';
-import { createClient } from '@supabase/supabase-js';
 
 // Назви статусів кабінету й порівняння воронок винесені в чистий модуль без
 // мережі й ключів: тут живе сервісний ключ Supabase, а адмінка — клієнтський
@@ -8,6 +7,7 @@ export { ROZETKA_STATUS_LABEL, rozetkaStatusLabel, isRozetkaAhead, rozetkaNeedsT
 import { isRozetkaBackwards } from './rozetka-status';
 export * from './rozetka-delivery';
 import { isRozetkaDelivery, rozetkaPickupAddress, ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
+import { createServiceClient } from './supabase-service';
 
 // Base host for the Rozetka Seller API — confirmed against the official apiDoc spec at
 // https://api-seller.rozetka.com.ua/apidoc/ (endpoints documented there, e.g. POST /sites,
@@ -16,10 +16,7 @@ import { isRozetkaDelivery, rozetkaPickupAddress, ROZETKA_DELIVERY_TYPE } from '
 const ROZETKA_BASE = 'https://api-seller.rozetka.com.ua';
 
 function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 async function getSetting(key: string): Promise<string | null> {

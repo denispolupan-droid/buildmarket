@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { parseWeightKg } from '../../../../lib/parcel-weight';
 import { requireStaff } from '../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 // Розбір фасування живе в lib/parcel-weight: ту саму вагу тепер рахує і чекаут
 // (ліміт точки видачі ROZETKA), і серверна перевірка замовлення. Дві копії
 // регулярки розійшлися б при першій же новій одиниці виміру.
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');

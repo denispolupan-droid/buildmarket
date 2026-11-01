@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { RZ_DELIVERY_TYPE } from '../../../../../lib/rz-delivery';
 import { getRzSender, rzAddToReception, rzReceptionsToday, rzReceptionPrint } from '../../../../../lib/rz-delivery-api';
 import { requireStaff } from '../../../../../lib/auth-guard';

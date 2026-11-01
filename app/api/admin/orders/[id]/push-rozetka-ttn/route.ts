@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 

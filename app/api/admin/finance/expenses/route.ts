@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { recordTxn, type AccountType } from '../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
 import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/validate';

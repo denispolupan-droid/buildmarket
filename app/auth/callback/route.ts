@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { getRole } from '../../../lib/user-role';
+import { createServiceClient } from '../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 type SignupMeta = { company_name?: string; contact_person?: string; phone?: string; city?: string; tax_number?: string };
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { formatForRozetka, toRozetkaVolume } from '../../../../lib/rozetka-name';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';

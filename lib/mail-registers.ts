@@ -12,7 +12,7 @@
  * зі статусом no-doc і повторюється наступним прогоном.
  */
 import * as XLSX from 'xlsx';
-import { asJson, createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase-service';
 import { zohoFetch, zohoFetchBinary, getAccountId } from './zoho-mail';
 import { parseNpRegisterSheet, applyNpRegister, type NpRegisterApplyResult } from './novapay-register';
 import { applyRzPayRegisterFile, type RzPayRegisterApplyResult } from './rozetkapay-register-apply';

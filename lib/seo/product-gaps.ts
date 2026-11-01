@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../db-paginate';
 import { THIN_DESCRIPTION_CHARS } from './thresholds';
 import { buildValueRules, valueInDictionary } from '../char-values';
+import { createServiceClient } from '../supabase-service';
 
 /**
  * Черга SEO-контенту: у яких товарів чого бракує.
@@ -162,10 +162,7 @@ export function hasAnyGap(item: QueueItem): boolean {
   return Object.values(item.gaps).some(Boolean);
 }
 
-const db = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = () => createServiceClient();
 
 /** Завантажує стан каталогу й повертає лише товари, у яких є хоч один пробіл. */
 export async function loadProductQueue(): Promise<{ items: QueueItem[]; total: number }> {
@@ -173,8 +170,8 @@ export async function loadProductQueue(): Promise<{ items: QueueItem[]; total: n
 
   type RawValueRow = Omit<ValueRow, 'label'> & { characteristic_definitions: { label: string } | { label: string }[] | null };
   const [products, chars, dict, categoryChars, rawValues, categories] = await Promise.all([
-    fetchAllRows<SeoStateRow>((f, t) =>
-      client.from('product_seo_state').select('*').order('category_slug').order('sku').range(f, t)),
+    (fetchAllRows((f, t) =>
+      client.from('product_seo_state').select('*').order('category_slug').order('sku').range(f, t)) as Promise<(SeoStateRow)[]>),
     fetchAllRows<CharRow>((f, t) =>
       client.from('product_characteristics').select('product_sku, label, value').order('id').range(f, t)),
     fetchAllRows<DictRow>((f, t) =>

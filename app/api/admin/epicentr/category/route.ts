@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
 const num = (v: unknown): number | null => (v === '' || v == null ? null : Number(v));
 

@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { getRole } from '../../../../lib/user-role';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export async function POST() {
   const supabase = await createSupabaseServer();

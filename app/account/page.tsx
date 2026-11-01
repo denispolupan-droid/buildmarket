@@ -7,17 +7,14 @@ export const metadata: Metadata = {
   title: 'Особистий кабінет',
   robots: { index: false, follow: false },
 };
-import { createClient } from '@supabase/supabase-js';
 import { getRole } from '../../lib/user-role';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 import Footer from '../components/Footer';
 import { Package, ShoppingBag, User, MapPin, CreditCard, XCircle, Truck } from 'lucide-react';
 import RepeatOrderButton from './RepeatOrderButton';
 import { carrierInfo, trackHref } from '../../lib/delivery-label';
+import { createServiceClient } from '../../lib/supabase-service';
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   new:       { label: 'Нове',         color: '#1E3A5F', bg: '#EFF4FF' },

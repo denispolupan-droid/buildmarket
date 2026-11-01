@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
-import { createClient } from '@supabase/supabase-js';
 import { normalizeBrandDiscounts } from '../../../../lib/supplier-brand-discounts';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;

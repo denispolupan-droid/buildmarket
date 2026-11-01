@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from './supabase-service';
 
 // Rozetka начисляет комиссию по (категория, ценовой порог): чем дороже товар — тем
 // ниже базовый %. Итоговая (эффективная) ставка = base_pct × 1.08 (сбор/НДС площадки),
@@ -88,10 +88,7 @@ export async function computeRozetkaCommission(
   orderItems: { sku: string; qty: number; price: number }[],
   opts: { fallbackPct: number },
 ): Promise<RozetkaCommissionResult> {
-  const db = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const db = createServiceClient();
 
   const skus = orderItems.map(i => i.sku).filter(Boolean);
 

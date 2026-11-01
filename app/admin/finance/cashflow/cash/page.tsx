@@ -1,15 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../../FinanceTabs';
 import CashRegisterClient, { type CashEntry } from './CashRegisterClient';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function CashRegisterPage() {
   const supabase = await createSupabaseServer();
@@ -67,7 +64,7 @@ export default async function CashRegisterPage() {
   const txnPartyMap = new Map<string, { accountType: string; partyId: string }>();
   for (const pe of (partnerEntries ?? [])) {
     if (!txnPartyMap.has(pe.txn_id)) {
-      txnPartyMap.set(pe.txn_id, { accountType: pe.account_type, partyId: pe.counterparty_id });
+      txnPartyMap.set(pe.txn_id, { accountType: pe.account_type, partyId: pe.counterparty_id as string });
     }
   }
 
@@ -86,17 +83,13 @@ export default async function CashRegisterPage() {
       .filter(p => ['customer', 'advance', 'partner'].includes(p.accountType))
       .map(p => p.partyId)
   )];
-  const { data: profiles } = customerIds.length
-    ? await db.from('profiles').select('id, full_name, company_name').in('id', customerIds)
-    : { data: [] };
+  // Таблиці profiles у схемі немає: запит до неї завжди падав, і імена й так
+  // бралися лише з customers (типи, 01.11.2026) — прибрано зайвий запит.
   const { data: crmCustomers } = customerIds.length
     ? await db.from('customers').select('id, name, company').in('id', customerIds)
     : { data: [] };
 
   const nameMap = new Map<string, string>();
-  for (const p of (profiles ?? [])) {
-    nameMap.set(p.id, (p.company_name || p.full_name || 'Клієнт') as string);
-  }
   for (const c of (crmCustomers ?? [])) {
     if (!nameMap.has(c.id)) nameMap.set(c.id, (c.company || c.name || 'Клієнт') as string);
   }

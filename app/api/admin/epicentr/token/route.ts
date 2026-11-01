@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { EPICENTR_BASE, EPICENTR_TOKEN_KEY } from '../../../../../lib/epicentr-api';
 
 // Ключ Merchant API Епіцентру: app_settings.epicentr_api_token (fallback — env).

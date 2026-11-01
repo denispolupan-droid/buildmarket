@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { kyivDayBounds, kyivMonthStart, kyivYmd } from '../../../../../lib/kyiv-date';
 import { summarizePL } from '../../../../../lib/accounting/profit-rules';

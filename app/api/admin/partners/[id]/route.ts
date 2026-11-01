@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
@@ -27,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body[key] !== undefined) update[key] = body[key] === '' ? null : body[key];
   }
 
-  const { error } = await db.from('customers').update(update).eq('id', id);
+  const { error } = await db.from('customers').update(update as TableUpdate<'customers'>).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

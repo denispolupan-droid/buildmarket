@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { deleteProducts } from '../../../../../lib/product-delete';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // PostgREST кладе `sku=in.(...)` в URL — на кількох сотнях SKU він впирається в ліміт
 // довжини рядка запиту, тому будь-яку масову операцію ріжемо на пачки.
@@ -88,7 +85,7 @@ export async function POST(req: NextRequest) {
   }
 
   for (const part of chunked(skus)) {
-    const { error } = await serviceClient.from('products').update(update).in('sku', part);
+    const { error } = await serviceClient.from('products').update(update as TableUpdate<'products'>).in('sku', part);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

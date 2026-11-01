@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag, revalidatePath } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { generateProductSlug } from '../../../../lib/seo/slug';
 import { deleteProducts } from '../../../../lib/product-delete';
 import { normalizeCharsDb, type CharInput } from '../../../../lib/characteristics';
 import { generateSku } from '../../../../lib/product-sku';
 import { cleanupReplacedImage } from '../../../../lib/product-image-cleanup';
 import { requireStaff } from '../../../../lib/auth-guard';
+import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
@@ -170,7 +167,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }
 
-  const { error } = await serviceClient.from('products').update(update).eq('sku', sku);
+  const { error } = await serviceClient.from('products').update(update as TableUpdate<'products'>).eq('sku', sku);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });

@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { applicableValues, buildValueRules, canonicalCharValue, valueInDictionary, MULTI_SEP, type ValueRules, type ValueRuleRow } from './char-values';
+import { createServiceClient } from './supabase-service';
 
 // Єдина точка нормалізації характеристик перед БУДЬ-ЯКИМ записом у
 // product_characteristics (адмін-форма, AI-генерація, Prom-заливка, імпорти).
@@ -8,7 +8,7 @@ import { applicableValues, buildValueRules, canonicalCharValue, valueInDictionar
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- тип-якір (як у product-content-gen)
 function dbAnchor() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  return createServiceClient();
 }
 type Db = ReturnType<typeof dbAnchor>;
 

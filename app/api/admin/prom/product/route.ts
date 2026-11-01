@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
@@ -22,7 +19,7 @@ export async function PATCH(req: NextRequest) {
   if (on_prom !== undefined)        update.on_prom        = on_prom;
   if (prom_markup_pct !== undefined) update.prom_markup_pct = prom_markup_pct === '' ? null : Number(prom_markup_pct);
 
-  const { error } = await db.from('products').update(update).eq('sku', sku);
+  const { error } = await db.from('products').update(update as TableUpdate<'products'>).eq('sku', sku);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

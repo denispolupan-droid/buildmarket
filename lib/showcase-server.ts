@@ -5,7 +5,7 @@
  * адмінки: тут next/cache і supabase, і тягнути їх у браузер не можна.
  */
 import { unstable_cache } from 'next/cache';
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { SHOWCASE_MAX_ITEMS, type ShowcaseSurface } from './showcase';
 
 /** SKU вітрини по порядку. */

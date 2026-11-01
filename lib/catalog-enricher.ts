@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import {
   generateUA, translateRU, applyContent, getCategoryLabels, EMPTY_LABEL_SPEC,
   THIN_DESCRIPTION_CHARS, type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
 import { loadCharDictionary, normCharKey, offDictionaryLabels } from './characteristics';
 import { CostSink } from './ai-cost';
+import { createServiceClient } from './supabase-service';
 
 // Розділ SEO (/admin/seo) — головний вхід у ЄДИНИЙ рушій генерації контенту
 // (lib/product-content-gen). Тут лише оркестрація: вибір товарів за пробілами,
@@ -14,10 +14,7 @@ import { CostSink } from './ai-cost';
 export { THIN_DESCRIPTION_CHARS };
 
 function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 export type EnrichEvent =

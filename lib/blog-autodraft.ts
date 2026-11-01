@@ -1,11 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { generateBlogPost } from './blog-generator';
 import { logSeoAction } from './seo-actions';
 import { fetchAllRows } from './db-paginate';
 import { expandCategories, pickArticleProducts, type LinkProduct } from './blog-product-links';
 import { costOf } from './ai-cost';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Автопілот контенту: чернетки статей із черги «Невидимого попиту».
@@ -29,7 +29,7 @@ const BATCH_TAG = 'auto';
 // Питальні/інформаційні фрази — те, на що відповідає стаття (як у вкладці «Попит»)
 const INFO = /^(як|який|яка|які|яку|скільки|чим|чи|чому|навіщо|коли|как|какой|какая|какие|какую|сколько|чем|можно ли|почему|зачем|когда)(?!\p{L})|(?<!\p{L})(як|как|скільки|сколько|чим|чем|різниц|отлич|витрат|расход|сохне|сохнет|пропорц|нанос|вибрат|выбрать|краще|лучше|своїми|своими|чому|почему|навіщо|зачем|можна|можно)/iu;
 
-const db = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = () => createServiceClient();
 
 async function settings(): Promise<{ perRun: number; weeklyCap: number; notifyTo: string | null }> {
   const { data } = await db().from('app_settings').select('key, value').in('key', [SETTING_PER_RUN, SETTING_WEEKLY_CAP, 'orders_from_email']);

@@ -1,13 +1,11 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import PromOrdersClient from './PromOrdersClient';
+import { createServiceClient } from '../../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export const metadata = { title: 'Замовлення Prom.ua — Адмін' };
 
@@ -23,12 +21,12 @@ export default async function PromOrdersPage() {
       .eq('channel_code', 'prom')
       .order('created_at', { ascending: false })
       .limit(50),
-    fetchAllRows<{ status: string; total_price: number | null }>((f, t) => db
+    (fetchAllRows((f, t) => db
       .from('orders')
       .select('status, total_price')
       .eq('channel_code', 'prom')
       .order('id')
-      .range(f, t)),
+      .range(f, t)) as Promise<({ status: string; total_price: number | null })[]>),
   ]);
 
   const statuses = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
@@ -43,7 +41,7 @@ export default async function PromOrdersPage() {
 
   return (
     <PromOrdersClient
-      orders={orders ?? []}
+      orders={(orders ?? []) as ComponentProps<typeof PromOrdersClient>['orders']}
       totalOrders={count ?? 0}
       stats={stats}
       totalRevenue={totalRevenue}

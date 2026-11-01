@@ -1,15 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
 import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 // Оборотно-сальдова відомість: по кожному рахунку (і контрагенту для
 // customer/supplier) — вхідне сальдо, обороти Дт/Кт за період, вихідне сальдо.

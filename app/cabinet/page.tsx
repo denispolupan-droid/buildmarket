@@ -1,13 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { requireCustomerPage } from '../../lib/auth-guard';
 import { Wallet, ShoppingBag, TrendingUp, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { cabinetOrderStatus, PARTNER_TX_LABELS } from '../../lib/cabinet-order-status';
+import { createServiceClient } from '../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function CabinetPage() {
   const user = await requireCustomerPage('dropship');
@@ -138,7 +135,7 @@ export default async function CabinetPage() {
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>#{o.order_number}</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {new Date(o.created_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}
+                      {new Date(o.created_at as string).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}
                       {o.tracking_number && ` · ТТН: ${o.tracking_number}`}
                     </div>
                   </div>

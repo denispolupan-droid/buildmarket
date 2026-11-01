@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { asJson, createServiceClient, type TableUpdate } from '../../../../../lib/supabase';
+import { asJson, createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 import { createDocument, confirmDocument, cancelDocument, correctDocument } from '../../../../../lib/accounting/documents';
 import type { CreateDocumentInput } from '../../../../../lib/accounting/types';
 import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';

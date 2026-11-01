@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { escapeOrTerm } from '../../../../lib/pg-filter';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { feedVendor } from '../../../../lib/brand-feed';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 const BASE_URL  = 'https://fixline.com.ua';
 const SHOP_NAME = 'FIXLINE';

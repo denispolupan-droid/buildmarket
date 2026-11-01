@@ -12,7 +12,7 @@
  *    повернення товару треба прийняти і оформити кнопкою «↩ Повернення»
  *    в картці замовлення (це зробить сторно виручки/COGS/боргу коректно).
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { getRozetkaOrders } from './rozetka-api';
 import { getPromOrders } from './prom-api';
 import { releaseReservation } from './accounting/reservations';

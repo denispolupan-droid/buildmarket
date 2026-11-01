@@ -10,7 +10,7 @@
  * картки в кабінеті = sku в /v1/offers. Невідомий кабінету SKU повертається зі status=forbidden — це
  * не помилка, просто картка ще не заведена/не пройшла модерацію.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { fetchAllRows } from './db-paginate';
 import { batchUpdateEpicentrOffers, EPICENTR_OFFERS_BATCH, type EpicentrOfferUpdate } from './epicentr-api';
 import { epicentrPrice } from './marketplace-pricing';

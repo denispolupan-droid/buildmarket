@@ -1,34 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database as GeneratedDatabase } from '../types/database.types';
-
-/**
- * Схема БД для клієнта — згенерована, з однією поправкою: генератор Supabase
- * описує аргументи SQL-функцій як не-null, хоча функції приймають NULL
- * (record_money_txn: p_debit_party, p_order_id, p_doc_id …). Без поправки
- * кожен виклик потребував би касту. Поправка лише розширює тип аргументів —
- * таблиці, рядки й результати функцій лишаються точними. jsonb-поля приводяться
- * явно через asJson (нижче).
- */
-type NullableArgs<F> = {
-  [K in keyof F]: F[K] extends { Args: infer A }
-    ? Omit<F[K], 'Args'> & { Args: { [P in keyof A]: A[P] | null } }
-    : F[K];
-};
-export type Database = Omit<GeneratedDatabase, 'public'> & {
-  public: Omit<GeneratedDatabase['public'], 'Functions'> & {
-    Functions: NullableArgs<GeneratedDatabase['public']['Functions']>;
-  };
-};
-export type { Json } from '../types/database.types';
-
-/**
- * Обʼєкт → Json для запису в jsonb. Наші meta — Record<string, unknown>, а
- * згенерований Json рекурсивний і unknown не приймає; JSON.stringify однаково
- * відкине undefined/функції, тож приведення безпечне для даних, які ми пишемо.
- */
-export function asJson(value: unknown): import('../types/database.types').Json {
-  return value as import('../types/database.types').Json;
-}
+import { createServiceClient } from './supabase-service';
+export { createServiceClient, asJson, type Database, type Json, type TableUpdate, type TableInsert } from './supabase-service';
 import { unstable_cache } from 'next/cache';
 import { env } from './env';
 import { escapeOrTerm } from './pg-filter';
@@ -81,33 +53,13 @@ export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
   get(_, prop) { return (getSupabase() as any)[prop as string]; },
 });
 
-// ── Клієнт з service role — тільки для серверних скриптів ─────────────────────
-// Ніколи не використовувати на клієнті!
-export function createServiceClient() {
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
-  }
-  return createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-}
-
 /**
- * Той самий service-клієнт, але з типами схеми (types/database.types.ts):
- * назви таблиць і колонок, типи Row/Insert/Update перевіряє tsc.
- *
- * Чому окремо, а не замість createServiceClient: типізація всього клієнта одразу
- * дає 161 помилку в 30 файлах (вимір 17.10.2026) — здебільшого там, де код
- * покладається на `any`. Новий код пише через цю фабрику; наявні модулі
- * переводяться по одному, починаючи з lib/accounting (етап 1 плану зростання).
+ * Колишня окрема типізована фабрика. З 01.11.2026 createServiceClient сам
+ * типізований схемою (lib/supabase-service), тож це лише синонім для старих імпортів.
+ * @deprecated використовуй createServiceClient
  */
 export function createTypedServiceClient() {
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
-  }
-  return createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+  return createServiceClient();
 }
 
 // ── Допоміжні функції для Next.js ─────────────────────────────────────────────
@@ -725,6 +677,3 @@ export const getPreviewProductsCached = unstable_cache(
   { revalidate: 3600, tags: ['products'] }
 );
 
-/** Тип patch-обʼєкта для `.update()` / `.insert()` конкретної таблиці (замість Record<string, unknown>). */
-export type TableUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
-export type TableInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];

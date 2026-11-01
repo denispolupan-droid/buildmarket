@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { escapeOrTerm } from '../../../../../lib/pg-filter';
 import { requireStaff } from '../../../../../lib/auth-guard';
 

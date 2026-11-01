@@ -1,13 +1,10 @@
 import { fetchWithTimeout } from './fetch-timeout';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from './supabase-service';
 
 const ZOHO_AUTH = 'https://accounts.zoho.eu/oauth/v2';
 export const ZOHO_MAIL = 'https://mail.zoho.eu/api';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export async function getTokenRow() {
   const { data } = await db.from('mail_oauth_tokens').select('*').eq('id', 1).maybeSingle();

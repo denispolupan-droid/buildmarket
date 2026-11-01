@@ -1,13 +1,11 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import PromPricesClient from './PromPricesClient';
 import { fetchAllRows } from '../../../../lib/db-paginate';
+import { createServiceClient } from '../../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export const metadata = { title: 'Ціни Prom.ua — Адмін' };
 
@@ -38,7 +36,7 @@ export default async function PromPricesPage() {
 
   return (
     <PromPricesClient
-      products={products}
+      products={(products) as ComponentProps<typeof PromPricesClient>['products']}
       stock={stock}
       categories={categories ?? []}
       plan={plan}

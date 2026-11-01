@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 // Щоденний гейт: чи є публічні SECURITY DEFINER функції, доступні anon/authenticated
 // через /rest/v1/rpc (тобто новостворені функції без REVOKE — саме так у прод потрапили
 // open_period/close_period). Крутиться на проді (service_role, prod-ключі в CI не потрібні),
 // дьоргається з GitHub Actions за CRON_SECRET; при знахідці — алерт у Telegram.
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');

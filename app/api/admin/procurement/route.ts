@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createDocument } from '../../../../lib/accounting/documents';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { requireStaff } from '../../../../lib/auth-guard';
 
 async function getOrCreateSupplierContract(db: ReturnType<typeof createServiceClient>, supplierId: number): Promise<string | null> {

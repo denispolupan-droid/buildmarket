@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, type TableUpdate } from '../../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../../lib/supabase-service';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, getRozetkaOrderStatusInfo } from '../../../../../../lib/rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';

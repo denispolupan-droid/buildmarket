@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { computeProductGaps, hasAnyGap, type SeoStateRow } from '../../../../../lib/seo/product-gaps';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 /**
  * Довідка по конкретних SKU для панелі дожиму: назва, слаг і чи заповнена

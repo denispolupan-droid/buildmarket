@@ -15,7 +15,7 @@
  * marketplace-cancel-watch). Prom окремого API заявок не має: повернення там
  * видно як скасування замовлення, їх ловить cancel-watch.
  */
-import { asJson, createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase-service';
 import { getRozetkaRefunds } from './rozetka-api';
 import { alertAdmin } from './alert';
 

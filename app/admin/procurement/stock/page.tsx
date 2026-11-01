@@ -1,13 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import OwnStockTable from './OwnStockTable';
 import StockDocButtons from './StockDocButtons';
 import SectionBar, { plural } from '../SectionBar';
 import { requireStaffPage } from '../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function OwnStockPage() {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)

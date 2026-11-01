@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { recordMarketplaceManualEntry } from '../../../../../../lib/accounting/money';
 
 // Ручна операція по балансу маркетплейсу: списання збору (доставка/реклама/інше)

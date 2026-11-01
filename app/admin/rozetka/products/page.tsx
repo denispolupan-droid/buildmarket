@@ -1,17 +1,14 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
 import { getRozetkaDeliveryTariff } from '../../../../lib/rozetka-delivery-fee';
 import RozetkaProductsClient from './RozetkaProductsClient';
 import { fetchAllRows } from '../../../../lib/db-paginate';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 export const metadata = { title: 'Товари Rozetka — Адмін' };
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function RozetkaProductsPage() {
   const supabase = await createSupabaseServer();

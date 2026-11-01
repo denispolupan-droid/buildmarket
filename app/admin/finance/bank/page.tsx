@@ -1,15 +1,12 @@
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
 import BankStatementClient from './BankStatementClient';
 import MonoTxnsClient, { type MonoRow } from './MonoTxnsClient';
 import { getMonoLiveBalance } from '../../../../lib/mono-balance';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function BankPage() {
   const supabase = await createSupabaseServer();

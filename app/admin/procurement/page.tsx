@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic';
 
-import { createClient } from '@supabase/supabase-js';
 import ProcurementClient from './ProcurementClient';
 import ProcurementWrapper from './ProcurementWrapper';
 import SectionBar, { plural } from './SectionBar';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 
 function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
@@ -42,13 +43,13 @@ export default async function ProcurementPage({
   const activeOrders  = orders.filter(p => p.procurement_status !== 'closed');
   const totalDrafts   = activeOrders.filter(p => p.procurement_status === 'draft').length;
   const totalPending  = activeOrders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').length;
-  const totalReceived = activeOrders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid).length;
+  const totalReceived = activeOrders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !(p.meta as Record<string, unknown> | null)?.is_paid).length;
   const totalAmount   = activeOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
 
   // Деталі для карток
   const draftOrders    = activeOrders.filter(p => p.procurement_status === 'draft');
   const pendingOrders  = activeOrders.filter(p => !p.has_receipt && p.procurement_status !== 'draft');
-  const receivedOrders = activeOrders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !p.meta?.is_paid);
+  const receivedOrders = activeOrders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !(p.meta as Record<string, unknown> | null)?.is_paid);
 
   const amountDrafts   = draftOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
   const amountPending  = pendingOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
@@ -121,7 +122,7 @@ export default async function ProcurementPage({
 
       {/* Table */}
       <ProcurementWrapper
-        orders={orders.map(po => ({ ...po, receipts: receiptMap.get(po.id) ?? [] }))}
+        orders={(orders.map(po => ({ ...po, receipts: receiptMap.get(po.id as string) ?? [] }))) as ComponentProps<typeof ProcurementWrapper>['orders']}
         initialFilter={initialFilter}
       />
     </div>

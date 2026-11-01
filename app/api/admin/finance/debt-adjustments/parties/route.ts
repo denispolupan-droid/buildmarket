@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { SPECIAL_DEBTOR_LABEL } from '../../../../../../lib/accounting/sale-party';
 import { isDebtAccount } from '../../../../../../lib/accounting/debt-adjustment-rules';
 import { personSearchOr } from '../../../../../../lib/pg-filter';

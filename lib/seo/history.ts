@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { queryAll } from '../gsc';
+import { createServiceClient } from '../supabase-service';
 
 /**
  * Історія Search Console по днях (таблиця gsc_daily).
@@ -13,10 +13,7 @@ import { queryAll } from '../gsc';
  * мови вже на читанні: позиція при злитті — середня, зважена на покази.
  */
 
-const db = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = () => createServiceClient();
 
 /** Шлях без домену й параметрів; мовний префікс лишається. */
 export function toPath(pageOrUrl: string): string {

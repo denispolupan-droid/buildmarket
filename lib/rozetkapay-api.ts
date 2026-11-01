@@ -12,7 +12,7 @@
  * токен Prom; env ROZETKAPAY_API_LOGIN / ROZETKAPAY_API_PASSWORD — запасний варіант.
  */
 import { fetchWithTimeout } from './fetch-timeout';
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 
 const BASE = 'https://api.rozetkapay.com';
 export const RZPAY_LOGIN_KEY    = 'rozetkapay_api_login';

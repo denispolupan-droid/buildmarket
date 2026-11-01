@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Власний признак прочитаності чатів маркетплейсів (таблиця marketplace_chat_seen,

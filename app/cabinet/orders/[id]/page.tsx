@@ -1,14 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
 import { requireCustomerPage } from '../../../../lib/auth-guard';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { cabinetOrderStatus } from '../../../../lib/cabinet-order-status';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 
 const card: React.CSSProperties = {
@@ -157,7 +154,7 @@ export default async function CabinetOrderDetailPage({
 
       {/* Meta */}
       <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'right' }}>
-        Замовлення від {new Date(order.created_at).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}
+        Замовлення від {new Date(order.created_at as string).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}
       </div>
     </div>
   );

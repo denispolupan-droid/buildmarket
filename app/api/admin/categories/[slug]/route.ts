@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export async function PATCH(
   req: NextRequest,
@@ -24,7 +21,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }
 
-  const { error } = await db.from('categories').update(update).eq('slug', slug);
+  const { error } = await db.from('categories').update(update as TableUpdate<'categories'>).eq('slug', slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

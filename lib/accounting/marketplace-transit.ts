@@ -1,4 +1,4 @@
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
 import { computeEpicentrCommission, EPICENTR_COMMISSION_FALLBACK_KEY, EPICENTR_COMMISSION_DEFAULT_PCT } from '../epicentr-commission';

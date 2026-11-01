@@ -13,7 +13,7 @@
 // #26081151: mode='supplier', а в РН одна позиція «own», бо товар знайшовся на
 // своєму складі. Лист постачальнику через це пішов із зайвою позицією.
 
-import type { createServiceClient } from '../supabase';
+import type { createServiceClient } from '../supabase-service';
 import { resolveOrderFulfillment } from '../accounting/fulfillment';
 import { type ItemSource } from './fulfillment-mode';
 

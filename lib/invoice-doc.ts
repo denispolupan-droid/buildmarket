@@ -43,3 +43,14 @@ export function invoiceQrMatrix(order: InvoiceOrder): NbuQrMatrix | null {
     return null;
   }
 }
+
+/**
+ * Рядок orders для рахунку. У схемі created_at nullable (default now() — на
+ * ділі завжди заповнена), invoice_options — jsonb; тут звужуємо до того, що
+ * чекають loadInvoiceView / invoiceDate / buildInvoicePdf; items — jsonb позицій.
+ */
+export type InvoiceOrderRow<R> = Omit<R, 'items'> & {
+  created_at: string;
+  invoice_options: Record<string, unknown> | null;
+  items: { sku: string; name: string; brand?: string | null; qty: number; price: number }[];
+};

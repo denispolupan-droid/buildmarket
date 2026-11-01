@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 // Вимикач крона ранкового дайджесту: app_settings.ops_digest = 'on' | 'off'.
 export async function POST(req: NextRequest) {

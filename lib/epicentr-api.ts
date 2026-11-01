@@ -19,18 +19,15 @@
  * Усі дати API — UTC.
  */
 import { fetchWithTimeout } from './fetch-timeout';
-import { createClient } from '@supabase/supabase-js';
 import { resolveDeliverySubtype } from './np-postomat';
 import { fromEpicentrId, toEpicentrId } from './epicentr-availability';
+import { createServiceClient } from './supabase-service';
 
 export const EPICENTR_BASE = 'https://merchant-api.epicentrm.com.ua';
 export const EPICENTR_TOKEN_KEY = 'epicentr_api_token';
 
 async function getToken(): Promise<string> {
-  const db = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const db = createServiceClient();
   const { data } = await db.from('app_settings').select('value').eq('key', EPICENTR_TOKEN_KEY).maybeSingle();
   if (data?.value) return data.value as string;
   const token = process.env.EPICENTR_API_TOKEN;

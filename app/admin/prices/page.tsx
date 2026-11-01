@@ -1,15 +1,13 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import PricesClient from './PricesClient';
 import { fetchProductsInCatalogOrder } from '../../api/admin/prices/_catalog-order';
 import { getSmartTariff } from '../../../lib/rozetka-smart';
 import { fetchAllRows } from '../../../lib/db-paginate';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export const metadata = { title: 'Ціни — Адмін' };
 
@@ -65,7 +63,7 @@ export default async function PricesPage() {
   // show/edit them via the "Неактивні" filter.
   const [activeProducts, inactiveProducts] = await Promise.all([
     fetchProductsInCatalogOrder<AdminProdRow>(db, PRODUCT_SELECT, sortedCats.map(c => c.slug)),
-    fetchAllRows<AdminProdRow>((f, t) => db.from('products').select(PRODUCT_SELECT).eq('is_active', false).order('sku').range(f, t)),
+    (fetchAllRows((f, t) => db.from('products').select(PRODUCT_SELECT).eq('is_active', false).order('sku').range(f, t)) as Promise<(AdminProdRow)[]>),
   ]);
   const products = [...activeProducts, ...inactiveProducts];
 
@@ -86,7 +84,7 @@ export default async function PricesPage() {
   return (
     <PricesClient
       products={products ?? []}
-      stock={stock ?? []}
+      stock={(stock ?? []) as ComponentProps<typeof PricesClient>['stock']}
       categories={sortedCats}
       promoMap={promoMap}
       markups={overrides ?? []}

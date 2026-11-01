@@ -1,11 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // Спільне для всіх вкладок налаштувань: перевірка прав + читання app_settings.
 // Кожна вкладка — окремий роут, тому гард має бути в кожній сторінці, а не лише

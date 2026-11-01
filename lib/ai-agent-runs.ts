@@ -1,4 +1,4 @@
-import { asJson, createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase-service';
 
 /**
  * Журнал запусків ШІ-агентів (таблиця ai_agent_runs, міграція 125).

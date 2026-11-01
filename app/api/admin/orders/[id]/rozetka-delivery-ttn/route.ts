@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { createRozetkaDeliveryTtn, getRozetkaSender, getRozetkaSenderOptions, getRozetkaDeliveryTtnPdf, getRzSettingsSender, getRzSettingsContact, saveRozetkaSender, ROZETKA_SENDER_KEY, type RozetkaSender } from '../../../../../../lib/rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE, aggregateRozetkaSeats, type RozetkaSeat } from '../../../../../../lib/rozetka-delivery';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';

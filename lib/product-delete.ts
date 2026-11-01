@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Видалення товарів із захистом облікової історії.
@@ -14,10 +14,7 @@ import { createClient } from '@supabase/supabase-js';
  * таблицями. Повертаємо обидва списки, щоб UI сказав людині, що саме не пішло.
  */
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 const CHUNK = 100;
 

@@ -2,20 +2,17 @@ export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
 import { promPrice, promCommissionOf, type PromPlan } from '../../../../../lib/marketplace-pricing';
 import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 type StockRow = { sku: string; price_unit: number | null; price_retail: number | null; price_drop: number | null; price_cost: number | null; price_promo?: number | null; price_wholesale: number | null; stock_status: string | null };
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export async function GET(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');

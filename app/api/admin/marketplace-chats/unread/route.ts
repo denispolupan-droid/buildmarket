@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { getMarketplaceInboxCached } from '../../../../../lib/marketplace-chat-inbox';
 
 // Лічильники для бейджа «Чати» в сайдбарі: маркетплейси — за правилом

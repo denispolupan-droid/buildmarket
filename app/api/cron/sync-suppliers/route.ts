@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { syncSupplier } from '../../../../lib/supplier-sync';
 import { pushPromStock } from '../../../../lib/prom-stock-push';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { withCronLock } from '../../../../lib/cron-lock';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 async function run(req: NextRequest) {
   // Vercel cron передає секретний токен через Authorization header

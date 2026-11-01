@@ -1,4 +1,4 @@
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 import { getMarketplaceBalance } from '../accounting/money';
 import { getRozetkaBalanceTotal, getRozetkaBalanceTxns, getRozetkaLogisticOps } from '../rozetka-api';
 import { isRozetkaPickupOp, isRozetkaLogisticAdj, isRozetkaReturnDeliveryOp } from '../rozetka-delivery-tariff';

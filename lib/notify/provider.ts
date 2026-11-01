@@ -1,4 +1,4 @@
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 
 // Провайдер розсилки Viber/SMS. Інтерфейс навмисно вузький: усе, що нам треба, —
 // «надішли текст на номер і скажи, яким каналом дійшло».

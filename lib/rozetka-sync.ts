@@ -1,5 +1,4 @@
 import { findCustomerIdByPhone } from './customers';
-import { createClient } from '@supabase/supabase-js';
 import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, type RozetkaOrder } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
 import { getRozetkaDeliveryTtns } from './rozetka-delivery-ttn';
@@ -7,14 +6,12 @@ import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 import { alertAdmin } from './alert';
 import { itemsDiffer, describeItemsDiff } from './rozetka-items-diff';
 import { rozetkaNeedsTtn, rozetkaStatusLabel } from './rozetka-status';
+import { createServiceClient, type TableUpdate, asJson } from './supabase-service';
 
 /** Відмова кабінету на PUT зі статусом+ТТН: {"ttn":["До запитуваного замовлення заборонено прив'язувати ТТН"]} */
 const ROZETKA_TTN_FORBIDDEN = /заборонено прив.?язувати ТТН/i;
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 // Самолікування пушів статусів: пуш при підтвердженні/відправці — fire-and-forget і може
 // впасти на мережевому збої (реальний кейс 2026-07-27: «other side closed», замовлення висіло
@@ -93,7 +90,7 @@ export async function syncRozetkaOrders() {
           payment_confirmed: true,
           amount_paid:       existing.total_price,
           payment_type:      'prepaid',
-          rozetka_data:      storedData,
+          rozetka_data:      asJson(storedData),
         }).eq('id', existing.id);
         if (payErr) {
           console.error('[rozetka-sync] late payment update failed:', rzOrder.id, payErr.message);
@@ -123,7 +120,7 @@ export async function syncRozetkaOrders() {
         // ТТН із кабінету беремо, ТІЛЬКИ якщо свого немає: коли накладну
         // створювали ми, наш номер авторитетніший — його ж ми туди й пушили.
         if (!existing.tracking_number && liveTtn) patch.tracking_number = liveTtn;
-        await db.from('orders').update(patch).eq('id', existing.id);
+        await db.from('orders').update(patch as TableUpdate<'orders'>).eq('id', existing.id);
         refreshed++;
       }
       // ── Правки складу в кабінеті ─────────────────────────────────────────
@@ -145,7 +142,7 @@ export async function syncRozetkaOrders() {
               total_price:  liveTotal,
               // Знімок оновлюємо разом зі складом, інакше різниця лишиться
               // й наступний прогін застосує те саме ще раз, по колу.
-              rozetka_data: { ...storedData, purchases: rzOrder.purchases, _commission: comm, _items_synced_at: new Date().toISOString() },
+              rozetka_data: asJson({ ...storedData, purchases: rzOrder.purchases, _commission: comm, _items_synced_at: new Date().toISOString() }),
             }).eq('id', existing.id);
             itemsUpdated++;
             console.log(`[rozetka-sync] items updated from cabinet for order ${rzOrder.id}`);
@@ -165,7 +162,7 @@ export async function syncRozetkaOrders() {
           // по цьому замовленню не показалось би (мітка ставиться лише раз).
           const { _items_changed, ...rest } = storedData;
           void _items_changed;
-          await db.from('orders').update({ rozetka_data: rest }).eq('id', existing.id);
+          await db.from('orders').update({ rozetka_data: asJson(rest) }).eq('id', existing.id);
           console.log(`[rozetka-sync] items back in sync, flag cleared for order ${rzOrder.id}`);
         }
       }
@@ -205,7 +202,7 @@ export async function syncRozetkaOrders() {
         continue;
       }
 
-      const desired = refreshOnlyIds.has(rzOrder.id) ? null : ourStatusToRozetkaStatus(existing.status);
+      const desired = refreshOnlyIds.has(rzOrder.id) ? null : ourStatusToRozetkaStatus(existing.status as string);
       const lagging = desired != null && (REPUSH_FROM[desired] ?? []).includes(rzOrder.status);
 
       // Без накладної кабінет далі «в обробці» не піде — і жодна кількість
@@ -254,7 +251,7 @@ export async function syncRozetkaOrders() {
           console.log(`[rozetka-sync] re-pushed status ${desired} for order ${rzOrder.id} (was ${rzOrder.status})`);
           if (storedData._no_ttn_alerted) {
             const { _no_ttn_alerted, ...rest } = storedData;
-            await db.from('orders').update({ rozetka_data: rest }).eq('id', existing.id);
+            await db.from('orders').update({ rozetka_data: asJson(rest) }).eq('id', existing.id);
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -344,7 +341,7 @@ export async function syncRozetkaOrders() {
       status:           'new',
       channel_code:     'rozetka',
       rozetka_order_id: mapped.rozetka_order_id,
-      rozetka_data:     enrichedRozetkaData,
+      rozetka_data:     asJson(enrichedRozetkaData),
     });
 
     if (error) {
@@ -381,7 +378,7 @@ export async function syncRozetkaOrders() {
         }
         if (!row.tracking_number && t.ttn) patch.tracking_number = t.ttn;
         if (Object.keys(patch).length) {
-          await db.from('orders').update(patch).eq('id', row.id);
+          await db.from('orders').update(patch as TableUpdate<'orders'>).eq('id', row.id);
           pricedTtns++;
         }
       }

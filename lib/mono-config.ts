@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 
 // Конфіг інтеграції з Monobank Personal/ФОП API. За зразком prom_api_token /
 // rozetka-креди: значення беруться з app_settings (керовано, без редеплою),

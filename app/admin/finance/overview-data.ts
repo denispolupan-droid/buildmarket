@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { getMarketplaceBalance } from '../../../lib/accounting/money';
 import { loadInTransitCommission } from '../../../lib/accounting/marketplace-transit';
@@ -6,6 +5,7 @@ import { getMonoLiveBalance } from '../../../lib/mono-balance';
 import { getNovapayLiveBalance, getNovapayRegistersCache } from '../../../lib/novapay-api';
 import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
 import { PL_ACCOUNTS, classifyPLEntry, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
+import { createServiceClient } from '../../../lib/supabase-service';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -14,10 +14,7 @@ import { PL_ACCOUNTS, classifyPLEntry, plContribution, summarizePL } from '../..
 //  - залишки рахунків — сума проводок по грошових рахунках (як у Звітах);
 //  - дебіторка/кредиторка — view ar_balances і кеш counterparty_balances.
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export type Preset = 'cur_month' | 'prev_month' | 'quarter' | 'ytd';
 
@@ -260,13 +257,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .in('business_date', [today.ymd, new Date(Date.parse(`${today.ymd}T12:00:00Z`) - 86400000).toISOString().slice(0, 10)])
       .then(r => r.data ?? []),
     // 10. Знімок живих стадій «де гроші зараз» (незалежно від періоду)
-    fetchAllRows<{ id: string; status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null; payment_type: string | null }>((f, t) => db
+    (fetchAllRows((f, t) => db
       .from('orders')
       .select('id, status, total_price, shipped_at, carrier_accepted_at, created_at, channel_code, payment_type')
       .in('status', ['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped'])
-      .order('id').range(f, t)),
+      .order('id').range(f, t)) as Promise<({ id: string; status: string; total_price: number; shipped_at: string | null; carrier_accepted_at: string | null; created_at: string; channel_code: string | null; payment_type: string | null })[]>),
     // 11. Відмови для «викупу»: скасовані ПІСЛЯ відправки замовлення періоду
-    fetchAllRows<{ total_price: number; created_at: string }>((f, t) => {
+    (fetchAllRows((f, t) => {
       let q = db.from('orders')
         .select('total_price, created_at')
         .eq('status', 'cancelled')
@@ -274,7 +271,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
         .gte('created_at', periodFrom.toISOString());
       if (periodTo) q = q.lt('created_at', periodTo.toISOString());
       return q.order('id').range(f, t);
-    }),
+    }) as Promise<({ total_price: number; created_at: string })[]>),
   ]);
 
   // ── Леджер: щоденні ряди поточного періоду + суми попереднього ────────────
@@ -361,10 +358,10 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     // бо RozetkaPay платить за передоплату ДО вручення: такий аванс дає замовленню
     // від'ємний баланс mp:*, який не має гасити борг інших замовлень. mp:rozetkapay —
     // виплати, що вже прийшли в банк, але ще не підібрані до замовлень (баланс від'ємний).
-    fetchAllRows<{ counterparty_id: string; order_id: string | null; amount: number }>((f, t) => db
+    (fetchAllRows((f, t) => db
       .from('money_entries').select('counterparty_id, order_id, amount')
       .eq('account_type', 'customer').in('counterparty_id', ['mp:prom', 'mp:rozetka', 'mp:epicentr', 'mp:rozetkapay', 'np:cod'])
-      .order('id').range(f, t)),
+      .order('id').range(f, t)) as Promise<({ counterparty_id: string; order_id: string | null; amount: number })[]>),
     // Залишок NovaPay «за випискою» = Σ усіх документів виписки (рахунок відкрито
     // 16.07.2026 з нуля). Виписка віддає день лише після його закриття, а живий
     // залишок оновлюється щогодини — різниця між ними = виплати, що вже прийшли

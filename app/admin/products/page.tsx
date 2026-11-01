@@ -1,5 +1,4 @@
 ﻿import { Suspense } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { fetchAllRows } from '../../../lib/db-paginate';
@@ -7,11 +6,10 @@ import ProductsTable from './ProductsTable';
 import type { AdminProductRow } from '../../../types';
 import Link from 'next/link';
 import { Plus, Upload, Download } from 'lucide-react';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function AdminProductsPage() {
   const supabase = await createSupabaseServer();
@@ -27,12 +25,12 @@ export default async function AdminProductsPage() {
   // keywords і рос. версії, кількість характеристик. Тексти (5 із 5,5 МБ
   // каталогу) не залишають Postgres. Залишки — окремим запитом, склеюємо по SKU.
   const [rows, stockRows] = await Promise.all([
-    fetchAllRows<Omit<AdminProductRow, 'stock'>>((f, t) => serviceClient
+    (fetchAllRows((f, t) => serviceClient
       .from('admin_products_list')
       .select('*')
       .order('category_slug', { ascending: true })
       .order('sku', { ascending: true })
-      .range(f, t)),
+      .range(f, t)) as Promise<(Omit<AdminProductRow, 'stock'>)[]>),
     fetchAllRows((f, t) => serviceClient.from('product_stock').select('*').order('id').range(f, t)),
   ]);
   const stockBySku = new Map(stockRows.map(s => [s.sku as string, s as AdminProductRow['stock']]));
@@ -114,7 +112,7 @@ export default async function AdminProductsPage() {
       </div>
       {/* Suspense — бо ProductsTable читає useSearchParams (ініціалізація фільтрів з URL) */}
       <Suspense fallback={null}>
-        <ProductsTable products={products} categories={categories ?? []} brandLogos={brandLogos} supplierSkus={[...supplierSkuSet]} />
+        <ProductsTable products={products} categories={(categories ?? []) as ComponentProps<typeof ProductsTable>['categories']} brandLogos={brandLogos} supplierSkus={[...supplierSkuSet]} />
       </Suspense>
     </div>
   );

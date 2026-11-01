@@ -1,12 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import SuppliersClient from './SuppliersClient';
+import { createServiceClient } from '../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function SuppliersPage() {
   const supabase = await createSupabaseServer();
@@ -44,7 +41,7 @@ export default async function SuppliersPage() {
 
   return (
     <div style={{ padding: '32px 36px 64px' }}>
-      <SuppliersClient initial={suppliersWithSync as Parameters<typeof SuppliersClient>[0]['initial']} brands={brands} />
+      <SuppliersClient initial={suppliersWithSync as unknown as Parameters<typeof SuppliersClient>[0]['initial']} brands={brands} />
     </div>
   );
 }

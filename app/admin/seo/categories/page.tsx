@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getCategoryContentCached } from '../../../../lib/category-content';
 import { auditCategories, type AuditDemand } from '../../../../lib/seo/category-audit';
@@ -7,6 +6,7 @@ import { queryAll } from '../../../../lib/gsc';
 import { toLangNeutralPath } from '../../../../lib/seo/history';
 import CategoryAudit from './CategoryAudit';
 import { requireStaffPage } from '../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 const DAYS = 28;
 
@@ -42,10 +42,7 @@ async function loadDemand(): Promise<Record<string, AuditDemand>> {
   return out;
 }
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 

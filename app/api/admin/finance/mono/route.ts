@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { recordTxn, recordSupplierPayment, type AccountType } from '../../../../../lib/accounting/money';
 import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '../../../../../lib/mono-ingest';
 import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';

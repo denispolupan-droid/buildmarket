@@ -10,7 +10,7 @@
 // Console по запитах. Запити в історії не зберігаються — Google віддає їх лише
 // на льоту, тому по них порівнюємо поточний період з попереднім.
 
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 import { fetchAllRows } from '../db-paginate';
 import { getQueries } from '../gsc';
 import {

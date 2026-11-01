@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildVidatkovaHtml } from '../../../../../../../lib/vidatkova-html';
 import { buildVidatkovaPdf } from '../../../../../../../lib/vidatkova-pdf';
@@ -7,9 +6,10 @@ import { SELLER } from '../../../../../../../lib/company';
 import { loadVidatkova, vidatkovaRenderParams } from '../../../../../../../lib/vidatkova-doc';
 import { formatDocDate } from '../../../../../../../lib/doc-format';
 import { requireStaff } from '../../../../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../../../../lib/supabase-service';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');

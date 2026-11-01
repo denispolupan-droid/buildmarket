@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
 import NewReceiptButton from './NewReceiptButton';
 import ReceiptsWrapper from './ReceiptsWrapper';
 import SectionBar, { plural } from '../SectionBar';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 
 // Гейт — у layout розділу (requireStaffPage)

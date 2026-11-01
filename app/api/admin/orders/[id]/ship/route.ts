@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { createSaleDraft } from '../../../../../../lib/accounting/dropship';
 import { completeOrderDelivery } from '../../../../../../lib/accounting/completion';
 import { transitionOrder, type OrderStatus } from '../../../../../../lib/orders/status';

@@ -7,8 +7,8 @@
  * категорійна ставка тут — оцінка. ФАКТ дає /v1/billing/orders/{id}/invoice
  * (див. getEpicentrBillingInvoice) — при проведенні комісії він має пріоритет.
  */
-import { createClient } from '@supabase/supabase-js';
 import type { CommissionItem } from './prom-commission';
+import { createServiceClient } from './supabase-service';
 
 export const EPICENTR_COMMISSION_FALLBACK_KEY = 'epicentr_commission_pct';
 export const EPICENTR_COMMISSION_DEFAULT_PCT = 12;
@@ -23,10 +23,7 @@ export async function computeEpicentrCommission(
   orderItems: { sku: string; qty: number; price: number }[],
   opts: { fallbackPct: number },
 ): Promise<EpicentrCommissionResult> {
-  const db = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const db = createServiceClient();
 
   const skus = orderItems.map(i => i.sku).filter(Boolean);
   const { data: products } = skus.length

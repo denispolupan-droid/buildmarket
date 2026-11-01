@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { sendTelegram, editTelegramMessage } from './telegram';
 import { htmlToText } from './html-to-text';
 import { SITE_URL } from './site';

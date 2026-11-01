@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../lib/auth-guard';
+import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 
 function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
+  return createServiceClient();
 }
 
 async function assertAdmin() {
@@ -64,7 +60,7 @@ export async function PATCH(req: NextRequest) {
   if (fields.is_active           !== undefined) update.is_active           = Boolean(fields.is_active);
 
   const { data, error } = await db()
-    .from('promo_codes').update(update).eq('id', id)
+    .from('promo_codes').update(update as TableUpdate<'promo_codes'>).eq('id', id)
     .select('id,code,description,discount_type,discount_value,max_discount_amount,min_order_amount,max_uses,uses_count,valid_from,valid_until,is_active,created_at')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { logSeoAction } from '../../../../../lib/seo-actions';
@@ -8,13 +7,11 @@ import {
   expandCategories, pickArticleProducts, stripLinksBlock,
   hasLinksBlock, countProductLinks, productLabel, type LinkProduct,
 } from '../../../../../lib/blog-product-links';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // 6 — рівно два ряди по три в ширині статті (760px); 4 лягали 3+1 і виглядали обірвано
 const LIMIT_PER_ARTICLE = 6;

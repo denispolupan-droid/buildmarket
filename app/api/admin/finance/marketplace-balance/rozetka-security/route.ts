@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { fetchAllRows } from '../../../../../../lib/db-paginate';
 import { rozetkaFeeKind } from '../../../../../../lib/rozetka-fee-kind';
 import { getSmartTariff } from '../../../../../../lib/rozetka-smart';

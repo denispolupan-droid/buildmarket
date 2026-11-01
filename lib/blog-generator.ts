@@ -1,5 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
 import { slugify } from './seo/slug';
 import { buildCovers } from './blog-cover';
 import { costOf } from './ai-cost';
@@ -11,10 +10,7 @@ import { costOf } from './ai-cost';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 const OUTPUT_SCHEMA = {
@@ -64,6 +60,7 @@ const OUTPUT_SCHEMA = {
 // чистити на рендері без імпорту важкого Anthropic SDK). Реекспорт — для
 // зворотної сумісності з наявними імпортами.
 import { sanitizeArticleHtml } from './sanitize-article';
+import { createServiceClient } from './supabase-service';
 export { sanitizeArticleHtml };
 
 /* ── Дожим ІСНУЮЧОЇ статті під запит ──────────────────────────────────────────

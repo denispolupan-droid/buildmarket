@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { escapeOrTerm } from './pg-filter';
 import { costOf } from './ai-cost';
 import { getCategoryLabels } from './product-content-gen';

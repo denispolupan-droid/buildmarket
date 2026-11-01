@@ -1,14 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import ReviewForm from './ReviewForm';
+import { createServiceClient } from '../../../lib/supabase-service';
 
 // Сторінка "оцініть покупку" за токеном з листа. Відгук = підтверджена покупка.
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 

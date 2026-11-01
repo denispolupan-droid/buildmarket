@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { applyMpMarkups, normalizeMpItems } from '../../../../../lib/mp-reprice';
 
 // Переоцінка маркетплейсів з розділу «Ціни»: пише товарні націнки

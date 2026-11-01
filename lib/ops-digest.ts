@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { costOf } from './ai-cost';
 import { logAgentRun } from './ai-agent-runs';
 import { sendTelegramResult } from './telegram';

@@ -1,33 +1,32 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { SELLER, SELLER_SIGNER, sellerTaxStatus } from '../../../lib/company';
-import { invoiceDate, invoicePurpose, invoiceQrMatrix } from '../../../lib/invoice-doc';
+import { invoiceDate, invoicePurpose, invoiceQrMatrix, type InvoiceOrderRow } from '../../../lib/invoice-doc';
 import { nbuQrSvg } from '../../../lib/nbu-qr';
 import { loadInvoiceView } from '../../../lib/invoice-buyer';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import InvoicePrint from './InvoicePrint';
 import LinesEditor from '../../components/admin/LinesEditor';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const { data: order } = await serviceClient
+  const { data: orderRow } = await serviceClient
     .from('orders')
     .select('*')
     .eq('id', id)
     .single();
 
-  if (!order) redirect('/');
+  if (!orderRow) redirect('/');
+  const order = orderRow as InvoiceOrderRow<typeof orderRow>;
 
   const { buyer, showDelivery, showTerms } = await loadInvoiceView(serviceClient, order);
 
@@ -67,7 +66,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           hint="Правки йдуть у замовлення — і рахунок, і видаткова візьмуть їх звідти."
         />
       ) : null}
-      order={order}
+      order={order as ComponentProps<typeof InvoicePrint>['order']}
       buyer={buyer}
       showDelivery={showDelivery}
       showTerms={showTerms}

@@ -1,4 +1,4 @@
-import { createServiceClient } from '../../../lib/supabase';
+import { createServiceClient } from '../../../lib/supabase-service';
 import { siteChatTitle, siteChatPreview, siteChatState } from '../../../lib/site-chat-rules';
 import ChatInbox from './ChatInbox';
 import type { SiteChatRow } from './SiteChatsPane';

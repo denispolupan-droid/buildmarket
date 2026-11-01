@@ -24,7 +24,7 @@
  * замовлення. До замовлення не прив'язана, тож іде як витрата площадки з ключем
  * по id операції.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { getRozetkaLogisticOps, getRozetkaBalanceTxns } from './rozetka-api';
 import { recordMarketplaceServiceFee } from './accounting/money';
 import { recordTxn } from './accounting/money';

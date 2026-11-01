@@ -1,5 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
 import type { CategoryMeta } from './category-descriptions';
 import type { CategoryContentInput } from './category-content';
 import { fetchAllRows } from './db-paginate';
@@ -9,6 +8,7 @@ import { tokenSkus } from './seo/guide-prices';
 import { queryAll } from './gsc';
 import { toLangNeutralPath } from './seo/history';
 import type { CostSink } from './ai-cost';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Генерація контенту категорії «за стандартом» (docs/CONTENT-STANDARD.md, розд. 1)
@@ -55,7 +55,7 @@ export type GenContext = {
   allCategories: GenCategory[];
 };
 
-const db = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = () => createServiceClient();
 
 type ProductRow = {
   sku: string; name: string; brand: string | null; volume: string | null; category_slug: string | null;
@@ -72,8 +72,8 @@ export async function buildGenContext(slug: string): Promise<GenContext> {
       client.from('products')
         .select('sku, name, brand, volume, category_slug, stock:product_stock(price_retail, price_promo, stock_status), characteristics:product_characteristics(label, value)')
         .eq('is_active', true).order('id').range(f, t) as unknown as PromiseLike<{ data: ProductRow[] | null; error: unknown }>),
-    fetchAllRows<{ slug: string; title: string; title_ru: string | null; related_links: { href: string }[] | null }>((f, t) =>
-      client.from('blog_posts').select('slug, title, title_ru, related_links').eq('is_published', true).order('id').range(f, t)),
+    (fetchAllRows((f, t) =>
+      client.from('blog_posts').select('slug, title, title_ru, related_links').eq('is_published', true).order('id').range(f, t)) as Promise<({ slug: string; title: string; title_ru: string | null; related_links: { href: string }[] | null })[]>),
   ]);
 
   const cat = cats.find(c => c.slug === slug);

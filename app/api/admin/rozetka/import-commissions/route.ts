@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import { pathToFileURL } from 'url';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 async function checkAdmin() {
   const auth = await requireStaff('admin');
@@ -100,7 +97,7 @@ export async function PATCH(req: NextRequest) {
     const update: Record<string, unknown> = { rozetka_commission_pct: c.new_pct };
     if (c.new_label) update.rozetka_commission_label = c.new_label;
     if (c.new_category_name) update.rozetka_category_name = c.new_category_name;
-    await db.from('categories').update(update).eq('slug', c.slug);
+    await db.from('categories').update(update as TableUpdate<'categories'>).eq('slug', c.slug);
   }
   return NextResponse.json({ applied: true, count: changes.length });
 }

@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { buildCovers } from '../../../../../lib/blog-cover';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 /**
  * POST { id } — перемалювати обкладинку статті.

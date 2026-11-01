@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Не даємо двом тікам одного крона йти паралельно (міграція 141, аудит

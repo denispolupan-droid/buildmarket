@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { buildInvoicePdf } from '../../../../../lib/invoice-pdf';
 import { loadInvoiceView } from '../../../../../lib/invoice-buyer';
 import { SELLER, SELLER_SIGNER } from '../../../../../lib/company';
+import { createServiceClient } from '../../../../../lib/supabase-service';
+import type { InvoiceOrderRow } from '../../../../../lib/invoice-doc';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -18,8 +16,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   if (!UUID_RE.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
-  if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { data: orderRow, error } = await db.from('orders').select('*').eq('id', id).single();
+  if (error || !orderRow) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const order = orderRow as InvoiceOrderRow<typeof orderRow>;
 
   const { buyer, showDelivery, showTerms } = await loadInvoiceView(db, order);
 

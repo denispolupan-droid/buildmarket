@@ -1,5 +1,5 @@
 import { requireStaffPage } from '../../../lib/auth-guard';
-import { createServiceClient } from '../../../lib/supabase';
+import { createServiceClient } from '../../../lib/supabase-service';
 import DigestClient from './DigestClient';
 import ReconCard from './ReconCard';
 

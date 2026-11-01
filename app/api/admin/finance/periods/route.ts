@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 // Закриття облікових періодів («дата заборони редагування»).
 // GET — список місяців з оборотами і станом; POST — закрити/відкрити місяць.

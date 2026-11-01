@@ -1,12 +1,9 @@
 ﻿import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import UnmappedClient from './UnmappedClient';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function UnmappedPage() {
   const supabase = await createSupabaseServer();

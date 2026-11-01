@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { markupFromPrice } from '../../../../lib/price-formula';
 import { saveProductMarkups, type ProductMarkup } from '../../../../lib/price-overrides';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { isMpTarget, applyScheduledMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
+import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 type SnapshotRow = {
   sku: string;
@@ -66,7 +63,7 @@ async function run(req: NextRequest) {
           if (row.after.retail != null) update.price_retail = row.after.retail;
           if (row.after.drop   != null) update.price_drop   = row.after.drop;
         }
-        const { error } = await db.from('product_stock').update(update).eq('sku', row.sku);
+        const { error } = await db.from('product_stock').update(update as TableUpdate<'product_stock'>).eq('sku', row.sku);
         if (error) errors.push(`${row.sku}: ${error.message}`);
       }));
     }

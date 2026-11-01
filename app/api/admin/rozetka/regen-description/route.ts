@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { isMpDescriptionClean, languageSlips } from '../../../../../lib/marketplace-description';
 import { generateMpUA, translateMpRU } from '../../../../../lib/marketplace-description-gen';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 /** Скільки товарів обробляємо за один виклик — щоб не впертися в ліміт часу роута. */
 const MAX_BATCH = 20;

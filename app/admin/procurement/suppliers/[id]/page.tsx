@@ -1,14 +1,11 @@
-﻿import { createClient } from '@supabase/supabase-js';
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Package } from 'lucide-react';
 import SyncButton from './SyncButton';
 import { requireStaffPage } from '../../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function SupplierStockPage({ params }: { params: Promise<{ id: string }> }) {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)

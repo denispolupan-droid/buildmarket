@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -9,10 +8,11 @@ import DocChain from '../../../procurement/[id]/DocChain';
 import PrintButton from '../../../components/PrintButton';
 import LinesEditor from '../../../../components/admin/LinesEditor';
 import PrintDocMenu from '../PrintDocMenu';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   purchase_order: 'Замовлення постачальнику',
@@ -52,7 +52,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
   if (!doc) notFound();
 
-  const skus = (lines ?? []).map((l: { sku: string }) => l.sku).filter(Boolean);
+  const skus = (lines ?? []).map((l) => l.sku).filter(Boolean);
   const { data: products } = skus.length
     ? await db.from('products').select('sku, name, brand').in('sku', skus)
     : { data: [] };
@@ -81,13 +81,14 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
   // ── Price-change: load snapshot from price_change_log ────────────────────────
   type SnapshotRow = { sku: string; name: string; before: Record<string, number | null>; after: Record<string, number | null> };
-  let priceChangeLog: { type: string; value: number; target: string; is_promo: boolean; comment: string | null; revert_at: string | null; reverted_at: string | null; count: number | null; snapshot: SnapshotRow[] | null } | null = null;
+  type PriceChangeLogRow = { type: string; value: number; target: string; is_promo: boolean; comment: string | null; revert_at: string | null; reverted_at: string | null; count: number | null; snapshot: SnapshotRow[] | null };
+  let priceChangeLog: PriceChangeLogRow | null = null;
   if (doc.doc_type === 'price_change') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logId = (doc.meta as any)?.log_id;
     if (logId) {
       const { data: logRow } = await db.from('price_change_log').select('*').eq('id', logId).single();
-      priceChangeLog = logRow ?? null;
+      priceChangeLog = (logRow ?? null) as unknown as PriceChangeLogRow | null; // TODO(types): snapshot — jsonb
     }
   }
 
@@ -124,12 +125,12 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
   );
 
   // totalCost — сума рядків БЕЗ landed cost (оригінальні ціни з PO або з рядків якщо немає LC)
-  const totalCost = (lines ?? []).reduce((s: number, l: { sku: string; qty: number; cost_price: number }) => {
+  const totalCost = (lines ?? []).reduce((s: number, l) => {
     const origPrice = hasLandedCost ? (originalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0)) : Number(l.cost_price ?? 0);
     return s + (l.qty * origPrice);
   }, 0);
   const totalSale = isSale
-    ? (lines ?? []).reduce((s: number, l: { qty: number; price: number }) => s + l.qty * Number(l.price ?? 0), 0)
+    ? (lines ?? []).reduce((s: number, l) => s + l.qty * Number(l.price ?? 0), 0)
     : 0;
   // totalAfterLC — фінальна собівартість з FIFO-партій (включає розподілений LC)
   const totalAfterLC = hasLandedCost
@@ -158,7 +159,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         {doc.status === 'confirmed' && ['receipt','stock_in'].includes(doc.doc_type) && (
           <ReturnButton
             receiptId={id}
-            lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
+            lines={(lines ?? []).map((l) => ({
               sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
               name: nameMap.get(l.sku),
             }))}
@@ -297,7 +298,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         <LinesEditor
           target={{ kind: 'sale-doc', docId: id }}
           docDate={doc.doc_date}
-          initial={(lines ?? []).map((l: { sku: string; qty: number; price: number }) => ({
+          initial={(lines ?? []).map((l) => ({
             sku: l.sku,
             name: nameMap.get(l.sku) || l.sku,
             qty: Number(l.qty),
@@ -329,7 +330,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             </>
           )}
         </div>
-        {(lines ?? []).map((line: { sku: string; qty: number; price: number; cost_price: number; sort_order: number; is_bonus?: boolean }, idx: number) => {
+        {(lines ?? []).map((line, idx: number) => {
           const costPrice     = line.is_bonus ? 0 : Number(line.cost_price ?? 0);
           const salePrice     = line.is_bonus ? 0 : Number(line.price ?? 0);
           const originalPrice = line.is_bonus ? 0 : (originalPriceMap.get(line.sku) ?? costPrice);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import {
   isShowcaseSurface, normalizeShowcaseSkus, isShowcaseVisible,
   SHOWCASE_MAX_ITEMS, SHOWCASE_SURFACES, type ShowcaseSurface,

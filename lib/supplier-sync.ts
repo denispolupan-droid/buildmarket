@@ -12,7 +12,7 @@ import { priceFromMarkup, enforcePriceLadder, roundRetail, roundHalf } from './p
 import { fetchAllRows } from './db-paginate';
 import { assertPublicUrl } from './safe-fetch-url';
 import * as XLSX from 'xlsx';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from './supabase-service';
 
 // ── Типи ──────────────────────────────────────────────────────────────────────
 
@@ -252,10 +252,7 @@ async function fetchFile(url: string): Promise<Buffer> {
 // ── Головна функція ───────────────────────────────────────────────────────────
 
 export async function syncSupplier(supplierId: number): Promise<SyncResult> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabase = createServiceClient();
 
   // 1. Завантажуємо налаштування постачальника
   const { data: supplier, error: supErr } = await supabase
@@ -417,7 +414,7 @@ export async function syncSupplier(supplierId: number): Promise<SyncResult> {
     for (const g of groupByColumnSet(rows)) {
       for (let x = 0; x < g.length; x += BATCH) {
         const chunk = g.slice(x, x + BATCH);
-        const { error } = await supabase.from(table).upsert(chunk, { onConflict });
+        const { error } = await supabase.from(table).upsert(chunk as never, { onConflict }); // TODO(types): table — одна з двох, рядки збирає groupByColumnSet
         if (error) { failed += chunk.length; console.error(`[supplier-sync] ${table} batch failed:`, error.message); }
       }
     }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../lib/supabase-server';
-import { createServiceClient } from '../../../lib/supabase';
+import { createServiceClient } from '../../../lib/supabase-service';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 
 // Журнал пошуку по сайту: що люди шукали і скільки знайшли.

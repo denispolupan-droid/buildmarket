@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { refreshNovapayBalance, getNovapayLiveBalance, refreshNovapayRegisters } from '../../../../lib/novapay-api';
 import { ingestNovapayStatement, postNpPayouts } from '../../../../lib/novapay-ingest';
 import { postNovapayAutoTopups } from '../../../../lib/novapay-autopost';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { loadNpCodOrders, unsettledNpCod, formatUnsettledAlert } from '../../../../lib/novapay-cod-watch';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';

@@ -18,7 +18,7 @@
  * ключ rzpay-alloc:{mono_txn}:{order}. Не підібрані виплати лишаються на клірингу
  * mp:rozetkapay сумою і повторно пробуються кожним запуском (вікно обмежене періодом).
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { fetchAllRows } from './db-paginate';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';

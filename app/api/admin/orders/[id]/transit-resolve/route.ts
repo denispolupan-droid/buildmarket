@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { resolveTransit, type TransitDecision } from '../../../../../../lib/accounting/transit';
 
 // Доля товару з посилки, яку покупець не забрав.

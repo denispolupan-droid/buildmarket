@@ -17,7 +17,7 @@
  * Ключі: np-payout:{docId}:{orderId} + np-fee:{docId}:{orderId} (по ЕН),
  *        np-payout:{docId}:agg (сумою).
  */
-import { asJson, createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase-service';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';
 import { getNovapayAccountExtract } from './novapay-api';

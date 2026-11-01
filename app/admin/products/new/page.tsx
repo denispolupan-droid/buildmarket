@@ -1,13 +1,11 @@
-﻿import { createClient } from '@supabase/supabase-js';
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import ProductForm from '../[sku]/ProductForm';
 import Link from 'next/link';
+import { createServiceClient } from '../../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function NewProductPage() {
   const supabase = await createSupabaseServer();
@@ -47,7 +45,7 @@ export default async function NewProductPage() {
           </p>
         </div>
 
-        <ProductForm product={null} categories={categories ?? []} isNew={true} promUrls={promUrls} />
+        <ProductForm product={null} categories={(categories ?? []) as ComponentProps<typeof ProductForm>['categories']} isNew={true} promUrls={promUrls} />
       </div>
     </div>
   );

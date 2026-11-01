@@ -7,7 +7,7 @@
  * екрана в адмінці немає — ключ існує, щоб змінити суму без деплою, якщо
  * Rozetka перегляне умови.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import {
   parseRozetkaDeliveryTariff,
   ROZETKA_DELIVERY_TARIFF_KEY,

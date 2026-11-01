@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { RZPAY_LOGIN_KEY, RZPAY_PASSWORD_KEY, getRzPayCreds, validateRzPayKeys } from '../../../../../lib/rozetkapay-api';
 
 // Ключі RozetkaPay Reports API — як токен Prom: зберігаються в app_settings,

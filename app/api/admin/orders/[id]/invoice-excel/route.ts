@@ -1,15 +1,13 @@
 import { hryvniaInWords } from "../../../../../../lib/number-to-words";
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { SELLER } from '../../../../../../lib/company';
 import { loadInvoiceView } from '../../../../../../lib/invoice-buyer';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
+import type { InvoiceOrderRow } from '../../../../../../lib/invoice-doc';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 type Item = { sku: string; name: string; brand?: string | null; qty: number; price: number };
 
@@ -24,8 +22,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
-  if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { data: orderRow, error } = await db.from('orders').select('*').eq('id', id).single();
+  if (error || !orderRow) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const order = orderRow as InvoiceOrderRow<typeof orderRow>;
 
   const { buyer, showDelivery, showTerms } = await loadInvoiceView(db, order);
 

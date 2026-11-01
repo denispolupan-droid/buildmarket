@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/db-paginate';
 import { promPrice, promPriceFromBase, resolveMarkup, promCommissionOf, type PromPlan } from '@/lib/marketplace-pricing';
 import { mpDescription, mpDescriptionRu } from '@/lib/marketplace-description';
 import { PROM_READY_TO_SHIP_KEY, promAvailability, readyToShipEnabled } from '@/lib/prom-ready-to-ship';
 import { BRAND_COUNTRY } from '../../../lib/brand-country';
 import { feedVendor } from '../../../lib/brand-feed';
+import { createServiceClient } from '../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 const BASE_URL  = 'https://fixline.com.ua';
 const SHOP_NAME = 'FIXLINE';

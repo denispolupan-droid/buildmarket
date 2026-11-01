@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { saveProductMarkups, type ProductMarkup } from '../../../../../lib/price-overrides';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin', 'manager')).ok;
@@ -44,7 +41,7 @@ export async function PATCH(req: NextRequest) {
     if (price_drop    !== undefined) update.price_drop    = price_drop;
     if (price_locked  !== undefined) update.price_locked  = price_locked;
 
-    const { error } = await db.from('product_stock').update(update).in('sku', skus);
+    const { error } = await db.from('product_stock').update(update as TableUpdate<'product_stock'>).in('sku', skus);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     // Ціни на вітрині живуть у кеші з тегом 'products'. Без скидання нова ціна
     // з'являлась лише коли протухне TTL — до хвилини після збереження.
@@ -74,7 +71,7 @@ export async function PATCH(req: NextRequest) {
           if (item.retail != null) update.price_retail = item.retail;
           if (item.drop   != null) update.price_drop   = item.drop;
         }
-        const { error } = await db.from('product_stock').update(update).eq('sku', item.sku);
+        const { error } = await db.from('product_stock').update(update as TableUpdate<'product_stock'>).eq('sku', item.sku);
         if (error) errors.push(`${item.sku}: ${error.message}`);
       }));
     }

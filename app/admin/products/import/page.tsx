@@ -1,14 +1,12 @@
 ﻿import { redirect } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import ImportClient from './ImportClient';
 import Link from 'next/link';
 import type { Category } from '../../../../types';
+import { createServiceClient } from '../../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function ImportProductsPage() {
   const supabase = await createSupabaseServer();
@@ -39,7 +37,7 @@ export default async function ImportProductsPage() {
           </p>
         </div>
 
-        <ImportClient categories={categories ?? []} />
+        <ImportClient categories={(categories ?? []) as ComponentProps<typeof ImportClient>['categories']} />
       </div>
     </div>
   );

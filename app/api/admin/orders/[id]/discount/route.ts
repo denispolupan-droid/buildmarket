@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { asJson, createServiceClient } from '../../../../../../lib/supabase';
+import { asJson, createServiceClient } from '../../../../../../lib/supabase-service';
 import { applyOrderDiscount, type DiscountItem } from '../../../../../../lib/pricing';
 import { parseBody, zMoney, zYmd, zText, z } from '../../../../../../lib/validate';
 

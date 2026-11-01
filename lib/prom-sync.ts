@@ -1,15 +1,12 @@
 import { findCustomerIdByPhone } from './customers';
-import { createClient } from '@supabase/supabase-js';
 import { getPromOrders, getPromOrder, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus, type PromOrder } from './prom-api';
 import { computePromCommission } from './prom-commission';
 import { completeOrderDelivery, allOrderSalesPosted } from './accounting/completion';
 import { transitionOrder } from './orders/status';
 import { promDeliveryPatch, isPromLedDelivery } from './prom-delivery-state';
+import { createServiceClient, type TableUpdate, asJson } from './supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 // Самолікування пушів статусів (дзеркало rozetka-sync): пуш при підтвердженні —
 // fire-and-forget, а до 2026-07-27 він ще й був мовчазним no-op (невалідне значення
@@ -45,7 +42,7 @@ async function applyPromDeliveryState(existing: SyncedOrder, promOrder: PromOrde
   const { patch, accepted, delivered } = promDeliveryPatch(existing, promOrder.delivery_provider_data, now);
   if (delivered && !existing.carrier_delivered_at) patch.carrier_delivered_at = now;
   if (Object.keys(patch).length) {
-    const { error } = await db.from('orders').update(patch).eq('id', existing.id);
+    const { error } = await db.from('orders').update(patch as TableUpdate<'orders'>).eq('id', existing.id);
     if (error) {
       console.error('[prom-sync] delivery state update failed:', existing.order_number, error.message);
       return { accepted: false, delivered: false };
@@ -213,7 +210,7 @@ export async function syncPromOrders() {
       customer_id:      customerId,
       contact:          mapped.contact,
       phone:            mapped.phone,
-      prom_data:        enrichedPromData,
+      prom_data:        asJson(enrichedPromData),
       email:            mapped.email,
       delivery_type:    mapped.delivery_type,
       delivery_subtype: mapped.delivery_subtype,

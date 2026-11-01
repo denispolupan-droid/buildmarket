@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../../lib/db-paginate';
 import { getCategoryNameRu } from '../../../../../../lib/ru';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,10 +31,10 @@ const BUY = /(?<!\p{L})(купити|купить|ціна|цена|вартіс
 export async function GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
-  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const db = createServiceClient();
   const [rows, cats, last] = await Promise.all([
-    fetchAllRows<{ phrase: string; lang: 'uk' | 'ru'; category_slug: string; modifier: string; seen: number; gsc_impressions: number | null; gsc_position: number | null; covered_path: string | null; last_seen: string }>((f, t) =>
-      db.from('search_demand').select('phrase, lang, category_slug, modifier, seen, gsc_impressions, gsc_position, covered_path, last_seen').order('phrase').order('lang').range(f, t)),
+    (fetchAllRows((f, t) =>
+      db.from('search_demand').select('phrase, lang, category_slug, modifier, seen, gsc_impressions, gsc_position, covered_path, last_seen').order('phrase').order('lang').range(f, t)) as Promise<({ phrase: string; lang: 'uk' | 'ru'; category_slug: string; modifier: string; seen: number; gsc_impressions: number | null; gsc_position: number | null; covered_path: string | null; last_seen: string })[]>),
     fetchAllRows<{ slug: string; name: string }>((f, t) => db.from('categories').select('slug, name').order('id').range(f, t)),
     db.from('search_demand').select('last_seen').order('last_seen', { ascending: false }).limit(1).maybeSingle(),
   ]);

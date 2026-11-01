@@ -1,5 +1,5 @@
 import { requireStaffPage } from '../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { EPICENTR_COMMISSION_FALLBACK_KEY, EPICENTR_COMMISSION_DEFAULT_PCT } from '../../../../lib/epicentr-commission';
 import EpicentrProductsClient, { type EpiCategory, type EpiProduct, type EpiStock } from './EpicentrProductsClient';

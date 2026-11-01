@@ -15,7 +15,7 @@
  * Все строки документа имеют fulfillment_type = 'dropship'.
  */
 
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 import { recordCOGS, recordTxn, type AccountType } from './money';
 import { createDocument, confirmDocument } from './documents';
 import { resolveOrderFulfillment } from './fulfillment';

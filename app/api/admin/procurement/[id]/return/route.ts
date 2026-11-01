@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { createSupplierReturn } from '../../../../../../lib/accounting/returns';
 import { isReturnReason } from '../../../../../../lib/accounting/returns-rules';
 

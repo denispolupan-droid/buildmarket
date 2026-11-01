@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { generateProductSlug } from '../../../../../lib/seo/slug';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient, type TableInsert } from '../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // Всі стандартні колонки — все що не тут = характеристика (новий формат)
 const KNOWN_COLUMNS = new Set([
@@ -364,7 +361,7 @@ export async function POST(req: NextRequest) {
     try {
       const { error: productErr } = await serviceClient
         .from('products')
-        .upsert(product, { onConflict: 'sku' });
+        .upsert(product as TableInsert<'products'>, { onConflict: 'sku' });
 
       if (productErr) {
         results.errors.push({ row: i + 2, sku, error: productErr.message });
@@ -373,7 +370,7 @@ export async function POST(req: NextRequest) {
 
       const { error: stockErr } = await serviceClient
         .from('product_stock')
-        .upsert(stock, { onConflict: 'sku' });
+        .upsert(stock as TableInsert<'product_stock'>, { onConflict: 'sku' });
 
       if (stockErr) {
         results.errors.push({ row: i + 2, sku, error: `stock: ${stockErr.message}` });
@@ -405,8 +402,8 @@ export async function POST(req: NextRequest) {
     .is('slug', null);
   if (noSlug?.length) {
     // Усі зайняті слаги — сторінками: обрізана на 1000 вибірка дала б дублі slug
-    const allSlugs = await fetchAllRows<{ slug: string }>((f, t) => serviceClient
-      .from('products').select('slug').not('slug', 'is', null).order('sku').range(f, t));
+    const allSlugs = await (fetchAllRows((f, t) => serviceClient
+      .from('products').select('slug').not('slug', 'is', null).order('sku').range(f, t)) as Promise<({ slug: string })[]>);
     const used = new Set(allSlugs.map(r => r.slug));
     for (const p of noSlug) {
       let slug = generateProductSlug(p) || p.sku.toLowerCase();

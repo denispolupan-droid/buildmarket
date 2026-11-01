@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { ingestMonoTxn } from '../../../../lib/mono-ingest';
 import { getMonoWebhookSecret, getMonoFopAccount } from '../../../../lib/mono-config';
 

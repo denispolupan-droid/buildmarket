@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSendAddresses } from '../../../../../lib/zoho-mail';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
 
 // Дозволені адреси відправника + підпис для кожної (app_settings.mail_signatures,

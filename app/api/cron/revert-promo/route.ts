@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { MP_TARGETS, revertMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 async function run(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {

@@ -1,11 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
 import PricingClient from './PricingClient';
 import { requireStaffPage } from '../../../lib/auth-guard';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function PricingPage() {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
@@ -60,5 +58,5 @@ export default async function PricingPage() {
     check:            checkMap[p.sku] ?? null,
   }));
 
-  return <PricingClient rows={rows} categories={categories ?? []} />;
+  return <PricingClient rows={rows} categories={(categories ?? []) as ComponentProps<typeof PricingClient>['categories']} />;
 }

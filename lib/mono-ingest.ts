@@ -1,4 +1,4 @@
-import { asJson, createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase-service';
 import { classifyMonoTxn, orderLookupPlan, LOOKUP_SOURCE_LABEL, PG_INT4_MAX, type MonoStatementItem, type OrderLookup } from './mono-statement';
 import { parseRzPayPayout, postRzPayPayout } from './rozetkapay-payout';
 import { recordTxn } from './accounting/money';

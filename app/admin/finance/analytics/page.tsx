@@ -1,15 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import FinanceTabs from '../FinanceTabs';
 import { DualLineChart } from '../overview-charts';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { summarizePL, PL_ACCOUNTS } from '../../../../lib/accounting/profit-rules';
 import { requireStaffPage } from '../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 
@@ -132,14 +129,14 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   // ── Факт по кожному замовленню з леджера: COGS (FIFO, нетто повернень) і комісія МП
   // (включно з доп. зборами типу «Дешева доставка Prom»). Це ті самі числа, що бачить
   // картка замовлення в режимі «Факт» — дашборд більше не розходиться з нею.
-  const perOrderEntries = await fetchAllRows<{ order_id: string; account_type: string; amount: number }>((f, t) => db
+  const perOrderEntries = await (fetchAllRows((f, t) => db
     .from('money_entries')
     .select('order_id, account_type, amount')
     .in('account_type', ['cogs', 'marketplace_fee'])
     .not('order_id', 'is', null)
     .gte('business_date', sixAgo.toISOString().slice(0, 10))
     .order('id')
-    .range(f, t));
+    .range(f, t)) as Promise<({ order_id: string; account_type: string; amount: number })[]>);
   const cogsByOrder = new Map<string, number>();
   const feeByOrder  = new Map<string, number>();
   for (const e of perOrderEntries ?? []) {

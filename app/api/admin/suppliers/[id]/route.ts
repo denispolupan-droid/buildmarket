@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createClient } from '@supabase/supabase-js';
 import { normalizeBrandDiscounts } from '../../../../../lib/supplier-brand-discounts';
+import { createServiceClient, type TableInsert } from '../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
@@ -16,7 +13,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const { id } = await params;
+  const id = Number((await params).id);
 
   const [{ data: supplier, error }, { data: syncLogs }, { data: productOverrides }, { data: promotions }] = await Promise.all([
     serviceClient
@@ -47,7 +44,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PUT(req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const { id } = await params;
+  const id = Number((await params).id);
   const body = await req.json();
   const { brand_discounts, last_sync, sync_logs, product_overrides, promotions, ...supplier } = body;
 
@@ -98,7 +95,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         notes:            o.notes ?? null,
       }));
     if (toInsert.length > 0) {
-      await serviceClient.from('supplier_product_overrides').insert(toInsert);
+      await serviceClient.from('supplier_product_overrides').insert(toInsert as TableInsert<'supplier_product_overrides'>[]);
     }
   }
 
@@ -126,7 +123,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const { id } = await params;
+  const id = Number((await params).id);
 
   const { error } = await serviceClient.from('suppliers').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

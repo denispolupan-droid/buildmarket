@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from './supabase-service';
 
 export interface CommissionItem {
   sku:            string;
@@ -19,10 +19,7 @@ export async function computePromCommission(
   orderItems: { sku: string; qty: number; price: number }[],
   opts: { plan: 'single' | 'econom'; fallbackPct: number },
 ): Promise<CommissionResult> {
-  const db = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const db = createServiceClient();
 
   const skus = orderItems.map(i => i.sku).filter(Boolean);
 

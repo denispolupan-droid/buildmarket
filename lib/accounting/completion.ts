@@ -13,7 +13,7 @@
  * ключем commission:{mp}:{docId}. COD дропшип-партнеру навмисно НЕ тут — він
  * order-level (робиться при повному завершенні замовлення, окремим кроком).
  */
-import { asJson, createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase-service';
 import { postSaleDoc } from './dropship';
 import { recordMarketplaceCommission, recordMarketplaceServiceFee } from './money';
 import { computePromCommission } from '../prom-commission';

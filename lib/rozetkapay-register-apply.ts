@@ -12,7 +12,7 @@
  * крона, тож двигун підбору бачить результат як «рознесено» і не чіпає ці виплати.
  */
 import * as XLSX from 'xlsx';
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR, saleDebitPartyFor } from './accounting/sale-party';
 import { parseRzPayPayout } from './rozetkapay-statement';

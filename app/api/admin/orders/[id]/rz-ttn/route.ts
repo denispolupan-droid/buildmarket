@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { RZ_DELIVERY_TYPE, RZ_TRACK_TYPE_DEPT, rzPhone, rzSplitName } from '../../../../../../lib/rz-delivery';
 import { getRzSender, getRzBox, rzCreateTrack, rzLabel, rzDeleteTrack, rzSearchCities, rzDepartments, RzError } from '../../../../../../lib/rz-delivery-api';

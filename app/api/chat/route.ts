@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
 import { sendTelegram } from '../../../lib/telegram';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 import { FIXLINE_FACTS } from '../../../lib/fixline-facts';
 import { searchProductsText, productDetailsText } from '../../../lib/product-lookup';
+import { createServiceClient } from '../../../lib/supabase-service';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 const SYSTEM_PROMPT = `Ти — AI-помічник FIXLINE, платформи для закупівель будівельної хімії в Україні (fixline.com.ua).
 

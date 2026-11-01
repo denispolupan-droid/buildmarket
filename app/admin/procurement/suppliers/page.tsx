@@ -1,13 +1,10 @@
-﻿import { createClient } from '@supabase/supabase-js';
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { Package, ChevronRight, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import SectionBar, { plural } from '../SectionBar';
 import { requireStaffPage } from '../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function SuppliersStockPage() {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
@@ -21,7 +18,7 @@ export default async function SuppliersStockPage() {
     db.from('supplier_sku_map').select('supplier_id'),
   ]);
 
-  const lastSyncMap = new Map<number, { rows_updated: number; rows_unmapped: number; error_message: string | null; finished_at: string }>();
+  const lastSyncMap = new Map<number, { rows_updated: number; rows_unmapped: number; error_message: string | null; finished_at: string | null }>();
   for (const log of syncLogs ?? []) {
     if (!lastSyncMap.has(log.supplier_id)) lastSyncMap.set(log.supplier_id, log);
   }
@@ -89,7 +86,7 @@ export default async function SuppliersStockPage() {
                   )}
                   {sync && (
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {formatDate(sync.finished_at)}
+                      {formatDate(sync.finished_at as string)}
                     </div>
                   )}
                 </div>

@@ -12,7 +12,7 @@
  * Перевизначити можна через app_settings.rozetka_delivery_sender — якщо колись
  * знадобиться відправляти не з того відділення.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { rozetkaFetch, rozetkaFetchRaw } from './rozetka-api';
 import { RZ_SENDER_KEY } from './rz-delivery-api';
 import { normalizeSenderPickup, type RozetkaSenderPickup, type RozetkaSenderPickupRaw } from './rozetka-delivery';

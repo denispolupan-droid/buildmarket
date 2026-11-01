@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { loadCharDictionary, normalizeChars } from '../../../../../lib/characteristics';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export const maxDuration = 120;
 
@@ -38,7 +35,7 @@ export async function POST(req: NextRequest) {
   const bySku = new Map<string, { id: number; label: string; value: string; sort_order: number }[]>();
   for (const r of rows ?? []) {
     if (!bySku.has(r.product_sku)) bySku.set(r.product_sku, []);
-    bySku.get(r.product_sku)!.push(r);
+    bySku.get(r.product_sku)!.push(r as { id: number; label: string; value: string; sort_order: number });
   }
 
   // Категорія потрібна для канонізації значень: правила фасетів прив'язані до родин

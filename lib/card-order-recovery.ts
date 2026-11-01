@@ -1,4 +1,4 @@
-import { createServiceClient, type Database } from './supabase';
+import { createServiceClient, type Database } from './supabase-service';
 import { recordCardOrderPayment } from './card-order-ledger';
 import { alertAdmin } from './alert';
 import { getMonoAcquiringToken } from './mono-config';

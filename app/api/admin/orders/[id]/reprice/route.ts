@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient, asJson } from '../../../../../../lib/supabase';
+import { createServiceClient, asJson } from '../../../../../../lib/supabase-service';
 
 // Зміна типу цін замовлення (роздріб / опт / дроп) з перерахунком позицій
 // за відповідним прайсом із product_stock. Дозволено лише ДО відгрузки

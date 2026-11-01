@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { AI_BOTS } from '../../../../../lib/ai-crawlers';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,10 +14,7 @@ export const dynamic = 'force-dynamic';
 // Порівняння з попереднім періодом тут не косметика: абсолютна цифра «140
 // візитів GPTBot» не означає нічого, поки не видно, було їх учора 20 чи 400.
 
-const service = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const service = createServiceClient();
 
 type BotRow = { day: string; bot: string; section: string; hits: number };
 type RefRow = { day: string; source: string; landing_path: string; hits: number };

@@ -1,15 +1,13 @@
 import { createSupabaseServer } from '../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 import { getRole } from '../../../lib/user-role';
 import Footer from '../../components/Footer';
 import WishlistList from './WishlistList';
 import GuestWishlistPage from './GuestWishlistPage';
 import { Heart } from 'lucide-react';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
 export default async function WishlistPage() {
   const supabase = await createSupabaseServer();
@@ -61,7 +59,7 @@ export default async function WishlistPage() {
             </div>
           </div>
 
-          <WishlistList products={products.filter(Boolean) as NonNullable<typeof products[0]>[]} role={role} />
+          <WishlistList products={(products.filter(Boolean) as NonNullable<typeof products[0]>[]) as ComponentProps<typeof WishlistList>['products']} role={role} />
         </div>
       </div>
       <Footer />

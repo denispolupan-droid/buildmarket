@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { epicentrPrice } from '../../../../lib/marketplace-pricing';
 import { mpDescription } from '../../../../lib/marketplace-description';

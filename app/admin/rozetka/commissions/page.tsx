@@ -1,14 +1,11 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import RozetkaCommissionsClient from './RozetkaCommissionsClient';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 export const metadata = { title: 'Комісії Rozetka — Адмін' };
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function RozetkaCommissionsPage() {
   const supabase = await createSupabaseServer();

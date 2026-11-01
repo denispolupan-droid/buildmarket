@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { escapeOrTerm } from './pg-filter';
 import { SITE_URL } from './site';
 

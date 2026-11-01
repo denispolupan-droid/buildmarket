@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { productDisplayName } from '../../../lib/seo/meta';
 import { getCategoryNameRu } from '../../../lib/ru';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { SITE_URL } from '../../../lib/site';
+import { createServiceClient } from '../../../lib/supabase-service';
 
 /**
  * Фід товарів за специфікацією OpenAI Product Feed (Agentic Commerce, версія
@@ -16,7 +16,7 @@ import { SITE_URL } from '../../../lib/site';
  *
  * Закритий ключем, як і Google-фід: /api/ у robots заборонений.
  */
-const serviceClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const serviceClient = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 

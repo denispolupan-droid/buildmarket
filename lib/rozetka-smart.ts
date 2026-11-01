@@ -10,7 +10,7 @@
  * застосовується лише до нових відгрузок, вже проведені списання не чіпаємо.
  * Чисті функції (computeSmartFee тощо) — у lib/rozetka-smart-tariff.ts.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { parseSmartTariff, SMART_TARIFF_KEY, type SmartBracket } from './rozetka-smart-tariff';
 
 export * from './rozetka-smart-tariff';

@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { requireCustomer } from '../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { dropshipOrderable, dropshipItemName } from '../../../../lib/dropship-order';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 type ProductRow = { sku: string; name: string; brand: string; category_slug: string | null; volume: string | null; min_order: number | null; is_active: boolean };
 type StockRow   = { sku: string; price_drop: number | null; price_retail: number | null; stock_status: string | null };
@@ -20,13 +17,13 @@ export async function GET() {
   // Пагінація обов'язкова: без неї PostgREST мовчки віддає лише 1000 рядків,
   // і частина товарів випадала б із прайсу без жодної помилки.
   const [products, stock, { data: categories }] = await Promise.all([
-    fetchAllRows<ProductRow>((f, t) => serviceClient
+    (fetchAllRows((f, t) => serviceClient
       .from('products')
       .select('sku, name, brand, category_slug, volume, min_order, is_active')
       .eq('is_active', true)
       .order('sort_order')
       .order('sku')
-      .range(f, t)),
+      .range(f, t)) as Promise<(ProductRow)[]>),
     fetchAllRows<StockRow>((f, t) => serviceClient
       .from('product_stock')
       .select('sku, price_drop, price_retail, stock_status')

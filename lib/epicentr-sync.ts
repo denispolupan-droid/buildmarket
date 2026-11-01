@@ -10,7 +10,6 @@
  *      скасовуємо в себе те, що скасував покупець/площадка.
  */
 import { findCustomerIdByPhone } from './customers';
-import { createClient } from '@supabase/supabase-js';
 import {
   getEpicentrOrders, epicentrOrderToOurFormat, ourStatusToEpicentrStatus, setEpicentrOrderStatus,
   setEpicentrTTN, hasEpicentrToken, EPICENTR_CANCELLED, EPICENTR_TERMINAL,
@@ -18,11 +17,9 @@ import {
 } from './epicentr-api';
 import { computeEpicentrCommission, getEpicentrFallbackPct } from './epicentr-commission';
 import { handleMarketplaceCancelledOrder, type CancelWatchOrder } from './marketplace-cancel-watch';
+import { createServiceClient, type TableUpdate, asJson } from './supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 /** З яких живих статусів Епіцентру допушуємо наш цільовий статус. */
 const REPUSH_FROM: Partial<Record<EpicentrOrderStatus, EpicentrOrderStatus[]>> = {
@@ -61,7 +58,7 @@ export async function syncEpicentrOrders(): Promise<EpicentrSyncResult> {
       .maybeSingle();
 
     if (existing) {
-      await reconcileExisting(existing, epi, result);
+      await reconcileExisting(existing as unknown as Parameters<typeof reconcileExisting>[0], epi, result);
       result.skipped++;
       continue;
     }
@@ -115,7 +112,7 @@ export async function syncEpicentrOrders(): Promise<EpicentrSyncResult> {
       status:            'new',
       channel_code:      'epicentr',
       epicentr_order_id: mapped.epicentr_order_id,
-      epicentr_data:     enriched,
+      epicentr_data:     asJson(enriched),
     });
 
     if (error) {
@@ -152,7 +149,7 @@ async function reconcileExisting(existing: ExistingRow, epi: EpicentrOrder, resu
     }
   }
 
-  const { error: upErr } = await db.from('orders').update(patch).eq('id', existing.id);
+  const { error: upErr } = await db.from('orders').update(patch as TableUpdate<'orders'>).eq('id', existing.id);
   if (upErr) console.error('[epicentr-sync] snapshot update failed:', epi.id, upErr.message);
 
   // Скасування покупцем/площадкою → скасовуємо в себе (з урахуванням відвантаження)

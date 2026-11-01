@@ -9,7 +9,7 @@
  * Ключ np-txn:{id} той самий, що й у ручного шляху, тож автопроводка й людина
  * не задвоять один документ, хто б не встиг першим.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { recordMarketplaceTopup, recordTxn } from './accounting/money';
 import { alertAdmin } from './alert';
 import { classifyNovapayOutgoing, type NovapayOutgoing } from './novapay-autopost-rules';

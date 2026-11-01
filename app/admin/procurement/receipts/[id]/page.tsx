@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -10,10 +9,11 @@ import LandedCostHeaderButton from './LandedCostHeaderButton';
 import EditPricesButton from './EditPricesButton';
 import ReceiptPaymentPanel from './ReceiptPaymentPanel';
 import { procurementPaymentOr } from '../../../../../lib/accounting/procurement-payments';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 const COST_TYPE_LABELS: Record<string, string> = {
   delivery: '🚚 Доставка', loading: '📦 Навант./розвант.',
@@ -39,7 +39,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
   if (!doc || !['receipt','stock_in'].includes(doc.doc_type)) notFound();
 
-  const skus = (lines ?? []).map((l: { sku: string }) => l.sku).filter(Boolean);
+  const skus = (lines ?? []).map((l) => l.sku).filter(Boolean);
   const { data: products } = skus.length
     ? await db.from('products').select('sku, name, brand').in('sku', skus)
     : { data: [] };
@@ -78,7 +78,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
   // totalCost — сума рядків БЕЗ landed cost (оригінальні ціни з PO, або рядки якщо немає LC)
   // ВАЖЛИВО: apply_landed_costs() оновлює acc_document_lines.cost_price «на місці»,
   // тому читати totalCost з рядків приходу = вже включено LC → подвоєння!
-  const totalCost = (lines ?? []).reduce((s: number, l: { sku: string; qty: number; cost_price: number }) => {
+  const totalCost = (lines ?? []).reduce((s: number, l) => {
     const origPrice = hasLC ? (originalPriceMap.get(l.sku) ?? Number(l.cost_price ?? 0)) : Number(l.cost_price ?? 0);
     return s + l.qty * origPrice;
   }, 0);
@@ -110,16 +110,17 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
   const supplierName = (doc.supplier as { name?: string } | null)?.name ?? null;
   const warehouseName= (doc.warehouse as { name?: string } | null)?.name ?? null;
-  const parentDoc    = doc.parent_doc as { id: string; doc_number: string; doc_date: string; doc_type: string } | null;
+  const parentDoc    = doc.parent_doc as unknown as { id: string; doc_number: string; doc_date: string; doc_type: string } | null;
 
   // Check linked customer order (receipt → PO → customer order)
-  let linkedOrder: { id: string; order_number: number; status: string } | null = null;
+  type LinkedOrderRow = { id: string; order_number: number; status: string };
+  let linkedOrder: LinkedOrderRow | null = null;
   if (doc.parent_doc_id) {
     const { data: po } = await db.from('acc_documents').select('order_id').eq('id', doc.parent_doc_id).single();
     if ((po as { order_id?: string } | null)?.order_id) {
       const { data: cOrder } = await db.from('orders')
         .select('id, order_number, status').eq('id', (po as { order_id: string }).order_id).single();
-      linkedOrder = cOrder ?? null;
+      linkedOrder = (cOrder ?? null) as LinkedOrderRow | null;
     }
   }
 
@@ -157,7 +158,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           hasLC={hasLC}
           lines={(lines ?? [])
             .filter((l: { is_bonus?: boolean }) => !l.is_bonus)
-            .map((l: { sku: string; qty: number; cost_price: number }) => ({
+            .map((l) => ({
               sku: l.sku,
               name: nameMap.get(l.sku) ?? l.sku,
               qty: Number(l.qty),
@@ -173,7 +174,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           receiptId={id}
           docNumber={doc.doc_number}
           hasExistingLC={hasLC}
-          lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
+          lines={(lines ?? []).map((l) => ({
             sku: l.sku, qty: Number(l.qty), cost_price: Number(l.cost_price ?? 0),
             name: nameMap.get(l.sku),
           }))}
@@ -252,7 +253,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
             <><span style={{ textAlign: 'right' }}>Ціна закупки</span><span style={{ textAlign: 'right' }}>Сума</span></>
           )}
         </div>
-        {(lines ?? []).map((line: { sku: string; qty: number; cost_price: number; is_bonus?: boolean }, idx: number) => {
+        {(lines ?? []).map((line, idx: number) => {
           const origPrice  = originalPriceMap.get(line.sku) ?? Number(line.cost_price ?? 0);
           const finalPrice = finalPriceMap.get(line.sku) ?? Number(line.cost_price ?? 0);
           const lcAdded    = finalPrice - origPrice;

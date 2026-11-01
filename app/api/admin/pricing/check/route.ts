@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { checkProductPrices } from '../../../../../lib/price-checker';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient, asJson } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
@@ -60,7 +57,7 @@ export async function POST(req: NextRequest) {
       match_count:  result.match_count,
       delta_pct:    result.delta_pct,
       status:       result.status,
-      results:      result.results,
+      results:      asJson(result.results),
       checked_at:   result.checked_at,
     },
     { onConflict: 'sku' },

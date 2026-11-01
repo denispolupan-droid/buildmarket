@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { getMonoToken, getMonoFopAccount } from './mono-config';
 
 // Живі залишки рахунків Monobank (Personal API client-info) для «Огляду»

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { getOrderFulfillmentInfo } from '../../../../../../lib/accounting/dropship';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { getOrderReservations } from '../../../../../../lib/accounting/reservations';

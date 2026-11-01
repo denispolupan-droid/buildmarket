@@ -1,4 +1,4 @@
-import { asJson, createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase-service';
 import {
   recordShipment, recordCOGS, recordPurchase,
   recordReturn, recordSupplierReturn, recordTxn,

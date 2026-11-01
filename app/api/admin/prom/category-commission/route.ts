@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
@@ -39,7 +36,7 @@ export async function PATCH(req: NextRequest) {
   if (prom_section_name !== undefined) update.prom_section_name              = prom_section_name;
   if (prom_markup_pct   !== undefined) update.prom_markup_pct                = prom_markup_pct;
 
-  const { error } = await db.from('categories').update(update).eq('slug', slug);
+  const { error } = await db.from('categories').update(update as TableUpdate<'categories'>).eq('slug', slug);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   // prom_section_url/id входять у кешовану вибірку категорій (TTL година) —

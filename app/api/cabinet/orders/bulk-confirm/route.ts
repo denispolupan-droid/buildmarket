@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireCustomer } from '../../../../../lib/auth-guard';
 import { createDropshipOrder, getDropshipCustomer } from '../../../../../lib/dropship-order-create';
 import { dropshipParcelKey } from '../../../../../lib/dropship-order';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 type Row = {
   row_num: number; sku: string; qty: number; selling_price: number;

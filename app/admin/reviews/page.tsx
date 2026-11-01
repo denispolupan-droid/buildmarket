@@ -1,12 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import ReviewsTabs from './ReviewsTabs';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const service = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const service = createServiceClient();
 
 export const metadata = { title: 'Відгуки | FIXLINE' };
 
@@ -26,5 +24,5 @@ export default async function AdminReviewsPage({
     .order('created_at', { ascending: false })
     .limit(500);
 
-  return <ReviewsTabs reviews={reviews ?? []} initialTab={tab === 'rozetka' ? 'rozetka' : 'site'} />;
+  return <ReviewsTabs reviews={(reviews ?? []) as ComponentProps<typeof ReviewsTabs>['reviews']} initialTab={tab === 'rozetka' ? 'rozetka' : 'site'} />;
 }

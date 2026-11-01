@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { getCategoryContentRows, getCategoryContentCached, type CategoryContentRow } from '../../../../../lib/category-content';
 import { auditCategories, type AuditDemand } from '../../../../../lib/seo/category-audit';
@@ -11,10 +10,11 @@ import type { PricedProduct } from '../../../../../lib/seo/guide-prices';
 import { loadProductQueue } from '../../../../../lib/seo/product-gaps';
 import CategoryEditor, { type EditorContent } from './CategoryEditor';
 import { requireStaffPage } from '../../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 type ProductRow = { sku: string; name: string; brand: string | null; volume: string | null; category_slug: string | null; stock: { price_retail: number | null; price_promo: number | null } | null };
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { cancelDebtAdjustment, listDebtAdjustments } from '../../../../../../lib/accounting/debt-adjustment';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -1,4 +1,4 @@
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 import { recordTxn } from './money';
 import { createPaymentVoucher, resolveSaleDebitParty } from './documents';
 import { isSpecialDebtor } from './sale-party';

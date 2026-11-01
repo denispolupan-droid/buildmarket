@@ -1,18 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { loadVidatkova, vidatkovaRenderParams } from '../../../lib/vidatkova-doc';
 import VidatkovaNakladna from './VidatkovaNakladna';
+import { createServiceClient } from '../../../lib/supabase-service';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function VidatkovaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

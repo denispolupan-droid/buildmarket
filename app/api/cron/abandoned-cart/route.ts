@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildAbandonedCartEmail, getAbandonedCartSubject } from '../../../../lib/abandoned-cart-email';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
+import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 
-const admin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const admin = createServiceClient();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = 'FIXLINE <noreply@fixline.com.ua>';
@@ -55,7 +52,7 @@ async function sendReminder(cart: CartRow, step: 1 | 2 | 3, field: string): Prom
   }
   await admin
     .from('abandoned_carts')
-    .update({ [field]: new Date().toISOString() })
+    .update({ [field]: new Date().toISOString() } as TableUpdate<'abandoned_carts'>)
     .eq('id', cart.id);
   return true;
 }

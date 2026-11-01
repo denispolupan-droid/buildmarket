@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, asJson } from '../../../../../../lib/supabase';
+import { createServiceClient, asJson } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 
 const BUCKET = 'procurement-docs';

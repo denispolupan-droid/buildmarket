@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient, asJson } from './supabase-service';
 
 /**
  * Журнал SEO-дій: що робили зі сторінкою, коли і скільки це коштувало.
@@ -21,10 +21,7 @@ export type SeoActionKind =
   | 'article_categories'
   | 'category_content';
 
-const db = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = () => createServiceClient();
 
 /**
  * Шлях без домену й мовного префікса: /ru/blog/x → /blog/x.
@@ -54,7 +51,7 @@ export async function logSeoAction(entry: {
       page_path: normalizePagePath(entry.page),
       action: entry.action,
       query: entry.query?.trim() || null,
-      meta: entry.meta ?? {},
+      meta: asJson(entry.meta ?? {}),
       created_by: entry.by ?? null,
       cost_usd: entry.cost ?? null,
     });

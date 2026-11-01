@@ -1,12 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import DispatchClient from './DispatchClient';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function DispatchPage() {
   const supabase = await createSupabaseServer();
@@ -21,5 +19,5 @@ export default async function DispatchPage() {
     .order('created_at', { ascending: false })
     .limit(200);
 
-  return <DispatchClient orders={orders ?? []} />;
+  return <DispatchClient orders={(orders ?? []) as ComponentProps<typeof DispatchClient>['orders']} />;
 }

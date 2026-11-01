@@ -1,11 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { requireCustomerPage } from '../../../lib/auth-guard';
 import { Rss } from 'lucide-react';
+import { createServiceClient } from '../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export default async function FeedPage() {
   const user = await requireCustomerPage('dropship');

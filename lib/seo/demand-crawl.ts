@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../db-paginate';
 import { getCategoryNameRu } from '../ru';
 import { queryAll } from '../gsc';
+import { createServiceClient } from '../supabase-service';
 
 /**
  * Обхід автопідказок Google по темах категорій — джерело «невидимого попиту»
@@ -59,7 +59,7 @@ export async function suggest(q: string, hl: 'uk' | 'ru'): Promise<string[]> {
   try { return (JSON.parse(text)[1] as string[]) ?? []; } catch { return []; }
 }
 
-const db = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = () => createServiceClient();
 
 /** Насіння категорії: назва в однині-ключі — «Силіконові герметики» → «силіконовий герметик» Google і так підкаже. Беремо назву як є, нижнім регістром. */
 function seedOf(name: string): string {
@@ -74,8 +74,8 @@ type Cat = { slug: string; name: string; parent_slug: string | null };
 async function buildCoverage(client: ReturnType<typeof db>): Promise<{ cats: Cat[]; coveredBy: (phrase: string) => string | null }> {
   const [cats, posts, content] = await Promise.all([
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) => client.from('categories').select('slug, name, parent_slug').order('id').range(f, t)),
-    fetchAllRows<{ slug: string; title: string; title_ru: string | null; faq: { q: string }[] | null; faq_ru: { q: string }[] | null }>((f, t) => client.from('blog_posts').select('slug, title, title_ru, faq, faq_ru').eq('is_published', true).order('id').range(f, t)),
-    fetchAllRows<{ slug: string; lang: string; faq: { q: string }[] | null; guide: { title: string; sections: { h: string }[] } | null }>((f, t) => client.from('category_content').select('slug, lang, faq, guide').order('slug').order('lang').range(f, t)),
+    (fetchAllRows((f, t) => client.from('blog_posts').select('slug, title, title_ru, faq, faq_ru').eq('is_published', true).order('id').range(f, t)) as Promise<({ slug: string; title: string; title_ru: string | null; faq: { q: string }[] | null; faq_ru: { q: string }[] | null })[]>),
+    (fetchAllRows((f, t) => client.from('category_content').select('slug, lang, faq, guide').order('slug').order('lang').range(f, t)) as Promise<({ slug: string; lang: string; faq: { q: string }[] | null; guide: { title: string; sections: { h: string }[] } | null })[]>),
   ]);
   // Індекс нашого контенту: набір основ → шлях
   const docs: { path: string; stems: Set<string> }[] = [];
@@ -104,7 +104,7 @@ async function buildCoverage(client: ReturnType<typeof db>): Promise<{ cats: Cat
 export async function refreshCoverage(): Promise<{ rows: number; covered: number; changed: number }> {
   const client = db();
   const { coveredBy } = await buildCoverage(client);
-  const rows = await fetchAllRows<{ phrase: string; lang: 'uk' | 'ru'; covered_path: string | null }>((f, t) => client.from('search_demand').select('phrase, lang, covered_path').order('phrase').order('lang').range(f, t));
+  const rows = await (fetchAllRows((f, t) => client.from('search_demand').select('phrase, lang, covered_path').order('phrase').order('lang').range(f, t)) as Promise<({ phrase: string; lang: 'uk' | 'ru'; covered_path: string | null })[]>);
   const updates = rows.map(r => ({ ...r, next: coveredBy(r.phrase) })).filter(r => r.next !== r.covered_path);
   for (const u of updates) {
     const { error } = await client.from('search_demand').update({ covered_path: u.next }).eq('phrase', u.phrase).eq('lang', u.lang);

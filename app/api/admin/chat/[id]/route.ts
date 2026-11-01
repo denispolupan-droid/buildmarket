@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 // Тред чату сайту для правої панелі розділу «Чати». Відкриття — це перегляд:
 // лічильник непрочитаних обнуляємо тут, як робила колишня окрема сторінка.

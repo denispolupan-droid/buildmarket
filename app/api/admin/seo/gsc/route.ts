@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { dateWindow, getPages, getQueries, type GscPageRow, type GscQueryRow } from '../../../../../lib/gsc';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;

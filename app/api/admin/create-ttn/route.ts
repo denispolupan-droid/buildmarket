@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import { syncDraftShipmentTracking } from '../../../../lib/accounting/completion';
 import { numOrNull, type TtnSnapshot } from '../../../../lib/ttn-snapshot';
 import {
@@ -9,13 +8,11 @@ import {
 } from '../../../../lib/np-address';
 import { legalRecipientFromCustomer, taxNumberLabel } from '../../../../lib/np-legal-recipient';
 import { withNpRetry } from '../../../../lib/np-retry';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // Кілька викликів поспіль (місто, контрагент, адреса, ЕН) впираються в ліміт
 // НП «To many requests» — повторюємо з паузою (lib/np-retry), інакше накладна

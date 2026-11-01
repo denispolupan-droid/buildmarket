@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { alertAdmin } from '../../../../lib/alert';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getRozetkaContentChanges, getRozetkaGoods, buildContentSummary } from '../../../../lib/rozetka-content';
 import { diffModeration, buildWatchAlert, type StoredState } from '../../../../lib/rozetka-moderation-watch';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
 
 /**

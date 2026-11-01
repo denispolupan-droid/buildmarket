@@ -1,14 +1,12 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
-import { createClient } from '@supabase/supabase-js';
 import RozetkaAuditClient from './RozetkaAuditClient';
+import { createServiceClient } from '../../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
 export const metadata = { title: 'Аудит назв Rozetka — Адмін' };
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function RozetkaAuditPage() {
   const supabase = await createSupabaseServer();
@@ -29,7 +27,7 @@ export default async function RozetkaAuditPage() {
 
   return (
     <RozetkaAuditClient
-      products={products ?? []}
+      products={(products ?? []) as ComponentProps<typeof RozetkaAuditClient>['products']}
       categories={categories ?? []}
     />
   );

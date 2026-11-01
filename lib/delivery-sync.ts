@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { parseNpDateTime } from './np-datetime';
 import { notifyCustomerStatus } from './telegram';
 import { setRozetkaOrderStatus, getRozetkaOrderStatusInfo } from './rozetka-api';
@@ -25,6 +24,7 @@ async function markDelivered(orderId: string, actor: string): Promise<boolean> {
 }
 import { notifyParcelEvent } from './notify/parcel';
 import { chargeDropshipReturnFee } from './dropship-return-fee';
+import { createServiceClient, type TableUpdate } from './supabase-service';
 
 // Синхронізація руху посилок (НП + точки видачі Rozetka) і супутні проводки.
 // Живе в lib, а не в роуті крона, бо викликається З ДВОХ місць: щогодинний крон
@@ -33,10 +33,7 @@ import { chargeDropshipReturnFee } from './dropship-return-fee';
 // але не проводила РН — звідси порушення інваріанта I7 (доставлені замовлення без
 // проведеної видаткової) на #26081005/#26081006/#26081008.
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // NP status codes that mean the parcel was delivered to recipient
 const DELIVERED_CODES = new Set(['9', '10', '11']);
@@ -434,7 +431,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       patch.carrier_accepted_at = new Date().toISOString();
       accepted++;
     }
-    await serviceClient.from('orders').update(patch).eq('id', o.id);
+    await serviceClient.from('orders').update(patch as TableUpdate<'orders'>).eq('id', o.id);
 
     const info = own;
     const phase = rozetkaDeliveryPhase(info.status);
@@ -462,7 +459,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
     // Rozetka веде статус лише по замовленню, з якого виписана накладна, тож
     // без цього кроку «сусіди» висіли б у «Відвантажено» назавжди.
     const siblings = rzOrders.filter(s =>
-      s.id !== o.id && s.tracking_number === o.tracking_number && !['cancelled', 'delivered'].includes(s.status));
+      s.id !== o.id && s.tracking_number === o.tracking_number && !['cancelled', 'delivered'].includes(s.status as string));
     for (const s of siblings) {
       if (!(await salesPostedOrAlert(s))) continue;
       if (!(await markDelivered(s.id, actor))) continue;
@@ -502,7 +499,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
           patch.carrier_accepted_at = now;
           accepted++;
         }
-        await serviceClient.from('orders').update(patch).eq('id', o.id);
+        await serviceClient.from('orders').update(patch as TableUpdate<'orders'>).eq('id', o.id);
 
         // Скасовані відстежуємо лише заради тексту: посилка їде назад, і жодних
         // проводок по ній бути не може.

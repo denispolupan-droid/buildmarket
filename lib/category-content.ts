@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
 import { unstable_cache } from 'next/cache';
 import type { CategoryMeta, CategoryFaq, CategoryGuide, CategoryRelated } from './category-descriptions';
 import type { Category, ProductStockPublic } from '../types';
 import { categoryFamilySlugs, retailPrice } from './seo/meta';
 import { resolveGuidePrices } from './seo/guide-prices';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Контент категорій (опис, seoText, FAQ, гайд «Як вибрати», «Дивіться також»)
@@ -36,7 +36,7 @@ export type CategoryContentRow = {
 
 export const CATEGORY_CONTENT_TAG = 'category-content';
 
-const db = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = () => createServiceClient();
 
 export function rowToMeta(r: CategoryContentRow): CategoryMeta {
   return {

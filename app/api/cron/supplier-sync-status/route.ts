@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 // «Dead man's switch» для синку постачальників: перевіряє, що ціни/залишки нещодавно
 // оновлювались. Синк ходить кожні 2 години (sync-suppliers.yml); якщо останній запуск
@@ -9,10 +9,7 @@ import { cronAuthorized } from '../../../../lib/cron-auth';
 // сайт показує застарілі ціни. Крутиться на проді зі своїм service-role — prod-ключі в CI
 // не потрібні. Дьоргається з health-check за CRON_SECRET; при застряганні алерт у Telegram.
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 const STALE_HOURS = 6;
 

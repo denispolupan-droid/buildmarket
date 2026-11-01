@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { redirect } from 'next/navigation';
@@ -7,13 +6,11 @@ import FinanceTabs from '../FinanceTabs';
 import ReportsClient, { type PLData, type CFData } from './ReportsClient';
 import { computePL } from '../../../../lib/accounting/profit';
 import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function ReportsPage({
   searchParams,

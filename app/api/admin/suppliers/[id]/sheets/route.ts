@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createClient } from '@supabase/supabase-js';
 import { assertPublicUrl } from '../../../../../../lib/safe-fetch-url';
 import * as XLSX from 'xlsx';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
@@ -16,7 +13,7 @@ async function checkAdmin() {
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { id } = await params;
+  const id = Number((await params).id);
 
   const { data: supplier } = await serviceClient
     .from('suppliers')

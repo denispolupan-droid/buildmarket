@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from './fetch-timeout';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Google Ads API: витрати кампаній по днях → таблиця ads_spend (міграція 109)
@@ -24,7 +24,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const API_VERSIONS = ['v25', 'v24', 'v23', 'v22'];
 
-const db = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = () => createServiceClient();
 
 async function settings(keys: string[]): Promise<Record<string, string>> {
   const { data, error } = await db().from('app_settings').select('key, value').in('key', keys);
@@ -265,7 +265,7 @@ export async function uploadOrderConversions(): Promise<ConversionsResult> {
   if (lErr) throw lErr;
   const log = new Map((logged ?? []).map(l => [l.order_id as string, l]));
 
-  const toUpload = (orders ?? []).filter(o => CONVERTED_STATUSES.includes(o.status) && !log.get(o.id)?.uploaded_at);
+  const toUpload = (orders ?? []).filter(o => CONVERTED_STATUSES.includes(o.status as string) && !log.get(o.id)?.uploaded_at);
   const toRetract = (orders ?? []).filter(o => o.status === 'cancelled' && log.get(o.id)?.uploaded_at && !log.get(o.id)?.retracted_at);
   const result: ConversionsResult = { candidates: toUpload.length + toRetract.length, uploaded: 0, retracted: 0, failed: 0, action: '' };
   if (result.candidates === 0) return result;
@@ -279,7 +279,7 @@ export async function uploadOrderConversions(): Promise<ConversionsResult> {
       conversions: toUpload.map(o => ({
         gclid: o.gclid,
         conversionAction: resourceName,
-        conversionDateTime: adsDateTime(o.created_at),
+        conversionDateTime: adsDateTime(o.created_at as string),
         conversionValue: Number(o.total_price ?? 0),
         currencyCode: 'UAH',
         orderId: String(o.order_number),
@@ -291,8 +291,8 @@ export async function uploadOrderConversions(): Promise<ConversionsResult> {
       const err = errs.get(i) ?? errs.get(-1);
       if (err) result.failed++; else result.uploaded++;
       return {
-        order_id: o.id, order_number: o.order_number, gclid: o.gclid, conversion_action: resourceName,
-        value: Number(o.total_price ?? 0), currency: 'UAH', conversion_time: o.created_at,
+        order_id: o.id, order_number: o.order_number, gclid: o.gclid as string, conversion_action: resourceName,
+        value: Number(o.total_price ?? 0), currency: 'UAH', conversion_time: o.created_at as string,
         uploaded_at: err ? null : now, error: err ?? null, updated_at: now,
       };
     });
@@ -306,7 +306,7 @@ export async function uploadOrderConversions(): Promise<ConversionsResult> {
         conversionAction: resourceName,
         adjustmentType: 'RETRACTION',
         adjustmentDateTime: adsDateTime(now),
-        gclidDateTimePair: { gclid: o.gclid, conversionDateTime: adsDateTime(o.created_at) },
+        gclidDateTimePair: { gclid: o.gclid, conversionDateTime: adsDateTime(o.created_at as string) },
         orderId: String(o.order_number),
       })),
       partialFailure: true,

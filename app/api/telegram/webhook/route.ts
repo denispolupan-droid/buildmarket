@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { sendTelegram, answerCallbackQuery } from '../../../../lib/telegram';
 import { parseDraftCallback } from '../../../../lib/marketplace-chat-telegram-rules';
 import { sendDraftFromTelegram, discardDraftFromTelegram, reviseDraftFromTelegram } from '../../../../lib/marketplace-chat-telegram';
 import { normalizeInstruction } from '../../../../lib/marketplace-chat-draft-rules';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 // Переписування чернетки (агент з інструментами) займає 10–40 с — виконуємо
 // в after(), щоб Telegram отримав 200 одразу і не повторював запит.
 export const maxDuration = 120;
 
-const admin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const admin = createServiceClient();
 
 const PAYMENT_UA: Record<string, string> = {
   cod: 'Накладений платіж',
@@ -90,7 +87,7 @@ export async function POST(req: NextRequest) {
 
     // Build items list
     const items: Array<{ name: string; brand: string; qty: number; price: number }> =
-      Array.isArray(order.items) ? order.items : [];
+      Array.isArray(order.items) ? order.items as unknown as Array<{ name: string; brand: string; qty: number; price: number }> : [];
     const itemLines = items
       .map(i => `▪️ ${i.brand} ${i.name} × ${i.qty} — ${(i.price * i.qty).toFixed(0)} ₴`)
       .join('\n');

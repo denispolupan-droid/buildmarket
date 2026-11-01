@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { requireStaff } from '../../../../lib/auth-guard';

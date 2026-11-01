@@ -10,7 +10,7 @@
  * спокійно зберегти документ, а ми — побачити проблему в логах.
  */
 
-import { asJson, createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase-service';
 import { alertAdmin } from '../alert';
 import { evaluateSaleEdit, type SaleEditIssue, type SaleEditSource, type SaleEditVerdict } from './sale-edit-guard';
 

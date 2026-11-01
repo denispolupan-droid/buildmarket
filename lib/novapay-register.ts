@@ -13,7 +13,7 @@
  * (термінал / рахунок): їх зіставляємо за покупцем і сумою (10 600 по #26091174
  * прийшли двома платежами 5 840 + 4 760).
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';
 import { fetchAllRows } from './db-paginate';

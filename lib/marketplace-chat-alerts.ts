@@ -6,7 +6,7 @@
  * «Надіслати як є», а дедуплікуються по вхідному повідомленню, не по
  * лічильниках кабінету.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { getRozetkaReviewCounts } from './rozetka-api';
 import { alertAdmin } from './alert';
 

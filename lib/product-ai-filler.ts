@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { generateMpUA, translateMpRU } from './marketplace-description-gen';
 import { isMpDescriptionClean } from './marketplace-description';
 import {
@@ -6,6 +5,7 @@ import {
   type GenProduct, type GeneratedRU, type CategoryLabelSpec,
 } from './product-content-gen';
 import { CostSink } from './ai-cost';
+import { createServiceClient } from './supabase-service';
 
 // Кнопка «AI заповнення» в картці товару — ДРУГИЙ вхід у той самий рушій
 // генерації (lib/product-content-gen), що й розділ SEO. Тут — паралельний пул +
@@ -15,10 +15,7 @@ import { CostSink } from './ai-cost';
 // дозаповнюються лише якщо порожні.
 
 function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 export type AiFillEvent =

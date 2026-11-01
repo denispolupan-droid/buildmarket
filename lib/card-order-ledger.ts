@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { recordCustomerPayment } from './accounting/money';
 import { resolveSaleDebitParty } from './accounting/documents';
 import { isSpecialDebtor } from './accounting/sale-party';

@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { withNpRetry } from '../../../../lib/np-retry';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // Викликається при відкритті модалки ТТН одночасно з довідниковими запитами —
 // разом вони впираються в ліміт НП, тому повтор при «To many requests» (lib/np-retry)

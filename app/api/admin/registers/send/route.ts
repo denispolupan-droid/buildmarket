@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { createClient } from '@supabase/supabase-js';
 import { npScanSheetPdf } from '../../../../../lib/np-api';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 async function getNpApiKey() {
   const { data } = await serviceClient.from('app_settings').select('key, value').eq('key', 'np_api_key');

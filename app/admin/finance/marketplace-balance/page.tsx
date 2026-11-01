@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
@@ -6,8 +5,9 @@ import MarketplaceBalanceClient from './MarketplaceBalanceClient';
 import { loadInTransitCommission } from '../../../../lib/accounting/marketplace-transit';
 import { getRzPayCreds } from '../../../../lib/rozetkapay-api';
 import RozetkaPayKeysCard from './RozetkaPayKeysCard';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 // Логіка комісій «в дорозі» — у lib/accounting/marketplace-transit (спільна з «Оглядом»)
 export type { InTransitItem, InTransit } from '../../../../lib/accounting/marketplace-transit';

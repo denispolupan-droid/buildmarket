@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import { createClient } from '@supabase/supabase-js';
 import { requireCustomer } from '../../../../../lib/auth-guard';
 import { DROPSHIP_MIN } from '../../../../../lib/site';
 import { getDropshipCustomer, loadDropshipCatalog } from '../../../../../lib/dropship-order-create';
 import { validateDropshipLine, dropshipParcelKey } from '../../../../../lib/dropship-order';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 // xlsx (SheetJS 0.18.x) має відомі CVE при парсингу недовірених файлів; обмежуємо розмір,
 // щоб зняти вектор zip-bomb / OOM від завантажень партнерів.
@@ -13,10 +13,7 @@ const MAX_ROWS = 300;
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // Ключ НП — той самий пріоритет, що в адмінці: app_settings, потім env.
 async function npApiKey(): Promise<string> {

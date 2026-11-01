@@ -22,7 +22,7 @@
  * проводки) — тригер fn_update_partner_balance править customers.balance, і
  * кабінет партнера бачить зміну одразу. Скасування — зворотний рядок.
  */
-import { asJson, createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase-service';
 import { fetchAllRows } from '../db-paginate';
 import { isSpecialDebtor, SPECIAL_DEBTOR_LABEL } from './sale-party';
 import { settlementFor, type SettlementEntry } from './order-settlement';

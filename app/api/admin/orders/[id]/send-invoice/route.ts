@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { Resend } from 'resend';
 import { buildInvoiceHtml, orderMarketplace } from '../../../../../../lib/invoice-html';
 import { buildInvoicePdf } from '../../../../../../lib/invoice-pdf';

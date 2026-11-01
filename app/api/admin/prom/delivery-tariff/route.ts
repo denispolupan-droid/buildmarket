@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { getPromDeliveryTariff, PROM_DELIVERY_TARIFF_KEY, type PromDeliveryBracket } from '../../../../../lib/prom-delivery';
 
 // Тариф «дешевої доставки» Prom (адмінка → Prom → Комісії → «Дешева доставка»).

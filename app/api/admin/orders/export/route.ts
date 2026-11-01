@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { kyivDayBounds } from '../../../../../lib/kyiv-date';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 const STATUS_LABELS: Record<string, string> = {
   new: 'Нове', confirmed: 'Підтверджено', awaiting_stock: 'Очікує товар',
@@ -45,9 +42,9 @@ export async function GET(req: NextRequest) {
     const items = (o.items ?? []) as { name?: string; qty?: number; price?: number }[];
     return {
       '№ замовлення':   o.order_number,
-      'Дата':           new Date(o.created_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' }),
-      'Час':            new Date(o.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }),
-      'Статус':         STATUS_LABELS[o.status] ?? o.status,
+      'Дата':           new Date(o.created_at as string).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' }),
+      'Час':            new Date(o.created_at as string).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }),
+      'Статус':         STATUS_LABELS[o.status as string] ?? o.status,
       'Клієнт':         o.contact ?? '',
       'Компанія':       o.company ?? '',
       'Телефон':        o.phone ?? '',
@@ -56,7 +53,8 @@ export async function GET(req: NextRequest) {
       'Спосіб оплати':  PAYMENT_LABELS[o.payment_type ?? ''] ?? (o.payment_type ?? ''),
       'Оплата підтв.':  o.payment_confirmed ? 'Так' : 'Ні',
       'Тип доставки':   o.delivery_type ?? '',
-      'Місто':          o.city ?? '',
+      // Було o.city — такої колонки немає, «Місто» в експорті завжди було порожнім (типи, 01.11.2026)
+      'Місто':          o.delivery_city_name ?? '',
       'Адреса/відд.':   o.delivery_address ?? '',
       'ТТН':            o.tracking_number ?? '',
       'Товарів':        items.length,

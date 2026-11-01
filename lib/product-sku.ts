@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 
 /**
  * Наступний SKU для нової картки: домінантний префікс категорії + наступний

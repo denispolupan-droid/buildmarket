@@ -12,7 +12,7 @@
  * ключ, навіть якщо в ньому колись знайдеться дірка.
  */
 import { fetchWithTimeout } from './fetch-timeout';
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import {
   RZ_API_URL, RZ_CARRIER_ROZETKA, rzErrorText, rzCodAmount,
   type RzCity, type RzDepartment, type RzValidationDetail,

@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect, notFound } from 'next/navigation';
 import ProcurementDetail from './ProcurementDetail';
@@ -7,8 +6,10 @@ import AdditionalReceiptButton from './AdditionalReceiptButton';
 import AdjustmentButton from './AdjustmentButton';
 import EditDraftButton from './EditDraftButton';
 import { procurementPaymentOr } from '../../../../lib/accounting/procurement-payments';
+import { createServiceClient } from '../../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 export default async function ProcurementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -61,11 +62,11 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
   }
 
   // Нові позиції з коригувань (не в оригінальних рядках PO)
-  const originalSkus = new Set((lines ?? []).map((l: { sku: string }) => l.sku));
+  const originalSkus = new Set((lines ?? []).map((l) => l.sku));
   const newAdjSkus   = [...new Set(Object.keys(adjDeltaMap).filter(sku => !originalSkus.has(sku)))];
 
   // Назви товарів (оригінальні + нові з коригувань)
-  const allSkus = [...(lines ?? []).map((l: { sku: string }) => l.sku), ...newAdjSkus].filter(Boolean);
+  const allSkus = [...(lines ?? []).map((l) => l.sku), ...newAdjSkus].filter(Boolean);
   const { data: products } = allSkus.length
     ? await db.from('products').select('sku, name, brand').in('sku', allSkus)
     : { data: [] };
@@ -121,7 +122,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     receipt_doc_number: (receiptDocs ?? [])[0]?.doc_number ?? null,
     lines: [
       // Оригінальні рядки PO
-      ...(lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({
+      ...(lines ?? []).map((l) => ({
         ...l,
         name:         nameMap.get(l.sku)?.name  ?? '',
         brand:        nameMap.get(l.sku)?.brand ?? '',
@@ -152,7 +153,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     })),
   };
 
-  const poLines = (lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
+  const poLines = (lines ?? []).map((l) => ({
     sku:        l.sku,
     qty:        l.qty,
     cost_price: Number(l.cost_price ?? 0),
@@ -241,8 +242,8 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
   });
 
   return <ProcurementDetail
-    po={po}
-    customerOrder={customerOrder ?? null}
+    po={(po) as ComponentProps<typeof ProcurementDetail>['po']}
+    customerOrder={(customerOrder ?? null) as ComponentProps<typeof ProcurementDetail>['customerOrder']}
     events={events}
     paymentHistory={paymentHistory}
     totalPaid={totalPaid}
@@ -259,7 +260,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
           supplierName={po.supplier_name ?? ''}
           expectedDate={po.expected_date ?? ''}
           notes={po.notes ?? ''}
-          lines={(lines ?? []).map((l: { sku: string; qty: number; cost_price: number; id: number }) => ({
+          lines={(lines ?? []).map((l) => ({
             sku:        l.sku,
             name:       nameMap.get(l.sku)?.name  ?? '',
             brand:      nameMap.get(l.sku)?.brand ?? '',

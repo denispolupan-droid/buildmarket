@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ShoppingCart, Truck, Coins, Receipt, AlertTriangle } from 'lucide-react';
@@ -9,15 +8,14 @@ import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
 import { MonthBars, TrendBadge } from './overview-charts';
 import { requireStaffPage } from '../../../lib/auth-guard';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
 // «Огляд» — перший екран фінансів у стилі BI (Stripe/Metabase): KPI з
 // порівнянням до попереднього періоду, воронка, динаміка, action-центр.
 // Уся арифметика — в overview-data.ts (сервер, ті самі джерела, що звіти).
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +65,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             Операційний центр: факт з обліку, воронка і борги — одним екраном
           </p>
         </div>
-        <FinanceActions contracts={contractsForDrawer} />
+        <FinanceActions contracts={(contractsForDrawer) as ComponentProps<typeof FinanceActions>['contracts']} />
       </div>
 
       <FinanceTabs />

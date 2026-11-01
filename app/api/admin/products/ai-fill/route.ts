@@ -2,12 +2,9 @@ import { NextRequest } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fillProducts } from '../../../../../lib/product-ai-filler';
 import { logSeoAction } from '../../../../../lib/seo-actions';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export const runtime     = 'nodejs';
 export const maxDuration = 300;

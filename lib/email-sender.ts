@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 
 // Єдина логіка вибору відправника для листів постачальникам (замовлення покупця
 // та закупівлі). Список дозволених адрес — основний (orders_from_*) + додаткові

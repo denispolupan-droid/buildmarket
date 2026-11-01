@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { getRozetkaChats } from './rozetka-api';
 import { getPromChatRooms } from './prom-api';
 import { loadChatSeen, isChatUnread, markChatSeen, type MarketplaceId } from './marketplace-chat-seen';

@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 // Прохання про відгук після доставки (SEO: зірки AggregateRating у видачі).
 // Одне-єдине письмо на замовлення, тільки реальним покупцям, через 5+ днів
 // після доставки — товар уже випробуваний.
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = 'FIXLINE <noreply@fixline.com.ua>';

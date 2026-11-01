@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 import { notifyCustomer } from './send';
 import { notifyCustomerStatus } from '../telegram';
 import { buildCustomerStatusEmail } from '../invoice-email';

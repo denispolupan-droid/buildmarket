@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../lib/supabase';
+import { createServiceClient } from '../../../../lib/supabase-service';
 import { fetchAndIngestMonoStatement, postPendingAcquiringSettlements } from '../../../../lib/mono-ingest';
 import { allocateRzPayPayouts } from '../../../../lib/rozetkapay-allocate';
 import { alertAdmin } from '../../../../lib/alert';

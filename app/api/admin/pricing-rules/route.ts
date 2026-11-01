@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { computeMarketplacePrice, type PricingRule, type PriceTarget } from '../../../../lib/pricing-rules';
 import { rozetkaPrice, promPrice, promCommissionOf, type PromPlan } from '../../../../lib/marketplace-pricing';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
+import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 type Marketplace = 'rozetka' | 'prom';
 
@@ -159,7 +156,7 @@ export async function PATCH(req: NextRequest) {
   }
   if ('note' in body) update.note = String(body.note ?? '').slice(0, 300);
 
-  const { error } = await serviceClient.from('pricing_rules').update(update).eq('id', id);
+  const { error } = await serviceClient.from('pricing_rules').update(update as TableUpdate<'pricing_rules'>).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

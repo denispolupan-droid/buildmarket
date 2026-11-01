@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { alertAdmin } from '../../../../lib/alert';
 import { findSaleDivergences, type SaleDivergence } from '../../../../lib/accounting/reconcile-sale-docs';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
 // Перевірка інваріантів обліку на БОЙОВІЙ базі (той самий check_invariants, що ганяється
 // в тестах). Виконується на проді, де вже є service-role креденшели — не потрібно класти
 // prod-ключі в GitHub. Дьоргається щоденно з GitHub Actions за CRON_SECRET.
 // Якщо якийсь інваріант порушено (розійшлись баланси/залишки) — алерт у Telegram.
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');

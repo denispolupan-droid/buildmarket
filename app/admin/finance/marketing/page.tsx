@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 // Звідки прийшли замовлення сайту й що вони принесли.
 //
@@ -101,7 +101,7 @@ export default async function MarketingPage({
   const profitByOrder = new Map<string, number>();
   for (const d of (docs ?? [])) {
     const gp = profitByDoc.get(d.id) ?? 0;
-    profitByOrder.set(d.order_id, (profitByOrder.get(d.order_id) ?? 0) + gp);
+    profitByOrder.set(d.order_id as string, (profitByOrder.get(d.order_id as string) ?? 0) + gp);
   }
 
   // ── 3. Групування ────────────────────────────────────────────────────────

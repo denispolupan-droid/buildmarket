@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { alertAdmin } from './alert';
 import { jwtSecondsLeft } from './novapay-jwt';
 import { parseNovapayRegisterPayouts, type NovapayRegisterPayout } from './novapay-statement';

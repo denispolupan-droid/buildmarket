@@ -1,12 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import ContractsClient from './ContractsClient';
+import { createServiceClient } from '../../../lib/supabase-service';
+import type { ComponentProps } from 'react';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const db = createServiceClient();
 
 export default async function ContractsPage() {
   const supabase = await createSupabaseServer();
@@ -37,5 +35,5 @@ export default async function ContractsPage() {
     customer_number: customerNumMap.get(c.customer_id) ?? null,
   }));
 
-  return <ContractsClient initialContracts={enriched} />;
+  return <ContractsClient initialContracts={(enriched) as ComponentProps<typeof ContractsClient>['initialContracts']} />;
 }

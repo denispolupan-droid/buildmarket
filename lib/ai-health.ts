@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { alertAdmin } from './alert';
 import { AI_OUTAGE_ALERT_EVERY_MS, aiOutageMessage, classifyAiError, needsOwnerAction, type AiFailureKind } from './ai-health-rules';
 

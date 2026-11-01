@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
 import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
-const db     = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db     = createServiceClient();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {

@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -6,8 +5,9 @@ import { ExternalLink } from 'lucide-react';
 import FinanceTabs from '../FinanceTabs';
 import AddExpenseButton from './AddExpenseButton';
 import AddTransferButton from './AddTransferButton';
+import { createServiceClient } from '../../../../lib/supabase-service';
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const db = createServiceClient();
 
 const EXPENSE_LABELS: Record<string, string> = {
   logistics:       'Доставка',

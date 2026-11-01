@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { getMarketplaceBalance } from '../../../../../../lib/accounting/money';
 import { parsePromStatement, summarizePromStatement, type PromStatementRow } from '../../../../../../lib/prom-statement';
 

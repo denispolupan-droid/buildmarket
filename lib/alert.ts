@@ -1,3 +1,4 @@
+import { createServiceClient } from './supabase-service';
 // Серверні алерти адміну в Telegram (той самий бот, що надсилає повідомлення про замовлення).
 // Використовуй у catch-блоках критичних шляхів (оплата, збереження замовлення, синки), щоб
 // про серверну помилку одразу приходило повідомлення в Telegram, а не лягало мовчки в логи
@@ -10,7 +11,6 @@
 //
 // Тільки серверний код (використовує TELEGRAM_BOT_TOKEN — не NEXT_PUBLIC).
 
-import { createClient } from '@supabase/supabase-js';
 
 const THROTTLE_MS = 30 * 60 * 1000;
 
@@ -20,10 +20,7 @@ function esc(s: string): string {
 
 async function shouldSendTelegram(title: string): Promise<boolean> {
   try {
-    const db = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const db = createServiceClient();
     const { data } = await db.from('alert_throttle').select('last_sent_at').eq('title', title).maybeSingle();
     if (data?.last_sent_at && Date.now() - new Date(data.last_sent_at).getTime() < THROTTLE_MS) {
       return false;

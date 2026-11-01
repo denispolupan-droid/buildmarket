@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { createDocument, confirmDocument, maybeAutoClose } from '../../../../../../lib/accounting/documents';
 import { transitionOrder } from '../../../../../../lib/orders/status';
 import { requireStaff } from '../../../../../../lib/auth-guard';

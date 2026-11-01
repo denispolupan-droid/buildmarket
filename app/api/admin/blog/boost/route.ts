@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { boostBlogPost } from '../../../../../lib/blog-generator';
 import { logSeoAction } from '../../../../../lib/seo-actions';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // Слова запиту, за якими шукаємо наявну статтю. Короткі («як», «для», «на»)
 // відкидаємо — вони дають випадкові збіги.

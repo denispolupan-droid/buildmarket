@@ -1,4 +1,4 @@
-import { createServiceClient } from '../supabase';
+import { createServiceClient } from '../supabase-service';
 import { alertAdmin } from '../alert';
 import { normalizePhone } from './phone';
 import { buildMessage, type NotifyEvent, type NotifyContext } from './templates';

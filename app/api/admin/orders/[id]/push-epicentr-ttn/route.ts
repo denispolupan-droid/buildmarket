@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
 
 // Ручний пуш ТТН в Епіцентр (кнопка в журналі, дзеркало push-prom-ttn). Після

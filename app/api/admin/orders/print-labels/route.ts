@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 import { getNpApiKey, npMarkingPdf } from '../../../../../lib/np-api';
 import { rzLabel } from '../../../../../lib/rz-delivery-api';
 import { getRozetkaDeliveryTtnPdf } from '../../../../../lib/rozetka-delivery-ttn';

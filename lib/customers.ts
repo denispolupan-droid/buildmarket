@@ -7,7 +7,7 @@
 //
 // Ніколи не кидає: довідник не має права зламати оформлення замовлення.
 
-import { createServiceClient, type Database } from './supabase';
+import { createServiceClient, type Database } from './supabase-service';
 
 export { normalizeCustomerPhone, phoneDigitVariants } from './phone-variants';
 import { normalizeCustomerPhone, phoneDigitVariants } from './phone-variants';

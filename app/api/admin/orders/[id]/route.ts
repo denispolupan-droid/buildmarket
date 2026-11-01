@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient, type TableUpdate, asJson } from '../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate, asJson } from '../../../../../lib/supabase-service';
 import { reverseDropshipLedgerExtras, syncSaleDraftLines } from '../../../../../lib/accounting/dropship';
 import { cancelDocument, resolveSaleDebitParty } from '../../../../../lib/accounting/documents';
 import { isSpecialDebtor } from '../../../../../lib/accounting/sale-party';

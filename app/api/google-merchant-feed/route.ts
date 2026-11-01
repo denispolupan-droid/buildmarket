@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { productDisplayName, variantBaseName } from '../../../lib/seo/meta';
 import { getCategoryNameRu } from '../../../lib/ru';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { googleProductCategoryId } from '../../../lib/google-product-category';
 import { shippingWeightKg } from '../../../lib/shipping-weight';
+import { createServiceClient } from '../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 const BASE_URL  = 'https://fixline.com.ua';
 // Мітка на посиланнях фіду. Без неї перехід із Shopping невідрізнити від будь-якого

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { buildCustomerOrderEmail, buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder, sendTelegram, escTg } from '../../../../lib/telegram';
@@ -13,13 +12,11 @@ import { getMonoAcquiringToken } from '../../../../lib/mono-config';
 import { notifyPaidCardOrder } from '../../../../lib/card-order-notify';
 import { recordCardOrderPayment } from '../../../../lib/card-order-ledger';
 import { buildStatusPatch } from '../../../../lib/orders/status';
+import { createServiceClient, type TableInsert, type TableUpdate } from '../../../../lib/supabase-service';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 // Cache the public key for the process lifetime (changes rarely)
 let _monoPubKey: string | null = null;
@@ -207,7 +204,7 @@ export async function POST(req: NextRequest) {
       // його й шукає, і при цьому не мало ні резерву, ні дзвінка — тобто
       // виглядало обробленим, не будучи ним.
       .insert({
-        ...draft.payload,
+        ...(draft.payload as unknown as TableInsert<'orders'>),
         payment_reference: reference,
         payment_confirmed: true,
         amount_paid: amountUah,
@@ -224,7 +221,7 @@ export async function POST(req: NextRequest) {
       }
       // Otherwise return 500 so Monobank retries; pending record is still intact
       console.error('[monobank webhook] order insert failed:', orderErr);
-      notifyAdminOrderFailed(reference, draft.email, amountUah, orderErr?.message ?? 'unknown');
+      notifyAdminOrderFailed(reference, draft.email as string, amountUah, orderErr?.message ?? 'unknown');
       return NextResponse.json({ error: 'order insert failed' }, { status: 500 });
     }
 
@@ -238,8 +235,8 @@ export async function POST(req: NextRequest) {
         `Оплачено ${amountUah}₴, а сума замовлення ${order.total_price}₴ — перевірте вручну!`);
     }
 
-    if (draft.payload?.promo_code) {
-      await serviceClient.rpc('increment_promo_used', { p_code: draft.payload.promo_code });
+    if ((draft.payload as { promo_code?: string } | null)?.promo_code) {
+      await serviceClient.rpc('increment_promo_used', { p_code: (draft.payload as { promo_code: string }).promo_code });
     }
 
     const invoiceUrl = `${siteUrl}/invoice/${order.id}`;
@@ -347,7 +344,7 @@ export async function POST(req: NextRequest) {
     const { data: order } = pending
       ? await serviceClient
           .from('orders')
-          .update(buildStatusPatch(pending, 'confirmed', 'webhook:monobank', 'monobank-webhook'))
+          .update(buildStatusPatch(pending, 'confirmed', 'webhook:monobank', 'monobank-webhook') as TableUpdate<'orders'>)
           .eq('id', orderId)
           .eq('status', 'pending_payment')
           .select('id, order_number, contact, company, phone, email, items, total_price, delivery_type, delivery_address, delivery_city_name, comment')
@@ -376,7 +373,7 @@ export async function POST(req: NextRequest) {
         html: buildAdminNotificationHtml({
           orderNumber: order.order_number, company: order.company ?? '',
           contact: order.contact, phone: order.phone, email: order.email,
-          items: order.items, totalPrice: order.total_price,
+          items: order.items as unknown as Parameters<typeof buildAdminNotificationHtml>[0]['items'], totalPrice: order.total_price,
           deliveryType: order.delivery_type, deliveryAddress: order.delivery_address ?? '',
           paymentType: 'card', comment: order.comment,
         }),

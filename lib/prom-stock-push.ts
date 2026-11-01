@@ -19,7 +19,7 @@
  * (PostgREST: column does not exist) і слав тіло {products: [...]}, на яке Prom
  * відповідає HTTP 200 «Ожидается список товаров» — пуш ніколи не спрацьовував.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { getPromProducts, updatePromProducts } from './prom-api';
 import { fetchAllRows } from './db-paginate';
 import { PROM_READY_TO_SHIP_KEY, promAvailability, readyToShipEnabled } from './prom-ready-to-ship';

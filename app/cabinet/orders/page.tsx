@@ -1,13 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { requireCustomerPage } from '../../../lib/auth-guard';
 import Link from 'next/link';
 import { Plus, ChevronRight } from 'lucide-react';
 import { cabinetOrderStatus } from '../../../lib/cabinet-order-status';
+import { createServiceClient } from '../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 
 export default async function CabinetOrdersPage() {
@@ -63,7 +60,7 @@ export default async function CabinetOrdersPage() {
                 >
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>#{order.order_number}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(order.created_at as string).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}</div>
                   </div>
                   <div style={{ paddingRight: '16px' }}>
                     {items.slice(0, 2).map((item, ii) => (

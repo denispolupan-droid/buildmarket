@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { recordTxn } from '../../../../../../lib/accounting/money';
 import { createPaymentVoucher, maybeAutoClose } from '../../../../../../lib/accounting/documents';
 import { procurementPaymentOr, netPaidToSupplier } from '../../../../../../lib/accounting/procurement-payments';

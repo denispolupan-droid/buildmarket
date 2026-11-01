@@ -2,20 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { after } from 'next/server';
 import { submitIndexNow } from '../../../../lib/indexnow';
-import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { generateBlogPost, sanitizeArticleHtml } from '../../../../lib/blog-generator';
 import { buildCovers } from '../../../../lib/blog-cover';
 import { logSeoAction } from '../../../../lib/seo-actions';
 import { refreshCoverage } from '../../../../lib/seo/demand-crawl';
+import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 function bustBlogCache() {
   revalidateTag('blog', 'max');
@@ -116,7 +113,7 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  const { error } = await serviceClient.from('blog_posts').update(update).eq('id', body.id);
+  const { error } = await serviceClient.from('blog_posts').update(update as TableUpdate<'blog_posts'>).eq('id', body.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   bustBlogCache();
   // Опублікована стаття закриває фрази в «Невидимому попиті» — перерахувати

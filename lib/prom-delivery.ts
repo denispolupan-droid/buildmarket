@@ -2,7 +2,7 @@
  * lib/prom-delivery.ts — серверна частина тарифу «дешевої доставки» Prom
  * (дзеркало lib/rozetka-smart.ts). Чисті функції — у lib/prom-delivery-fee.ts.
  */
-import { createServiceClient } from './supabase';
+import { createServiceClient } from './supabase-service';
 import { parsePromDeliveryTariff, PROM_DELIVERY_TARIFF_KEY, type PromDeliveryBracket } from './prom-delivery-fee';
 
 export * from './prom-delivery-fee';

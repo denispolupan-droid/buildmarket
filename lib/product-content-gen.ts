@@ -4,6 +4,7 @@ import { normalizeCharsDb, loadCharDictionary, facetSpecsFor, facetsToChars, nor
 import { THIN_DESCRIPTION_CHARS } from './seo/thresholds';
 import type { CostSink } from './ai-cost';
 import { languageSlips } from './marketplace-description';
+import { createServiceClient, type TableUpdate } from './supabase-service';
 
 // ЄДИНИЙ рушій генерації контенту картки товару. Обидва входи — розділ SEO
 // (/admin/seo → catalog-enricher) і кнопка в картці (/products → product-ai-filler)
@@ -21,7 +22,7 @@ export { THIN_DESCRIPTION_CHARS };
 // з клієнтами модулів, що передають supabase сюди (інакше TS бачить різні схеми).
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- використовується лише як тип-якір (ReturnType нижче)
 function dbAnchor() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  return createServiceClient();
 }
 type Db = ReturnType<typeof dbAnchor>;
 
@@ -424,7 +425,7 @@ export async function applyContent(
   }
 
   if (Object.keys(update).length) {
-    const { error } = await supabase.from('products').update(update).eq('sku', product.sku);
+    const { error } = await supabase.from('products').update(update as TableUpdate<'products'>).eq('sku', product.sku);
     if (error) throw error;
   }
 

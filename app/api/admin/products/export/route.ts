@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
+import { createServiceClient } from '../../../../../lib/supabase-service';
 
-const serviceClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceClient = createServiceClient();
 
 export async function GET(req: NextRequest) {
   const auth = await requireStaff('admin');
@@ -45,7 +42,7 @@ export async function GET(req: NextRequest) {
   const rows = products.map(p => {
     const stock = Array.isArray(p.stock) ? p.stock[0] : p.stock;
     const chars: { label: string; value: string; sort_order: number }[] =
-      Array.isArray(p.characteristics) ? [...p.characteristics] : [];
+      Array.isArray(p.characteristics) ? [...p.characteristics] as { label: string; value: string; sort_order: number }[] : [];
     chars.sort((a, b) => a.sort_order - b.sort_order);
 
     const row: Record<string, string | number> = {
