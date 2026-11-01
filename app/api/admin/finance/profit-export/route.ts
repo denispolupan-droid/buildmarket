@@ -33,10 +33,7 @@ export async function GET(req: NextRequest) {
   const db = createServiceClient();
 
   // Доставлені за період (за датою доставки)
-  const orders = await fetchAllRows<{
-    id: string; order_number: number; channel_code: string | null; contact: string | null;
-    total_price: number; delivered_at: string | null; created_at: string;
-  }>((f, t) => db
+  const orders = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
     .from('orders')
     .select('id, order_number, channel_code, contact, total_price, delivered_at, created_at')
     .eq('status', 'delivered')
@@ -44,7 +41,10 @@ export async function GET(req: NextRequest) {
     .lt('delivered_at', end)
     .order('delivered_at', { ascending: true })
     .order('id')
-    .range(f, t));
+    .range(f, t)) as unknown as Promise<({
+    id: string; order_number: number; channel_code: string | null; contact: string | null;
+    total_price: number; delivered_at: string | null; created_at: string;
+  })[]>);
 
   if (!orders.length) {
     return NextResponse.json({ error: 'Немає доставлених замовлень за період' }, { status: 404 });
@@ -53,13 +53,13 @@ export async function GET(req: NextRequest) {
   // Факти з леджера по всіх замовленнях вибірки (усі рахунки «угоди» з profit-rules)
   const ids = orders.map(o => o.id);
   type Entry = { order_id: string; account_type: string; amount: number; doc_type: string | null };
-  const entries = await fetchAllRows<Entry>((f, t) => db
+  const entries = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
     .from('money_entries')
     .select('order_id, account_type, amount, doc_type')
     .in('order_id', ids)
     .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'acquiring_fee', 'logistics'])
     .order('id')
-    .range(f, t));
+    .range(f, t)) as unknown as Promise<(Entry)[]>);
 
   const entriesByOrder = new Map<string, Entry[]>();
   for (const e of entries) {

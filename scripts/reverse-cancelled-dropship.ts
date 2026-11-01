@@ -45,7 +45,7 @@ async function main() {
   const orderByIdMap = new Map((cancelled ?? []).map(o => [o.id, o]));
   console.log(`Знайдено ${docs.length} підтверджених РН по скасованих замовленнях:`);
   for (const d of docs) {
-    const o = orderByIdMap.get(d.order_id);
+    const o = orderByIdMap.get(d.order_id!); // order_id не null — вибрано через .in(order_id)
     console.log(`  - ${d.doc_number} (замовлення #${o?.order_number}, скасовано ${o?.cancelled_at ?? '—'})`);
   }
 
@@ -55,10 +55,10 @@ async function main() {
   }
 
   for (const d of docs) {
-    const o = orderByIdMap.get(d.order_id);
+    const o = orderByIdMap.get(d.order_id!); // order_id не null — вибрано через .in(order_id)
     console.log(`\nСторнуємо ${d.doc_number} (замовлення #${o?.order_number})...`);
     await cancelDocument(d.id, 'retro-fix-script', 'Замовлення скасовано (ретро-сторно)');
-    await reverseDropshipLedgerExtras({ orderId: d.order_id, docId: d.id, createdBy: 'retro-fix-script' });
+    await reverseDropshipLedgerExtras({ orderId: d.order_id!, docId: d.id, createdBy: 'retro-fix-script' });
     console.log('  ✓ готово');
   }
 

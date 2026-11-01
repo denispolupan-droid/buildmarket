@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     let status: Row['status'];
     if (Math.abs(delta) < 0.01) status = 'ok';
     else if (!o) status = 'missing_ours';
-    else if (ourTotal === 0 && ['shipped', 'picking', 'confirmed', 'new', 'awaiting_stock'].includes(o.status)) status = 'pending_delivery';
+    else if (ourTotal === 0 && ['shipped', 'picking', 'confirmed', 'new', 'awaiting_stock'].includes(o.status as string)) status = 'pending_delivery';
     else if (ourTotal === 0) status = 'missing_ours';
     else status = 'diff';
     rows.push({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { asJson, createServiceClient } from '../../../../../../lib/supabase';
 import { applyOrderDiscount, type DiscountItem } from '../../../../../../lib/pricing';
 import { parseBody, zMoney, zYmd, zText, z } from '../../../../../../lib/validate';
 
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
 
-  if (!DISCOUNTABLE_STATUSES.includes(order.status)) {
+  if (!DISCOUNTABLE_STATUSES.includes(order.status as string)) {
     return NextResponse.json({ error: 'Знижку можна змінювати лише до відгрузки' }, { status: 409 });
   }
   if (LOCKED_CHANNELS.includes(order.channel_code ?? '')) {
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { error: updErr } = await db
     .from('orders')
-    .update({ items: result.items, total_price: result.total, discount_pct: result.discountPct, discount_amount: result.discountAmount })
+    .update({ items: asJson(result.items), total_price: result.total, discount_pct: result.discountPct, discount_amount: result.discountAmount })
     .eq('id', id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 

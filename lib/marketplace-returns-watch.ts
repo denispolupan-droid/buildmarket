@@ -15,7 +15,7 @@
  * marketplace-cancel-watch). Prom окремого API заявок не має: повернення там
  * видно як скасування замовлення, їх ловить cancel-watch.
  */
-import { createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase';
 import { getRozetkaRefunds } from './rozetka-api';
 import { alertAdmin } from './alert';
 
@@ -63,7 +63,7 @@ export async function watchRozetkaRefunds(): Promise<{ checked: number; new_refu
         item_name:    r.item_name ?? null,
         ttn:          r.ttn ?? null,
         opened_at:    r.datetime ? new Date(r.datetime.replace(' ', 'T') + 'Z').toISOString() : null,
-        raw:          r as unknown as Record<string, unknown>,
+        raw:          asJson(r),
         updated_at:   new Date().toISOString(),
       }, { onConflict: 'marketplace,refund_id' });
 
@@ -112,7 +112,7 @@ export async function watchRozetkaRefunds(): Promise<{ checked: number; new_refu
       .eq('doc_type', 'return_in')
       .eq('status', 'confirmed')
       .limit(flaggedIds.length);
-    const doneIds = [...new Set((returnDocs ?? []).map(d => d.order_id).filter(Boolean))];
+    const doneIds = [...new Set((returnDocs ?? []).map(d => d.order_id).filter((x): x is string => !!x))];
     if (doneIds.length) {
       await db.from('orders').update({ mp_refund_status: null }).in('id', doneIds);
       result.flags_cleared = doneIds.length;

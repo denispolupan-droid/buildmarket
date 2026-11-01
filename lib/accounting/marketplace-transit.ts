@@ -21,7 +21,8 @@ export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka' | 
     .not('order_id', 'is', null);
   if (!docs?.length) return { total: 0, items: [] };
 
-  const orderIds = [...new Set(docs.map(d => d.order_id))];
+  // order_id не null — відфільтровано .not('order_id', 'is', null) вище
+  const orderIds = [...new Set(docs.map(d => d.order_id!))];
   const { data: orders } = await db
     .from('orders')
     .select('id, order_number, channel_code')
@@ -31,7 +32,7 @@ export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka' | 
     // лишитись «в дорозі» й фальшиво завищувати очікувану комісію.
     .not('status', 'in', '(cancelled,returned)');
   const orderMap = new Map((orders ?? []).map(o => [o.id, o]));
-  const mpDocs = docs.filter(d => orderMap.has(d.order_id));
+  const mpDocs = docs.filter(d => orderMap.has(d.order_id!));
   if (!mpDocs.length) return { total: 0, items: [] };
 
   const settingKeys = marketplace === 'prom' ? ['prom_plan', 'prom_commission_pct']
@@ -54,7 +55,7 @@ export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka' | 
       : marketplace === 'epicentr'
       ? (await computeEpicentrCommission(li, { fallbackPct })).total_commission
       : (await computeRozetkaCommission(li, { fallbackPct })).total_commission;
-    const o = orderMap.get(d.order_id)!;
+    const o = orderMap.get(d.order_id!)!;
     total += commission;
     items.push({ docId: d.id, orderNumber: o.order_number, ttn: d.tracking_number, commission: Math.round(commission * 100) / 100 });
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase';
 
 const num = (v: unknown): number | null => (v === '' || v == null ? null : Number(v));
 
@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest) {
   };
   if (!body.slug) return NextResponse.json({ error: 'slug required' }, { status: 400 });
 
-  const update: Record<string, unknown> = {};
+  const update: TableUpdate<'categories'> = {};
   for (const k of ['epicentr_commission_pct', 'epicentr_markup_pct'] as const) {
     if (body[k] !== undefined) {
       const n = num(body[k]);

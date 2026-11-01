@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const doc = await createDocument({
     doc_type:     'purchase_order_adjustment',
-    warehouse_id: po.warehouse_id,
+    warehouse_id: po.warehouse_id as number, // у підтвердженого PO склад заповнений
     supplier_id:  po.supplier_id ?? undefined,
     notes:        body.reason,
     created_by:   user.email ?? 'admin',

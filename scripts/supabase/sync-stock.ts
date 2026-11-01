@@ -194,14 +194,19 @@ async function main() {
   console.log(`   Постачальник ID: ${supplierId}`);
 
   // Попередній синк — для перевірки повноти файлу
+  // У sync_log немає supplier_id і rows_* (є source, records_*): постачальника
+  // кодуємо в source. Раніше запит ішов по неіснуючих колонках і завжди падав —
+  // перевірка повноти файлу проти попереднього синку не працювала (типи, 01.11.2026).
+  const logSource = `${format}:supplier-${supplierId}`;
   const { data: prevSync } = await supabase
     .from('sync_log')
-    .select('rows_total')
-    .eq('supplier_id', supplierId)
+    .select('records_total')
+    .eq('source', logSource)
+    .eq('status', 'success')
     .order('started_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  const prevRows: number | null = (prevSync as { rows_total?: number } | null)?.rows_total ?? null;
+  const prevRows: number | null = prevSync?.records_total ?? null;
 
   // Маппінг: supplier_sku → наш SKU (з supplier_sku_map для цього постачальника)
   const { data: mapRows } = await supabase
@@ -295,18 +300,17 @@ async function main() {
   }
 
   // ── Лог ──────────────────────────────────────────────────────────────────────
-  await supabase.from('sync_log').insert({
-    supplier_id:     supplierId,
-    source:          format,
+  const { error: logErr } = await supabase.from('sync_log').insert({
+    source:          logSource,
     status:          errors.length === 0 ? 'success' : updated > 0 ? 'partial' : 'error',
-    rows_total:      rows.length,
-    rows_updated:    updated,
-    rows_skipped:    skipped,
-    rows_unmapped:   skipped,
-    error_message:   errors.length > 0 ? errors.slice(0, 20).join('\n') : null,
+    records_total:   rows.length,
+    records_updated: updated,
+    records_skipped: skipped,
+    error_details:   errors.length > 0 ? errors.slice(0, 20).join('\n') : null,
     started_at:      startedAtIso,
     finished_at:     new Date().toISOString(),
   });
+  if (logErr) console.error('⚠️  Лог синку не записано:', logErr.message);
 
   console.log('📊  Результат:');
   console.log(`    Оновлено: ${updated}  |  Пропущено: ${skipped}  |  Out_of_stock: ${markedAbsent}`);

@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     note?: string;
     lines?: { sku: string; fact: number }[];
   };
-  const warehouseId = body.warehouse_id;
+  const warehouseId = body.warehouse_id as number; // перевірено Number.isInteger нижче
   if (!Number.isInteger(warehouseId)) return NextResponse.json({ error: 'Невірний склад' }, { status: 400 });
   if (!body.lines?.length) return NextResponse.json({ error: 'Немає рядків' }, { status: 400 });
   for (const l of body.lines) {

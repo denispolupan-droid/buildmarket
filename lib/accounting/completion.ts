@@ -13,7 +13,7 @@
  * ключем commission:{mp}:{docId}. COD дропшип-партнеру навмисно НЕ тут — він
  * order-level (робиться при повному завершенні замовлення, окремим кроком).
  */
-import { createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase';
 import { postSaleDoc } from './dropship';
 import { recordMarketplaceCommission, recordMarketplaceServiceFee } from './money';
 import { computePromCommission } from '../prom-commission';
@@ -68,7 +68,7 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
       const fresh = await getPromOrder(Number(order.prom_order_id));
       if (fresh) {
         promData = { ...(promData ?? {}), ...(fresh as unknown as Record<string, unknown>) };
-        await db.from('orders').update({ prom_data: promData }).eq('id', doc.order_id);
+        await db.from('orders').update({ prom_data: asJson(promData) }).eq('id', doc.order_id);
       }
     } catch (err) {
       console.error('[completion] prom_data refresh failed, using snapshot:', order?.prom_order_id, err);

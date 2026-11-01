@@ -125,11 +125,11 @@ async function Journal({ group, dateFrom, dateTo }: { group: CounterpartyGroup; 
       .select('counterparty_id, balance')
       .in('account_type', accounts).eq('currency', 'UAH')
       .order('counterparty_id').order('account_type').range(f, t)),
-    fetchAllRows<{ counterparty_id: string; amount: number; business_date: string }>((f, t) => db.from('money_entries')
+    (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db.from('money_entries')
       .select('counterparty_id, amount, business_date')
       .in('account_type', accounts)
       .gte('business_date', dateFrom)
-      .order('id').range(f, t)),
+      .order('id').range(f, t)) as unknown as Promise<({ counterparty_id: string; amount: number; business_date: string })[]>),
   ]);
   const current = new Map<string, number>();
   for (const r of balRows) if (belongs(r.counterparty_id)) current.set(r.counterparty_id, (current.get(r.counterparty_id) ?? 0) + Number(r.balance));
@@ -477,19 +477,19 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
   // Усе з пагінацією й ORDER BY id: PostgREST мовчки обрізає на 1000 рядків,
   // і сальдо на початок тихо «пливе» (інциденти 30.08 і 29.09).
   const [openingRows, entries] = await Promise.all([
-    fetchAllRows<{ account_type: SettlementAccount; amount: number }>((f, t) => db.from('money_entries')
+    (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db.from('money_entries')
       .select('account_type, amount')
       .in('account_type', accounts)
       .eq('counterparty_id', ref.id)
       .lt('business_date', dateFrom)
-      .order('id').range(f, t)),
-    fetchAllRows<LedgerEntry>((f, t) => db.from('money_entries')
+      .order('id').range(f, t)) as unknown as Promise<({ account_type: SettlementAccount; amount: number })[]>),
+    (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db.from('money_entries')
       .select('id, txn_id, account_type, amount, doc_type, business_date, created_at, description, doc_id, order_id, reversal_of:meta->>reversal_of')
       .in('account_type', accounts)
       .eq('counterparty_id', ref.id)
       .gte('business_date', dateFrom)
       .lte('business_date', dateTo)
-      .order('id').range(f, t)),
+      .order('id').range(f, t)) as unknown as Promise<(LedgerEntry)[]>),
   ]);
 
   const opening: Partial<Record<SettlementAccount, number>> = {};

@@ -31,10 +31,10 @@ export type RzPayAllocateSummary = { payouts: number; allocated: number; orders:
 
 /** Усі не рознесені виплати RozetkaPay з виписки Mono → проводки по замовленнях. Ідемпотентно. */
 export async function allocateRzPayPayouts(db = createServiceClient(), createdBy = 'rzpay-allocate'): Promise<RzPayAllocateSummary> {
-  const payoutRows = await fetchAllRows<{ id: string; txn_time: string; amount: number; comment: string | null; description: string | null; counter_name: string | null; category: string | null; note: string | null }>((f, t) => db
+  const payoutRows = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
     .from('mono_bank_txns').select('id, txn_time, amount, comment, description, counter_name, category, note')
     .eq('direction', 'in').eq('status', 'matched').ilike('comment', '%Переказ коштів за операції%')
-    .order('txn_time', { ascending: true }).range(f, t));
+    .order('txn_time', { ascending: true }).range(f, t)) as unknown as Promise<({ id: string; txn_time: string; amount: number; comment: string | null; description: string | null; counter_name: string | null; category: string | null; note: string | null })[]>);
   const pending = payoutRows.filter(r => r.category !== 'rzpay:allocated');
   const summary: RzPayAllocateSummary = { payouts: pending.length, allocated: 0, orders: 0, amount: 0, unmatched: [] };
   if (pending.length === 0) return summary;
@@ -50,8 +50,8 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
   // Скільки з кожної виплати вже рознесено (у т.ч. сторно rzpay-alloc-undo) — добираємо залишок
   // (ключ ідемпотентності стоїть лише на дебетовому рядку проводки: alloc → дебет mp:rozetkapay,
   // undo → дебет mp:*; тому знак беремо з префікса ключа, а не з рахунку)
-  const keyed = await fetchAllRows<{ idempotency_key: string; amount: number }>((f, t) => db
-    .from('money_entries').select('idempotency_key, amount').like('idempotency_key', 'rzpay-alloc%').order('id').range(f, t));
+  const keyed = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
+    .from('money_entries').select('idempotency_key, amount').like('idempotency_key', 'rzpay-alloc%').order('id').range(f, t)) as unknown as Promise<({ idempotency_key: string; amount: number })[]>);
   // Ключ: {kind}:{txn}:{order}[:{seq}] — після сторно те саме замовлення може знову
   // потрапити в ту саму виплату, тож повторна проводка отримує наступний seq
   // (інакше вона мовчки впала б у дубль і склад виплати лишився б неповним — кейс 08.09).
@@ -75,8 +75,8 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
   const invoiceIds = orders.filter(o => o.channel_code === 'rozetka' && o.payment_type === 'invoice').map(o => o.id as string);
   const invoiceOpen: Record<string, number> = {};
   if (invoiceIds.length) {
-    const rows = await fetchAllRows<{ order_id: string; counterparty_id: string | null; amount: number }>((f, t) => db
-      .from('money_entries').select('order_id, counterparty_id, amount').eq('account_type', 'customer').in('order_id', invoiceIds).order('id').range(f, t));
+    const rows = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
+      .from('money_entries').select('order_id, counterparty_id, amount').eq('account_type', 'customer').in('order_id', invoiceIds).order('id').range(f, t)) as unknown as Promise<({ order_id: string; counterparty_id: string | null; amount: number })[]>);
     for (const r of rows) if (!r.counterparty_id?.startsWith('mp:')) invoiceOpen[r.order_id] = Math.round(((invoiceOpen[r.order_id] ?? 0) + Number(r.amount)) * 100) / 100;
   }
   const events = orders

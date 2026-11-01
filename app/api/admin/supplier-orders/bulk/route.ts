@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase';
 import { resolveSender } from '../../../../../lib/email-sender';
 import { orderItemSources } from '../../../../../lib/orders/item-sources';
 import { requireStaff } from '../../../../../lib/auth-guard';
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
   });
   await Promise.all(sentOrders.map(o => {
     const sids = [...(orderSuppliers.get(o.id) ?? [])].filter(sid => emailedSupplierIds.has(sid));
-    const update: Record<string, unknown> = { supplier_sent_at: sentAt, supplier_sent_by: user.email ?? 'admin' };
+    const update: TableUpdate<'orders'> = { supplier_sent_at: sentAt, supplier_sent_by: user.email ?? 'admin' };
     if (sids.length === 1 && !o.shipping_supplier_id) update.shipping_supplier_id = sids[0];
     return db.from('orders').update(update).eq('id', o.id);
   }));

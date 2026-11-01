@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase';
 
 /**
  * Журнал запусків ШІ-агентів (таблиця ai_agent_runs, міграція 125).
@@ -24,7 +24,7 @@ export async function logAgentRun(run: AgentRunLog): Promise<string | null> {
   try {
     const db = createServiceClient();
     const { data, error } = await db.from('ai_agent_runs').insert({
-      agent: run.agent, input: run.input, output: run.output ?? null, model: run.model,
+      agent: run.agent, input: asJson(run.input), output: asJson(run.output ?? null), model: run.model,
       cost_usd: run.costUsd, input_tokens: run.inputTokens, output_tokens: run.outputTokens,
       tool_calls: run.toolCalls, duration_ms: run.durationMs ?? null, error: run.error ?? null,
       created_by: run.createdBy ?? null,

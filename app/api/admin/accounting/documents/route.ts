@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { asJson, createServiceClient, type TableUpdate } from '../../../../../lib/supabase';
 import { createDocument, confirmDocument, cancelDocument, correctDocument } from '../../../../../lib/accounting/documents';
 import type { CreateDocumentInput } from '../../../../../lib/accounting/types';
 import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';
@@ -140,9 +140,9 @@ export async function POST(req: NextRequest) {
         lines_after:   rows.length,
       });
 
-      const patch: Record<string, unknown> = {
+      const patch: TableUpdate<'acc_documents'> = {
         total_amount: total,
-        meta: { ...meta, line_edits: edits.slice(-20) },
+        meta: asJson({ ...meta, line_edits: edits.slice(-20) }),
       };
       if (typeof body.doc_date === 'string' && body.doc_date) {
         const d = new Date(body.doc_date);
@@ -204,10 +204,20 @@ export async function POST(req: NextRequest) {
           .update({ distributed: false })
           .eq('document_id', document_id);
 
-        // Also reset landed_cost_total on document so it recalculates correctly
-        await db.from('acc_documents')
-          .update({ landed_cost_total: 0, total_cost: null })
+        // Підсумки шапки — з базових цін рядків (крок 1), бо apply_landed_costs
+        // ДОДАЄ розподілену суму до landed_cost_total і total_cost. Раніше тут
+        // ставився total_cost: null — колонка NOT NULL, update падав (помилку
+        // ніхто не перевіряв), і після кожної правки цін доставка додавалась у
+        // шапку документа ще раз (виявили типи, 01.11.2026).
+        const { data: baseLines, error: blErr } = await db.from('acc_document_lines')
+          .select('qty_in_base, cost_price')
+          .eq('document_id', document_id);
+        if (blErr) return NextResponse.json({ error: blErr.message }, { status: 500 });
+        const baseCost = Math.round((baseLines ?? []).reduce((sum, l) => sum + Number(l.qty_in_base ?? 0) * Number(l.cost_price ?? 0), 0) * 100) / 100;
+        const { error: resetErr } = await db.from('acc_documents')
+          .update({ landed_cost_total: 0, total_cost: baseCost })
           .eq('id', document_id);
+        if (resetErr) return NextResponse.json({ error: resetErr.message }, { status: 500 });
 
         await db.rpc('apply_landed_costs', {
           p_document_id: document_id,

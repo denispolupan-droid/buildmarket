@@ -23,10 +23,10 @@ export async function POST(req: NextRequest) {
   });
 
   const db = createServiceClient();
-  const fees = await fetchAllRows<{ amount: number; description: string | null; doc_type: string | null; meta: Record<string, unknown> | null }>((f, t) =>
+  const fees = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) =>
     db.from('money_entries').select('amount, description, doc_type, meta')
       .eq('account_type', 'marketplace_fee').eq('counterparty_id', 'rozetka')
-      .order('id').range(f, t));
+      .order('id').range(f, t)) as unknown as Promise<({ amount: number; description: string | null; doc_type: string | null; meta: Record<string, unknown> | null })[]>);
   // «Списання без розшифровки» 30.09 і 23.10 — це теж Smart (з'ясовано 29.10.2026 саме за цим файлом)
   const ours = fees
     .filter(f => rozetkaFeeKind(f) === 'smart' || f.meta?.kind === 'rz_unitemized')

@@ -7,7 +7,7 @@
 //
 // Ніколи не кидає: довідник не має права зламати оформлення замовлення.
 
-import { createServiceClient } from './supabase';
+import { createServiceClient, type Database } from './supabase';
 
 export { normalizeCustomerPhone, phoneDigitVariants } from './phone-variants';
 import { normalizeCustomerPhone, phoneDigitVariants } from './phone-variants';
@@ -94,7 +94,7 @@ export async function findOrCreateCustomerForOrder(input: {
 
     if (found) {
       // Дозаповнюємо відсутні реквізити на картці (не перетираємо існуючі)
-      const patch: Record<string, unknown> = {};
+      const patch: Database['public']['Tables']['customers']['Update'] = {};
       if (!found.email && email)                    patch.email        = email;
       if (!found.auth_user_id && input.authUserId)  patch.auth_user_id = input.authUserId;
       if (!found.company && input.company?.trim())  patch.company      = input.company.trim();

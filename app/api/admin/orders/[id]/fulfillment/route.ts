@@ -38,7 +38,7 @@ export async function GET(
   const allFixed = items.length > 0 && items.every(i => fixed.has(i.sku));
 
   const [info, plan, reservations, balances, stockRows, ledgerRows, confirmedSales] = await Promise.all([
-    getOrderFulfillmentInfo(order.items ?? []),
+    getOrderFulfillmentInfo((order.items ?? []) as unknown as Parameters<typeof getOrderFulfillmentInfo>[0]),
     allFixed
       ? Promise.resolve(planFromFixed(items, fixed))
       : resolveOrderFulfillment(

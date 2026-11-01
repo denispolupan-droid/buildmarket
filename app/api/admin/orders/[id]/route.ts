@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate, asJson } from '../../../../../lib/supabase';
 import { reverseDropshipLedgerExtras, syncSaleDraftLines } from '../../../../../lib/accounting/dropship';
 import { cancelDocument, resolveSaleDebitParty } from '../../../../../lib/accounting/documents';
 import { isSpecialDebtor } from '../../../../../lib/accounting/sale-party';
@@ -197,7 +197,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       update.company = cust.company ?? null;
     }
     await db.from('acc_documents')
-      .update({ customer_id: update.customer_id })
+      .update({ customer_id: update.customer_id as string | null | undefined })
       .eq('order_id', id)
       .eq('status', 'draft');
   }
@@ -235,7 +235,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  const { error } = await db.from('orders').update(update).eq('id', id);
+  const { error } = await db.from('orders').update(update as TableUpdate<'orders'>).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (editCtx) {
@@ -292,18 +292,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           fallbackPct: parseFloat(fbRow?.value ?? '3'),
         });
         await db.from('orders').update({
-          prom_data: { ...((ord.prom_data ?? {}) as Record<string, unknown>), _commission: comm },
+          prom_data: asJson({ ...((ord.prom_data ?? {}) as Record<string, unknown>), _commission: comm }),
         }).eq('id', id);
       } else if (ord?.channel_code === 'rozetka') {
         const { data: fbRow } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
         const comm = await computeRozetkaCommission(items, { fallbackPct: parseFloat(fbRow?.value ?? '15') });
         await db.from('orders').update({
-          rozetka_data: { ...((ord.rozetka_data ?? {}) as Record<string, unknown>), _commission: comm },
+          rozetka_data: asJson({ ...((ord.rozetka_data ?? {}) as Record<string, unknown>), _commission: comm }),
         }).eq('id', id);
       } else if (ord?.channel_code === 'epicentr') {
         const comm = await computeEpicentrCommission(items, { fallbackPct: await getEpicentrFallbackPct(db) });
         await db.from('orders').update({
-          epicentr_data: { ...((ord.epicentr_data ?? {}) as Record<string, unknown>), _commission: comm },
+          epicentr_data: asJson({ ...((ord.epicentr_data ?? {}) as Record<string, unknown>), _commission: comm }),
         }).eq('id', id);
       }
     } catch (err) {

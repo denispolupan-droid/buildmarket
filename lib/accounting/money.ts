@@ -27,7 +27,7 @@
  *   marketplace_fee      — комісія маркетплейсу за замовлення
  */
 
-import { createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase';
 import { fetchAllRows } from '../db-paginate';
 
 export type AccountType =
@@ -104,7 +104,7 @@ export async function recordTxn(input: RecordTxnInput): Promise<string> {
     p_description:     input.description  ?? null,
     p_idempotency_key: input.idempotencyKey ?? null,
     p_created_by:      input.createdBy    ?? null,
-    p_meta:            input.meta         ?? {},
+    p_meta:            asJson(input.meta ?? {}),
   });
 
   if (error) throw error;

@@ -105,7 +105,8 @@ export async function reconcileRozetka(from: string, to: string) {
       .in('rozetka_order_id', part)
       .limit(part.length);
     if (error) throw new Error(`Звірка Rozetka: замовлення не прочитались — ${error.message}`);
-    orders.push(...(data ?? []));
+    // status у замовлень завжди заповнений (дефолт 'new'), rozetka_order_id — за фільтром .in()
+    orders.push(...((data ?? []) as typeof orders));
   }
   const orderByRzId = new Map(orders.map(o => [Number(o.rozetka_order_id), o]));
 

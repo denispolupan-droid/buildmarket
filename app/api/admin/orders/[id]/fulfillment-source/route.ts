@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
 
-  if (!EDITABLE_STATUSES.includes(order.status)) {
+  if (!EDITABLE_STATUSES.includes(order.status as string)) {
     return NextResponse.json(
       { error: `Джерело можна міняти до збирання замовлення (зараз статус «${order.status}»)` },
       { status: 409 },

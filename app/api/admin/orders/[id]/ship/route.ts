@@ -74,7 +74,7 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  if (!['confirmed', 'picking', 'awaiting_stock'].includes(order.status)) {
+  if (!['confirmed', 'picking', 'awaiting_stock'].includes(order.status as string)) {
     return NextResponse.json(
       { error: `Неможливо відвантажити із статусу "${order.status}"` },
       { status: 409 },
@@ -359,7 +359,7 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const finalStatus: string = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : order.status;
+  const finalStatus: string = fullyShipped ? (isPickup ? 'delivered' : 'shipped') : (order.status as string);
   // Часткова відгрузка статус не міняє (transitionOrder при тому самому статусі
   // пише лише extra). Повна — shipped (або delivered для самовивозу) з міткою
   // shipped_at, як і раніше.

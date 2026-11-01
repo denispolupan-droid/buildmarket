@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase';
 
 const num = (v: unknown): number | null => (v === '' || v == null ? null : Number(v));
 
@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest) {
   const { sku, on_epicentr, epicentr_markup_pct } = await req.json() as { sku?: string; on_epicentr?: boolean; epicentr_markup_pct?: string | number | null };
   if (!sku) return NextResponse.json({ error: 'sku required' }, { status: 400 });
 
-  const update: Record<string, unknown> = {};
+  const update: TableUpdate<'products'> = {};
   if (on_epicentr !== undefined) update.on_epicentr = Boolean(on_epicentr);
   if (epicentr_markup_pct !== undefined) {
     const n = num(epicentr_markup_pct);

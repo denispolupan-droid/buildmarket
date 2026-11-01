@@ -1496,6 +1496,27 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_locks: {
+        Row: {
+          expires_at: string
+          locked_at: string
+          locked_by: string | null
+          name: string
+        }
+        Insert: {
+          expires_at: string
+          locked_at?: string
+          locked_by?: string | null
+          name: string
+        }
+        Update: {
+          expires_at?: string
+          locked_at?: string
+          locked_by?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       currencies: {
         Row: {
           code: string
@@ -6708,6 +6729,31 @@ export type Database = {
       }
     }
     Functions: {
+      acc_account_totals: {
+        Args: { p_accounts: string[] }
+        Returns: {
+          account_type: string
+          amount: number
+        }[]
+      }
+      acc_period_turnover: {
+        Args: never
+        Returns: {
+          month: string
+          revenue: number
+          txns: number
+        }[]
+      }
+      acc_trial_balance: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          account_type: string
+          counterparty_id: string
+          credit: number
+          debit: number
+          opening: number
+        }[]
+      }
       apply_landed_costs: {
         Args: { p_document_id: string; p_method: string }
         Returns: number
@@ -6801,7 +6847,6 @@ export type Database = {
         Args: { p_company: string; p_legal_name: string; p_name: string }
         Returns: string
       }
-      ensure_marketplace_sync: { Args: never; Returns: Json }
       expire_stock_reservations: { Args: never; Returns: number }
       fn_order_lines_sync: {
         Args: { p_items: Json; p_order_id: string }
@@ -6811,7 +6856,22 @@ export type Database = {
         Args: { p_sku: string; p_warehouse_id: number }
         Returns: number
       }
+      fop_income_book: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          amount: number
+          day: string
+          method: string
+          source: string
+          txns: number
+        }[]
+      }
+      fop_income_total: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
       increment_promo_used: { Args: { p_code: string }; Returns: undefined }
+      kyiv_date: { Args: { p_ts: string }; Returns: string }
       mark_absent_supplier_stock: {
         Args: {
           p_prev_rows?: number
@@ -6824,6 +6884,10 @@ export type Database = {
       next_ar_correction_number: { Args: never; Returns: string }
       next_doc_number: { Args: { p_type: string }; Returns: string }
       open_period: { Args: { p_by?: string; p_month: string }; Returns: string }
+      post_document_movements: {
+        Args: { p_direction: string; p_doc_id: string }
+        Returns: number
+      }
       reconcile_orphan_stock: { Args: never; Returns: number }
       record_money_txn: {
         Args: {
@@ -6879,6 +6943,7 @@ export type Database = {
         Args: { p_admin_email: string; p_payout_id: string }
         Returns: Json
       }
+      release_cron_lock: { Args: { p_name: string }; Returns: undefined }
       release_order_reservations: {
         Args: { p_order_id: string; p_reason?: string }
         Returns: number
@@ -6910,10 +6975,6 @@ export type Database = {
           prom_category_id: number
         }[]
       }
-      set_marketplace_sync_interval: {
-        Args: { p_minutes: number }
-        Returns: string
-      }
       submit_payout_request: {
         Args: {
           p_amount: number
@@ -6926,6 +6987,10 @@ export type Database = {
       sync_product_stock_from_suppliers: {
         Args: { p_sku: string }
         Returns: undefined
+      }
+      try_cron_lock: {
+        Args: { p_by?: string; p_name: string; p_ttl_seconds: number }
+        Returns: boolean
       }
     }
     Enums: {

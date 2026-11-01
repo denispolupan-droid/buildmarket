@@ -83,7 +83,7 @@ export async function getOrderFulfillmentInfo(
 
   // Fallback 1: match by supplier_sku value from product_stock → supplier_sku_map
   // (залежить від stockRows, тому виконується після Promise.all вище)
-  const supplierSkusFromStock = (stockRows ?? []).map(r => r.supplier_sku).filter(Boolean);
+  const supplierSkusFromStock = (stockRows ?? []).map(r => r.supplier_sku).filter((x): x is string => !!x);
   const { data: fallbackMaps } = supplierSkusFromStock.length
     ? await db.from('supplier_sku_map')
         .select('supplier_sku, supplier_id')

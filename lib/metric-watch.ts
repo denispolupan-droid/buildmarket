@@ -171,10 +171,12 @@ async function adsRunning(db: Db): Promise<Reading> {
 type OrderLite = { channel_code: string | null; status: string; created_at: string; items: { sku?: string; qty?: number }[] | null };
 
 async function recentOrders(db: Db, days: number): Promise<OrderLite[]> {
-  return fetchAllRows<OrderLite>((a, b) => db.from('orders')
+  const rows = await fetchAllRows((a, b) => db.from('orders')
     .select('channel_code, status, created_at, items')
     .gte('created_at', new Date(Date.now() - days * DAY).toISOString())
     .neq('status', 'cancelled').order('id').range(a, b));
+  // created_at не null (gte вище), status не null (neq), items — jsonb рядків замовлення
+  return rows as unknown as OrderLite[];
 }
 
 async function ordersTrend(db: Db): Promise<Reading> {

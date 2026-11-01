@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase';
 import { classifyMonoTxn, orderLookupPlan, LOOKUP_SOURCE_LABEL, PG_INT4_MAX, type MonoStatementItem, type OrderLookup } from './mono-statement';
 import { parseRzPayPayout, postRzPayPayout } from './rozetkapay-payout';
 import { recordTxn } from './accounting/money';
@@ -80,7 +80,7 @@ export async function ingestMonoTxn(
         counter_edrpou: item.counterEdrpou ?? null,
         counter_iban:   item.counterIban ?? null,
         status:         'unmatched',
-        raw:            item as unknown as Record<string, unknown>,
+        raw:            asJson(item),
       }, { onConflict: 'id', ignoreDuplicates: true })
       .select('id');
     if (outErr) { console.error('[mono-ingest] out claim failed:', outErr.message); return { status: 'skipped', reason: 'claim-error' }; }
@@ -106,7 +106,7 @@ export async function ingestMonoTxn(
       counter_edrpou: item.counterEdrpou ?? null,
       counter_iban:   item.counterIban ?? null,
       status:         'unmatched',
-      raw:            item as unknown as Record<string, unknown>,
+      raw:            asJson(item),
     }, { onConflict: 'id', ignoreDuplicates: true })
     .select('id');
   if (claimErr) { console.error('[mono-ingest] claim failed:', claimErr.message); return { status: 'skipped', reason: 'claim-error' }; }
@@ -136,7 +136,7 @@ export async function ingestMonoTxn(
   if (m.kind === 'order') {
     // Число з призначення може бути як нашим номером, так і номером кабінету
     // маркетплейсу — перебираємо обидва варіанти (див. orderLookupPlan).
-    let order: { id: string; status: string; order_number: number } | null = null;
+    let order: { id: string; status: string | null; order_number: number } | null = null;
     let foundBy: OrderLookup['column'] | null = null;
     for (const step of orderLookupPlan(m.orderNumber)) {
       const { data } = await db

@@ -10,7 +10,7 @@
  * спокійно зберегти документ, а ми — побачити проблему в логах.
  */
 
-import { createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase';
 import { alertAdmin } from '../alert';
 import { evaluateSaleEdit, type SaleEditIssue, type SaleEditSource, type SaleEditVerdict } from './sale-edit-guard';
 
@@ -132,9 +132,9 @@ export async function recordSaleEdit(ctx: SaleEditContext, input: {
       total_after:  input.totalAfter,
       date_before:  ctx.dateBefore,
       date_after:   input.dateAfter ?? null,
-      items_before: input.itemsBefore ?? null,
-      items_after:  input.itemsAfter ?? null,
-      issues:       ctx.verdict.issues,
+      items_before: asJson(input.itemsBefore ?? null),
+      items_after:  asJson(input.itemsAfter ?? null),
+      issues:       asJson(ctx.verdict.issues),
       blocked:      input.blocked,
     });
   } catch (err) {

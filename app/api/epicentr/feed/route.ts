@@ -75,13 +75,13 @@ export async function GET(req: NextRequest) {
       .select('id, slug, name, epicentr_category_code, epicentr_commission_pct, epicentr_markup_pct')
       .order('sort_order')
       .range(from, to)),
-    fetchAllRows<Product>((from, to) => db.from('products').select(`
+    (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((from, to) => db.from('products').select(`
       sku, name, rozetka_name, brand, category_slug, slug, image, color, volume,
       on_epicentr, epicentr_markup_pct,
       description, description_full, description_mp,
       stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
       characteristics:product_characteristics(label, value, sort_order)
-    `).eq('is_active', true).order('sort_order').range(from, to)),
+    `).eq('is_active', true).order('sort_order').range(from, to)) as unknown as Promise<(Product)[]>),
   ]);
   // Бренд — у написанні, під яким він є в довіднику Епіцентру (lib/brand-feed)
   for (const p of products) {

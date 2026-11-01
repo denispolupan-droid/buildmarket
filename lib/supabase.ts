@@ -1,5 +1,34 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../types/database.types';
+import type { Database as GeneratedDatabase } from '../types/database.types';
+
+/**
+ * Схема БД для клієнта — згенерована, з однією поправкою: генератор Supabase
+ * описує аргументи SQL-функцій як не-null, хоча функції приймають NULL
+ * (record_money_txn: p_debit_party, p_order_id, p_doc_id …). Без поправки
+ * кожен виклик потребував би касту. Поправка лише розширює тип аргументів —
+ * таблиці, рядки й результати функцій лишаються точними. jsonb-поля приводяться
+ * явно через asJson (нижче).
+ */
+type NullableArgs<F> = {
+  [K in keyof F]: F[K] extends { Args: infer A }
+    ? Omit<F[K], 'Args'> & { Args: { [P in keyof A]: A[P] | null } }
+    : F[K];
+};
+export type Database = Omit<GeneratedDatabase, 'public'> & {
+  public: Omit<GeneratedDatabase['public'], 'Functions'> & {
+    Functions: NullableArgs<GeneratedDatabase['public']['Functions']>;
+  };
+};
+export type { Json } from '../types/database.types';
+
+/**
+ * Обʼєкт → Json для запису в jsonb. Наші meta — Record<string, unknown>, а
+ * згенерований Json рекурсивний і unknown не приймає; JSON.stringify однаково
+ * відкине undefined/функції, тож приведення безпечне для даних, які ми пишемо.
+ */
+export function asJson(value: unknown): import('../types/database.types').Json {
+  return value as import('../types/database.types').Json;
+}
 import { unstable_cache } from 'next/cache';
 import { env } from './env';
 import { escapeOrTerm } from './pg-filter';
@@ -58,7 +87,7 @@ export function createServiceClient() {
   if (!env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
   }
-  return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
 }
@@ -695,3 +724,7 @@ export const getPreviewProductsCached = unstable_cache(
   ['preview-products'],
   { revalidate: 3600, tags: ['products'] }
 );
+
+/** Тип patch-обʼєкта для `.update()` / `.insert()` конкретної таблиці (замість Record<string, unknown>). */
+export type TableUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
+export type TableInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];

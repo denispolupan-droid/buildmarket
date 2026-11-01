@@ -17,7 +17,7 @@
  * Ключі: np-payout:{docId}:{orderId} + np-fee:{docId}:{orderId} (по ЕН),
  *        np-payout:{docId}:agg (сумою).
  */
-import { createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase';
 import { recordTxn } from './accounting/money';
 import { SALE_DEBTOR } from './accounting/sale-party';
 import { getNovapayAccountExtract } from './novapay-api';
@@ -49,7 +49,7 @@ export async function ingestNovapayStatement(days = 10, dateFrom?: Date): Promis
         id: d.docId, account, txn_date: d.date, amount: d.amount, direction: d.direction,
         counterparty: d.counterparty, purpose: d.purpose, code: d.code,
         register_no: kind === 'cod_payout' ? registerNumberOf(d.purpose) : null,
-        kind, status: 'unmatched', raw: d as unknown as Record<string, unknown>,
+        kind, status: 'unmatched', raw: asJson(d),
       }, { onConflict: 'id', ignoreDuplicates: true }).select('id');
       if (claimed?.length) inserted++;
     }

@@ -17,7 +17,7 @@ const only = process.argv[2];
 const db = createServiceClient();
 type Row = { sku: string; name: string; volume: string | null; color: string | null; category_slug: string; description_mp: string | null; characteristics: { label: string; value: string }[] | null };
 const [products, cats] = await Promise.all([
-  fetchAllRows<Row>((f, t) => db.from('products').select('sku, name, volume, color, category_slug, description_mp, characteristics:product_characteristics(label, value)').eq('is_active', true).order('sku').range(f, t)),
+  (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db.from('products').select('sku, name, volume, color, category_slug, description_mp, characteristics:product_characteristics(label, value)').eq('is_active', true).order('sku').range(f, t)) as unknown as Promise<(Row)[]>),
   fetchAllRows<{ slug: string; epicentr_category_code: string | null }>((f, t) => db.from('categories').select('slug, epicentr_category_code').order('slug').range(f, t)),
 ]);
 const codeBySlug = new Map(cats.map(c => [c.slug, c.epicentr_category_code]));

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../../lib/supabase';
 import { recordTxn } from '../../../../../../lib/accounting/money';
 import { procurementPaymentOr } from '../../../../../../lib/accounting/procurement-payments';
 import { requireStaff } from '../../../../../../lib/auth-guard';
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { error } = await db
     .from('acc_documents')
-    .update(updateFields)
+    .update(updateFields as TableUpdate<'acc_documents'>)
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

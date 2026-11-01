@@ -38,8 +38,8 @@ async function main() {
   const db = createServiceClient();
   const [keys, rows] = await Promise.all([
     listR2Keys(),
-    fetchAllRows<{ sku: string; image: string | null; is_active: boolean }>((f, t) =>
-      db.from('products').select('sku, image, is_active').order('id').range(f, t)),
+    (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) =>
+      db.from('products').select('sku, image, is_active').order('id').range(f, t)) as unknown as Promise<({ sku: string; image: string | null; is_active: boolean })[]>),
   ]);
   const products = ALL ? rows : rows.filter(r => r.is_active);
 

@@ -22,7 +22,7 @@
  * проводки) — тригер fn_update_partner_balance править customers.balance, і
  * кабінет партнера бачить зміну одразу. Скасування — зворотний рядок.
  */
-import { createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase';
 import { fetchAllRows } from '../db-paginate';
 import { isSpecialDebtor, SPECIAL_DEBTOR_LABEL } from './sale-party';
 import { settlementFor, type SettlementEntry } from './order-settlement';
@@ -101,7 +101,7 @@ export async function openItems(db: Db, side: Pick<DebtSide, 'account' | 'party'
 
   const ids = [...byOrder.keys()];
   const orders = ids.length
-    ? await fetchAllRows<{ id: string; order_number: number; created_at: string; status: string; channel_code: string | null; contact: string | null }>((f, t) => db
+    ? await fetchAllRows<{ id: string; order_number: number; created_at: string | null; status: string | null; channel_code: string | null; contact: string | null }>((f, t) => db
         .from('orders').select('id, order_number, created_at, status, channel_code, contact').in('id', ids).order('id').range(f, t))
     : [];
   const meta = new Map(orders.map(o => [o.id, o]));
@@ -165,7 +165,7 @@ async function recordLegs(db: Db, p: {
     p_debit_account: p.debit.account, p_debit_party: p.debit.party, p_debit_order_id: p.debit.orderId, p_debit_contract_id: null,
     p_credit_account: p.credit.account, p_credit_party: p.credit.party, p_credit_order_id: p.credit.orderId, p_credit_contract_id: null,
     p_amount: p.amount, p_business_date: p.businessDate, p_doc_id: p.docId, p_doc_type: 'debt_adjustment',
-    p_description: p.description, p_idempotency_key: p.idempotencyKey, p_created_by: p.createdBy, p_meta: p.meta ?? {},
+    p_description: p.description, p_idempotency_key: p.idempotencyKey, p_created_by: p.createdBy, p_meta: asJson(p.meta ?? {}),
   });
   if (error) throw new Error(error.message);
   return data as string;
@@ -331,8 +331,9 @@ export async function cancelDebtAdjustment(docId: string, cancelledBy: string, r
     if (!l.txn_id || l.reversal_txn_id) continue;
     // Зворотна проводка — ноги міняються місцями, дата — сьогодні (append-only, як усюди)
     const txnId = await recordLegs(db, {
-      debit:  { account: l.credit_account, party: l.credit_party, orderId: l.credit_order_id },
-      credit: { account: l.debit_account,  party: l.debit_party,  orderId: l.debit_order_id },
+      // Рахунки рядка записані з LegAccount при створенні КБ (createDebtAdjustment)
+      debit:  { account: l.credit_account as LegAccount, party: l.credit_party, orderId: l.credit_order_id },
+      credit: { account: l.debit_account as LegAccount,  party: l.debit_party,  orderId: l.debit_order_id },
       amount: round2(Number(l.amount)), businessDate: today, docId, description: `Скасування ${doc.doc_number} (рядок ${l.line_no})${reason ? ': ' + reason : ''}`,
       idempotencyKey: `debt-adj-rev:${docId}:${l.line_no}`, createdBy: cancelledBy, meta: { op: l.op, line_no: l.line_no, reversal: true },
     });
@@ -341,8 +342,8 @@ export async function cancelDebtAdjustment(docId: string, cancelledBy: string, r
     // Шар замовлення — рядки з протилежним знаком і перерахунок amount_paid
     const deltas: { orderId: string; delta: number }[] = [];
     const real = (acc: string, party: string | null, orderId: string | null) => acc === 'customer' && !!orderId && !!party && !isSpecialDebtor(party);
-    if (real(l.credit_account, l.credit_party, l.credit_order_id)) deltas.push({ orderId: l.credit_order_id, delta: -round2(Number(l.amount)) });
-    if (real(l.debit_account,  l.debit_party,  l.debit_order_id))  deltas.push({ orderId: l.debit_order_id,  delta:  round2(Number(l.amount)) });
+    if (real(l.credit_account, l.credit_party, l.credit_order_id)) deltas.push({ orderId: l.credit_order_id!, delta: -round2(Number(l.amount)) }); // real() уже перевірив orderId
+    if (real(l.debit_account,  l.debit_party,  l.debit_order_id))  deltas.push({ orderId: l.debit_order_id!,  delta:  round2(Number(l.amount)) }); // real() уже перевірив orderId
     await applyOrderDeltas(db, deltas, { docId, docNumber: doc.doc_number, businessDate: today, createdBy: cancelledBy, note: `скасування рядка ${l.line_no}` });
 
     // Шар кабінету партнера — зворотний рядок
@@ -387,8 +388,8 @@ export async function listDebtAdjustments(db: Db, opts: { limit?: number; id?: s
   const { data: lines } = await db.from('debt_adjustment_lines').select('*').in('document_id', docs.map(d => d.id)).order('line_no').limit(5000);
   const sides: DebtSide[] = [];
   for (const l of lines ?? []) {
-    if (isDebtAccount(l.debit_account))  sides.push({ account: l.debit_account,  party: l.debit_party,  orderId: l.debit_order_id });
-    if (isDebtAccount(l.credit_account)) sides.push({ account: l.credit_account, party: l.credit_party, orderId: l.credit_order_id });
+    if (isDebtAccount(l.debit_account))  sides.push({ account: l.debit_account,  party: l.debit_party as string,  orderId: l.debit_order_id }); // борговий рахунок КБ завжди з контрагентом
+    if (isDebtAccount(l.credit_account)) sides.push({ account: l.credit_account, party: l.credit_party as string, orderId: l.credit_order_id }); // борговий рахунок КБ завжди з контрагентом
   }
   const label = await sideLabels(db, sides);
   const legLabel = (acc: string, party: string | null, orderId: string | null) =>

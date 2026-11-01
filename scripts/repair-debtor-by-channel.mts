@@ -63,18 +63,18 @@ type Order = {
 };
 
 // ── Читання ────────────────────────────────────────────────────────────────────
-const entries = await fetchAllRows<Entry>((f, t) => db
+const entries = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
   .from('money_entries')
   .select('id, txn_id, counterparty_id, amount, doc_type, order_id, description, idempotency_key, business_date, created_at')
   .eq('account_type', 'customer')
   .order('created_at').order('id')
-  .range(f, t));
+  .range(f, t)) as unknown as Promise<(Entry)[]>);
 
-const orders = await fetchAllRows<Order>((f, t) => db
+const orders = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
   .from('orders')
   .select('id, order_number, customer_id, channel_code, payment_type, delivery_type, status, total_price, amount_paid')
   .order('created_at').order('id')
-  .range(f, t));
+  .range(f, t)) as unknown as Promise<(Order)[]>);
 const orderById = new Map(orders.map(o => [o.id, o]));
 
 // order:<uuid> — псевдо-дебітор оплати гостя до прив'язки клієнта; відносимо до замовлення

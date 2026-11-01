@@ -1,4 +1,4 @@
-import { createServiceClient } from './supabase';
+import { createServiceClient, type Database } from './supabase';
 import { recordCardOrderPayment } from './card-order-ledger';
 import { alertAdmin } from './alert';
 import { getMonoAcquiringToken } from './mono-config';
@@ -72,7 +72,8 @@ export async function recoverPaidCardOrders(opts: { days?: number; notify?: bool
     if (existing) continue;                    // вебхук усе-таки встиг — нічого не робимо
 
     const amountUah = payment.amount / 100;
-    const payload = draft.payload as Record<string, unknown>;
+    // payload — те саме тіло замовлення, яке чекаут зберіг у чернетці
+    const payload = draft.payload as Database['public']['Tables']['orders']['Insert'];
 
     const { data: order, error } = await db
       .from('orders')

@@ -84,7 +84,7 @@ export async function buildNpRegisterLookup(db: Db, reg: NpRegister): Promise<Np
   let byName: O[] = [];
   if (reg.rows.some(r => r.isNpPayment && !ttnMap.has(r.ttn))) {
     const since = new Date(Date.now() - 60 * 86400000).toISOString();
-    byName = await fetchAllRows<O>((f, t) => db.from('orders').select(SEL).eq('payment_type', 'cod').neq('status', 'cancelled').gte('created_at', since).order('id').range(f, t));
+    byName = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db.from('orders').select(SEL).eq('payment_type', 'cod').neq('status', 'cancelled').gte('created_at', since).order('id').range(f, t)) as unknown as Promise<(O)[]>);
   }
   return (row) => {
     if (row.orderRef && refMap.has(row.orderRef)) { const o = refMap.get(row.orderRef)!; return [{ id: o.id, order_number: o.order_number, gross: row.gross, net: row.net }]; }
@@ -117,10 +117,10 @@ export async function applyNpRegister(reg: NpRegister, createdBy: string, opts: 
   const feePct = Number.isFinite(feeParsed) && feeParsed >= 0 ? feeParsed : 0.5;
 
   // Що вже проведено на цей документ: по замовленнях і сумою
-  const keyed = await fetchAllRows<{ idempotency_key: string; amount: number; order_id: string | null }>((f, t) => db
+  const keyed = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
     .from('money_entries').select('idempotency_key, amount, order_id')
     .or(`idempotency_key.like.np-payout:${docId}:%,idempotency_key.like.np-payout-undo:${docId}:%,idempotency_key.like.np-payout-agg-undo:${docId}%,idempotency_key.eq.np-payout:${docId},idempotency_key.eq.np-payout-undo:${docId}`)
-    .order('id').range(f, t));
+    .order('id').range(f, t)) as unknown as Promise<({ idempotency_key: string; amount: number; order_id: string | null })[]>);
   const existingNet: Record<string, number> = {};
   let aggNet = 0;
   for (const r of keyed) {

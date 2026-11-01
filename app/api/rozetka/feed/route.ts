@@ -54,14 +54,14 @@ export async function GET() {
     // available="false" + залишком 0. Зникнення оффера з фіда Rozetka трактує як «немає
     // даних» і лишає картку в останньому стані (реальний кейс: 38 карток Polifarb місяць
     // висіли активними по застарілій ціні). Фід — єдине джерело правди для кабінету.
-    fetchAllRows<Product>((from, to) => db.from('products').select(`
+    (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((from, to) => db.from('products').select(`
       sku, name, rozetka_name, brand, category_slug, slug, image, color, volume,
       on_rozetka, rozetka_markup_pct, rozetka_smart,
       description, description_full, description_ru, description_full_ru,
       description_mp, description_mp_ru,
       stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
       characteristics:product_characteristics(label, value, sort_order)
-    `).eq('is_active', true).order('sort_order').range(from, to)),
+    `).eq('is_active', true).order('sort_order').range(from, to)) as unknown as Promise<(Product)[]>),
   ]);
   // Бренд — у написанні, до якого Rozetka вже прив'язала виробника (lib/brand-feed)
   // — і в характеристиці «Бренд», яка йде <param>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient, asJson } from '../../../../../../lib/supabase';
 
 // Зміна типу цін замовлення (роздріб / опт / дроп) з перерахунком позицій
 // за відповідним прайсом із product_stock. Дозволено лише ДО відгрузки
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
 
-  if (!PRICEABLE_STATUSES.includes(order.status)) {
+  if (!PRICEABLE_STATUSES.includes(order.status as string)) {
     return NextResponse.json({ error: 'Тип цін можна змінювати лише до відгрузки' }, { status: 409 });
   }
   // Дропшип: price у рядках — ціна партнера для кінцевого клієнта (накладений платіж),
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { error: updErr } = await db
     .from('orders')
-    .update({ items: newItems, total_price: newTotal, price_type: priceType, discount_amount: discountAmount })
+    .update({ items: asJson(newItems), total_price: newTotal, price_type: priceType, discount_amount: discountAmount })
     .eq('id', id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 

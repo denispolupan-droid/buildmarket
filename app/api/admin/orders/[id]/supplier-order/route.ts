@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../../lib/supabase';
 import { resolveSender } from '../../../../../../lib/email-sender';
 import { orderItemSources } from '../../../../../../lib/orders/item-sources';
 import { requireStaff } from '../../../../../../lib/auth-guard';
@@ -217,7 +217,7 @@ export async function POST(
     if (emailedIds.length === 1 && !order.shipping_supplier_id) {
       update.shipping_supplier_id = emailedIds[0];
     }
-    await db.from('orders').update(update).eq('id', id);
+    await db.from('orders').update(update as TableUpdate<'orders'>).eq('id', id);
   }
 
   return NextResponse.json({ ok: true, results });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient, asJson } from '../../../../../../lib/supabase';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 
 const BUCKET = 'procurement-docs';
@@ -99,7 +99,7 @@ export async function DELETE(
   if (path) {
     await db.storage.from(BUCKET).remove([path]);
     const { invoice_file_path: _, invoice_file_name: __, ...rest } = meta;
-    await db.from('acc_documents').update({ meta: rest }).eq('id', id);
+    await db.from('acc_documents').update({ meta: asJson(rest) }).eq('id', id);
   }
 
   return NextResponse.json({ ok: true });

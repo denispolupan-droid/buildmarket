@@ -49,7 +49,7 @@ export default async function AdminChatPage({
     const msgs = recentBy.get(s.id) ?? [];
     const first = firstBy.get(s.id);
     return {
-      id: s.id, status: s.status, ai_enabled: s.ai_enabled, created_at: s.created_at,
+      id: s.id, status: s.status, ai_enabled: s.ai_enabled, created_at: s.created_at as string, // default now(), не null
       last_message_at: s.last_message_at, unread_count: s.unread_count ?? 0,
       title: siteChatTitle(first ? [{ role: 'user', content: first }] : []),
       preview: siteChatPreview(msgs),

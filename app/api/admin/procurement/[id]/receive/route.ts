@@ -100,7 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Create receipt document
   // Step 1: lines from PO
-  type PoLine = { sku: string; qty: number; cost_price: number; supplier_id: number; warehouse_id: number };
+  type PoLine = { sku: string; qty: number; cost_price: number | null; supplier_id: number | null; warehouse_id: number | null };
   const poSkus = new Set((po.lines ?? []).map((l: PoLine) => l.sku));
   const lines = (po.lines ?? []).map((l: PoLine) => {
     const actualQty   = body.actualQties?.[l.sku];
@@ -116,8 +116,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       price:            body.sale_prices?.[l.sku] ?? 0,
       cost_price,
       fulfillment_type: 'own' as const,
-      warehouse_id:     l.warehouse_id ?? po.warehouse_id,
-      supplier_id:      l.supplier_id  ?? po.supplier_id,
+      // склад/постачальник у PO заповнені завжди (createDocument їх вимагає) — каст лише для типу
+      warehouse_id:     (l.warehouse_id ?? po.warehouse_id) as number,
+      supplier_id:      (l.supplier_id  ?? po.supplier_id) as number,
     };
   });
 
@@ -133,16 +134,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       price:            body.sale_prices?.[sku] ?? 0,
       cost_price:       isNaN(price) ? 0 : price,
       fulfillment_type: 'own' as const,
-      warehouse_id:     po.warehouse_id,
-      supplier_id:      po.supplier_id,
+      warehouse_id:     po.warehouse_id as number,
+      supplier_id:      po.supplier_id as number,
     });
   }
 
   const receipt = await createDocument({
     doc_type:     'receipt',
-    warehouse_id: po.warehouse_id,
-    supplier_id:  po.supplier_id,
-    order_id:     po.order_id,
+    warehouse_id: po.warehouse_id as number,
+    supplier_id:  po.supplier_id as number | undefined,
+    order_id:     po.order_id as string | undefined,
     notes:        body.notes || `Прихід за ${po.doc_number}`,
     created_by:   user.email ?? 'admin',
     meta:         { parent_doc_id: id },
@@ -196,7 +197,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Авто-перехід замовлень "Очікуємо товар" → "Збирається"
   // Запускаємо без await щоб не блокувати відповідь — помилки не критичні
-  autoPromoteAwaitingOrders(db, receivedSkus, po.warehouse_id, user.email ?? 'system').catch(e =>
+  autoPromoteAwaitingOrders(db, receivedSkus, po.warehouse_id as number, user.email ?? 'system').catch(e =>
     console.error('[auto-promote] failed:', e)
   );
 

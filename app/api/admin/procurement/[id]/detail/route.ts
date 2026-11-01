@@ -82,7 +82,7 @@ export async function GET(
     receipt_id:         (receiptDocs ?? [])[0]?.id ?? null,
     receipt_doc_number: (receiptDocs ?? [])[0]?.doc_number ?? null,
     lines: [
-      ...(lines ?? []).map((l: { sku: string; qty: number; cost_price: number; supplier_id?: number; warehouse_id?: number; id: number }) => ({
+      ...(lines ?? []).map((l: { sku: string; qty: number; cost_price: number | null; supplier_id?: number | null; warehouse_id?: number | null; id: number }) => ({
         ...l,
         name:          nameMap.get(l.sku)?.name  ?? '',
         brand:         nameMap.get(l.sku)?.brand ?? '',
@@ -104,7 +104,7 @@ export async function GET(
       })),
     ],
     // Для AdjustmentButton
-    poLines: (lines ?? []).map((l: { sku: string; qty: number; cost_price: number }) => ({
+    poLines: (lines ?? []).map((l: { sku: string; qty: number; cost_price: number | null }) => ({
       sku:        l.sku,
       qty:        l.qty,
       cost_price: Number(l.cost_price ?? 0),

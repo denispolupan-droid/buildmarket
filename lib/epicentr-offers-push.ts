@@ -32,7 +32,7 @@ export type EpicentrPushResult = {
 
 type Cat = { slug: string; epicentr_commission_pct: number | null; epicentr_markup_pct: number | null };
 type Stock = { price_retail: number | null; price_cost: number | null; price_old: number | null; stock_qty: number | null; stock_status: string | null };
-type Row = { sku: string; brand: string | null; on_epicentr: boolean | null; epicentr_markup_pct: number | null; category_slug: string; stock: Stock | Stock[] | null };
+type Row = { sku: string; brand: string | null; on_epicentr: boolean | null; epicentr_markup_pct: number | null; category_slug: string | null; stock: Stock | Stock[] | null };
 
 export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Promise<EpicentrPushResult> {
   const db = createServiceClient();
@@ -56,7 +56,7 @@ export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Pr
     // (бренд — у написанні площадки, lib/brand-feed)
     if (epicentrBrand(feedVendor(p.brand)) === null) continue;
     const stock = Array.isArray(p.stock) ? p.stock[0] ?? null : p.stock;
-    const cat = catMap.get(p.category_slug);
+    const cat = catMap.get(p.category_slug as string); // без категорії — undefined, як і раніше
     const retail = Number(stock?.price_retail) || 0;
     // Вимкнені або без ціни — лише наявність (не гасимо ціну нулем)
     const enabled = p.on_epicentr === true && retail > 0;

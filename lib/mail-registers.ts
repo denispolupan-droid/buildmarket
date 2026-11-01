@@ -12,7 +12,7 @@
  * зі статусом no-doc і повторюється наступним прогоном.
  */
 import * as XLSX from 'xlsx';
-import { createServiceClient } from './supabase';
+import { asJson, createServiceClient } from './supabase';
 import { zohoFetch, zohoFetchBinary, getAccountId } from './zoho-mail';
 import { parseNpRegisterSheet, applyNpRegister, type NpRegisterApplyResult } from './novapay-register';
 import { applyRzPayRegisterFile, type RzPayRegisterApplyResult } from './rozetkapay-register-apply';
@@ -75,9 +75,10 @@ export async function importMailRegisters(opts: { days?: number; createdBy: stri
     if (!cls.source || cls.kind === 'other') continue;
     if (!shouldReprocessMail(done.get(m.messageId), cls.kind, now)) { res.skipped++; continue; }
     const receivedAt = new Date(Number(m.receivedTime)).toISOString();
+    // cls.source тут уже не null (вище continue для «чужих» листів) — `!` лише для типу
     const save = async (status: 'done' | 'skipped' | 'no-doc' | 'error', result: unknown, error?: string) => {
       if (opts.dryRun) return;
-      await db.from('mail_register_imports').upsert({ message_id: m.messageId, source: cls.source, kind: cls.kind, register_no: cls.registerNo, subject: String(m.subject ?? '').slice(0, 200), received_at: receivedAt, status, result: result ?? null, error: error ?? null, processed_at: new Date().toISOString() });
+      await db.from('mail_register_imports').upsert({ message_id: m.messageId, source: cls.source!, kind: cls.kind, register_no: cls.registerNo, subject: String(m.subject ?? '').slice(0, 200), received_at: receivedAt, status, result: asJson(result ?? null), error: error ?? null, processed_at: new Date().toISOString() });
     };
     try {
       if (cls.kind === 'rzpay-act') { await save('skipped', { reason: 'місячний акт' }); res.skipped++; continue; }

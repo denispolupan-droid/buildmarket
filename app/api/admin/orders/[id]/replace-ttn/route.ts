@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '../../../../../../lib/supabase';
+import { createServiceClient, type TableUpdate } from '../../../../../../lib/supabase';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, getRozetkaOrderStatusInfo } from '../../../../../../lib/rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
@@ -62,7 +62,7 @@ export async function POST(
   // «висить N днів» від її дати означало б лякати себе неіснуючим простроченням.
   if (order.status === 'shipped') update.shipped_at = now;
 
-  const { error: upErr } = await db.from('orders').update(update).eq('id', id);
+  const { error: upErr } = await db.from('orders').update(update as TableUpdate<'orders'>).eq('id', id);
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
   await syncDraftShipmentTracking(id, ttn);

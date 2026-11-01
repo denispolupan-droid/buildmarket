@@ -1,4 +1,4 @@
-import { createServiceClient } from '../supabase';
+import { asJson, createServiceClient } from '../supabase';
 import {
   recordShipment, recordCOGS, recordPurchase,
   recordReturn, recordSupplierReturn, recordTxn,
@@ -76,7 +76,7 @@ export async function createDocument(
       supplier_invoice_number: input.supplier_invoice_number ?? null,
       supplier_invoice_date:   input.supplier_invoice_date   ?? null,
       supplier_invoice_amount: input.supplier_invoice_amount ?? null,
-      meta:                    input.meta                    ?? {},
+      meta:                    asJson(input.meta                    ?? {}),
     })
     .select()
     .single();
@@ -99,7 +99,7 @@ export async function createDocument(
     exchange_rate:    l.exchange_rate   ?? (input.exchange_rate ?? 1),
     sort_order:       i,
     is_bonus:         l.is_bonus        ?? false,
-    meta:             l.meta            ?? {},
+    meta:             asJson(l.meta            ?? {}),
   }));
 
   const { error: linesError } = await db
@@ -696,7 +696,7 @@ export async function cancelDocument(
         doc_date:        new Date().toISOString(),
         notes:           `Сторно ${doc.doc_number}${reason ? ': ' + reason : ''}`,
         created_by:      cancelledBy,
-        meta:            doc.meta ?? {},
+        meta:            asJson(doc.meta ?? {}),
       })
       .select()
       .single();
@@ -716,7 +716,7 @@ export async function cancelDocument(
       exchange_rate:    l.exchange_rate,
       sort_order:       i,
       is_bonus:         l.is_bonus ?? false,
-      meta:             l.meta ?? {},
+      meta:             asJson(l.meta ?? {}),
     }));
 
     const { error: linesError } = await db
@@ -802,7 +802,7 @@ export async function correctDocument(
       doc_date:        new Date().toISOString(),
       notes:           `Виправлення ${doc.doc_number}`,
       created_by:      correctedBy,
-      meta:            doc.meta ?? {},
+      meta:            asJson(doc.meta ?? {}),
     })
     .select()
     .single();
@@ -822,7 +822,7 @@ export async function correctDocument(
     exchange_rate:    l.exchange_rate,
     sort_order:       i,
     is_bonus:         l.is_bonus ?? false,
-    meta:             l.meta ?? {},
+    meta:             asJson(l.meta ?? {}),
   }));
 
   const { error: linesError } = await db.from('acc_document_lines').insert(newLines);
@@ -877,7 +877,7 @@ export async function createPaymentVoucher(
       confirmed_at: now,
       confirmed_by: input.created_by ?? null,
       created_by:   input.created_by ?? null,
-      meta:         input.meta ?? {},
+      meta:         asJson(input.meta ?? {}),
     })
     .select('id, doc_number')
     .single();

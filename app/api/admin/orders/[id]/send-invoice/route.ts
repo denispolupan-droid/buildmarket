@@ -20,8 +20,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json() as { email?: string };
   const db = createServiceClient();
 
-  const { data: order, error } = await db.from('orders').select('*').eq('id', id).single();
-  if (error || !order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { data: orderRow, error } = await db.from('orders').select('*').eq('id', id).single();
+  if (error || !orderRow) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  // Рукописний тип рахунку (invoice-html) звужує jsonb-поля рядка замовлення
+  const order = orderRow as unknown as Parameters<typeof buildInvoiceHtml>[0]['order'];
 
   const toEmail = body.email?.trim() || order.email;
   if (!toEmail) return NextResponse.json({ error: 'Email не вказано' }, { status: 400 });

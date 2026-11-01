@@ -71,8 +71,8 @@ async function buildLookup(db: Db, rows: RzPayRegisterRow[]): Promise<RzPayLooku
   const ourNums = ids.filter(id => /^26\d{6}$/.test(id)).map(Number);
   const refs = [...new Set(rows.map(r => r.ref).filter((x): x is string => !!x))];
   const [byProm, byRz, byNum, byRef] = await Promise.all([
-    promIds.length ? db.from('orders').select(ORDER_SEL).in('prom_order_id', promIds).limit(promIds.length) : Promise.resolve({ data: [] as O[] }),
-    promIds.length ? db.from('orders').select(ORDER_SEL).in('rozetka_order_id', promIds).limit(promIds.length) : Promise.resolve({ data: [] as O[] }),
+    promIds.length ? db.from('orders').select(ORDER_SEL).in('prom_order_id', promIds as unknown as number[]) /* PostgREST однаково шле рядком у URL */.limit(promIds.length) : Promise.resolve({ data: [] as O[] }),
+    promIds.length ? db.from('orders').select(ORDER_SEL).in('rozetka_order_id', promIds as unknown as number[]).limit(promIds.length) : Promise.resolve({ data: [] as O[] }),
     ourNums.length ? db.from('orders').select(ORDER_SEL).in('order_number', ourNums).limit(ourNums.length) : Promise.resolve({ data: [] as O[] }),
     refs.length    ? db.from('orders').select(ORDER_SEL).in('tracking_number', refs).limit(refs.length * 3) : Promise.resolve({ data: [] as O[] }),
   ]);
@@ -127,10 +127,10 @@ export async function applyParsedRzPayRegister(register: RzPayRegister, createdB
     }
 
     // Що вже проведено на цю виплату (alloc − undo) і лічильники ключів для seq
-    const keyed = await fetchAllRows<{ idempotency_key: string; amount: number }>((f, t) => db
+    const keyed = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
       .from('money_entries').select('idempotency_key, amount')
       .or(`idempotency_key.like.rzpay-alloc:${txn}:%,idempotency_key.like.rzpay-alloc-undo:${txn}:%,idempotency_key.like.rzpay-refund:${txn}:%,idempotency_key.like.rzpay-refund-undo:${txn}:%`)
-      .order('id').range(f, t));
+      .order('id').range(f, t)) as unknown as Promise<({ idempotency_key: string; amount: number })[]>);
     // Нетто по замовленню: оплата +, її сторно −, повернення −, сторно повернення +
     const SIGN: Record<string, number> = { 'rzpay-alloc': 1, 'rzpay-alloc-undo': -1, 'rzpay-refund': -1, 'rzpay-refund-undo': 1 };
     const existingNet: Record<string, number> = {};

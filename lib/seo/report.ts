@@ -194,12 +194,12 @@ export async function buildSearchReport(days: 28 | 90 = 28): Promise<SearchRepor
   }
 
   // ── замовлення для контексту ───────────────────────────────────────────────
-  const orderRows = await fetchAllRows<{ status: string; channel_code: string | null; total_price: number; created_at: string }>((f, t) => db
+  const orderRows = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
     .from('orders')
     .select('status, channel_code, total_price, created_at')
     .neq('status', 'cancelled')
     .order('created_at', { ascending: true })
-    .range(f, t));
+    .range(f, t)) as unknown as Promise<({ status: string; channel_code: string | null; total_price: number; created_at: string })[]>);
   const orderMap = new Map<string, OrderRow>();
   for (const o of orderRows) {
     const month = String(o.created_at).slice(0, 7);
