@@ -23,6 +23,12 @@ const inputStyle: React.CSSProperties = {
 };
 const labelStyle: React.CSSProperties = { fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' };
 
+// Лінії документа помітніші за стандартну --border (вона майже біла):
+// домішуємо приглушений текст — працює і в світлій, і в темній темі.
+const LINE = 'color-mix(in srgb, var(--text-muted) 38%, var(--border))';
+const ACCENT = '#1E3A5F';
+const ACCENT_TINT = 'color-mix(in srgb, #1E3A5F 7%, var(--bg-card))';
+
 const ACCOUNT: Record<string, string> = {
   revenue: 'Виручка', customer: 'Покупець', cogs: 'Собівартість', inventory_asset: 'Товари на складі',
   inventory_transit: 'Товар у дорозі', supplier: 'Постачальник', marketplace_fee: 'Комісія маркетплейсу',
@@ -174,9 +180,14 @@ export default function ReturnsClient() {
           const isOpen = expanded.has(r.id);
           const cancelled = r.status === 'cancelled';
           return (
-            <div key={r.id} style={{ borderTop: '1px solid var(--border-light)', background: focusId === r.id ? 'var(--bg-soft)' : undefined }}>
+            // Відкритий документ — окрема «картка» в журналі: рівна рамка, тінь
+            // і підсвічений рядок-заголовок, щоб не зливався з сусідами.
+            <div key={r.id} style={isOpen
+              ? { margin: '12px 14px 14px', border: `2px solid ${ACCENT}`, borderRadius: '14px', background: 'var(--bg-card)', boxShadow: '0 6px 24px rgba(15,23,42,0.10)', overflow: 'hidden' }
+              : { borderTop: '1px solid var(--border-light)', background: focusId === r.id ? 'var(--bg-soft)' : undefined }}>
               <div onClick={() => toggle(r.id)}
-                style={{ display: 'grid', gridTemplateColumns: '20px 190px 90px 1fr 170px 160px 110px', gap: '10px', alignItems: 'center', padding: '10px 18px', cursor: 'pointer', fontSize: '13px', opacity: cancelled ? 0.65 : 1 }}>
+                style={{ display: 'grid', gridTemplateColumns: '20px 190px 90px 1fr 170px 160px 110px', gap: '10px', alignItems: 'center', padding: isOpen ? '12px 16px' : '10px 18px', cursor: 'pointer', fontSize: '13px', opacity: cancelled ? 0.65 : 1,
+                  background: isOpen ? ACCENT_TINT : undefined, borderBottom: isOpen ? `1px solid ${LINE}` : undefined }}>
                 <span style={{ color: 'var(--text-muted)' }}>{isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
                   <span style={{ fontWeight: 800, color: 'var(--text-primary)', textDecoration: cancelled ? 'line-through' : 'none' }}>{r.doc_number}</span>
@@ -199,7 +210,7 @@ export default function ReturnsClient() {
                 <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.total)} ₴</span>
               </div>
               {isOpen && (
-                <div style={{ padding: '4px 18px 16px 48px' }}>
+                <div style={{ padding: '14px 16px 16px' }}>
                   {cards[r.id]
                     ? <Card card={cards[r.id]!} onChanged={ids => refreshAll([r.id, ...ids])} onToast={setToast} onError={setError} />
                     : <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', padding: '8px 0' }}>Завантаження…</div>}
@@ -287,127 +298,60 @@ function Card({ card, onChanged, onToast, onError }: {
     await call(`/api/admin/finance/returns/${card.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) }, '{n} скасовано', card.parent ? [card.parent.id] : []);
   };
 
-  const Chip = ({ id, number, kind, current, href }: { id: string; number: string; kind: string; current?: boolean; href?: string }) => (
-    <Link key={id} href={href ?? `/admin/finance/returns?id=${id}`}
-      style={{ fontSize: '12px', fontWeight: current ? 800 : 600, padding: '4px 10px', borderRadius: '999px', textDecoration: 'none',
-        border: `1.5px solid ${current ? '#1E3A5F' : 'var(--border)'}`, background: current ? '#1E3A5F' : 'var(--bg-card)', color: current ? '#fff' : 'var(--text-secondary)' }}>
-      {kind} {number}
-    </Link>
-  );
-  const arrow = <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>→</span>;
+  const isCustomer = card.kind === 'customer';
+  const activeKids = card.chain.children.filter(c => c.status !== 'cancelled');
+  const allAccepted = activeKids.length > 0 && activeKids.every(c => c.stage === 'accepted');
+  const lineSuppliers = [...new Set(card.lines.map(l => l.supplier_name).filter((s): s is string => !!s))].join(', ');
+
+  // Етапи замість двох дублюючих блоків «Ланцюжок» і «Хронологія»
+  const steps: Step[] = isCustomer
+    ? [
+        { label: 'Продаж', sub: card.chain.sales.map(s => s.doc_number).join(', ') || '—', done: card.chain.sales.length > 0,
+          href: card.chain.sales[0] ? `/admin/accounting/documents/${card.chain.sales[0].id}` : undefined },
+        { label: 'Заявка', sub: dateTime(card.created_at), done: true },
+        { label: 'Товар отримано', sub: card.stage === 'received' ? dateTime(card.received_at ?? card.confirmed_at) : 'очікується', done: card.stage === 'received' },
+        { label: 'Повернення постачальнику', sub: activeKids.map(c => c.doc_number).join(', ') || 'ще не створено', done: activeKids.length > 0,
+          href: activeKids[0] ? `/admin/finance/returns?id=${activeKids[0].id}` : undefined },
+        { label: 'Прийнято постачальником', sub: allAccepted ? 'так' : 'очікується', done: allAccepted },
+      ]
+    : [
+        ...(card.parent ? [{
+          label: card.parent.doc_type === 'return_in' ? 'Повернення від покупця' : 'Прихід', sub: card.parent.doc_number, done: true,
+          href: card.parent.doc_type === 'return_in' ? `/admin/finance/returns?id=${card.parent.id}` : `/admin/accounting/documents/${card.parent.id}`,
+        }] : []),
+        { label: 'Відправлено постачальнику', sub: dateTime(card.sent_at ?? card.confirmed_at), done: true },
+        { label: 'Прийнято постачальником', sub: card.stage === 'accepted' ? dateTime(card.accepted_at) : 'очікується', done: card.stage === 'accepted' },
+      ];
+
+  const moneyText = card.refunded > 0
+    ? `повернуто ${fmt(card.refunded)} ₴ (${card.refund?.method === 'cash' ? 'готівка' : 'банк'})`
+    : card.refund ? `повернути при отриманні (${card.refund.method === 'cash' ? 'готівка' : 'банк'})`
+    : isMp && !card.mp_unaware ? 'повертає маркетплейс' : 'не повертаємо з каси/банку';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '12.5px' }}>
-      {/* Ланцюжок документів */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', marginRight: '4px' }}>Ланцюжок</span>
-        {card.chain.sales.map(s => <span key={s.id} style={{ display: 'contents' }}><Chip id={s.id} number={s.doc_number} kind="РН" href={`/admin/accounting/documents/${s.id}`} />{arrow}</span>)}
-        {card.kind === 'supplier' && card.parent && <><Chip id={card.parent.id} number={card.parent.doc_number} kind={card.parent.doc_type === 'return_in' ? 'ПВ' : 'ПН'} href={card.parent.doc_type === 'return_in' ? undefined : `/admin/accounting/documents/${card.parent.id}`} />{arrow}</>}
-        <Chip id={card.id} number={card.doc_number} kind={card.kind === 'customer' ? 'ПВ' : 'ПП'} current />
-        {card.kind === 'customer' && card.chain.children.map(c => <span key={c.id} style={{ display: 'contents' }}>{arrow}<Chip id={c.id} number={c.doc_number} kind="ПП" /></span>)}
-        {card.kind === 'customer' && card.chain.children.length === 0 && card.status !== 'cancelled' && (
-          <span style={{ color: 'var(--text-muted)' }}>{arrow} <span style={{ fontStyle: 'italic' }}>ПП ще не створено</span></span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12.5px' }}>
+      {/* ── Етапи + головна дія. Номер, вид, стадія й сума вже є в рядку
+             журналу над карткою — тут їх не повторюємо. ─────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '2px 2px 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}><Stepper steps={steps} cancelled={cancelled} /></div>
+          {!cancelled && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
+              {card.actions.receive && <button type="button" className={'proc-btn primary' + (mode === 'receive' ? ' done' : '')} onClick={() => setMode(mode === 'receive' ? 'none' : 'receive')}><PackageCheck size={14} /> Товар отримано</button>}
+              {card.actions.supplierReturn && <button type="button" className="proc-btn primary" onClick={() => setMode(mode === 'supplier' ? 'none' : 'supplier')}><Truck size={14} /> Повернути постачальнику</button>}
+              {card.actions.accept && <button type="button" className="proc-btn primary" onClick={() => setMode(mode === 'accept' ? 'none' : 'accept')}><Check size={14} /> Прийнято постачальником</button>}
+            </div>
+          )}
+        </div>
+        {cancelled && (
+          <div style={{ color: '#B91C1C' }}>Скасовано: {card.cancelled_by ?? '—'}{card.cancel_reason ? ` — ${card.cancel_reason}` : ''}</div>
+        )}
+        {isCustomer && card.status === 'draft' && (
+          <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+            <Undo2 size={13} /> Заявка без проводок. Кількість по замовленню вже заброньована під повернення.
+          </div>
         )}
       </div>
-
-      {/* Реквізити */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', padding: '12px 14px', background: 'var(--bg-soft)', borderRadius: '10px' }}>
-        <Field k="Контрагент" v={card.counterparty} />
-        <Field k="Створив" v={`${card.created_by ?? '—'} · ${dateTime(card.created_at)}`} />
-        <Field k="Замовлення" v={card.order_number ? <Link href={`/admin/orders/${card.order_id}`} style={{ color: '#1E3A5F', fontWeight: 700 }}>#{card.order_number}</Link> : '—'} />
-        <Field k={card.kind === 'customer' ? 'Проведено' : 'Відправлено'} v={card.kind === 'customer' ? dateTime(card.received_at ?? card.confirmed_at) : dateTime(card.sent_at ?? card.confirmed_at)} />
-        <Field k="Причина" v={`${card.reason ? REASON_LABEL[card.reason] : '—'}${card.reason_text ? ` — ${card.reason_text}` : ''}`} />
-        {card.kind === 'customer'
-          ? <Field k="Маркетплейс" v={isMp ? (card.mp_unaware ? 'не знає про повернення — комісія не сторнується, кошти повертаємо самі' : `${card.channel_code}: комісія сторнується пропорційно, кошти покупцю повертає площадка`) : 'не маркетплейс'} />
-          : <Field k="Прийнято" v={dateTime(card.accepted_at)} />}
-        <Field k="ТТН" v={card.ttn ?? '—'} />
-        {card.kind === 'customer' && <Field k="Кошти покупцю" v={card.refunded > 0 ? `повернуто ${fmt(card.refunded)} ₴ (${card.refund?.method === 'cash' ? 'готівка' : 'банк'})` : card.refund ? `повернути при отриманні (${card.refund.method === 'cash' ? 'готівка' : 'банк'})` : 'не повертаємо з каси/банку'} />}
-        {card.kind === 'customer' && card.commission_reversed > 0 && <Field k="Сторно комісії" v={`${fmt(card.commission_reversed)} ₴`} />}
-        {cancelled && <Field k="Скасовано" v={`${card.cancelled_by ?? '—'}${card.cancel_reason ? ` — ${card.cancel_reason}` : ''}`} />}
-      </div>
-
-      {/* Рядки */}
-      <table className="fin-table" style={{ marginTop: 0 }}>
-        <thead>
-          <tr style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
-            <td style={{ width: '24px' }}>№</td><td style={{ width: '110px' }}>Артикул</td><td>Товар</td>
-            <td className="num">К-сть</td><td className="num">{card.kind === 'customer' ? 'Ціна' : 'Собівартість'}</td><td className="num">Сума</td>
-            {card.kind === 'customer' && <td style={{ width: '200px' }}>Постачальник · до ПП</td>}
-          </tr>
-        </thead>
-        <tbody>
-          {card.lines.map((l, i) => (
-            <tr key={l.sku}>
-              <td className="muted">{i + 1}</td>
-              <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{l.sku}</td>
-              <td className="name" title={l.name}>{l.name}{l.origin_fulfillment === 'dropship' && <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginLeft: '6px' }}>дропшип → наш склад</span>}</td>
-              <td className="num">{l.qty}</td>
-              <td className="num">{fmt(card.kind === 'customer' ? l.price : l.cost_price)}</td>
-              <td className="num">{fmt(l.amount)}</td>
-              {card.kind === 'customer' && (
-                <td className="muted" style={{ fontSize: '12px' }}>
-                  {l.supplier_name ?? '—'}{card.status === 'confirmed' ? ` · ще ${l.supplier_returnable ?? 0} шт` : ''}
-                </td>
-              )}
-            </tr>
-          ))}
-          <tr>
-            <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>Разом</td>
-            <td className="num" style={{ fontWeight: 800 }}>{fmt(card.total)} ₴</td>
-            {card.kind === 'customer' && <td />}
-          </tr>
-        </tbody>
-      </table>
-
-      {/* Проводки + хронологія */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '16px' }}>
-        <div>
-          <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', marginBottom: '6px' }}>Проводки</div>
-          {card.entries.length === 0
-            ? <div style={{ color: 'var(--text-muted)' }}>{card.status === 'draft' ? 'Ще немає — з\'являться, коли товар отримано' : 'Немає'}</div>
-            : (
-              <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
-                {card.entries.map((e, i) => (
-                  <div key={e.txn_id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 110px', gap: '10px', padding: '7px 12px', borderTop: i ? '1px solid var(--border-light)' : 'none', alignItems: 'center' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{dateShort(e.business_date)}</span>
-                    <span>
-                      <span style={{ color: '#1E3A5F', fontWeight: 700 }}>Дт</span> {accountLabel(e.debit.account, e.debit.party)}
-                      <span style={{ color: 'var(--text-muted)' }}> → </span>
-                      <span style={{ color: '#B45309', fontWeight: 700 }}>Кт</span> {accountLabel(e.credit.account, e.credit.party)}
-                      {e.description && <span style={{ color: 'var(--text-muted)' }}> — {e.description}</span>}
-                    </span>
-                    <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(e.amount)} ₴</span>
-                  </div>
-                ))}
-              </div>
-            )}
-        </div>
-        <div>
-          <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', marginBottom: '6px' }}>Хронологія</div>
-          {card.timeline.map(t => (
-            <div key={t.key} style={{ display: 'flex', gap: '8px', padding: '4px 0', color: t.done ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-              <span className={`fin-dot big ${t.key === 'cancelled' ? 'red' : t.done ? 'green' : 'orange'}`} />
-              <span><div style={{ fontWeight: t.done ? 600 : 500 }}>{t.label}</div><div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>{t.done ? dateTime(t.at) : 'очікується'}</div></span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Дії */}
-      {!cancelled && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {card.actions.receive && <button type="button" className="proc-btn primary" onClick={() => setMode(mode === 'receive' ? 'none' : 'receive')}><PackageCheck size={14} /> Товар отримано</button>}
-          {card.actions.supplierReturn && <button type="button" className="proc-btn accent" onClick={() => setMode(mode === 'supplier' ? 'none' : 'supplier')}><Truck size={14} /> Повернути постачальнику</button>}
-          {card.actions.accept && <button type="button" className="proc-btn primary" onClick={() => setMode(mode === 'accept' ? 'none' : 'accept')}><Check size={14} /> Прийнято постачальником</button>}
-          {card.actions.editTtn && <button type="button" className="proc-btn" onClick={() => setMode(mode === 'ttn' ? 'none' : 'ttn')}>ТТН / коментар</button>}
-          <a className="proc-btn" href={`/api/admin/finance/returns/${card.id}/pdf?form=nakladna&inline=1`} target="_blank" rel="noopener noreferrer"><FileText size={14} /> Накладна на повернення</a>
-          {card.kind === 'customer' && <a className="proc-btn" href={`/api/admin/finance/returns/${card.id}/pdf?form=akt&inline=1`} target="_blank" rel="noopener noreferrer"><FileText size={14} /> Акт повернення</a>}
-          {card.actions.cancel && <button type="button" className="proc-btn danger" style={{ marginLeft: 'auto' }} disabled={busy} onClick={cancel}><X size={14} /> Скасувати</button>}
-        </div>
-      )}
-      {!cancelled && !card.actions.cancel && card.kind === 'customer' && (
-        <div style={{ color: 'var(--text-muted)' }}>Скасувати не можна, поки є проведені повернення постачальнику на підставі цього документа.</div>
-      )}
 
       {mode === 'receive' && (
         <div style={{ padding: '14px', border: '1px solid var(--border)', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -481,10 +425,134 @@ function Card({ card, onChanged, onToast, onError }: {
       )}
 
       {err && <div style={{ color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {err}</div>}
-      {card.kind === 'customer' && card.status === 'draft' && (
-        <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Undo2 size={13} /> Заявка без проводок: кількість по замовленню вже заброньована під повернення, повторно оформити ці позиції не вийде.</div>
-      )}
+
+      {/* ── Хто і на яких умовах ─────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '12px' }}>
+        <Section title="Сторони й підстава">
+          <Field k={isCustomer ? 'Покупець' : 'Постачальник'} v={<b>{card.counterparty}</b>} />
+          <Field k="Замовлення" v={card.order_number ? <Link href={`/admin/orders/${card.order_id}`} style={{ color: '#1E3A5F', fontWeight: 700 }}>#{card.order_number}</Link> : '—'} />
+          {isCustomer && <Field k="Постачальник товару" v={lineSuppliers || '—'} />}
+          <Field k="Створив" v={`${card.created_by ?? '—'} · ${dateTime(card.created_at)}`} />
+        </Section>
+        <Section title="Умови повернення"
+          extra={!cancelled && card.actions.editTtn
+            ? <button type="button" className="proc-btn sm ghost" onClick={() => setMode(mode === 'ttn' ? 'none' : 'ttn')}>Змінити ТТН / коментар</button>
+            : null}>
+          <Field k="Причина" v={`${card.reason ? REASON_LABEL[card.reason] : '—'}${card.reason_text ? ` — ${card.reason_text}` : ''}`} />
+          {isCustomer && isMp && (
+            <Field k="Маркетплейс" v={card.mp_unaware
+              ? 'не знає про повернення: комісія не сторнується, кошти повертаємо самі'
+              : `${card.channel_code}: комісія сторнується пропорційно`} />
+          )}
+          {isCustomer && <Field k="Кошти покупцю" v={moneyText} />}
+          {isCustomer && card.commission_reversed > 0 && <Field k="Сторно комісії" v={`${fmt(card.commission_reversed)} ₴`} />}
+          <Field k="ТТН" v={card.ttn ?? '—'} />
+        </Section>
+      </div>
+
+      {/* ── Що повертаємо ────────────────────────────────────────────── */}
+      <Section title={`Товари · ${card.lines.length} поз. · ${card.qty} шт`}>
+        <table className="fin-table strong" style={{ marginTop: 0 }}>
+          <thead>
+            <tr style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+              <td style={{ width: '24px' }}>№</td><td style={{ width: '100px' }}>Артикул</td><td>Товар</td>
+              <td className="num">К-сть</td><td className="num">{isCustomer ? 'Ціна' : 'Собівартість'}</td><td className="num">Сума</td>
+              {isCustomer && card.status === 'confirmed' && <td className="num" style={{ width: '90px' }}>Ще до ПП</td>}
+            </tr>
+          </thead>
+          <tbody>
+            {card.lines.map((l, i) => (
+              <tr key={l.sku}>
+                <td className="muted">{i + 1}</td>
+                <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{l.sku}</td>
+                <td title={l.name} style={{ maxWidth: '420px' }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{l.name}</div>
+                  {l.origin_fulfillment === 'dropship' && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>дропшип{l.supplier_name ? ` (${l.supplier_name})` : ''} → наш склад</div>}
+                </td>
+                <td className="num">{l.qty}</td>
+                <td className="num">{fmt(isCustomer ? l.price : l.cost_price)}</td>
+                <td className="num">{fmt(l.amount)}</td>
+                {isCustomer && card.status === 'confirmed' && <td className="num">{l.supplier_returnable ?? 0} шт</td>}
+              </tr>
+            ))}
+            <tr>
+              <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>Разом</td>
+              <td className="num" style={{ fontWeight: 800 }}>{fmt(card.total)} ₴</td>
+              {isCustomer && card.status === 'confirmed' && <td />}
+            </tr>
+          </tbody>
+        </table>
+      </Section>
+
+      {/* ── Облік ────────────────────────────────────────────────────── */}
+      <Section title={card.entries.length ? `Облік · ${card.entries.length} проводк${card.entries.length === 1 ? 'а' : card.entries.length < 5 ? 'и' : 'ок'}` : 'Облік'}>
+        {card.entries.length === 0
+          ? <div style={{ color: 'var(--text-muted)' }}>{card.status === 'draft' ? 'Проводок ще немає. З\'являться після «Товар отримано».' : 'Проводок немає.'}</div>
+          : card.entries.map((e, i) => (
+            <div key={e.txn_id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 110px', gap: '10px', padding: '8px 0', borderTop: i ? `1px solid ${LINE}` : 'none', alignItems: 'baseline' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{dateShort(e.business_date)}</span>
+              <span>
+                <span style={{ color: '#1E3A5F', fontWeight: 700 }}>Дт</span> {accountLabel(e.debit.account, e.debit.party)}
+                <span style={{ color: 'var(--text-muted)' }}> → </span>
+                <span style={{ color: '#B45309', fontWeight: 700 }}>Кт</span> {accountLabel(e.credit.account, e.credit.party)}
+                {e.description && <div style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}>{e.description}</div>}
+              </span>
+              <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(e.amount)} ₴</span>
+            </div>
+          ))}
+      </Section>
+
+      {/* ── Друк і скасування ────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '2px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginRight: '2px' }}>Друк</span>
+        <a className="proc-btn sm" href={`/api/admin/finance/returns/${card.id}/pdf?form=nakladna&inline=1`} target="_blank" rel="noopener noreferrer"><FileText size={13} /> Накладна на повернення</a>
+        {isCustomer && <a className="proc-btn sm" href={`/api/admin/finance/returns/${card.id}/pdf?form=akt&inline=1`} target="_blank" rel="noopener noreferrer"><FileText size={13} /> Акт повернення</a>}
+        {!cancelled && card.actions.cancel && <button type="button" className="proc-btn sm danger" style={{ marginLeft: 'auto' }} disabled={busy} onClick={cancel}><X size={13} /> Скасувати</button>}
+        {!cancelled && !card.actions.cancel && isCustomer && (
+          <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '12px' }}>Скасувати можна після скасування повернення постачальнику</span>
+        )}
+      </div>
     </div>
+  );
+}
+
+type Step = { label: string; sub: string; done: boolean; href?: string };
+
+/** Етапи документа одним рядком: зелене — зроблено, помаранчеве — наступний крок. */
+function Stepper({ steps, cancelled }: { steps: Step[]; cancelled: boolean }) {
+  const current = cancelled ? -1 : steps.findIndex(s => !s.done);
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+      {steps.map((s, i) => {
+        const isCur = i === current;
+        const color = s.done ? '#16A34A' : isCur ? '#EA8A00' : 'var(--border)';
+        const next = steps[i + 1];
+        return (
+          <div key={s.label} style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box', background: s.done ? color : 'var(--bg-card)', border: `2px solid ${color}` }} />
+              {next && <span style={{ flex: 1, height: '2px', margin: '0 6px', background: s.done && next.done ? '#16A34A' : 'var(--border)' }} />}
+            </div>
+            <div style={{ marginTop: '6px', paddingRight: '10px', fontSize: '12.5px', fontWeight: s.done || isCur ? 700 : 500, color: s.done || isCur ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+              {s.href ? <Link href={s.href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed currentColor' }}>{s.label}</Link> : s.label}
+            </div>
+            <div title={s.sub} style={{ paddingRight: '10px', fontSize: '11.5px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.sub}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Section({ title, extra, children }: { title: string; extra?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section style={{ border: `1px solid ${LINE}`, borderRadius: '12px', padding: '0 16px 14px', background: 'var(--bg-card)', minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minHeight: '36px', margin: '0 -16px 10px', padding: '0 16px', borderBottom: `1px solid ${LINE}` }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{title}</span>
+        {extra}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{children}</div>
+    </section>
   );
 }
 

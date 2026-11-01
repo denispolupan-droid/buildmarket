@@ -2769,6 +2769,10 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
   .fin-money-grid { grid-template-columns: 1fr; }
 }
 .fin-table td.name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+/* Документна таблиця: помітніші лінії, шапка відокремлена, рядок «Разом» — товстішою рискою */
+.fin-table.strong td { border-bottom-color: color-mix(in srgb, var(--text-muted) 38%, var(--border)); }
+.fin-table.strong thead td { border-bottom-width: 1.5px; padding-top: 2px; }
+.fin-table.strong tbody tr:last-child td { border-top: 1.5px solid color-mix(in srgb, var(--text-muted) 38%, var(--border)); }
 
 /* Пояснення походження цифри в картках фінансів */
 .fin-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 7px; }
