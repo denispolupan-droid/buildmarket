@@ -128,6 +128,12 @@ export default async function AccountPage({
                   <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                     {companyName ?? 'Особистий кабінет'}
                   </h1>
+                  {user.app_metadata?.b2b_status === 'pending' && (
+                    // Заявка на B2B-доступ ще не схвалена (міграція 146)
+                    <p style={{ fontSize: '13px', color: '#B45309', margin: '6px 0 0' }}>
+                      Заявку на оптовий доступ отримано — після перевірки менеджером відкриються оптові ціни. Поки діють роздрібні.
+                    </p>
+                  )}
                   <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>{user.email}</p>
                 </div>
               </div>

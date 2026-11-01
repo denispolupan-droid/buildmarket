@@ -1,37 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { User } from '@supabase/supabase-js';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { getRole } from '../../../lib/user-role';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { ensurePartnerCustomer } from '../../../lib/partner-customer';
+import { alertAdmin } from '../../../lib/alert';
 
 const serviceClient = createServiceClient();
 
-type SignupMeta = { company_name?: string; contact_person?: string; phone?: string; city?: string; tax_number?: string };
-
-async function ensureCustomerRecord(userId: string, role: 'dropship' | 'wholesale', user: { email?: string; user_metadata?: SignupMeta }) {
-  const { data: existing } = await serviceClient
-    .from('customers')
-    .select('id')
-    .eq('auth_user_id', userId)
-    .single();
-
-  if (!existing) {
-    const isDropship = role === 'dropship';
-    const meta = user.user_metadata ?? {};
-    await serviceClient.from('customers').insert({
-      auth_user_id: userId,
-      type:         isDropship ? 'dropship_partner' : 'wholesale',
-      price_tier:   isDropship ? 'drop' : 'wholesale',
-      name:         meta.contact_person || meta.company_name || user.email || 'Клієнт',
-      company:      meta.company_name || null,
-      phone:        meta.phone || null,
-      city:         meta.city || null,
-      tax_number:   meta.tax_number || null,
-      email:        user.email,
-      is_active:    true,
-      balance:      0,
-      balance_held: 0,
-    });
-  }
+// Заявка на B2B-доступ (міграція 146): сповіщаємо адміна один раз — коли
+// партнер підтвердив email, тобто заявка справжня, а не недорегістрація.
+async function notifyB2BRequest(user: User) {
+  const app = user.app_metadata ?? {};
+  if (app.b2b_status !== 'pending' || app.b2b_notified) return;
+  const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>;
+  alertAdmin(
+    'Нова заявка на B2B-доступ',
+    [meta.company_name, meta.contact_person, user.email, meta.phone, app.requested_account_type].filter(Boolean).join(' · ')
+      + ' — Налаштування → Користувачі',
+  );
+  await serviceClient.auth.admin.updateUserById(user.id, { app_metadata: { ...app, b2b_notified: true } });
 }
 
 // Supabase redirects here after email confirmation
@@ -51,7 +39,9 @@ export async function GET(req: NextRequest) {
       const role = getRole(user);
 
       if (role === 'dropship' || role === 'wholesale') {
-        await ensureCustomerRecord(user!.id, role, user!);
+        await ensurePartnerCustomer(user!, role);
+      } else if (user) {
+        await notifyB2BRequest(user).catch(err => console.error('[auth/callback] b2b notify failed:', err));
       }
 
       if (role === 'dropship') {
