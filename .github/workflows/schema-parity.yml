@@ -10,6 +10,9 @@ name: Schema parity prod vs test
 # ролі, USING/WITH CHECK). Знахідка того дня: на тесті RLS був вимкнений на 23 таблицях
 # і бракувало 30 політик — колонкова перевірка цього не бачила
 # (supabase/schema/test-sync-2026-10-31.sql).
+#
+# 02.11.2026: додано функції (md5 тіла), тригери та індекси. Саме у функції жив
+# fn_partner_txn_to_ledger, що двоїв проводки (міграція 121), і це не ловилось.
 
 on:
   schedule:
@@ -24,7 +27,7 @@ jobs:
       PROD_REF: boaztnparrdoeknajprn
       TEST_REF: mdrextghmuzkyelpqsgp
     steps:
-      - name: Compare columns, RLS and policies
+      - name: Compare columns, RLS, policies, functions, triggers and indexes
         env:
           TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
@@ -32,13 +35,17 @@ jobs:
           QCOLS='{"query":"SELECT table_name, column_name, udt_name, is_nullable FROM information_schema.columns WHERE table_schema='"'"'public'"'"' ORDER BY 1,2"}'
           QRLS='{"query":"SELECT c.relname AS table_name, c.relrowsecurity AS rls FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = '"'"'public'"'"' AND c.relkind IN ('"'"'r'"'"','"'"'p'"'"') ORDER BY 1"}'
           QPOL='{"query":"SELECT tablename, policyname, permissive, cmd, array_to_string(roles, '"'"','"'"') AS roles, coalesce(qual, '"'"''"'"') AS qual, coalesce(with_check, '"'"''"'"') AS with_check FROM pg_policies WHERE schemaname = '"'"'public'"'"' ORDER BY 1,2"}'
+          # Функції: md5 нормалізованого тіла (кирилиця в коментарях на проді/тесті може
+          # відрізнятись кодуванням після ручних застосувань — пробіли й CR прибираємо).
+          QFN='{"query":"SELECT p.proname || '"'"'('"'"' || pg_get_function_identity_arguments(p.oid) || '"'"')'"'"' AS fn, md5(regexp_replace(pg_get_functiondef(p.oid), '"'"'\\s+'"'"', '"'"''"'"', '"'"'g'"'"')) AS sig FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = '"'"'public'"'"' AND p.prokind IN ('"'"'f'"'"','"'"'p'"'"') ORDER BY 1"}'
+          QTRG='{"query":"SELECT c.relname || '"'"'.'"'"' || t.tgname AS trg, pg_get_triggerdef(t.oid) AS def FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = '"'"'public'"'"' AND NOT t.tgisinternal ORDER BY 1"}'
+          QIDX='{"query":"SELECT tablename || '"'"'.'"'"' || indexname AS idx, indexdef FROM pg_indexes WHERE schemaname = '"'"'public'"'"' ORDER BY 1"}'
           for ref in "$PROD_REF" "$TEST_REF"; do
-            curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$QCOLS" > "cols-$ref.json"
-            curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$QRLS" > "rls-$ref.json"
-            curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-              "https://api.supabase.com/v1/projects/$ref/database/query" -d "$QPOL" > "pol-$ref.json"
+            for pair in "QCOLS:cols" "QRLS:rls" "QPOL:pol" "QFN:fn" "QTRG:trg" "QIDX:idx"; do
+              var="${pair%%:*}"; kind="${pair##*:}"
+              curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+                "https://api.supabase.com/v1/projects/$ref/database/query" -d "${!var}" > "$kind-$ref.json"
+            done
           done
           node - <<'EOF'
           const fs = require('fs');
@@ -65,12 +72,15 @@ jobs:
           compare('policy', load('pol', P), load('pol', T),
             p => `${p.tablename}.${p.policyname}`,
             p => `${p.permissive} ${p.cmd} TO ${p.roles} USING ${p.qual.replace(/\s+/g, ' ')} CHECK ${p.with_check.replace(/\s+/g, ' ')}`);
+          compare('function', load('fn', P), load('fn', T), f => f.fn, f => f.sig);
+          compare('trigger', load('trg', P), load('trg', T), t => t.trg, t => t.def.replace(/\s+/g, ' '));
+          compare('index', load('idx', P), load('idx', T), i => i.idx, i => i.indexdef.replace(/\s+/g, ' '));
 
           if (report.length) {
             for (const r of report) console.log('::error::' + r);
             process.exit(1);
           }
-          console.log('✓ schemas, RLS and policies match');
+          console.log('✓ schemas, RLS, policies, functions, triggers and indexes match');
           EOF
 
       - name: Alert on drift
@@ -80,4 +90,4 @@ jobs:
           TG_CHAT:  ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
         run: |
           [ -n "$TG_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
-            -d chat_id="$TG_CHAT" -d text="⚠️ Схема тестової бази розійшлась із продом (колонки/RLS/політики): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
+            -d chat_id="$TG_CHAT" -d text="⚠️ Схема тестової бази розійшлась із продом (колонки/RLS/політики/функції/тригери/індекси): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true

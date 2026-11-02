@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withNpRetry } from '../../../lib/np-retry';
+import { requireStaff } from '../../../lib/auth-guard';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -21,7 +22,13 @@ export async function POST(req: NextRequest) {
 
   // Settings' "Перевірити" button passes the not-yet-saved key here to test it before saving —
   // everyone else falls back to the configured key (app_settings, checked by the caller, or env).
+  // Власний ключ — лише адміну: інакше роут був би анонімним релеєм до API НП
+  // з будь-яким ключем (аудит 31.10, §5 Low).
   const { _apiKeyOverride, ...rest } = body as { _apiKeyOverride?: string } & Record<string, unknown>;
+  if (_apiKeyOverride) {
+    const auth = await requireStaff('admin');
+    if (!auth.ok) return auth.response;
+  }
   const apiKey = _apiKeyOverride || process.env.NOVA_POSHTA_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'Nova Poshta API key not configured' }, { status: 500 });

@@ -1,33 +1,57 @@
-name: Generate DB types
+name: DB types drift
 
-# Генерує types/database.types.ts зі схеми ПРОДА (роль backup_reader, лише читання)
-# і віддає артефактом. Запуск руками після серії міграцій; файл комітиться в репо
-# окремим кроком людиною/агентом, щоб у коді був типізований клієнт Supabase
-# (етап 1 плану зростання: запити мають перевірятися проти схеми, а не по пам'яті).
+# types/database.types.ts має збігатися зі схемою ПРОДА: типізований клієнт
+# (lib/supabase-service) перевіряє запити проти цього файлу, і якщо він відстав
+# від міграції, tsc зелений, а колонки в запиті немає (аудит 31.10, §1/§10 п. 13).
+# Щодня генеруємо типи з прода через Management API (той самий генератор, що й
+# у файлі в репо) і порівнюємо з закоміченим файлом; розбіжність — помилка і
+# Telegram. Оновити файл: запустити workflow руками, забрати артефакт і закомітити
+# (або локально: GET /v1/projects/<ref>/types/typescript → types/database.types.ts).
 
 on:
+  schedule:
+    - cron: '20 2 * * *'   # щодня 05:20 за Києвом, після schema-parity
   workflow_dispatch:
 
 jobs:
   types:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    env:
+      PROD_REF: boaztnparrdoeknajprn
     steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: supabase gen types
+      - uses: actions/checkout@v4
+      - name: Generate types from prod and compare with repo
         env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          test -n "$DB_URL" || { echo "::error::SUPABASE_DB_URL secret is not set"; exit 1; }
+          test -n "$TOKEN" || { echo "::error::SUPABASE_ACCESS_TOKEN secret is not set"; exit 1; }
           mkdir -p out
-          npx --yes supabase@latest gen types typescript --db-url "$DB_URL" --schema public > out/database.types.ts
+          curl -sf -H "Authorization: Bearer $TOKEN" \
+            "https://api.supabase.com/v1/projects/$PROD_REF/types/typescript?included_schemas=public" > out/types.json
+          node -e "const j=require('./out/types.json'); require('fs').writeFileSync('out/database.types.ts', j.types)"
           wc -l out/database.types.ts
-          grep -c "Row: {" out/database.types.ts | xargs echo "tables+views:"
+          # CRLF у репо (Windows) не рахуємо за розбіжність
+          if diff -q <(tr -d '\r' < types/database.types.ts) <(tr -d '\r' < out/database.types.ts) > /dev/null; then
+            echo "✓ types/database.types.ts matches prod schema"
+          else
+            echo "::error::types/database.types.ts відстав від схеми прода — забери артефакт database-types і закоміть"
+            diff <(tr -d '\r' < types/database.types.ts) <(tr -d '\r' < out/database.types.ts) | head -80
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: database-types-${{ github.run_number }}
           path: out/database.types.ts
           retention-days: 7
           if-no-files-found: error
+
+      - name: Alert on drift
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT:  ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+        run: |
+          [ -n "$TG_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            -d chat_id="$TG_CHAT" -d text="⚠️ types/database.types.ts відстав від схеми прода: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true

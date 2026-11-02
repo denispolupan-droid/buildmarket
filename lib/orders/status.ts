@@ -141,6 +141,9 @@ export function buildStatusPatch(
   const patch: Record<string, unknown> = {
     status: to,
     status_history: [...history, { status: to, at: now, by: actor, via }],
+    // Автор для тригера fn_track_order_status → order_status_history.changed_by
+    // (міграція 149): через PostgREST current_setting не поставити.
+    status_changed_by: actor,
   };
   if (to === 'shipped')   patch.shipped_at   = now;
   if (to === 'delivered') patch.delivered_at = now;

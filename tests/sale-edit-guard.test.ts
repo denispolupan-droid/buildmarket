@@ -94,9 +94,12 @@ describe('evaluateSaleEdit', () => {
     expect(codes(facts({ totalBefore: 100_000, totalAfter: 100_400 }))).not.toContain('big_total_change');
   });
 
-  it('у режимі спостереження правка проходить, але блокер зафіксовано', () => {
-    const v = evaluateSaleEdit(facts({ confirmedDocs: 1 }));
-    expect(v.blockers.length).toBe(1);
-    expect(v.allowed).toBe(true); // EDIT_GUARD_ENFORCE = false
+  it('з 02.11.2026 страж блокує: правка з блокером не проходить, лише з попередженнями — проходить', () => {
+    const blocked = evaluateSaleEdit(facts({ confirmedDocs: 1 }));
+    expect(blocked.blockers.length).toBe(1);
+    expect(blocked.allowed).toBe(false); // EDIT_GUARD_ENFORCE = true (два місяці спостережень без block)
+    const warned = evaluateSaleEdit(facts({ totalBefore: 1000, totalAfter: 100 }));
+    expect(warned.blockers.length).toBe(0);
+    expect(warned.allowed).toBe(true);
   });
 });

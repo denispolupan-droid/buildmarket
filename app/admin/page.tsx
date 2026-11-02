@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../lib/supabase-server';
 import { fetchAllRows } from '../../lib/db-paginate';
 import AdminOrders from './AdminOrders';
+import { ORDER_SELECT } from './_orders/types';
 import { settlementMap, type SettlementEntry } from '../../lib/accounting/order-settlement';
 import Link from 'next/link';
 import NewOrderButton from './orders/NewOrderButton';
@@ -162,7 +163,7 @@ export default async function AdminPage({
   const query = applyStatusFilter(applyOrderFilters(
     serviceClient
       .from('orders')
-      .select('*', { count: 'exact' })
+      .select(ORDER_SELECT, { count: 'exact' })
       .order(sortBy, { ascending: sortAsc })
       .order('id', { ascending: sortAsc })
       .range(from, to),

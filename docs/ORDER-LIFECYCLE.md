@@ -75,3 +75,7 @@ delivered ──> cancelled   (= повернення; сторно робить
 
 Паралельно тригер БД `fn_track_order_status` веде повний журнал `order_status_history`
 незалежно від коду — це контрольний слід, навіть якщо хтось напише `status` напряму.
+Автора (`changed_by`) тригер бере з `orders.status_changed_by`, яку `buildStatusPatch`
+пише тим самим UPDATE, що й статус (міграція 149, 02.11.2026; до того колонка була
+порожня в усіх рядках — `current_setting('app.current_user')` через PostgREST не
+поставити). Пряма правка `status` повз `buildStatusPatch` лишить автора NULL.

@@ -78,6 +78,7 @@ export type Order = {
   utm_medium:             string | null;
   utm_campaign:           string | null;
   referrer_url:           string | null;
+  status_changed_by:  string | null;
   payment_confirmed:  boolean;
   amount_paid:        number;
   callback_done:      boolean;
@@ -113,6 +114,15 @@ export type Order = {
   rozetka_data:       ({ _commission?: RozetkaCommissionData } & Record<string, unknown>) | null;
   epicentr_data:      ({ _commission?: PromCommissionData; number?: string } & Record<string, unknown>) | null;
 };
+
+/**
+ * Колонки, які журнал реально читає з orders — рівно поля типу Order вище.
+ * Раніше page.tsx брав select('*'): 88 колонок, серед них ttn_snapshot і сирі
+ * payload площадок, яких журнал не показує, їхали в RSC-пропси кожного показу
+ * (аудит 31.10, §3 п. 5). Додаєш поле в Order — додай і сюди.
+ */
+export const ORDER_SELECT =
+  'id, order_number, created_at, status, internal_note, flags, total_price, company, contact, phone, email, delivery_type, delivery_subtype, delivery_address, delivery_city_ref, delivery_city_name, delivery_warehouse_ref, payment_type, comment, tracking_number, carrier_accepted_at, carrier_status_text, carrier_status_synced_at, carrier_delivered_at, utm_source, utm_medium, utm_campaign, referrer_url, status_changed_by, payment_confirmed, amount_paid, callback_done, invoice_as_company, invoice_options, supplier_sent_at, supplier_sent_by, channel_code, prom_order_id, rozetka_order_id, epicentr_order_id, customer_id, price_type, discount_pct, discount_amount, promo_code, promo_discount, shipping_supplier_id, mp_refund_status, np_return_ref, np_return_number, np_return_tracking, fulfillment_mode, confirmed_at, shipped_at, delivered_at, cancelled_at, status_history, payment_due_date, items, prom_data, rozetka_data, epicentr_data';
 
 export type CounterpartyOption = { id: string; name: string; company: string | null; phone: string | null; city: string | null; type: string | null };
 

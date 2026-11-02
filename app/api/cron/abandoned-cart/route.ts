@@ -20,6 +20,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // щось забули» через місяць — не продаж, а спам, за який платить репутація
 // домену. Ланцюжок 1 год → 24 год → 72 год у це вікно вкладається з запасом.
 const MAX_AGE_DAYS = 7;
+// Після цього терміну кошик видаляємо зовсім (email + склад кошика — ПДн).
+const PURGE_AFTER_DAYS = 180;
 
 type CartRow = {
   id: string;
@@ -107,7 +109,13 @@ async function run(req: NextRequest) {
       .lt('last_seen_at', h72).gte('last_seen_at', oldest),
   ]);
 
-  const results = { r1: 0, r2: 0, r3: 0, failed: 0 };
+  const results = { r1: 0, r2: 0, r3: 0, failed: 0, purged: 0 };
+
+  // Ретенція ПДн (аудит 31.10, §4): кошик з email, якому більше PURGE_AFTER_DAYS,
+  // нагадувань уже не отримає і для відновлення не потрібен — видаляємо.
+  const purgeBefore = new Date(now - PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data: purged } = await admin.from('abandoned_carts').delete().lt('last_seen_at', purgeBefore).select('id');
+  results.purged = purged?.length ?? 0;
 
   for (const [rows, step, field, key] of [
     [r1.data as CartRow[] | null, 1, 'reminder_1_at', 'r1'],

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
 
+const IMAGE_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/avif': 'avif', 'image/gif': 'gif',
+};
+const MAX_BYTES = 5 * 1024 * 1024;
+
 export async function POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
@@ -10,7 +15,12 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'webp';
+  // Тип — за MIME, не за розширенням у назві (аудит 31.10, §5 Low): банер
+  // віддається публічно з R2, тож сюди не має потрапити ні html, ні svg зі скриптом.
+  const ext = IMAGE_EXT[file.type];
+  if (!ext) return NextResponse.json({ error: 'Лише зображення: JPEG, PNG, WebP, AVIF, GIF' }, { status: 415 });
+  if (file.size > MAX_BYTES) return NextResponse.json({ error: `Файл більший за ${MAX_BYTES / 1024 / 1024} МБ` }, { status: 413 });
+
   const path = `promo/banner.${ext}`;
   const bytes = await file.arrayBuffer();
 
@@ -31,6 +41,6 @@ export async function DELETE() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
-  await deleteFromR2(['promo/banner.webp', 'promo/banner.jpg', 'promo/banner.png']);
+  await deleteFromR2(Object.values(IMAGE_EXT).map(ext => `promo/banner.${ext}`));
   return NextResponse.json({ ok: true });
 }

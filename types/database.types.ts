@@ -3504,6 +3504,7 @@ export type Database = {
           shipped_at: string | null
           shipping_supplier_id: number | null
           status: string | null
+          status_changed_by: string | null
           status_history: Json | null
           supplier_confirmed: boolean
           supplier_sent_at: string | null
@@ -3594,6 +3595,7 @@ export type Database = {
           shipped_at?: string | null
           shipping_supplier_id?: number | null
           status?: string | null
+          status_changed_by?: string | null
           status_history?: Json | null
           supplier_confirmed?: boolean
           supplier_sent_at?: string | null
@@ -3684,6 +3686,7 @@ export type Database = {
           shipped_at?: string | null
           shipping_supplier_id?: number | null
           status?: string | null
+          status_changed_by?: string | null
           status_history?: Json | null
           supplier_confirmed?: boolean
           supplier_sent_at?: string | null

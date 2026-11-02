@@ -326,14 +326,15 @@ export const getProductBySlugCached = unstable_cache(
 );
 
 export async function getBrands(): Promise<string[]> {
-  const { data, error } = await supabase
+  // Без стелі limit(2000): список брендів обрізався б на 2000 SKU (аудит 31.10, §3).
+  const data = await fetchAllRows((f, t) => supabase
     .from('products')
     .select('brand')
     .eq('is_active', true)
-    .limit(2000);
-  if (error) throw error;
+    .order('id')
+    .range(f, t));
   const seen = new Map<string, string>();
-  for (const { brand } of (data ?? []) as { brand: string }[]) {
+  for (const { brand } of data as { brand: string }[]) {
     const b = brand?.trim();
     if (b && !seen.has(b.toUpperCase())) seen.set(b.toUpperCase(), b);
   }

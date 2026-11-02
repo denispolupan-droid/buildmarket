@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { ingestMonoTxn } from '../../../../lib/mono-ingest';
 import { getMonoWebhookSecret, getMonoFopAccount } from '../../../../lib/mono-config';
+import { safeEqual } from '../../../../lib/safe-equal';
 
 // Вебхук Monobank Personal API: банк шле POST на кожну нову транзакцію у форматі
 // { type: "StatementItem", data: { account, statementItem } }. Перед активацією
@@ -15,7 +16,7 @@ import { getMonoWebhookSecret, getMonoFopAccount } from '../../../../lib/mono-co
 
 async function secretOk(req: NextRequest, db: ReturnType<typeof createServiceClient>): Promise<boolean> {
   const secret = await getMonoWebhookSecret(db);
-  return !!secret && new URL(req.url).searchParams.get('t') === secret;
+  return safeEqual(new URL(req.url).searchParams.get('t'), secret);
 }
 
 export async function GET(req: NextRequest) {

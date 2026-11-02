@@ -7,13 +7,16 @@
 import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
 import { getSupabase } from '../../../lib/supabase';
+import { fetchAllRows } from '../../../lib/db-paginate';
 
 export const dynamic = 'force-static';
 export const revalidate = 300;
 
 const getIndex = unstable_cache(
   async () => {
-    const { data, error } = await getSupabase()
+    // Без стелі: limit(2000) мовчки обрізав би індекс на 2000 SKU так само, як
+    // 1000 рядків PostgREST обрізали адмін-екрани (аудит 31.10, §3).
+    const products = await fetchAllRows((f, t) => getSupabase()
       .from('products')
       .select(`
         sku, slug, name, name_ru, brand, volume, image,
@@ -21,9 +24,9 @@ const getIndex = unstable_cache(
         stock:product_stock(price_retail, price_promo, stock_status, stock_qty)
       `)
       .eq('is_active', true)
-      .limit(2000);
-    if (error) throw error;
-    return { products: data ?? [] };
+      .order('id')
+      .range(f, t));
+    return { products };
   },
   ['search-index'],
   { revalidate: 300, tags: ['products'] },

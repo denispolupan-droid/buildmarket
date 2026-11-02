@@ -57,6 +57,8 @@ describe('order status — єдине джерело правди (12.10.2026)',
       expect(p).toEqual({
         status: 'shipped', shipped_at: now,
         status_history: [{ status: 'confirmed', at: 't0', by: 'x' }, { status: 'shipped', at: now, by: 'admin@x', via: 'ship' }],
+        // автор для тригера → order_status_history.changed_by (міграція 149)
+        status_changed_by: 'admin@x',
       });
     });
 
