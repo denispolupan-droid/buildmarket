@@ -13,6 +13,7 @@ type Dynamics = {
   daily: { labels: string[]; dows: string[]; revenue: (number | null)[]; profit: (number | null)[]; counts: number[] };
   sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
   planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
+  months: { labels: string[]; years: string[]; revenue: number[]; profit: number[]; counts: number[] };
 };
 
 // Ті самі кольори каналів, що в журналі замовлень (упізнаваність важливіша
@@ -129,6 +130,91 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
       title="Продажі — сума створених замовлень за день (без скасованих, включно з тими, що в дорозі). Прибуток — очікуваний: по доставлених факт з обліку, по решті оцінка.">
       Продажі — створені замовлення за день, вкл. в дорозі · прибуток — очікуваний (факт по доставлених, оцінка по решті)
+    </div>
+    </div>
+  );
+}
+
+/* ── Місяці: ті самі дві панелі, що «Дні», але по місяцях створення ────────
+   Поточний місяць неповний — він блідіший і з позначкою в підказці, щоб
+   не читався як падіння. Над стовпчиком продажів — сума. */
+function MonthChart({ m }: { m: Dynamics['months'] }) {
+  const W = 900, H = 258, padL = 44, padR = 6;
+  const iw = W - padL - padR;
+  const n = Math.max(m.labels.length, 1);
+  const groupW = Math.min(72, iw / n);
+  const blockX = padL + (iw - groupW * n) / 2;
+  const barW = Math.max(6, Math.min(44, groupW * 0.62));
+  const cx = (i: number) => blockX + groupW * i + groupW / 2;
+  const fmtAxis = (v: number) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)));
+  const fmtTop = (v: number) => (v >= 10000 ? `${Math.round(v / 1000)}k` : v >= 1000 ? `${(v / 1000).toFixed(1).replace('.0', '')}k` : String(v));
+  const cur = n - 1;
+  const title = (i: number) => `${m.labels[i]} ${m.years[i]}${i === cur ? ' (поточний, неповний)' : ''}`;
+  if (!m.labels.length || m.counts.every(c => c === 0)) {
+    return <div style={{ height: 230, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Немає замовлень</div>;
+  }
+  const maxRev = Math.max(...m.revenue, 1);
+  const maxProf = Math.max(...m.profit, 1);
+  const minProf = Math.min(0, ...m.profit);
+  const panels = [
+    { top: 28, h: 116, min: 0, max: maxRev, vals: m.revenue, color: () => 'var(--brand-blue)', label: 'Продажі', labelColor: 'var(--brand-blue)', showTop: true,
+      tip: (i: number, v: number) => `${title(i)}: продажі ${fmt(v)} ₴ · ${m.counts[i]} зам.${m.counts[i] ? ` · сер. чек ${fmt(Math.round(v / m.counts[i]))} ₴` : ''}` },
+    { top: 166, h: 56, min: minProf, max: maxProf, vals: m.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), label: 'Прибуток · очік.', labelColor: '#15803D', showTop: false,
+      tip: (i: number, v: number) => `${title(i)}: очікуваний прибуток ${fmt(v)} ₴${m.revenue[i] > 0 ? ` · ${Math.round(v / m.revenue[i] * 100)}% від продажів` : ''}` },
+  ];
+  return (
+    <div>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }} role="img" aria-label="Продажі і очікуваний прибуток по місяцях">
+      {panels.map(pn => {
+        const span = pn.max - pn.min || 1;
+        const y = (v: number) => pn.top + pn.h - ((v - pn.min) / span) * pn.h;
+        const y0 = y(Math.max(0, pn.min));
+        const ticks = pn.h > 100 ? [0, 1, 2] : [0, 1];
+        return (
+          <g key={pn.label}>
+            <text x={padL} y={pn.top - (pn.showTop ? 17 : 5)} fontSize="10.5" fontWeight="700" fill={pn.labelColor} opacity="0.85">{pn.label}</text>
+            {ticks.map(t => {
+              const v = pn.min + (span * t) / ticks[ticks.length - 1];
+              return (
+                <g key={t}>
+                  <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} stroke="var(--border-light, var(--border))" strokeWidth="1" strokeDasharray={Math.abs(v) < 1 ? undefined : '3 4'} />
+                  <text x={padL - 8} y={y(v) + 3.5} textAnchor="end" fontSize="10" fill="var(--text-muted)">{fmtAxis(v)}</text>
+                </g>
+              );
+            })}
+            {pn.vals.map((v, i) => (
+              <g key={i}>
+                <rect x={cx(i) - barW / 2} y={v >= 0 ? y(v) : y(0)} width={barW}
+                  height={Math.max(1.5, Math.abs(y(v) - y0))} rx={3} fill={pn.color(v)} opacity={i === cur ? 0.45 : 0.9}>
+                  <title>{pn.tip(i, v)}</title>
+                </rect>
+                {pn.showTop && v > 0 && (
+                  <text x={cx(i)} y={y(v) - 4} textAnchor="middle" fontSize="9.5" fontWeight="600" fill="var(--text-secondary)" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtTop(v)}
+                  </text>
+                )}
+              </g>
+            ))}
+          </g>
+        );
+      })}
+      {m.labels.map((l, i) => {
+        const newYear = i === 0 || m.years[i] !== m.years[i - 1];
+        return (
+          <g key={i}>
+            <text x={cx(i)} y={H - 14} textAnchor="middle" fontSize="10.5" fontWeight={i === cur ? 700 : 500} fill={i === cur ? 'var(--text-secondary)' : 'var(--text-muted)'}>
+              {l}
+            </text>
+            {newYear && (
+              <text x={cx(i)} y={H - 3} textAnchor="middle" fontSize="8.5" fontWeight="600" fill="var(--text-muted)">{m.years[i]}</text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+      title="Продажі — сума створених за місяць замовлень (без скасованих, включно з тими, що в дорозі). Прибуток — очікуваний: по доставлених факт з обліку, по решті оцінка. Поточний місяць неповний.">
+      Продажі — створені замовлення за місяць, вкл. в дорозі · прибуток — очікуваний · поточний місяць блідіший — неповний
     </div>
     </div>
   );
@@ -274,6 +360,7 @@ function PlanCumChart({ p }: { p: Dynamics['planCum'] }) {
 
 const SLIDES = [
   { key: 'daily', label: 'Дні' },
+  { key: 'months', label: 'Місяці' },
   { key: 'sources', label: 'Джерела' },
   { key: 'plan', label: 'План' },
 ] as const;
@@ -298,6 +385,7 @@ export default function DynamicsCarousel({ data }: { data: Dynamics }) {
         )}
       </div>
       {slide === 'daily' && <DayBars d={data.daily} />}
+      {slide === 'months' && <MonthChart m={data.months} />}
       {slide === 'sources' && <SourcesDonut sources={data.sources} />}
       {slide === 'plan' && <PlanCumChart p={data.planCum} />}
     </div>
