@@ -82,7 +82,7 @@ export async function insertPriceChangeLog(
     input.adjustment ? '[МП, поверх наценки]' : null,
     input.is_promo  ? '[Акція]'       : null,
     isPending       ? '[Заплановано]' : null,
-    input.revert_at ? `до ${input.revert_at}` : null,
+    input.revert_at ? `до ${input.revert_at}${input.adjustment ? ' включно' : ''}` : null,
     input.comment   ?? null,
   ].filter(Boolean).join(' | ');
 

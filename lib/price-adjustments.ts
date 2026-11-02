@@ -45,6 +45,21 @@ export function kyivToday(now: Date = new Date()): string {
   return now.toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' });
 }
 
+/** YYYY-MM-DD ± днів (календарна арифметика, без часових поясів). */
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Останній день дії для показу людині: ends_on у базі виключний (з цієї дати
+ * вже без корекції), а в інтерфейсі «Діє до» — включно.
+ */
+export function lastDayOf(endsOn: string | null | undefined): string | null {
+  return endsOn ? addDays(endsOn, -1) : null;
+}
+
 export function adjState(row: Pick<AdjRow, 'starts_on' | 'ends_on' | 'cancelled_at'>, today: string): AdjState {
   if (row.cancelled_at) return 'cancelled';
   if (row.starts_on > today) return 'scheduled';

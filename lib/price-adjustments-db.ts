@@ -12,7 +12,7 @@ import { fetchAllRows } from './db-paginate';
 import { insertPriceChangeLog, type PriceLogInput } from './price-change-log';
 import {
   type AdjChannel, type AdjRow, type FactorMap,
-  ADJ_CHANNELS, adjState, appliedStateFor, buildFactorMap, kyivToday,
+  ADJ_CHANNELS, adjState, appliedStateFor, buildFactorMap, kyivToday, lastDayOf,
 } from './price-adjustments';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,7 +76,7 @@ export type CreateAdjustmentsInput = {
   items: { sku: string; channel: AdjChannel; pct: number }[];
   is_promo?: boolean;
   starts_on?: string | null;   // YYYY-MM-DD, порожньо або минуле = сьогодні
-  ends_on?: string | null;     // YYYY-MM-DD, виключно
+  ends_on?: string | null;     // YYYY-MM-DD, ВИКЛЮЧНО (перший день без корекції); «Діє до» інтерфейсу + 1 день
 };
 
 export async function createAdjustments(db: Db, userId: string | null, input: CreateAdjustmentsInput) {
@@ -95,7 +95,9 @@ export async function createAdjustments(db: Db, userId: string | null, input: Cr
     is_promo: !!input.is_promo,
     status: isScheduled ? 'pending' : 'applied',
     effective_from: isScheduled ? new Date(`${startsOn}T00:00:00`).toISOString() : null,
-    revert_at: endsOn,
+    // У журналі й документі — останній день дії (як бачить людина); виключна
+    // межа ends_on живе лише в price_adjustments
+    revert_at: lastDayOf(endsOn),
   });
   if ('error' in logRes) return { ok: false as const, error: logRes.error };
 
@@ -239,7 +241,7 @@ export async function processAdjustmentBoundaries(db: Db) {
     const groupSkus = new Set(moved.filter(x => x.r.log_id === logId).map(x => x.r.sku));
     await insertPriceChangeLog(db, null, {
       type: 'adj_revert', value: 0, target: String(logRow?.target ?? 'mp'), count: groupSkus.size,
-      comment: `Автозавершення ${logRow?.is_promo ? 'акції' : 'корекції'} від ${logRow?.created_at ? new Date(String(logRow.created_at)).toLocaleDateString('uk-UA') : '—'} — дата повернення настала`,
+      comment: `Автозавершення ${logRow?.is_promo ? 'акції' : 'корекції'} від ${logRow?.created_at ? new Date(String(logRow.created_at)).toLocaleDateString('uk-UA') : '—'} — термін дії минув`,
     });
   }
 

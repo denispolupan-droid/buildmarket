@@ -77,7 +77,9 @@ function promoStatus(entry: LogEntry) {
   if (!entry.is_promo) return null;
   const today = new Date().toISOString().split('T')[0];
   if (entry.reverted_at) return { label: 'Скасовано', color: '#6B7280', bg: '#F3F4F6' };
-  if (entry.revert_at && entry.revert_at <= today) return { label: 'Протерміновано', color: '#B45309', bg: '#FEF3C7' };
+  // Акція МП (adjustment): revert_at — останній день дії включно; акція сайту — дата повернення
+  const expired = entry.adjustment ? entry.revert_at != null && entry.revert_at < today : entry.revert_at != null && entry.revert_at <= today;
+  if (expired) return { label: 'Протерміновано', color: '#B45309', bg: '#FEF3C7' };
   return { label: 'Активна', color: '#15803D', bg: '#DCFCE7' };
 }
 
@@ -273,9 +275,9 @@ export default function PricesLog() {
                   </span>
                 )}
                 {entry.revert_at && !entry.reverted_at && (
-                  <span title={isMp ? 'Автовідкат націнок кроном у цю дату' : undefined}
+                  <span title={isAdj ? 'Останній день дії; наступного дня вимкнеться сама' : isMp ? 'Автовідкат націнок кроном у цю дату' : undefined}
                     style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#6B7280', flexShrink: 0 }}>
-                    <RotateCcw size={10} /> до {formatDateOnly(entry.revert_at)}
+                    <RotateCcw size={10} /> до {formatDateOnly(entry.revert_at)}{isAdj ? ' включно' : ''}
                   </span>
                 )}
                 {entry.reverted_at && !isReverted && (

@@ -21,7 +21,7 @@ import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice a
 import { isMpTarget, type MpSnapshotRow, type MpMarkupItem } from '../../../lib/mp-reprice';
 import {
   type AdjChannel, type AdjRow,
-  adjState, buildFactorMap, factorLabel, factorOf, hasPromo, kyivToday, totalFactor,
+  addDays, adjState, buildFactorMap, factorLabel, factorOf, hasPromo, kyivToday, totalFactor,
 } from '../../../lib/price-adjustments';
 import PricesAdjustments from './PricesAdjustments';
 import { formatPricelistPrice, pricelistCategoryMatch } from '../../../lib/pricelist-rules';
@@ -519,7 +519,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
       const promPrice = r.hasPromBase ? libPromPrice({ ...r.promInputs, adjustFactor: promRegular * promPromo }) : null;
       const rzOld     = r.hasRzBase   && Math.abs(rzPromo - 1) > 1e-12   ? libRozetkaPrice({ ...r.rzInputs,   adjustFactor: rzRegular })   : null;
       const promOld   = r.hasPromBase && Math.abs(promPromo - 1) > 1e-12 ? libPromPrice({ ...r.promInputs, adjustFactor: promRegular }) : null;
-      return { rzMarkup: r.rzProdMarkup, rzPrice, promMarkup: r.promProdMarkup, promPrice, rzPct: pr, promPct: pp, rzOld, promOld };
+      return { rzMarkup: r.rzProdMarkup, rzPrice, promMarkup: r.promProdMarkup, promPrice, rzPct: pr, promPct: pp, rzOld, promOld,
+        rzF: rzRegular * rzPromo, promF: promRegular * promPromo };
     }
     const calc = (cur: number) => repricingType === 'set_markup' ? Math.round(val * 100) / 100 : markupForPriceChange(cur, val);
 
@@ -527,8 +528,24 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     const promMarkup = ok && mpWantsProm ? calc(resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct)) : r.promProdMarkup;
     const rzPrice    = r.hasRzBase   ? libRozetkaPrice({ ...r.rzInputs,   productMarkupPct: rzMarkup })   : null;
     const promPrice  = r.hasPromBase ? libPromPrice({ ...r.promInputs, productMarkupPct: promMarkup }) : null;
-    return { rzMarkup, rzPrice, promMarkup, promPrice, rzPct: null as number | null, promPct: null as number | null, rzOld: r.rzOld, promOld: r.promOld };
+    return { rzMarkup, rzPrice, promMarkup, promPrice, rzPct: null as number | null, promPct: null as number | null, rzOld: r.rzOld, promOld: r.promOld,
+      rzF: r.fRz, promF: r.fProm };
   }, [repricingValue, repricingType, mpWantsRz, mpWantsProm, isMpAdj, adjPct, repricingIsPromo]);
+
+  // Попередження переоцінки МП (не блокують): продаж у мінус після комісії і
+  // акція поверх уже діючої (знижки перемножаться)
+  const mpWarnings = useMemo(() => {
+    if (!isMp || isNaN(parseFloat(repricingValue)) || !selectedRows.length) return null;
+    let loss = 0, stacked = 0;
+    for (const r of selectedRows) {
+      const a = mpAfter(r);
+      const rzM   = mpWantsRz   && r.hasRzBase   ? rozetkaMargin({ ...r.rzInputs,   productMarkupPct: a.rzMarkup,   adjustFactor: a.rzF })   : null;
+      const promM = mpWantsProm && r.hasPromBase ? promMargin({ ...r.promInputs, productMarkupPct: a.promMarkup, adjustFactor: a.promF }) : null;
+      if ((rzM && rzM.uah < 0) || (promM && promM.uah < 0)) loss++;
+      if (isMpAdj && repricingIsPromo && ((mpWantsRz && hasPromo(r.fRzAdj)) || (mpWantsProm && hasPromo(r.fPromAdj)))) stacked++;
+    }
+    return loss || stacked ? { loss, stacked } : null;
+  }, [isMp, isMpAdj, repricingIsPromo, repricingValue, selectedRows, mpAfter, mpWantsRz, mpWantsProm]);
 
   async function applyMpAdjustments() {
     setSaving(true);
@@ -557,11 +574,14 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
       }
 
       const startsOn = repricingEffectiveFrom && repricingEffectiveFrom > today ? repricingEffectiveFrom : null;
-      const endsOn = repricingRevertAt || null;
-      if (endsOn && endsOn <= (startsOn ?? today)) {
-        showToast('Дата повернення має бути пізніше за дату початку (і за сьогодні)', 'error', 5000);
+      // «Діє до» — ОСТАННІЙ день акції включно; у базі ends_on виключна межа
+      // (з цієї дати вже без акції), тож +1 день
+      const lastDay = repricingRevertAt || null;
+      if (lastDay && lastDay < (startsOn ?? today)) {
+        showToast('Останній день акції не може бути раніше за дату початку (і за сьогодні)', 'error', 5000);
         return;
       }
+      const endsOn = lastDay ? addDays(lastDay, 1) : null;
       const res = await fetch('/api/admin/prices/adjustments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -582,7 +602,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
       const skuCount = new Set(items.map(i => i.sku)).size;
       const what = repricingIsPromo ? 'Акцію' : 'Тимчасову зміну';
       const when = startsOn ? ` з ${new Date(startsOn).toLocaleDateString('uk-UA')}` : '';
-      const until = endsOn ? ` до ${new Date(endsOn).toLocaleDateString('uk-UA')}` : ' без дати завершення';
+      const until = lastDay ? ` до ${new Date(lastDay).toLocaleDateString('uk-UA')} включно` : ' без дати завершення';
       const skipped = selectedRows.length - skuCount;
       cancelRepricing();
       showToast(
@@ -1484,7 +1504,7 @@ async function sendEmail(){
               </div>
             </div>
             <div>
-              <label style={smallLabel}>{isMp ? 'Діє до (повернути після)' : 'Повернути ціни після'}</label>
+              <label style={smallLabel}>{isMp ? 'Діє до (включно)' : 'Повернути ціни після'}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input
                   type="date"
@@ -1509,7 +1529,7 @@ async function sendEmail(){
               інші акції не заважають.
               {repricingIsPromo && ' Площадка покаже знижку: у фід іде і акційна ціна, і стара (без акції) — перекресленою.'}
               {repricingRevertAt
-                ? ` Діє до ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')}, у цю дату вимкнеться сама.`
+                ? ` Діє до ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')} включно, наступного дня вимкнеться сама.`
                 : ' Без дати завершення — вимкніть кнопкою у вкладці «Акції МП» або в журналі.'}
               {' '}Rozetka округлює до 5 ₴ і додає Smart, тому фактична зміна ≈ заданій.
             </div>
@@ -1520,6 +1540,13 @@ async function sendEmail(){
               «Дата початку» в майбутньому — застосування відкладене. Акція чи зміна на строк — поставте «Акція» або дату «Діє до».
             </div>
           ))}
+
+          {mpWarnings && (
+            <div style={{ marginTop: 8, padding: '7px 12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 7, fontSize: 12, color: '#991B1B', lineHeight: 1.5 }}>
+              {mpWarnings.loss > 0 && <div>⚠ <b>{mpWarnings.loss} товар(ів)</b> після переоцінки продаватимуться <b>у мінус</b> — ціна мінус комісія нижче собівартості.</div>}
+              {mpWarnings.stacked > 0 && <div>⚠ <b>{mpWarnings.stacked} товар(ів)</b> уже мають діючу акцію — нова ляже поверх, знижки перемножаться (−10 % і −10 % = −19 %). Щоб замінити, спершу вимкніть стару у вкладці «Акції МП».</div>}
+            </div>
+          )}
 
           {/* Revenue preview widget */}
           {repricingValue && !isMp && (
@@ -1552,7 +1579,9 @@ async function sendEmail(){
             )}
             {repricingRevertAt && !(repricingEffectiveFrom && repricingEffectiveFrom > new Date().toISOString().split('T')[0]) && (
               <span style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <RotateCcw size={12} /> Авто-відкат {new Date(repricingRevertAt).toLocaleDateString('uk-UA')}
+                <RotateCcw size={12} /> {isMp
+                  ? `Діє до ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')} включно`
+                  : `Авто-відкат ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')}`}
               </span>
             )}
             {resetSkus.length > 0 && (

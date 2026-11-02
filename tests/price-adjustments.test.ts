@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  adjState, buildFactorMap, factorOf, factorLabel, hasPromo, kyivToday, totalFactor,
+  addDays, adjState, buildFactorMap, factorOf, factorLabel, hasPromo, kyivToday, lastDayOf, totalFactor,
   type AdjRow,
 } from '../lib/price-adjustments';
 import { rozetkaPrice, promPrice, rozetkaBasePrice } from '../lib/marketplace-pricing';
@@ -96,6 +96,27 @@ describe('формули МП з корекціями', () => {
     const f = factorOf(buildFactorMap([row({ channel: 'prom', pct: 5 }), row({ channel: 'prom', pct: -20, is_promo: true })], '2026-11-01'), 'prom', 'A');
     expect(promPrice({ ...PROM, adjustFactor: f.regular })).toBe(promPrice({ ...PROM, adjustFactor: 1.05 }));
     expect(promPrice({ ...PROM, adjustFactor: totalFactor(f) })).toBe(promPrice({ ...PROM, adjustFactor: 1.05 * 0.8 }));
+  });
+});
+
+describe('«Діє до» включно ↔ виключна межа ends_on', () => {
+  it('addDays через межу місяця й року; lastDayOf = ends_on − 1', () => {
+    expect(addDays('2026-11-30', 1)).toBe('2026-12-01');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(lastDayOf('2026-11-08')).toBe('2026-11-07');
+    expect(lastDayOf(null)).toBeNull();
+  });
+
+  it('акція «до 07.11 включно» діє 07.11 і вимкнена 08.11', () => {
+    const r = row({ starts_on: '2026-11-02', ends_on: addDays('2026-11-07', 1) });
+    expect(adjState(r, '2026-11-07')).toBe('active');
+    expect(adjState(r, '2026-11-08')).toBe('ended');
+  });
+
+  it('одноденна акція: сьогодні до сьогодні включно', () => {
+    const r = row({ starts_on: '2026-11-02', ends_on: addDays('2026-11-02', 1) });
+    expect(adjState(r, '2026-11-02')).toBe('active');
+    expect(adjState(r, '2026-11-03')).toBe('ended');
   });
 });
 

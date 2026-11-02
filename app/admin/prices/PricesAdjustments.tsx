@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Tag, Undo2, Clock } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
-import { ADJ_CHANNEL_LABEL, factorLabel, type AdjChannel } from '../../../lib/price-adjustments';
+import { ADJ_CHANNEL_LABEL, factorLabel, lastDayOf, type AdjChannel } from '../../../lib/price-adjustments';
 
 // Вкладка «Акції МП»: усі живі корекції цін МП (міграція 147), згруповані за
 // переоцінкою, що їх створила. Кожну можна вимкнути окремо — решта лишаються,
@@ -117,7 +117,7 @@ export default function PricesAdjustments({ onChanged }: { onChanged: () => void
           <div style={{ fontSize: 12, color: '#6B7280' }}>
             {g.created_at ? `створено ${fmtDate(g.created_at)}` : ''}
             <div style={{ fontSize: 11, color: g.ends_on ? '#B45309' : '#9CA3AF' }}>
-              {g.ends_on ? `повернеться ${fmtDate(g.ends_on)}` : 'безстроково'}
+              {g.ends_on ? `діє до ${fmtDate(lastDayOf(g.ends_on)!)} включно` : 'без дати завершення'}
             </div>
           </div>
           <button
