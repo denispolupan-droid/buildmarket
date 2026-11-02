@@ -146,6 +146,18 @@ export function documentHref(p: {
   return orderHref(p.orderNumber);
 }
 
+/**
+ * Номер замовлення з опису проводки («… — замовлення #26101215»). Для проводок
+ * без order_id: напр. оплати Mono, які пізніше перепривʼязали до замовлення
+ * парою relink (вона схована), — щоб рядок усе одно вів на замовлення.
+ * Лише один номер в описі — інакше неоднозначно, повертаємо null.
+ */
+export function orderNumberFromText(text: string | null | undefined): number | null {
+  const all = [...String(text ?? '').matchAll(/#(\d{6,})\b/g)].map(m => Number(m[1]));
+  const uniq = [...new Set(all)];
+  return uniq.length === 1 ? uniq[0] : null;
+}
+
 export function orderHref(orderNumber: number | null | undefined): string | null {
   return orderNumber != null ? `/admin?status=&q=${orderNumber}` : null;
 }

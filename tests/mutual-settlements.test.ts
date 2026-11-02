@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildMutualStatement, parseCounterpartyRef, counterpartyRefString, accountsFor, operationLabel,
-  buildJournal, documentHref, groupOf, parseGroup, openItemsByOrder, saldoWords, agingBuckets,
+  buildJournal, documentHref, groupOf, parseGroup, openItemsByOrder, saldoWords, agingBuckets, orderNumberFromText,
   type LedgerEntry,
 } from '../lib/accounting/mutual-settlements';
 
@@ -120,6 +120,19 @@ describe('buildMutualStatement', () => {
       e({ id: 'early', account_type: 'customer', amount: 1, business_date: '2026-10-01' }),
     ];
     expect(buildMutualStatement({ accounts: ['customer'], opening: {}, entries }).rows.map(r => r.id)).toEqual(['early', 'late']);
+  });
+});
+
+describe('orderNumberFromText', () => {
+  it('бере єдиний номер замовлення з опису', () => {
+    expect(orderNumberFromText('Оплата карткою онлайн (Monobank) — замовлення #26101215')).toBe(26101215);
+    expect(orderNumberFromText('#26101215 і знову #26101215')).toBe(26101215);
+  });
+  it('нічого або кілька різних номерів — null', () => {
+    expect(orderNumberFromText(null)).toBeNull();
+    expect(orderNumberFromText('Реєстр НоваПей №19663323')).toBeNull();
+    expect(orderNumberFromText('#26101215, #26101216')).toBeNull();
+    expect(orderNumberFromText('пункт #12')).toBeNull();
   });
 });
 
