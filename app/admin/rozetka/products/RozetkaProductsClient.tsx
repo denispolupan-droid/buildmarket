@@ -64,12 +64,14 @@ const NUM_INPUT: React.CSSProperties = {
   border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right',
 };
 
-export default function RozetkaProductsClient({ products, stock, categories, smartTariff, deliveryTariff }: {
+export default function RozetkaProductsClient({ products, stock, categories, smartTariff, deliveryTariff, adjFactors = {} }: {
   products:       Product[];
   stock:          Stock[];
   categories:     Category[];
   smartTariff:    SmartBracket[];
   deliveryTariff: RozetkaDeliveryTariff;
+  /** sku → множник активних корекцій Rozetka (лише ≠ 1); ціна екрана = ціна фіда */
+  adjFactors?:    Record<string, number>;
 }) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
@@ -222,7 +224,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
     const markup      = productMkp ?? catMkp ?? 0;
     const commission  = cat?.rozetka_commission_pct ?? 0;
     // ЄДИНА формула lib/marketplace-pricing — та сама, що у фіді
-    const priceInputs = { cost, retail: retailPrice, productMarkupPct: productMkp, categoryMarkupPct: catMkp, commissionPct: commission };
+    const priceInputs = { cost, retail: retailPrice, productMarkupPct: productMkp, categoryMarkupPct: catMkp, commissionPct: commission, adjustFactor: adjFactors[p.sku] };
     const baseRz      = basePrice > 0 ? rozetkaBasePrice(priceInputs) : null;
     const isSmart     = smart[p.sku] === true;
     const rzPrice     = baseRz != null && isSmart ? rozetkaSmartPrice(baseRz, commission, tariff) : baseRz;
@@ -231,7 +233,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
     const marginUah   = net != null && cost != null ? net - cost : null;
     const marginPct   = marginUah != null && net != null && net > 0 ? (marginUah / net) * 100 : null;
     return { p, cat, retailPrice, cost, basePrice, productMkp, catMkp, markup, commission, rzPrice, baseRz, isSmart, marginPct };
-  }), [products, stockMap, catMap, markups, smart, tariff]);
+  }), [products, stockMap, catMap, markups, smart, tariff, adjFactors]);
 
   const filteredRows = useMemo(() => {
     let list = allRows;

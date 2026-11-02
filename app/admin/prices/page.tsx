@@ -6,6 +6,7 @@ import { getSmartTariff } from '../../../lib/rozetka-smart';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { loadLiveAdjustments } from '../../../lib/price-adjustments-db';
 
 const db = createServiceClient();
 
@@ -19,7 +20,7 @@ export default async function PricesPage() {
   if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');
 
   // product_stock — сторінками (ліміт PostgREST 1000 рядків; каталог ~800 SKU і росте)
-  const [stock, { data: categories }, { data: activePromos }, smartTariff, { data: promPlanRow }, { data: overrides }] = await Promise.all([
+  const [stock, { data: categories }, { data: activePromos }, smartTariff, { data: promPlanRow }, { data: overrides }, adjustments] = await Promise.all([
     fetchAllRows((f, t) => db.from('product_stock')
       .select('sku, price_cost, price_unit, price_retail, price_drop, price_promo, price_wholesale, price_locked, stock_status, stock_qty, updated_at')
       .order('id')
@@ -29,6 +30,7 @@ export default async function PricesPage() {
     db.from('price_change_log')
       .select('snapshot, revert_at')
       .eq('is_promo', true)
+      .eq('adjustment', false)   // акції МП (корекції) — не акції сайту
       .is('reverted_at', null)
       .neq('status', 'cancelled'),
     getSmartTariff(),
@@ -37,6 +39,8 @@ export default async function PricesPage() {
     // постачальника. Показуємо їх у таблиці, щоб ціна не виглядала магією.
     db.from('supplier_product_overrides')
       .select('our_sku, markup_retail, markup_wholesale, markup_drop, fixed_retail, fixed_wholesale, fixed_drop'),
+    // Живі акції й тимчасові зміни МП (міграція 147) — множники цін Prom/Rozetka
+    loadLiveAdjustments(db),
   ]);
   const promPlan = ((promPlanRow?.value as string | undefined) ?? 'single') as 'single' | 'econom';
 
@@ -90,6 +94,7 @@ export default async function PricesPage() {
       markups={overrides ?? []}
       smartTariff={smartTariff}
       promPlan={promPlan}
+      adjustments={adjustments}
     />
   );
 }

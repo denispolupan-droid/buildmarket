@@ -6,6 +6,8 @@ import * as XLSX from 'xlsx';
 import { buildPdf, fetchImages, PdfGroup } from '../_pdf';
 import { fetchProductsInCatalogOrder } from '../_catalog-order';
 import { promPrice, promCommissionOf, type PromPlan } from '../../../../../lib/marketplace-pricing';
+import { factorOf, totalFactor } from '../../../../../lib/price-adjustments';
+import { loadFactorMap } from '../../../../../lib/price-adjustments-db';
 import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { createServiceClient } from '../../../../../lib/supabase-service';
@@ -70,6 +72,7 @@ export async function GET(req: NextRequest) {
 
     const stockMap = new Map(stock.map(s => [s.sku as string, s]));
     const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
+    const promFactors = priceType === 'price_prom' ? await loadFactorMap(db, ['prom']) : null;
 
     const grouped = new Map<string, PdfGroup>();
     for (const cat of sortedCats) {
@@ -104,6 +107,7 @@ export async function GET(req: NextRequest) {
               productMarkupPct: (prod as any).prom_markup_pct != null ? Number((prod as any).prom_markup_pct) : null,
               categoryMarkupPct: (cat as any)?.prom_markup_pct != null ? Number((cat as any).prom_markup_pct) : null,
               commissionPct: promCommissionOf(cat as { prom_commission_pct?: number | null; prom_commission_pct_econom?: number | null } | null, promPlan),
+              adjustFactor: totalFactor(factorOf(promFactors, 'prom', prod.sku)),
             })
           : null;
       } else {
@@ -164,6 +168,7 @@ export async function GET(req: NextRequest) {
 
   const stockMap = new Map(stock.map(s => [s.sku as string, s]));
   const catMap   = new Map((categories ?? []).map(c => [c.slug, c]));
+  const promFactors = priceType === 'price_prom' ? await loadFactorMap(db, ['prom']) : null;
 
   const grouped = new Map<string, { catName: string; rows: { name: string; brand: string; volume: string | null; price: number | null }[] }>();
   for (const cat of xlsxSortedCats) {
@@ -197,6 +202,7 @@ export async function GET(req: NextRequest) {
             productMarkupPct: (p as any).prom_markup_pct != null ? Number((p as any).prom_markup_pct) : null,
             categoryMarkupPct: (cat as any)?.prom_markup_pct != null ? Number((cat as any).prom_markup_pct) : null,
             commissionPct: promCommissionOf(cat as { prom_commission_pct?: number | null; prom_commission_pct_econom?: number | null } | null, promPlan),
+            adjustFactor: totalFactor(factorOf(promFactors, 'prom', p.sku)),
           })
         : null;
     } else {

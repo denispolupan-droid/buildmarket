@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { cancelAdjustments } from '../../../../../lib/price-adjustments-db';
 import { insertPriceChangeLog } from '../../../../../lib/price-change-log';
 import { revertMpEntry, type MpLogEntry } from '../../../../../lib/mp-reprice';
 
@@ -32,7 +33,10 @@ export async function PATCH(req: NextRequest) {
       .from('price_change_log')
       .update({ status: 'cancelled' })
       .eq('id', id)
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      // Запланована корекція скасовується через revert (вимикає її рядки);
+      // тут лише позначка запису лишила б корекції живими
+      .eq('adjustment', false);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
@@ -42,11 +46,20 @@ export async function PATCH(req: NextRequest) {
   if (action === 'revert') {
     const { data: entry, error } = await db
       .from('price_change_log')
-      .select('id, type, target, status, reverted_at, snapshot, created_at, revert_at')
+      .select('id, type, target, status, reverted_at, snapshot, created_at, revert_at, adjustment')
       .eq('id', id)
       .maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (!entry) return NextResponse.json({ error: 'Запис не знайдено' }, { status: 404 });
+
+    // Запис-корекція (акція / зміна «до дати», міграція 147): відкат = вимкнути
+    // саме її корекції. Наценки й інші корекції лишаються — порядок не важливий.
+    if (entry.adjustment) {
+      if (entry.reverted_at) return NextResponse.json({ error: 'Корекцію вже вимкнено' }, { status: 409 });
+      const adj = await cancelAdjustments(db, { logId: Number(entry.id) }, user.id, { comment: `Відкат корекції від ${new Date(String(entry.created_at)).toLocaleDateString('uk-UA')}` });
+      if (!adj.ok) return NextResponse.json({ error: adj.error }, { status: adj.status });
+      return NextResponse.json({ ok: true, reverted: adj.skus, drifted: [], reverted_at: new Date().toISOString() });
+    }
 
     const res = await revertMpEntry(db, entry as MpLogEntry, user.id, 'manual');
     if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status });

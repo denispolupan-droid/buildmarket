@@ -3994,8 +3994,65 @@ export type Database = {
           },
         ]
       }
+      price_adjustments: {
+        Row: {
+          applied_state: string
+          cancelled_at: string | null
+          channel: string
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          ends_on: string | null
+          id: number
+          is_promo: boolean
+          log_id: number | null
+          pct: number
+          sku: string
+          starts_on: string
+        }
+        Insert: {
+          applied_state?: string
+          cancelled_at?: string | null
+          channel: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_on?: string | null
+          id?: number
+          is_promo?: boolean
+          log_id?: number | null
+          pct: number
+          sku: string
+          starts_on: string
+        }
+        Update: {
+          applied_state?: string
+          cancelled_at?: string | null
+          channel?: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_on?: string | null
+          id?: number
+          is_promo?: boolean
+          log_id?: number | null
+          pct?: number
+          sku?: string
+          starts_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_adjustments_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "price_change_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_change_log: {
         Row: {
+          adjustment: boolean
           comment: string | null
           count: number | null
           created_at: string | null
@@ -4012,6 +4069,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          adjustment?: boolean
           comment?: string | null
           count?: number | null
           created_at?: string | null
@@ -4028,6 +4086,7 @@ export type Database = {
           value: number
         }
         Update: {
+          adjustment?: boolean
           comment?: string | null
           count?: number | null
           created_at?: string | null

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planMergeTtn, mergeTtnKind, mergedDescription, type MergeTtnOrder } from '../lib/orders/merge-ttn';
+import { planMergeTtn, mergeTtnKind, mergedDescription, sameBuyerGroups, type MergeTtnOrder, type SameBuyerOrder } from '../lib/orders/merge-ttn';
 
 let seq = 0;
 const order = (over: Partial<MergeTtnOrder> = {}): MergeTtnOrder => ({
@@ -99,5 +99,37 @@ describe('mergedDescription', () => {
     ]);
     expect(d).toBe('№1+№2: Клей, Герметик');
     expect(mergedDescription([{ order_number: 1, items: [{ name: 'x'.repeat(300) }] }]).length).toBe(100);
+  });
+});
+
+
+const sb = (over: Partial<SameBuyerOrder> = {}): SameBuyerOrder => ({ ...order({ delivery_type: 'nova', channel_code: 'rozetka' }), status: 'new', ...over });
+
+describe('sameBuyerGroups — підсвітка кандидатів на одну ТТН у журналі', () => {
+  it('два нові замовлення одного телефону на одну адресу — одна група (живий кейс №26111002/03)', () => {
+    const a = sb({ phone: '067 405 64 77' }), b = sb({ phone: '+380674056477' });
+    const g = sameBuyerGroups([a, b, sb({ phone: '0991112233' })]);
+    expect(g.get(a.id)?.numbers).toEqual([a.order_number, b.order_number]);
+    expect(g.get(b.id)).toBe(g.get(a.id));
+    expect(g.get(a.id)?.sameAddress).toBe(true);
+    expect(g.size).toBe(2);
+  });
+
+  it('з накладною, відправлене, скасоване чи самовивіз — не кандидати', () => {
+    const a = sb();
+    expect(sameBuyerGroups([a, sb({ tracking_number: '2045' })]).size).toBe(0);
+    expect(sameBuyerGroups([a, sb({ status: 'shipped' })]).size).toBe(0);
+    expect(sameBuyerGroups([a, sb({ status: 'cancelled' })]).size).toBe(0);
+    expect(sameBuyerGroups([sb({ delivery_type: 'pickup' }), sb({ delivery_type: 'pickup' })]).size).toBe(0);
+  });
+
+  it('різні способи доставки не змішуються; різні адреси — група з позначкою', () => {
+    expect(sameBuyerGroups([sb({ delivery_type: 'nova' }), sb({ delivery_type: 'rz_delivery' })]).size).toBe(0);
+    const a = sb({ delivery_address: 'Київ, відділення 1' }), b = sb({ delivery_address: 'Львів, відділення 7' });
+    expect(sameBuyerGroups([a, b]).get(a.id)?.sameAddress).toBe(false);
+  });
+
+  it('порожній чи короткий телефон групу не утворює', () => {
+    expect(sameBuyerGroups([sb({ phone: null }), sb({ phone: null })]).size).toBe(0);
   });
 });

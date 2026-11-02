@@ -61,7 +61,7 @@ import type { OrderSettlement } from '../../lib/accounting/order-settlement';
 import RozetkaDeliveryTtnModal from '../components/admin/RozetkaDeliveryTtnModal';
 import TtnDetailsModal from '../components/admin/TtnDetailsModal';
 import RzDeliveryTtnModal from '../components/admin/RzDeliveryTtnModal';
-import { planMergeTtn } from '../../lib/orders/merge-ttn';
+import { planMergeTtn, sameBuyerGroups } from '../../lib/orders/merge-ttn';
 
 type OrderItem = { sku: string; name: string; brand: string; qty: number; price: number; is_bonus?: boolean; supplier_sku?: string };
 
@@ -156,6 +156,15 @@ const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: string }
   rozetka:  { label: 'Rozetka',  color: '#15803D', bg: '#DCFCE7' },
   epicentr: { label: 'Епіцентр', color: '#9A3412', bg: '#FFEDD5' },
 };
+
+// Мітка «той самий покупець» (кандидати на одну ТТН): тони чергуються між
+// групами, щоб дві пари поруч у списку не читались як одна.
+const SAME_BUYER_TONES = [
+  { c: '#0E7490', bg: '#ECFEFF', b: '#67E8F9' },
+  { c: '#BE185D', bg: '#FDF2F8', b: '#F9A8D4' },
+  { c: '#4D7C0F', bg: '#F7FEE7', b: '#BEF264' },
+  { c: '#9A3412', bg: '#FFF7ED', b: '#FDBA74' },
+];
 
 const STATUSES = [
   { value: 'new',            label: 'Нове',            color: 'var(--brand-blue)', bg: '#EFF4FF' },
@@ -2419,6 +2428,14 @@ export default function AdminOrders({
     return byTtn;
   }, [orders]);
 
+  /**
+   * Кандидати на одну ТТН: ще не відправлені замовлення одного покупця тим самим
+   * способом доставки (lib/orders/merge-ttn → sameBuyerGroups). Мітка під номером
+   * не дає відправити двома посилками те, що їде однією; клік по ній вибирає всю
+   * групу — далі «Об'єднати» в панелі масових дій.
+   */
+  const sameBuyer = useMemo(() => sameBuyerGroups(orders), [orders]);
+
   // Пошук, канал і перевізник уже відфільтровані базою (див. applyOrderFilters
   // у app/admin/page.tsx). Тут лишається тільки те, що рахується з rozetka_data
   // у браузері й колонки в базі не має.
@@ -3147,6 +3164,32 @@ export default function AdminOrders({
               );
             })();
 
+            // Той самий покупець, ще без накладної. Кольори чергуються між
+            // групами, щоб дві пари поруч не зливались в одну.
+            const buyerBadge = (() => {
+              const g = sameBuyer.get(order.id);
+              if (!g) return null;
+              const others = g.numbers.filter(n => n !== order.order_number);
+              const tone = SAME_BUYER_TONES[g.index % SAME_BUYER_TONES.length];
+              const allPicked = g.ids.every(id => selectedIds.has(id));
+              return (
+                <span
+                  role="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setSelectedIds(prev => {
+                      const next = new Set(prev);
+                      if (allPicked) g.ids.forEach(id => next.delete(id)); else g.ids.forEach(id => next.add(id));
+                      return next;
+                    });
+                  }}
+                  title={`Той самий покупець ще має замовлення №${others.join(', №')} без накладної${g.sameAddress ? ' на ту саму адресу' : ' (адреса відрізняється — перевірте)'}. Можна відправити однією ТТН. Клік — ${allPicked ? 'зняти вибір з групи' : 'вибрати всю групу, далі «Об\'єднати» внизу'}.`}
+                  style={{ ...rowBadge, marginTop: '2px', cursor: 'pointer', color: tone.c, background: tone.bg, borderColor: tone.b }}>
+                  👥 + №{others.join(', №')}{g.sameAddress ? '' : ' ≠адр'}
+                </span>
+              );
+            })();
+
             // Перевізник рядком: раніше це читалося лише з кольору плашки ТТН, а для
             // точок видачі Rozetka була окрема мітка «ТОЧКА» — тепер про це прямо
             // сказано першим рядком колонки, і окрема мітка не потрібна.
@@ -3283,6 +3326,7 @@ export default function AdminOrders({
                         <span className="oc-only-m oc-date-short" style={{ display: 'none' }}>{dateShort}</span>
                       </div>
                       <span className="oc-hide-m">{mergedBadge}</span>
+                      <span className="oc-hide-m">{buyerBadge}</span>
                     </div>
                   </div>
 
@@ -3468,6 +3512,7 @@ export default function AdminOrders({
                     )}
                     {carrierNote}
                     {mergedBadge && <span className="oc-only-m" style={{ display: 'none', flexShrink: 0 }}>{mergedBadge}</span>}
+                    {buyerBadge && <span className="oc-only-m" style={{ display: 'none', flexShrink: 0 }}>{buyerBadge}</span>}
                   </div>
 
                   {/* Доставка трьома рядками: перевізник (+ умови акції), потім місто

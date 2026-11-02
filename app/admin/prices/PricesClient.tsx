@@ -19,6 +19,11 @@ import { showToast } from '../../../lib/toast';
 import PricesLog from './PricesLog';
 import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin, resolveMarkup, markupForPriceChange, type PromPlan } from '../../../lib/marketplace-pricing';
 import { isMpTarget, type MpSnapshotRow, type MpMarkupItem } from '../../../lib/mp-reprice';
+import {
+  type AdjChannel, type AdjRow,
+  addDays, adjState, buildFactorMap, factorLabel, factorOf, hasPromo, kyivToday, totalFactor,
+} from '../../../lib/price-adjustments';
+import PricesAdjustments from './PricesAdjustments';
 import { formatPricelistPrice, pricelistCategoryMatch } from '../../../lib/pricelist-rules';
 import type { SmartBracket } from '../../../lib/rozetka-smart-tariff';
 
@@ -73,6 +78,8 @@ interface Props {
   markups:     ProductMarkupRow[];
   smartTariff: SmartBracket[];                // «Умови Smart» Rozetka (для ціни фіда)
   promPlan:    PromPlan;                      // активний план Prom (визначає колонку комісії)
+  /** Живі корекції цін МП (акції / зміни «до дати»): активні + заплановані */
+  adjustments: AdjRow[];
 }
 
 type PriceField = 'price_unit' | 'price_retail' | 'price_drop' | 'price_cost';
@@ -126,7 +133,25 @@ function marginColor(pct: number) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PricesClient({ products, stock, categories, promoMap, markups, smartTariff, promPlan }: Props) {
+export default function PricesClient({ products, stock, categories, promoMap, markups, smartTariff, promPlan, adjustments }: Props) {
+  // Живі корекції МП — локальний стан: після створення/вимкнення ціни Prom/
+  // Rozetka в таблиці мають змінитись одразу, без перезавантаження
+  const [adjList, setAdjList] = useState<AdjRow[]>(adjustments);
+  const today = useMemo(() => kyivToday(), []);
+  const factorMap = useMemo(() => buildFactorMap(adjList, today), [adjList, today]);
+  // «канал:sku» з живою корекцією (активною чи запланованою) — для «Вимкнути корекції»
+  const liveAdjKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const a of adjList) {
+      const st = adjState(a, today);
+      if (st === 'active' || st === 'scheduled') s.add(`${a.channel}:${a.sku}`);
+    }
+    return s;
+  }, [adjList, today]);
+  const liveAdjGroups = useMemo(
+    () => new Set(adjList.filter(a => liveAdjKeys.has(`${a.channel}:${a.sku}`)).map(a => a.log_id)).size,
+    [adjList, liveAdjKeys],
+  );
   // sku → наценка/фікс-ціна. Локальний стан, бо після переоцінки й скидання
   // мітка має змінитись одразу, без перезавантаження сторінки.
   const [markupMap, setMarkupMap] = useState<Map<string, ProductMarkupRow>>(
@@ -207,7 +232,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
   const [mounted, setMounted]                       = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const [activeTab, setActiveTab] = useState<'prices' | 'log'>('prices');
+  const [activeTab, setActiveTab] = useState<'prices' | 'adjustments' | 'log'>('prices');
 
   // ── Merged data ─────────────────────────────────────────────────────────────
 
@@ -231,19 +256,27 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 
         // Ціни МП — ЄДИНОЮ формулою фідів (lib/marketplace-pricing):
         // ціна входу → націнка (товарна ?? категорійна) → комісія (+Smart для Rozetka)
+        // → множник активних корекцій каналу (акції / зміни «до дати», міграція 147)
         const mp = mpLocal.get(p.sku);
         const promProdMarkup = mp && 'prom' in mp ? (mp.prom ?? null) : n(p.prom_markup_pct);
         const rzProdMarkup   = mp && 'rz'   in mp ? (mp.rz   ?? null) : n(p.rozetka_markup_pct);
+        const fPromAdj = factorOf(factorMap, 'prom', p.sku);
+        const fRzAdj   = factorOf(factorMap, 'rozetka', p.sku);
+        const fProm = totalFactor(fPromAdj);
+        const fRz   = totalFactor(fRzAdj);
         const promInputs = {
           cost, retail: retail ?? unit ?? 0,
           manualOverride: n(s?.price_wholesale),
           productMarkupPct: promProdMarkup,
           categoryMarkupPct: n(cat?.prom_markup_pct),
           commissionPct: promCommissionOf(cat, promPlan),
+          adjustFactor: fProm,
         };
         const hasPromBase = promInputs.retail > 0 || (promInputs.manualOverride ?? 0) > 0;
         const promPrice   = hasPromBase ? libPromPrice(promInputs) : null;
         const promMrg     = hasPromBase ? promMargin(promInputs) : null;
+        // Ціна без акції — те, що фід віддає як стару (перекреслену)
+        const promOld     = hasPromBase && hasPromo(fPromAdj) ? libPromPrice({ ...promInputs, adjustFactor: fPromAdj.regular }) : null;
 
         const rzInputs = {
           cost, retail: retail ?? 0,
@@ -252,10 +285,12 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
           commissionPct: n(cat?.rozetka_commission_pct) ?? 0,
           smart: p.rozetka_smart === true,
           smartTariff,
+          adjustFactor: fRz,
         };
         const hasRzBase = (cost ?? 0) > 0 || (retail ?? 0) > 0;
         const rzPrice   = hasRzBase ? libRozetkaPrice(rzInputs) : null;
         const rzMrg     = hasRzBase ? rozetkaMargin(rzInputs) : null;
+        const rzOld     = hasRzBase && hasPromo(fRzAdj) ? libRozetkaPrice({ ...rzInputs, adjustFactor: fRzAdj.regular }) : null;
 
         const retailMrg = retail != null ? siteMargin(retail, cost) : null;
 
@@ -268,6 +303,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
           // для переоцінки МП: вхідні дані формули й товарні націнки (null = категорійна)
           promInputs, rzInputs, hasPromBase, hasRzBase, promProdMarkup, rzProdMarkup,
           promManual: (promInputs.manualOverride ?? 0) > 0,
+          // корекції МП: множники каналів і ціна без акції
+          fPromAdj, fRzAdj, fProm, fRz, promOld, rzOld,
         };
       })
       .filter(r => filterStock === 'all' ? true : filterStock === 'in_stock' ? r.s?.stock_status === 'in_stock' : r.s?.stock_status !== 'in_stock')
@@ -275,7 +312,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
       .filter(r => !filterNoPrice || r.cost == null || r.retail == null)
       .filter(r => !filterLocked || r.locked)
       .filter(r => !filterPromo || r.promo != null);
-  }, [products, stock, categories, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, mpLocal, stockMap, catMap, promoCancelled, smartTariff, promPlan]);
+  }, [products, search, showInactive, filterStock, filterBrand, filterNoPrice, filterLocked, filterPromo, overrides, mpLocal, stockMap, catMap, promoCancelled, smartTariff, promPlan, factorMap]);
 
   // Group by category
   const grouped = useMemo(() => {
@@ -442,23 +479,180 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
   const mpWantsProm = repricingTarget === 'prom'    || repricingTarget === 'mp';
   const isMp        = isMpTarget(repricingTarget);
 
+  // ── Акція / зміна «до дати» на МП — корекція (міграція 147) ─────────────────
+  //
+  // «Постійно — наценка, тимчасово — корекція». Галочка «Акція» або дата
+  // повернення → окремий рядок корекції: наценку не чіпає, вимикається сам у
+  // дату або кнопкою, не заважає іншим акціям і правкам наценки. Акцію фід
+  // показує площадці зі старою (перекресленою) ціною. Без галочки й без дати
+  // повернення переоцінка МП, як і раніше, міняє наценку — постійну ціну.
+  const isMpAdj = isMp && (repricingIsPromo || !!repricingRevertAt);
+  const mpAdjChannels: AdjChannel[] = repricingTarget === 'rozetka' ? ['rozetka'] : repricingTarget === 'prom' ? ['prom'] : ['prom', 'rozetka'];
+
+  /** Відсоток корекції для товару й каналу; null — товар у каналі пропускаємо. */
+  const adjPct = useCallback((r: typeof rows[0], ch: AdjChannel): number | null => {
+    const val = parseFloat(repricingValue);
+    if (isNaN(val)) return null;
+    if (repricingType === 'increase_pct') return val;
+    if (repricingType !== 'set_markup') return null;
+    // «Націнка = N %» як тимчасова зміна: зсув, що дає ту саму ціну, що й така наценка
+    if (ch === 'prom' && r.promManual) return null; // ручна ціна від наценки не залежить
+    const inp = ch === 'rozetka' ? r.rzInputs : r.promInputs;
+    const cur = resolveMarkup(inp.productMarkupPct, inp.categoryMarkupPct);
+    return Math.round(((1 + val / 100) / (1 + cur / 100) - 1) * 100 * 1e6) / 1e6;
+  }, [repricingValue, repricingType]);
+
   const mpAfter = useCallback((r: typeof rows[0]) => {
     const val = parseFloat(repricingValue);
     const ok  = !isNaN(val);
+    if (isMpAdj) {
+      // Корекція: наценки не чіпаємо; ціна = формула × (діючі корекції × нова).
+      // Для акції стара ціна (без акційних корекцій) — та, що піде у фід перекресленою.
+      const pr = mpWantsRz   ? adjPct(r, 'rozetka') : null;
+      const pp = mpWantsProm ? adjPct(r, 'prom')    : null;
+      const m = (pct: number | null) => 1 + (pct ?? 0) / 100;
+      const rzRegular   = r.fRzAdj.regular   * (repricingIsPromo ? 1 : m(pr));
+      const rzPromo     = r.fRzAdj.promo     * (repricingIsPromo ? m(pr) : 1);
+      const promRegular = r.fPromAdj.regular * (repricingIsPromo ? 1 : m(pp));
+      const promPromo   = r.fPromAdj.promo   * (repricingIsPromo ? m(pp) : 1);
+      const rzPrice   = r.hasRzBase   ? libRozetkaPrice({ ...r.rzInputs,   adjustFactor: rzRegular * rzPromo })     : null;
+      const promPrice = r.hasPromBase ? libPromPrice({ ...r.promInputs, adjustFactor: promRegular * promPromo }) : null;
+      const rzOld     = r.hasRzBase   && Math.abs(rzPromo - 1) > 1e-12   ? libRozetkaPrice({ ...r.rzInputs,   adjustFactor: rzRegular })   : null;
+      const promOld   = r.hasPromBase && Math.abs(promPromo - 1) > 1e-12 ? libPromPrice({ ...r.promInputs, adjustFactor: promRegular }) : null;
+      return { rzMarkup: r.rzProdMarkup, rzPrice, promMarkup: r.promProdMarkup, promPrice, rzPct: pr, promPct: pp, rzOld, promOld,
+        rzF: rzRegular * rzPromo, promF: promRegular * promPromo };
+    }
     const calc = (cur: number) => repricingType === 'set_markup' ? Math.round(val * 100) / 100 : markupForPriceChange(cur, val);
 
     const rzMarkup   = ok && mpWantsRz   ? calc(resolveMarkup(r.rzInputs.productMarkupPct,   r.rzInputs.categoryMarkupPct))   : r.rzProdMarkup;
     const promMarkup = ok && mpWantsProm ? calc(resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct)) : r.promProdMarkup;
     const rzPrice    = r.hasRzBase   ? libRozetkaPrice({ ...r.rzInputs,   productMarkupPct: rzMarkup })   : null;
     const promPrice  = r.hasPromBase ? libPromPrice({ ...r.promInputs, productMarkupPct: promMarkup }) : null;
-    return { rzMarkup, rzPrice, promMarkup, promPrice };
-  }, [repricingValue, repricingType, mpWantsRz, mpWantsProm]);
+    return { rzMarkup, rzPrice, promMarkup, promPrice, rzPct: null as number | null, promPct: null as number | null, rzOld: r.rzOld, promOld: r.promOld,
+      rzF: r.fRz, promF: r.fProm };
+  }, [repricingValue, repricingType, mpWantsRz, mpWantsProm, isMpAdj, adjPct, repricingIsPromo]);
+
+  // Попередження переоцінки МП (не блокують): продаж у мінус після комісії і
+  // акція поверх уже діючої (знижки перемножаться)
+  const mpWarnings = useMemo(() => {
+    if (!isMp || isNaN(parseFloat(repricingValue)) || !selectedRows.length) return null;
+    let loss = 0, stacked = 0;
+    for (const r of selectedRows) {
+      const a = mpAfter(r);
+      const rzM   = mpWantsRz   && r.hasRzBase   ? rozetkaMargin({ ...r.rzInputs,   productMarkupPct: a.rzMarkup,   adjustFactor: a.rzF })   : null;
+      const promM = mpWantsProm && r.hasPromBase ? promMargin({ ...r.promInputs, productMarkupPct: a.promMarkup, adjustFactor: a.promF }) : null;
+      if ((rzM && rzM.uah < 0) || (promM && promM.uah < 0)) loss++;
+      if (isMpAdj && repricingIsPromo && ((mpWantsRz && hasPromo(r.fRzAdj)) || (mpWantsProm && hasPromo(r.fPromAdj)))) stacked++;
+    }
+    return loss || stacked ? { loss, stacked } : null;
+  }, [isMp, isMpAdj, repricingIsPromo, repricingValue, selectedRows, mpAfter, mpWantsRz, mpWantsProm]);
+
+  async function applyMpAdjustments() {
+    setSaving(true);
+    try {
+      const items: { sku: string; channel: AdjChannel; pct: number }[] = [];
+      const snapshot: { sku: string; name: string; before: Record<string, number | null>; after: Record<string, number | null> }[] = [];
+      for (const r of selectedRows) {
+        let any = false;
+        for (const ch of mpAdjChannels) {
+          const pct = adjPct(r, ch);
+          if (pct == null || Math.abs(pct) < 1e-9) continue;
+          items.push({ sku: r.p.sku, channel: ch, pct });
+          any = true;
+        }
+        if (!any) continue;
+        const a = mpAfter(r);
+        snapshot.push({
+          sku: r.p.sku, name: r.p.name,
+          before: { ...(mpWantsRz && { rz_price: r.rzPrice }), ...(mpWantsProm && { prom_price: r.promPrice }) },
+          after:  { ...(mpWantsRz && { rz_price: a.rzPrice }), ...(mpWantsProm && { prom_price: a.promPrice }) },
+        });
+      }
+      if (!items.length) {
+        showToast('Немає що змінювати: у вибраних товарів зсув 0 % або нема від чого рахувати', 'warning', 5000);
+        return;
+      }
+
+      const startsOn = repricingEffectiveFrom && repricingEffectiveFrom > today ? repricingEffectiveFrom : null;
+      // «Діє до» — ОСТАННІЙ день акції включно; у базі ends_on виключна межа
+      // (з цієї дати вже без акції), тож +1 день
+      const lastDay = repricingRevertAt || null;
+      if (lastDay && lastDay < (startsOn ?? today)) {
+        showToast('Останній день акції не може бути раніше за дату початку (і за сьогодні)', 'error', 5000);
+        return;
+      }
+      const endsOn = lastDay ? addDays(lastDay, 1) : null;
+      const res = await fetch('/api/admin/prices/adjustments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: repricingTarget, type: repricingType, value: repricingValue,
+          comment: repricingComment || null, is_promo: repricingIsPromo,
+          starts_on: startsOn, ends_on: endsOn, items, snapshot,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error ?? 'Помилка створення корекції');
+
+      setAdjList(prev => [...prev, ...items.map(i => ({
+        log_id: json.log_id as number, channel: i.channel, sku: i.sku, pct: i.pct, is_promo: repricingIsPromo,
+        starts_on: startsOn ?? today, ends_on: endsOn, cancelled_at: null,
+      }))]);
+
+      const skuCount = new Set(items.map(i => i.sku)).size;
+      const what = repricingIsPromo ? 'Акцію' : 'Тимчасову зміну';
+      const when = startsOn ? ` з ${new Date(startsOn).toLocaleDateString('uk-UA')}` : '';
+      const until = lastDay ? ` до ${new Date(lastDay).toLocaleDateString('uk-UA')} включно` : ' без дати завершення';
+      const skipped = selectedRows.length - skuCount;
+      cancelRepricing();
+      showToast(
+        `${what} ${startsOn ? 'заплановано' : 'запущено'}: ${skuCount} товарів${when}${until} · вимкнути — вкладка «Акції МП» або журнал` +
+        (skipped > 0 ? ` · ${skipped} пропущено (ручна ціна Prom або нема від чого рахувати)` : ''),
+        skipped > 0 ? 'warning' : 'success', 6000);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Помилка корекції', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Вибрані товари з живими корекціями в каналах цілі — для «Вимкнути корекції»
+  const resetSkus = useMemo(
+    () => isMp ? selectedRows.filter(r => mpAdjChannels.some(ch => liveAdjKeys.has(`${ch}:${r.p.sku}`))).map(r => r.p.sku) : [],
+    // mpAdjChannels виводиться з repricingTarget
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isMp, selectedRows, repricingTarget, liveAdjKeys],
+  );
+
+  async function resetMpAdjustments() {
+    if (!resetSkus.length) return;
+    const chLabel = mpAdjChannels.map(c => (c === 'prom' ? 'Prom' : 'Rozetka')).join(' + ');
+    if (!confirm(`Вимкнути всі акції й тимчасові зміни (${chLabel}) у ${resetSkus.length} товарів? Ціни повернуться до розрахунку від наценки.`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/prices/adjustments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset', skus: resetSkus, target: repricingTarget }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error ?? 'Помилка');
+      const skuSet = new Set(resetSkus);
+      setAdjList(prev => prev.filter(a => !(skuSet.has(a.sku) && mpAdjChannels.includes(a.channel))));
+      cancelRepricing();
+      showToast(`Корекції вимкнено: ${json.skus ?? resetSkus.length} товарів`, 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Помилка', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const mpPreview = useMemo(() => {
     if (!showPreview || !isMp) return [];
     return selectedRows.map(r => ({
       sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume,
-      promManual: r.promManual,
+      promManual: r.promManual, fRz: r.fRz, fProm: r.fProm,
       before: { rzMarkup: r.rzProdMarkup, rzPrice: r.rzPrice, promMarkup: r.promProdMarkup, promPrice: r.promPrice,
                 rzEff: resolveMarkup(r.rzInputs.productMarkupPct, r.rzInputs.categoryMarkupPct),
                 promEff: resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct) },
@@ -472,8 +666,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     const mp = isMpTarget(t);
     if (mp && (repricingType === 'multiply_cost' || repricingType === 'fixed')) setRepricingType('increase_pct');
     if (!mp && repricingType === 'set_markup') setRepricingType('increase_pct');
-    // «Акція» — режим цін сайту (price_promo); для МП тимчасовість задають дати
-    if (mp) setRepricingIsPromo(false);
+    // «Акція» є і для сайту (price_promo), і для МП (корекція зі старою ціною у фіді) —
+    // галочку при перемиканні цілі лишаємо як є
   }
 
   async function applyMpRepricing() {
@@ -588,6 +782,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
   }, [repricingType, repricingValue, repricingTarget, selected]);
 
   async function applyRepricing() {
+    if (isMpAdj) return applyMpAdjustments();
     if (isMpTarget(repricingTarget)) return applyMpRepricing();
     setSaving(true);
     try {
@@ -1061,7 +1256,7 @@ async function sendEmail(){
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1.5px solid var(--border)' }}>
-        {(['prices', 'log'] as const).map(tab => (
+        {(['prices', 'adjustments', 'log'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1073,12 +1268,14 @@ async function sendEmail(){
               marginBottom: -1.5,
             }}
           >
-            {tab === 'prices' ? 'Ціни' : 'Журнал переоцінок'}
+            {tab === 'prices' ? 'Ціни' : tab === 'adjustments' ? `Акції МП${liveAdjGroups ? ` (${liveAdjGroups})` : ''}` : 'Журнал переоцінок'}
           </button>
         ))}
       </div>
 
       {activeTab === 'log' && <PricesLog />}
+      {/* Після вимкнення корекції ціни Prom/Rozetka в таблиці рахуються від стану сервера — перезавантажуємо */}
+      {activeTab === 'adjustments' && <PricesAdjustments onChanged={() => window.location.reload()} />}
 
       {activeTab === 'prices' && <>
       {/* Search + filters */}
@@ -1190,6 +1387,8 @@ async function sendEmail(){
           </div>
           {/* Conflict warning: selected SKUs already have active promo */}
           {(() => {
+            // Попередження про акції САЙТУ (price_promo) — для переоцінки МП не стосується
+            if (isMp) return null;
             const promoSkus = selectedRows.filter(r => r.promo != null);
             if (promoSkus.length === 0) return null;
 
@@ -1279,8 +1478,7 @@ async function sendEmail(){
                 style={{ ...inputSmall, width: '100%', height: 32 }}
               />
             </div>
-            {/* «Акція» — лише для цін сайту (price_promo); тимчасовість переоцінки МП задають дати нижче */}
-            {!isMp && (
+            {/* «Акція»: сайт — price_promo; МП — корекція, у фід іде стара (перекреслена) ціна */}
             <div>
               <label style={smallLabel}>Тип</label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '5px 10px', border: `1.5px solid ${repricingIsPromo ? '#F97316' : '#E5E7EB'}`, borderRadius: 7, background: repricingIsPromo ? '#FFF7ED' : '#fff', color: repricingIsPromo ? '#C2410C' : '#6B7280', whiteSpace: 'nowrap', height: 32, boxSizing: 'border-box' }}>
@@ -1288,7 +1486,6 @@ async function sendEmail(){
                 <Tag size={12} /> Акція
               </label>
             </div>
-            )}
             {/* Date range: effective_from → revert_at */}
             <div>
               <label style={smallLabel}>Дата початку</label>
@@ -1307,7 +1504,7 @@ async function sendEmail(){
               </div>
             </div>
             <div>
-              <label style={smallLabel}>{isMp ? 'Повернути націнки після' : 'Повернути ціни після'}</label>
+              <label style={smallLabel}>{isMp ? 'Діє до (включно)' : 'Повернути ціни після'}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input
                   type="date"
@@ -1325,13 +1522,29 @@ async function sendEmail(){
             </div>
           </div>
 
-          {/* Як працює переоцінка МП */}
-          {isMp && (
+          {/* Що саме зробить переоцінка МП: постійна зміна наценки чи акція/тимчасова зміна */}
+          {isMp && (isMpAdj ? (
+            <div style={{ marginTop: 10, padding: '7px 12px', background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 7, fontSize: 12, color: '#9A3412', lineHeight: 1.5 }}>
+              <b>{repricingIsPromo ? 'Акція' : 'Тимчасова зміна'}</b> — окремо від наценки: наценку не чіпає, її можна правити під час дії,
+              інші акції не заважають.
+              {repricingIsPromo && ' Площадка покаже знижку: у фід іде і акційна ціна, і стара (без акції) — перекресленою.'}
+              {repricingRevertAt
+                ? ` Діє до ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')} включно, наступного дня вимкнеться сама.`
+                : ' Без дати завершення — вимкніть кнопкою у вкладці «Акції МП» або в журналі.'}
+              {' '}Rozetka округлює до 5 ₴ і додає Smart, тому фактична зміна ≈ заданій.
+            </div>
+          ) : (
             <div style={{ marginTop: 10, padding: '7px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 7, fontSize: 12, color: '#5B21B6', lineHeight: 1.5 }}>
-              Ціна на маркетплейсі не зберігається — зміниться <b>націнка товару</b>, а ціну фід далі рахує від поточної собівартості
+              <b>Постійна зміна</b> — зміниться <b>націнка товару</b>, ціну фід далі рахує від поточної собівартості
               (Rozetka округлює до 5 ₴ і додає Smart, тому фактична зміна ≈ заданій). Товари з ручною ціною Prom не змінюються.
-              Тимчасова переоцінка — задайте «Повернути націнки після»: у цю дату крон поверне попередні націнки (зокрема категорійні);
-              «Дата початку» в майбутньому — застосування відкладене. Відкат будь-коли — у «Журналі переоцінок».
+              «Дата початку» в майбутньому — застосування відкладене. Акція чи зміна на строк — поставте «Акція» або дату «Діє до».
+            </div>
+          ))}
+
+          {mpWarnings && (
+            <div style={{ marginTop: 8, padding: '7px 12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 7, fontSize: 12, color: '#991B1B', lineHeight: 1.5 }}>
+              {mpWarnings.loss > 0 && <div>⚠ <b>{mpWarnings.loss} товар(ів)</b> після переоцінки продаватимуться <b>у мінус</b> — ціна мінус комісія нижче собівартості.</div>}
+              {mpWarnings.stacked > 0 && <div>⚠ <b>{mpWarnings.stacked} товар(ів)</b> уже мають діючу акцію — нова ляже поверх, знижки перемножаться (−10 % і −10 % = −19 %). Щоб замінити, спершу вимкніть стару у вкладці «Акції МП».</div>}
             </div>
           )}
 
@@ -1366,8 +1579,16 @@ async function sendEmail(){
             )}
             {repricingRevertAt && !(repricingEffectiveFrom && repricingEffectiveFrom > new Date().toISOString().split('T')[0]) && (
               <span style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <RotateCcw size={12} /> Авто-відкат {new Date(repricingRevertAt).toLocaleDateString('uk-UA')}
+                <RotateCcw size={12} /> {isMp
+                  ? `Діє до ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')} включно`
+                  : `Авто-відкат ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')}`}
               </span>
+            )}
+            {resetSkus.length > 0 && (
+              <button onClick={resetMpAdjustments} disabled={saving} style={{ ...btnSecondary, color: '#9A3412', borderColor: '#FDBA74', background: '#FFF7ED' }}
+                title="Вимкнути всі акції й тимчасові зміни вибраних товарів у каналах «Оновити» — ціни повернуться до розрахунку від наценки">
+                <X size={13} /> Вимкнути акції МП ({resetSkus.length})
+              </button>
             )}
           </div>
 
@@ -1379,9 +1600,9 @@ async function sendEmail(){
                   <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #BFDBFE' }}>
                     <th style={thSmall}>Товар</th>
                     {mpWantsRz   && <th style={thSmall}>Rozetka: до → після</th>}
-                    {mpWantsRz   && <th style={thSmall}>Націнка Rozetka</th>}
+                    {mpWantsRz   && <th style={thSmall}>{isMpAdj ? 'Rozetka: корекція' : 'Націнка Rozetka'}</th>}
                     {mpWantsProm && <th style={thSmall}>Prom: до → після</th>}
-                    {mpWantsProm && <th style={thSmall}>Націнка Prom</th>}
+                    {mpWantsProm && <th style={thSmall}>{isMpAdj ? 'Prom: корекція' : 'Націнка Prom'}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1395,10 +1616,24 @@ async function sendEmail(){
                           </span>
                         )}
                       </td>
-                      {mpWantsRz   && <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.rzPrice} after={row.after.rzPrice} /></td>}
-                      {mpWantsRz   && <td style={{ padding: '5px 10px' }}><MarkupChange before={row.before.rzEff} beforeIsCat={row.before.rzMarkup == null} after={row.after.rzMarkup} /></td>}
-                      {mpWantsProm && <td style={{ padding: '5px 10px' }}><PreviewChange before={row.before.promPrice} after={row.after.promPrice} /></td>}
-                      {mpWantsProm && <td style={{ padding: '5px 10px' }}><MarkupChange before={row.before.promEff} beforeIsCat={row.before.promMarkup == null} after={row.after.promMarkup} /></td>}
+                      {mpWantsRz   && <td style={{ padding: '5px 10px' }}>
+                        <PreviewChange before={row.before.rzPrice} after={row.after.rzPrice} />
+                        {isMpAdj && row.after.rzOld != null && row.after.rzOld > (row.after.rzPrice ?? 0) && (
+                          <div style={{ fontSize: 10, color: '#C2410C' }}>у фіді стара: <s>{row.after.rzOld} ₴</s></div>
+                        )}
+                      </td>}
+                      {mpWantsRz   && <td style={{ padding: '5px 10px' }}>{isMpAdj
+                        ? <AdjChange current={row.fRz} added={row.after.rzPct} />
+                        : <MarkupChange before={row.before.rzEff} beforeIsCat={row.before.rzMarkup == null} after={row.after.rzMarkup} />}</td>}
+                      {mpWantsProm && <td style={{ padding: '5px 10px' }}>
+                        <PreviewChange before={row.before.promPrice} after={row.after.promPrice} />
+                        {isMpAdj && row.after.promOld != null && row.after.promOld > (row.after.promPrice ?? 0) && (
+                          <div style={{ fontSize: 10, color: '#C2410C' }}>у фіді стара: <s>{row.after.promOld} ₴</s></div>
+                        )}
+                      </td>}
+                      {mpWantsProm && <td style={{ padding: '5px 10px' }}>{isMpAdj
+                        ? <AdjChange current={row.fProm} added={row.after.promPct} />
+                        : <MarkupChange before={row.before.promEff} beforeIsCat={row.before.promMarkup == null} after={row.after.promMarkup} />}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -1609,7 +1844,11 @@ async function sendEmail(){
                               </td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.drop)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }} title="Ціна фіда Prom (редагується в розділі «Ціни Prom»)">
+                                {r.promOld != null && r.promPrice != null && r.promOld > r.promPrice && (
+                                  <span style={{ color: '#9CA3AF', textDecoration: 'line-through', marginRight: 4 }}>{r.promOld} ₴</span>
+                                )}
                                 {r.promPrice != null ? `${r.promPrice} ₴` : '—'}
+                                <AdjChip f={r.fPromAdj} />
                                 {r.promMrg && (
                                   <div title="Чистий прибуток Prom: ціна × (1 − комісія) − собівартість" style={{ fontSize: 10, fontWeight: 600, color: marginColor(r.promMrg.pct) }}>
                                     +{Math.round(r.promMrg.uah)} ₴ · {r.promMrg.pct.toFixed(0)}%
@@ -1617,7 +1856,11 @@ async function sendEmail(){
                                 )}
                               </td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#0EA5E9', fontWeight: r.rzPrice ? 500 : 400 }} title="Ціна фіда Rozetka, з урахуванням Smart (редагується в розділі «Товари Rozetka»)">
+                                {r.rzOld != null && r.rzPrice != null && r.rzOld > r.rzPrice && (
+                                  <span style={{ color: '#9CA3AF', textDecoration: 'line-through', marginRight: 4, fontWeight: 400 }}>{r.rzOld} ₴</span>
+                                )}
                                 {r.rzPrice != null ? `${r.rzPrice} ₴` : '—'}
+                                <AdjChip f={r.fRzAdj} />
                                 {r.rzMrg && (
                                   <div title="Чистий прибуток Rozetka: ціна без Smart × (1 − комісія) − собівартість (Smart-надбавка йде на компенсацію доставки)" style={{ fontSize: 10, fontWeight: 600, color: marginColor(r.rzMrg.pct) }}>
                                     +{Math.round(r.rzMrg.uah)} ₴ · {r.rzMrg.pct.toFixed(0)}%
@@ -1881,6 +2124,36 @@ function PreviewChange({ before, after }: { before: number | null; after: number
       {' → '}
       <span style={{ color: after != null && before != null && after > before ? '#16A34A' : '#EA580C', fontWeight: 600 }}>{fmt(after)}</span>
     </span>
+  );
+}
+
+/** Корекції каналу в прев'ю: діючий сумарний зсув і нова корекція. */
+function AdjChange({ current, added }: { current: number; added: number | null }) {
+  const cur = Math.abs(current - 1) > 1e-9 ? `діє ${factorLabel(current)}` : 'без корекцій';
+  if (added == null) return <span style={{ color: '#9CA3AF' }}>{cur} · пропущено</span>;
+  return (
+    <span>
+      <span style={{ color: '#9CA3AF' }}>{cur}</span>
+      {' · нова '}
+      <span style={{ color: added > 0 ? '#16A34A' : '#EA580C', fontWeight: 600 }}>{factorLabel(1 + added / 100)}</span>
+    </span>
+  );
+}
+
+/** Позначка під ціною МП: діюча акція / тимчасова зміна каналу. */
+function AdjChip({ f }: { f: { regular: number; promo: number } }) {
+  const chips: { label: string; color: string; bg: string; border: string }[] = [];
+  if (Math.abs(f.promo - 1) > 1e-9)   chips.push({ label: `акція ${factorLabel(f.promo)}`, color: '#C2410C', bg: '#FFF7ED', border: '#FDBA74' });
+  if (Math.abs(f.regular - 1) > 1e-9) chips.push({ label: `тимч. ${factorLabel(f.regular)}`, color: '#5B21B6', bg: '#F5F3FF', border: '#DDD6FE' });
+  if (!chips.length) return null;
+  return (
+    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 2 }} title="Діє поверх наценки; вимкнути — вкладка «Акції МП» або журнал">
+      {chips.map(c => (
+        <span key={c.label} style={{ fontSize: 9.5, fontWeight: 700, padding: '0 5px', borderRadius: 5, color: c.color, background: c.bg, border: `1px solid ${c.border}`, whiteSpace: 'nowrap' }}>
+          {c.label}
+        </span>
+      ))}
+    </div>
   );
 }
 

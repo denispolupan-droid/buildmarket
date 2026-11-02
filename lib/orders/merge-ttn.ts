@@ -94,6 +94,45 @@ export function planMergeTtn(orders: MergeTtnOrder[]): MergeTtnPlan {
   return { ok: true, kind, ids };
 }
 
+/**
+ * Кандидати на об'єднання: ще не відправлені замовлення одного покупця, які
+ * могли б поїхати однією посилкою. Журнал підсвічує їх, щоб при обробці не
+ * відправити двома ТТН те, що можна однією (02.11.2026: Котляров, #26111002 і
+ * #26111003 — одна точка, дві окремі посилки).
+ *
+ * Покупець — за телефоном (як і в planMergeTtn); у групу потрапляють лише
+ * замовлення одного способу доставки, без накладної і в статусі до відправки.
+ * Повертає orderId → група (номери, id і порядковий індекс групи для кольору).
+ */
+export type SameBuyerOrder = MergeTtnOrder & { status: string };
+export type SameBuyerGroup = { ids: string[]; numbers: number[]; index: number; sameAddress: boolean };
+
+const BEFORE_SHIPPING = new Set(['new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking']);
+
+export function sameBuyerGroups(orders: SameBuyerOrder[]): Map<string, SameBuyerGroup> {
+  const byKey = new Map<string, SameBuyerOrder[]>();
+  for (const o of orders) {
+    if (o.tracking_number || !BEFORE_SHIPPING.has(o.status)) continue;
+    const kind = mergeTtnKind(o.delivery_type);
+    const phone = normPhone(o.phone);
+    if (!kind || phone.length < 9) continue;
+    const key = `${kind}:${phone}`;
+    const arr = byKey.get(key) ?? [];
+    arr.push(o);
+    byKey.set(key, arr);
+  }
+  const out = new Map<string, SameBuyerGroup>();
+  let index = 0;
+  for (const group of byKey.values()) {
+    if (group.length < 2) continue;
+    const sorted = [...group].sort((a, b) => a.order_number - b.order_number);
+    const addrs = new Set(sorted.map(o => o.delivery_warehouse_ref || normAddr(o.delivery_address)));
+    const g: SameBuyerGroup = { ids: sorted.map(o => o.id), numbers: sorted.map(o => o.order_number), index: index++, sameAddress: addrs.size === 1 };
+    for (const o of sorted) out.set(o.id, g);
+  }
+  return out;
+}
+
 /** Опис вантажу для об'єднаної посилки: номери замовлень + назви позицій, до ліміту API. */
 export function mergedDescription(
   orders: { order_number: number; items?: { name?: string }[] | null }[],
