@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Pencil, X, Check, Upload, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { Modal } from '../../../../components/admin/ui/Modal';
 
 type PriceLine = {
   sku: string;
@@ -236,17 +237,8 @@ export default function EditPricesButton({
       </button>
 
       {open && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(0,0,0,0.45)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: '14px',
-            padding: '24px', width: '620px', maxWidth: '95vw',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
-            maxHeight: '90vh', overflowY: 'auto',
-          }}>
+        <Modal open onClose={() => setOpen(false)} width={620} padding={0} dismissible={false} aria-label="Правка цін приходу">
+          <div style={{ background: 'var(--bg-card)', padding: '24px', maxHeight: '90vh', overflowY: 'auto', width: '100%' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div>
@@ -462,7 +454,7 @@ export default function EditPricesButton({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

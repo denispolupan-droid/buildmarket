@@ -23,6 +23,7 @@ import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
 import { phoneInputDigits, phoneInputFormat, isCompletePhoneInput } from '../../../lib/notify/phone';
 import { cartWeightKg, unweighedCount } from '../../../lib/parcel-weight';
 import { showConfirm } from '../../../lib/confirm';
+import { Modal } from '../../components/admin/ui/Modal';
 
 const ProductPickerModal = dynamic(() => import('../procurement/ProductPickerModal'), { ssr: false });
 
@@ -1458,15 +1459,8 @@ export default function NewOrderModal({
 
       {/* ── Customer picker modal ─────────────────────────────────────── */}
       {showPicker && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onMouseDown={e => { if (e.target === e.currentTarget) setShowPicker(false); }}
-        >
-          <div style={{
-            width: '520px', maxHeight: '580px', background: 'var(--bg-card)',
-            borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-            display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          }}>
+        <Modal open onClose={() => setShowPicker(false)} width={520} padding={0} aria-label="Додати товар">
+          <div style={{ maxHeight: '580px', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
             {/* Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1544,14 +1538,13 @@ export default function NewOrderModal({
               </div>
             )}
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── PO selection modal ────────────────────────────────────────── */}
       {poModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onMouseDown={e => { if (e.target === e.currentTarget) setPoModal(null); }}>
-          <div style={{ width: '480px', background: 'var(--bg-card)', borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+        <Modal open onClose={() => setPoModal(null)} width={480} padding={0} aria-label="Замовлення постачальнику">
+          <div style={{ background: 'var(--bg-card)', overflow: 'hidden', width: '100%' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <Package size={16} color="#1E3A5F" /> Замовлення постачальнику
@@ -1602,14 +1595,13 @@ export default function NewOrderModal({
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── Supplier send modal ────────────────────────────────────────── */}
       {supplierModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onMouseDown={e => { if (e.target === e.currentTarget) setSupplierModal(null); }}>
-          <div style={{ width: '420px', background: 'var(--bg-card)', borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+        <Modal open onClose={() => setSupplierModal(null)} width={420} padding={0} aria-label="Надіслати постачальнику">
+          <div style={{ background: 'var(--bg-card)', overflow: 'hidden', width: '100%' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <Send size={15} color="#1E3A5F" /> Відправити постачальнику
@@ -1642,13 +1634,13 @@ export default function NewOrderModal({
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── Result modal ───────────────────────────────────────────────── */}
       {resultModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '440px', maxHeight: '520px', background: 'var(--bg-card)', borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Modal open onClose={() => setResultModal(null)} width={440} padding={0} aria-label="Результат">
+          <div style={{ maxHeight: '520px', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>{resultModal.title}</div>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{resultModal.message}</div>
@@ -1681,7 +1673,7 @@ export default function NewOrderModal({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       <style>{`

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown, ChevronRight, Loader2, ExternalLink, Search, X, History } from 'lucide-react';
 import SmartDateInput, { parseSmartDate, isoToDisplay } from '../../../components/SmartDateInput';
+import { Modal } from '../../../components/admin/ui/Modal';
 
 type StockRow = {
   sku: string;
@@ -453,13 +454,9 @@ function HistoryModal({
   const visibleBatches = batches.filter(b => inRange(b.received_at, batchFrom, batchTo));
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-      onClick={onClose}
-    >
+    <Modal open onClose={onClose} width={1100} padding={0} aria-label="Історія партій">
       <div
-        style={{ background: 'var(--bg-card)', borderRadius: '14px', width: '100%', maxWidth: '1100px', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }}
-        onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--bg-card)', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column', width: '100%' }}
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg-card)', zIndex: 1 }}>
@@ -530,7 +527,7 @@ function HistoryModal({
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

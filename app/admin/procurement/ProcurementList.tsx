@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2, Copy } from 'lucide-react';
+import { Modal } from '../../components/admin/ui/Modal';
 
 type Receipt = {
   id: string; doc_number: string; doc_date: string;
@@ -458,8 +459,8 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     </div>
     {/* Діалог підтвердження видалення чернетки */}
     {deleteConfirm && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+      <Modal open onClose={() => setDeleteConfirm(null)} width={380} padding={0} aria-label="Видалити замовлення постачальнику">
+        <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
             <Trash2 size={20} color="#EF4444" />
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
@@ -487,7 +488,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
             </button>
           </div>
         </div>
-      </div>
+      </Modal>
     )}
 
     {/* Черга підтверджень відправки */}
@@ -497,8 +498,8 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       const current = (sendQueueResult?.ok ?? 0) + (sendQueueResult?.skipped ?? 0) + 1;
       const multiPO = item.pos.length > 1;
       return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <Modal open onClose={() => { setSendQueue([]); setSendQueueResult(null); }} width={460} padding={0} dismissible={false} aria-label="Надсилання постачальнику">
+          <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
 
             {/* Прогрес по постачальниках */}
             {total > 1 && (
@@ -618,14 +619,14 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       );
     })()}
 
     {/* Підсумок відправки */}
     {sendQueue.length === 0 && sendQueueResult && (sendQueueResult.ok > 0 || sendQueueResult.skipped > 0) && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+      <Modal open onClose={() => setSendQueueResult(null)} width={360} padding={0} aria-label="Результат надсилання">
+        <div style={{ background: 'var(--bg-card)', padding: '28px', textAlign: 'center', width: '100%' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>{sendQueueResult.ok > 0 ? '✅' : '⚠️'}</div>
           <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 800 }}>Результат відправки</h3>
           {sendQueueResult.ok > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#15803D' }}>✓ Відправлено постачальникам: {sendQueueResult.ok}</p>}
@@ -641,7 +642,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
             Закрити
           </button>
         </div>
-      </div>
+      </Modal>
     )}
 
     <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>

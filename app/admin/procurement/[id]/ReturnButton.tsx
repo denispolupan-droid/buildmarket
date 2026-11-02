@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { RotateCcw, X, Loader2, AlertCircle } from 'lucide-react';
+import { Modal } from '../../../components/admin/ui/Modal';
 
 type ReceiptLine = { sku: string; qty: number; cost_price: number; name?: string };
 
@@ -66,8 +67,8 @@ export default function ReturnButton({
       }
 
       {open && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.22)' }}>
+        <Modal open onClose={() => setOpen(false)} width={560} padding={0} dismissible={false} aria-label="Повернення постачальнику">
+          <div style={{ background: 'var(--bg-card)', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
 
             <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -129,7 +130,7 @@ export default function ReturnButton({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CheckCircle, Banknote, Loader2, X, Clock } from 'lucide-react';
 import { showToast } from '../../../../../lib/toast';
+import { Modal } from '../../../../components/admin/ui/Modal';
 
 type PaymentMode = 'transfer' | 'deferred' | 'cash';
 type PaymentEntry = { created_at: string; amount: number; payment_mode: string | null };
@@ -334,8 +335,8 @@ export default function ReceiptPaymentPanel({
 
       {/* Модалка скасування оплати */}
       {showReverse && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <Modal open onClose={() => setShowReverse(false)} width={420} padding={0} aria-label="Сторно оплати">
+          <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
             <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <X size={16} /> Скасувати оплату?
             </div>
@@ -358,7 +359,7 @@ export default function ReceiptPaymentPanel({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </>

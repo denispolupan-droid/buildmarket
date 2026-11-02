@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Search, Plus, Minus, ChevronRight, ChevronDown, Loader2, Package } from 'lucide-react';
+import { Modal } from '../../components/admin/ui/Modal';
 
 type Category = { slug: string; name: string; parent_slug: string | null; sort_order: number };
 type CatalogProduct = {
@@ -107,11 +108,8 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
   const selectedCount = selections.size;
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '940px', maxWidth: '96vw', height: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+    <Modal open onClose={onClose} width={940} padding={0} aria-label="Вибір товарів">
+      <div style={{ background: 'var(--bg-card)', height: '82vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
 
         {/* ─── Header ─── */}
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
@@ -305,6 +303,6 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
         </div>
       </div>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-    </div>
+    </Modal>
   );
 }

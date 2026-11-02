@@ -5,6 +5,7 @@ import { showToast } from '../../../../lib/toast';
 import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer, Send, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Modal } from '../../../components/admin/ui/Modal';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number; is_adj_new?: boolean };
 type ContactEntry = { name: string; email: string; note?: string };
@@ -1312,8 +1313,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
 
       {/* Модалка відправки постачальнику */}
       {showSendModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <Modal open onClose={() => setShowSendModal(false)} width={460} padding={0} dismissible={false} aria-label="Надіслати постачальнику">
+          <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div>
                 <h3 style={{ margin: '0 0 3px', fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
@@ -1406,13 +1407,13 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Модалка скасування замовлення */}
       {showCancelModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <Modal open onClose={() => setShowCancelModal(false)} width={420} padding={0} aria-label="Скасувати замовлення постачальнику">
+          <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
             <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🚫 Скасувати замовлення?
             </div>
@@ -1447,13 +1448,13 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Модалка скасування оплати */}
       {showReverseModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <Modal open onClose={() => setShowReverseModal(false)} width={420} padding={0} aria-label="Сторно документа">
+          <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
             <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🚫 Скасувати оплату?
             </div>
@@ -1486,7 +1487,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>

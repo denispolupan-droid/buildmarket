@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Modal } from '../../../components/admin/ui/Modal';
 
 const COST_TYPES = [
   { value: 'delivery',  label: '🚚 Доставка' },
@@ -104,8 +105,8 @@ export default function ReceiptLandedCostButton({
       }
 
       {open && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '580px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.22)' }}>
+        <Modal open onClose={() => setOpen(false)} width={580} padding={0} dismissible={false} aria-label="Доставка в собівартість">
+          <div style={{ background: 'var(--bg-card)', maxHeight: '88vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
 
             {/* Header */}
             <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -203,7 +204,7 @@ export default function ReceiptLandedCostButton({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </>

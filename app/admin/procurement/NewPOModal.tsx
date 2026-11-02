@@ -139,6 +139,7 @@ function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigi
 
 import type { PoDraft, PoLine } from '../PoDraftManager';
 import ProductPickerModal from './ProductPickerModal';
+import { Modal } from '../../components/admin/ui/Modal';
 
 type Props = {
   initialData:    PoDraft;
@@ -440,8 +441,8 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
 
     {/* Діалог вибору ціни при імпорті Excel */}
     {rawImport && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: zIndex + 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="adm-modal-box" style={{ background: 'var(--bg-card)', borderRadius: '14px', padding: '24px 28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+      <Modal open onClose={() => setRawImport(null)} width={420} padding={0} dismissible={false} aria-label="Ціна при імпорті">
+        <div style={{ background: 'var(--bg-card)', padding: '24px 28px', width: '100%' }}>
           <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
             📊 Знайдено {rawImport.length} позицій
           </div>
@@ -488,7 +489,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
             </button>
           </div>
         </div>
-      </div>
+      </Modal>
     )}
 
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
