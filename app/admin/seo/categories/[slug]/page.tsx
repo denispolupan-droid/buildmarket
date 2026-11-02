@@ -31,11 +31,11 @@ export default async function CategoryEditorPage({ params, searchParams }: { par
   const { q } = await searchParams;
   const [categories, products, posts, rows, metaUa, metaRu, queue] = await Promise.all([
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
-      db.from('categories').select('slug, name, parent_slug').order('name').range(f, t)),
+      db.from('categories').select('slug, name, parent_slug').order('name').order('slug').range(f, t)),
     fetchAllRows<ProductRow>((f, t) =>
       db.from('products').select('sku, name, brand, volume, category_slug, stock:product_stock(price_retail, price_promo)').eq('is_active', true).order('sku').range(f, t) as unknown as PromiseLike<{ data: ProductRow[] | null; error: unknown }>),
     fetchAllRows<{ slug: string; title: string }>((f, t) =>
-      db.from('blog_posts').select('slug, title').eq('is_published', true).order('title').range(f, t)),
+      db.from('blog_posts').select('slug, title').eq('is_published', true).order('title').order('slug').range(f, t)),
     getCategoryContentRows(slug),
     getCategoryContentCached('uk'),
     getCategoryContentCached('ru'),

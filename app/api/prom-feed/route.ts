@@ -259,6 +259,7 @@ export async function GET(request: NextRequest) {
       .select('sku, name, name_ru, brand, category_slug, volume, description, description_full, description_ru, description_full_ru, description_mp, description_mp_ru, image, keywords, keywords_ru, min_order, prom_portal_url, prom_markup_pct, on_prom')
       .eq('is_active', true)
       .order('sort_order')
+      .order('id')
       .range(f, t)),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client, preserves prior field access
     fetchAllRows<any>((f, t) => serviceClient
@@ -271,6 +272,7 @@ export async function GET(request: NextRequest) {
       .from('categories')
       .select('id, slug, name, parent_slug, prom_section_id, prom_section_url, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct')
       .order('sort_order')
+      .order('id')
       .range(f, t)),
     Promise.all(Array.from({ length: 20 }, (_, i) =>
       serviceClient
@@ -278,6 +280,7 @@ export async function GET(request: NextRequest) {
         .select('product_sku, label, value')
         .order('product_sku')
         .order('sort_order')
+        .order('id')
         .range(i * CHAR_PAGE, (i + 1) * CHAR_PAGE - 1)
     )),
     serviceClient.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),

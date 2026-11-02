@@ -51,6 +51,7 @@ export async function GET() {
       .from('categories')
       .select('id, slug, name, rozetka_category_id, rozetka_commission_pct, rozetka_markup_pct')
       .order('sort_order')
+      .order('id')
       .range(from, to)),
     // ВАЖЛИВО: вимкнені (on_rozetka=false) товари НЕ прибираємо з фіда, а віддаємо з
     // available="false" + залишком 0. Зникнення оффера з фіда Rozetka трактує як «немає
@@ -63,7 +64,7 @@ export async function GET() {
       description_mp, description_mp_ru,
       stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
       characteristics:product_characteristics(label, value, sort_order)
-    `).eq('is_active', true).order('sort_order').range(from, to)) as unknown as Promise<(Product)[]>),
+    `).eq('is_active', true).order('sort_order').order('id').range(from, to)) as unknown as Promise<(Product)[]>),
   ]);
   // Бренд — у написанні, до якого Rozetka вже прив'язала виробника (lib/brand-feed)
   // — і в характеристиці «Бренд», яка йде <param>

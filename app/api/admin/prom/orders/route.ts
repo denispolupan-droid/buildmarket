@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     .select('id, order_number, created_at, status, contact, phone, total_price, prom_order_id, items', { count: 'exact' })
     .eq('channel_code', 'prom')
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

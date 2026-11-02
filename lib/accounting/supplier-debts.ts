@@ -51,6 +51,7 @@ export async function supplierCharges(supplierId: number, onlyOpen = true): Prom
       .select('charge_entry_id, amount')
       .in('charge_entry_id', ids)
       .order('charge_entry_id', { ascending: true })
+      .order('payment_entry_id')
       .range(f, t));
     for (const a of allocs) {
       allocated.set(a.charge_entry_id, (allocated.get(a.charge_entry_id) ?? 0) + Number(a.amount));

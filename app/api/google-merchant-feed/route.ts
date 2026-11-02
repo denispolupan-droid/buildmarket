@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
       .select('sku, slug, name, name_ru, brand, category_slug, volume, description, description_ru, description_full, description_full_ru, image, gtin')
       .eq('is_active', true)
       .order('sort_order')
+      .order('id')
       .range(f, t)),
     fetchAllRows((f, t) => serviceClient
       .from('product_stock')

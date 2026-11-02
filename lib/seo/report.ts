@@ -81,6 +81,7 @@ export async function buildSearchReport(days: 28 | 90 = 28): Promise<SearchRepor
     .from('gsc_daily')
     .select('date, page_path, clicks, impressions, position')
     .order('date', { ascending: true })
+    .order('page_path')
     .range(f, t));
 
   if (!daily.length) {
@@ -199,6 +200,7 @@ export async function buildSearchReport(days: 28 | 90 = 28): Promise<SearchRepor
     .select('status, channel_code, total_price, created_at')
     .neq('status', 'cancelled')
     .order('created_at', { ascending: true })
+    .order('id')
     .range(f, t)) as unknown as Promise<({ status: string; channel_code: string | null; total_price: number; created_at: string })[]>);
   const orderMap = new Map<string, OrderRow>();
   for (const o of orderRows) {

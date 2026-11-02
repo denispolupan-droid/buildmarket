@@ -36,6 +36,7 @@ export default async function CashflowPage({
     .lte('business_date', to)
     .order('business_date', { ascending: false })
     .order('created_at',    { ascending: false })
+    .order('id', { ascending: false })
     .range(f, t));
 
   // ── 2. Opening balance = sum of all entries BEFORE period start ───────────────

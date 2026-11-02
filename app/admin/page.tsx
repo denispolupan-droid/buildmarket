@@ -164,6 +164,7 @@ export default async function AdminPage({
       .from('orders')
       .select('*', { count: 'exact' })
       .order(sortBy, { ascending: sortAsc })
+      .order('id', { ascending: sortAsc })
       .range(from, to),
   ));
 

@@ -34,7 +34,7 @@ export async function allocateRzPayPayouts(db = createServiceClient(), createdBy
   const payoutRows = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
     .from('mono_bank_txns').select('id, txn_time, amount, comment, description, counter_name, category, note')
     .eq('direction', 'in').eq('status', 'matched').ilike('comment', '%Переказ коштів за операції%')
-    .order('txn_time', { ascending: true }).range(f, t)) as unknown as Promise<({ id: string; txn_time: string; amount: number; comment: string | null; description: string | null; counter_name: string | null; category: string | null; note: string | null })[]>);
+    .order('txn_time', { ascending: true }).order('id').range(f, t)) as unknown as Promise<({ id: string; txn_time: string; amount: number; comment: string | null; description: string | null; counter_name: string | null; category: string | null; note: string | null })[]>);
   const pending = payoutRows.filter(r => r.category !== 'rzpay:allocated');
   const summary: RzPayAllocateSummary = { payouts: pending.length, allocated: 0, orders: 0, amount: 0, unmatched: [] };
   if (pending.length === 0) return summary;

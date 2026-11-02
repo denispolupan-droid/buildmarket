@@ -82,7 +82,7 @@ export async function supplierInTransit(supplierId: number): Promise<TransitItem
   for (const ids of chunks([...chargeDoc.keys()])) {
     const allocs = await fetchAllRows<{ charge_entry_id: string; amount: number }>((f, t) => db
       .from('supplier_payment_allocations').select('charge_entry_id, amount')
-      .in('charge_entry_id', ids).order('charge_entry_id').range(f, t));
+      .in('charge_entry_id', ids).order('charge_entry_id').order('payment_entry_id').range(f, t));
     for (const a of allocs) {
       const doc = chargeDoc.get(a.charge_entry_id)!;
       paidByDoc.set(doc, (paidByDoc.get(doc) ?? 0) + Number(a.amount));
