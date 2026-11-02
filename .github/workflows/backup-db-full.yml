@@ -53,22 +53,42 @@ jobs:
           test -n "$DB_URL" || { echo "::error::SUPABASE_DB_URL secret is not set"; exit 1; }
           mkdir -p dump
           STAMP=$(date -u +%Y%m%d-%H%M)
-          "$PG/pg_dump" "$DB_URL" --schema=public --no-owner --no-privileges \
+          # Дамп і еталонні лічильники — з ОДНОГО знімка бази. GitHub запускає розклад
+          # із запізненням до кількох годин (02.11.2026 — о 10:06 за Києвом, у робочий
+          # час): лічильники окремим запитом після дампу бачили документ, проведений
+          # за ці хвилини, і перевірка відновлення падала на цілому дампі. Тримаємо
+          # відкриту транзакцію REPEATABLE READ, експортуємо її знімок і даємо його
+          # pg_dump (--snapshot); лічильники рахуємо в тій самій транзакції.
+          coproc SNAP { "$PG/psql" "$DB_URL" -At -q -v ON_ERROR_STOP=1; }
+          echo "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SELECT pg_export_snapshot();" >&"${SNAP[1]}"
+          read -r -t 60 SNAPSHOT <&"${SNAP[0]}" || { echo "::error::pg_export_snapshot did not answer"; exit 1; }
+          echo "snapshot $SNAPSHOT"
+          "$PG/pg_dump" "$DB_URL" --schema=public --no-owner --no-privileges --snapshot="$SNAPSHOT" \
             --format=custom --compress=9 --file "dump/fixline-$STAMP.dump"
-          "$PG/pg_dump" "$DB_URL" --schema=public --no-owner --no-privileges \
+          "$PG/pg_dump" "$DB_URL" --schema=public --no-owner --no-privileges --snapshot="$SNAPSHOT" \
             --schema-only --file "dump/fixline-$STAMP.schema.sql"
-          ls -lh dump/
-          # Санітарна перевірка: у дампі мають бути ключові таблиці з даними
-          "$PG/pg_restore" --list "dump/fixline-$STAMP.dump" | grep -cE "TABLE DATA public (orders|money_entries|acc_documents|product_stock) " | xargs test 4 -eq
-          # Еталон для перевірки відновлення: скільки рядків було в проді на момент дампу
-          "$PG/psql" "$DB_URL" -At -c "
-            SELECT 'orders', count(*) FROM orders
+          # Еталон для перевірки відновлення: скільки рядків у тому самому знімку
+          echo "SELECT 'orders', count(*) FROM orders
             UNION ALL SELECT 'money_entries', count(*) FROM money_entries
             UNION ALL SELECT 'acc_documents', count(*) FROM acc_documents
             UNION ALL SELECT 'acc_document_lines', count(*) FROM acc_document_lines
             UNION ALL SELECT 'product_stock', count(*) FROM product_stock
-            UNION ALL SELECT 'customers', count(*) FROM customers" > dump/counts.txt
+            UNION ALL SELECT 'customers', count(*) FROM customers;
+            SELECT 'END';" >&"${SNAP[1]}"
+          : > dump/counts.txt
+          while read -r -t 60 line <&"${SNAP[0]}"; do
+            [ "$line" = "END" ] && break
+            echo "$line" >> dump/counts.txt
+          done
+          [ "$line" = "END" ] || { echo "::error::row counts did not arrive"; exit 1; }
+          echo "COMMIT;" >&"${SNAP[1]}"
+          exec {SNAP[1]}>&-
+          wait
+          test "$(wc -l < dump/counts.txt)" -eq 6
           cat dump/counts.txt
+          ls -lh dump/
+          # Санітарна перевірка: у дампі мають бути ключові таблиці з даними
+          "$PG/pg_restore" --list "dump/fixline-$STAMP.dump" | grep -cE "TABLE DATA public (orders|money_entries|acc_documents|product_stock) " | xargs test 4 -eq
 
       - name: pg_dump auth + storage (data only)
         env:
