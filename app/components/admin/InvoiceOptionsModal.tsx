@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Building2, User, MapPin, CalendarClock, ExternalLink } from 'lucide-react';
+import { Modal } from './ui/Modal';
 
 type OrderLite = {
   id: string;
@@ -52,8 +53,8 @@ export default function InvoiceOptionsModal({ order, onClose, onSaved }: Props) 
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: '0 12px 48px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+    <Modal open onClose={onClose} width={440} padding={0} dismissible={false} aria-label="Налаштування рахунку">
+      <div style={{ background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', maxHeight: '90vh', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-light)' }}>
           <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>Налаштування рахунку</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px' }}><X size={18} /></button>
@@ -91,6 +92,6 @@ export default function InvoiceOptionsModal({ order, onClose, onSaved }: Props) 
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

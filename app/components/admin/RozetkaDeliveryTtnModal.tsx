@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Search, MapPin, Check } from 'lucide-react';
 import SeatsStepper, { SameSeatsToggle, sameSeatsLabel, useSeats } from './SeatsStepper';
 import type { RozetkaSenderPickup } from '../../../lib/rozetka-delivery';
+import { Modal } from './ui/Modal';
 
 /**
  * Створення накладної для доставки в точку видачі Rozetka.
@@ -271,8 +272,8 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
     : pickups;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div className="adm-modal-box" style={{ background: 'var(--bg-card)', borderRadius: '14px', width: '480px', maxWidth: '96vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(15,23,42,0.28)' }}>
+    <Modal open onClose={onClose} width={480} padding={0} dismissible={false} aria-label="Накладна Rozetka">
+      <div style={{ background: 'var(--bg-card)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', padding: '16px 20px 14px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Накладна Rozetka</div>
@@ -498,6 +499,6 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

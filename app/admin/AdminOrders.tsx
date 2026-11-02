@@ -31,6 +31,7 @@ import { SupplierSendQueueModal } from './_orders/SupplierSendQueueModal';
 import { BulkSupplierSendModal } from './_orders/BulkSupplierSendModal';
 import { NpRegistryPickerModal } from './_orders/NpRegistryPickerModal';
 import { OrdersCtx } from './_orders/OrdersContext';
+import { Modal } from '../components/admin/ui/Modal';
 
 export default function AdminOrders(props: AdminOrdersProps) {
   const ctx = useAdminOrders(props);
@@ -764,8 +765,8 @@ export default function AdminOrders(props: AdminOrdersProps) {
         ];
         const ord = orders.find(o => o.id === rozCancelFor);
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div className="adm-modal-box" style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '420px', maxWidth: '96vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+          <Modal open onClose={() => setRozCancelFor(null)} width={420} padding={0} dismissible={false} aria-label="Скасування замовлення Rozetka" style={{ background: '#fff' }}>
+            <div style={{ background: '#fff', padding: '24px', width: '100%' }}>
               <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#DC2626' }}>Скасування замовлення Rozetka</div>
               <div style={{ fontSize: '12.5px', color: '#6B7280', marginBottom: '16px', lineHeight: 1.5 }}>
                 #{ord?.order_number} — Rozetka вимагає вказати причину. Її побачить покупець, і вона піде в статистику кабінету.
@@ -786,7 +787,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                 Не скасовувати
               </button>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 

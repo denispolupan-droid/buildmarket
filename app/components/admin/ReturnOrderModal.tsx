@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { X, Undo2, ExternalLink } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 import { REASON_LABEL, STAGE_LABEL, type ReturnReason, type ReturnStage, type RefundMethod } from '../../../lib/accounting/returns-rules';
+import { Modal } from './ui/Modal';
 
 type ReturnableItem = {
   sku: string; name: string; price: number; shipped: number; returned: number; available: number;
@@ -94,8 +95,8 @@ export default function ReturnOrderModal({
   const lbl: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '4px' };
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: '14px', width: '600px', maxWidth: '100%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+    <Modal open onClose={onClose} width={600} padding={0} aria-label="Повернення замовлення">
+      <div style={{ background: 'var(--bg-card)', maxHeight: '90vh', overflow: 'auto', width: '100%' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
@@ -208,6 +209,6 @@ export default function ReturnOrderModal({
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

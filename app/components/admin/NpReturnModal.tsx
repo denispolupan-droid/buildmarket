@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Modal } from './ui/Modal';
 
 // Повернення посилки з Нової Пошти в один клік: коли клієнт не забирає посилку,
 // менеджер відкриває це вікно з журналу і створює заявку на повернення в кабінеті
@@ -104,16 +105,14 @@ export default function NpReturnModal({ orderId, orderNumber, onClose, onDone }:
     }
   };
 
-  const box: React.CSSProperties = {
-    background: '#fff', borderRadius: '16px', padding: '24px', width: '470px', maxWidth: '96vw',
-    maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-  };
+  // Білий фон навмисно: кольори тексту нижче підібрані під нього (темна тема — пізніше).
+  const box: React.CSSProperties = { background: '#fff', padding: '24px', width: '100%' };
   const row: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '12.5px', padding: '3px 0' };
   const muted: React.CSSProperties = { color: '#6B7280' };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div className="adm-modal-box" style={box}>
+    <Modal open onClose={onClose} width={470} padding={0} dismissible={false} aria-label="Повернення Новою Поштою" style={{ background: '#fff' }}>
+      <div style={box}>
         <div style={{ fontWeight: 800, fontSize: '16px', color: '#B45309' }}>↩ Повернення Новою Поштою</div>
         <div style={{ fontSize: '12.5px', color: '#6B7280', margin: '4px 0 16px', lineHeight: 1.5 }}>
           Замовлення #{orderNumber} — заявка створюється одразу в кабінеті НП. Посилка поїде назад
@@ -217,6 +216,6 @@ export default function NpReturnModal({ orderId, orderNumber, onClose, onDone }:
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

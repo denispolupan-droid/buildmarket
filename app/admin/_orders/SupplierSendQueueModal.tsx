@@ -2,6 +2,7 @@
 
 import { X, Mail } from 'lucide-react';
 import { useOrdersCtx } from './OrdersContext';
+import { Modal } from '../../components/admin/ui/Modal';
 
 export function SupplierSendQueueModal() {
   const {
@@ -16,9 +17,8 @@ export function SupplierSendQueueModal() {
         const total = supplierQueue?.length ?? 0;
         const idx = supplierQueueIdx;
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-            onClick={e => { if (!supplierQueueSending && !supplierQueueDone && e.target === e.currentTarget) setSupplierQueue(null); }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+          <Modal open onClose={() => { if (!supplierQueueSending && !supplierQueueDone) setSupplierQueue(null); }} width={460} padding={0} dismissible={!supplierQueueSending && !supplierQueueDone} aria-label="Черга листів постачальникам">
+            <div style={{ background: 'var(--bg-card)', overflow: 'hidden', width: '100%' }}>
 
               {/* Header */}
               <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -206,7 +206,7 @@ export function SupplierSendQueueModal() {
                 </div>
               )}
             </div>
-          </div>
+          </Modal>
         );
       })()}
     </>

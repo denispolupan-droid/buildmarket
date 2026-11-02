@@ -6,6 +6,7 @@ import type { CourierAddressResult, StreetSuggestion } from '../../../lib/np-add
 import { legalRecipientFromCustomer, taxNumberLabel, type LegalRecipient } from '../../../lib/np-legal-recipient';
 import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote, Building2, User } from 'lucide-react';
 import SeatsStepper, { SameSeatsToggle, sameSeatsLabel, useSeats } from './SeatsStepper';
+import { Modal } from './ui/Modal';
 
 type SeatRow = { weight: string; width: string; height: string; length: string };
 
@@ -498,10 +499,8 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   });
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-    >
-      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '540px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
+    <Modal open onClose={onClose} width={540} padding={0} dismissible={false} aria-label="Створити ТТН">
+      <div style={{ background: 'var(--bg-card)', maxHeight: '92vh', overflowY: 'auto', width: '100%' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg-card)', zIndex: 10 }}>
@@ -984,6 +983,6 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
         </div>
       </div>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}`}</style>
-    </div>
+    </Modal>
   );
 }

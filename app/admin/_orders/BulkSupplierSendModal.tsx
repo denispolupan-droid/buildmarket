@@ -10,6 +10,7 @@ import RozetkaDeliveryTtnModal from '../../components/admin/RozetkaDeliveryTtnMo
 import TtnDetailsModal from '../../components/admin/TtnDetailsModal';
 import RzDeliveryTtnModal from '../../components/admin/RzDeliveryTtnModal';
 import { useOrdersCtx } from './OrdersContext';
+import { Modal } from '../../components/admin/ui/Modal';
 
 export function BulkSupplierSendModal() {
   const {
@@ -27,9 +28,8 @@ export function BulkSupplierSendModal() {
         const sendable = bulkGroups.filter(g => g.supplierId != null && g.email.includes('@'));
         const totalOrders = bulkOrderIds.length;
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-            onClick={e => { if (!bulkSending && e.target === e.currentTarget) setBulkGroups(null); }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '520px', maxHeight: '90vh', boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <Modal open onClose={() => { if (!bulkSending) setBulkGroups(null); }} width={520} padding={0} dismissible={!bulkSending} aria-label="Надіслати постачальникам">
+            <div style={{ background: 'var(--bg-card)', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', width: '100%' }}>
 
               {/* Header */}
               <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -168,7 +168,7 @@ export function BulkSupplierSendModal() {
                 )}
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 

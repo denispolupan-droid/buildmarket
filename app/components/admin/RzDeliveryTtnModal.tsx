@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { Modal } from './ui/Modal';
 
 /**
  * Експрес-накладна «ROZETKA Доставки» для замовлення САЙТУ.
@@ -117,8 +118,8 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
   const blocked = busy || !sender || overLimit || codInvalid;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div className="adm-modal-box" style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '460px', maxWidth: '96vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+    <Modal open onClose={onClose} width={460} padding={0} dismissible={false} aria-label="ТТН ROZETKA Доставка">
+      <div style={{ background: 'var(--bg-card)', maxHeight: '92vh', overflowY: 'auto', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>ROZETKA Доставка</div>
@@ -234,6 +235,6 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
