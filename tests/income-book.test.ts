@@ -26,6 +26,17 @@ describe('buildIncomeBook', () => {
     expect(b.bySource).toEqual({ cod: 100.1, marketplace: 50, customer: 0.3 });
   });
 
+  it('сторно / повернення (від’ємний рядок, міграція 148) зменшують дохід, txns не додають', () => {
+    const s = buildIncomeBook([
+      { day: '2026-09-10', method: 'novapay', source: 'cod', amount: '300', txns: 2 },
+      { day: '2026-09-20', method: 'novapay', source: 'cod', amount: '-100.5', txns: 0 },
+    ]);
+    expect(s.total).toBe(199.5);
+    expect(s.bySource.cod).toBe(199.5);
+    expect(s.txns).toBe(2);
+    expect(s.months[0].days.map(d => d.total)).toEqual([300, -100.5]);
+  });
+
   it('порожньо — нулі', () => {
     expect(buildIncomeBook([]).total).toBe(0);
   });
