@@ -13,6 +13,8 @@ export const PRICE_LOG_TYPE_LABEL: Record<string, string> = {
   fixed:         'Фіксована ціна',
   set_markup:    'Націнка = N %',
   mp_revert:     'Відкат переоцінки МП',
+  adj_revert:    'Завершення акції МП',
+  adj_reset:     'Вимкнення акцій МП',
   manual:        'Ручна правка',
   promo_cancel:  'Завершення акції',
   supplier_discount: 'Знижка постачальника',
@@ -39,6 +41,8 @@ export type PriceLogInput = {
   status?: string;
   count?: number;
   snapshot?: unknown;
+  /** Запис-корекція (price_adjustments.log_id → цей рядок): відкат = вимкнення корекцій. */
+  adjustment?: boolean;
 };
 
 /** userId = null для кронів (user_id у таблиці nullable). Повертає id рядка або помилку. */
@@ -62,6 +66,7 @@ export async function insertPriceChangeLog(
     status:         isPending ? 'pending' : 'applied',
     count:          input.count ?? null,
     snapshot:       input.snapshot ?? null,
+    adjustment:     !!input.adjustment,
   }).select('id').single();
 
   if (error || !logRow) {
@@ -73,7 +78,8 @@ export async function insertPriceChangeLog(
   const targetStr = PRICE_LOG_TARGET_LABEL[input.target] ?? input.target;
   const pct = input.type === 'increase_pct' || input.type === 'set_markup' ? '%' : '';
   const notes = [
-    input.type === 'mp_revert' ? `${typeStr} — ${targetStr}` : `${typeStr}: ${input.value}${pct} — ${targetStr}`,
+    ['mp_revert', 'adj_revert', 'adj_reset'].includes(input.type) ? `${typeStr} — ${targetStr}` : `${typeStr}: ${input.value}${pct} — ${targetStr}`,
+    input.adjustment ? '[МП, поверх наценки]' : null,
     input.is_promo  ? '[Акція]'       : null,
     isPending       ? '[Заплановано]' : null,
     input.revert_at ? `до ${input.revert_at}` : null,

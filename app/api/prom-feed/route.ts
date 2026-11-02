@@ -6,6 +6,8 @@ import { mpDescription, mpDescriptionRu } from '@/lib/marketplace-description';
 import { PROM_READY_TO_SHIP_KEY, promAvailability, readyToShipEnabled } from '@/lib/prom-ready-to-ship';
 import { BRAND_COUNTRY } from '../../../lib/brand-country';
 import { feedVendor } from '../../../lib/brand-feed';
+import { factorOf, hasPromo, totalFactor } from '../../../lib/price-adjustments';
+import { loadFactorMap } from '../../../lib/price-adjustments-db';
 
 const serviceClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -289,6 +291,8 @@ export async function GET(request: NextRequest) {
   const promPlan = ((planRow as { value?: string } | null)?.value ?? 'single') as PromPlan;
   // «Готово до відправки» (in_stock) — глобальний перемикач з дашборда Prom
   const readyToShip = readyToShipEnabled((rtsRow as { value?: string } | null)?.value);
+  // Корекції цін каналу (акції й зміни «до дати» поверх наценки, міграція 147)
+  const factors = await loadFactorMap(serviceClient, ['prom']);
 
   const characteristics = charPages.flatMap(r => (r.data ?? []) as { product_sku: string; label: string; value: string }[]);
 
@@ -357,21 +361,31 @@ export async function GET(request: NextRequest) {
       const productMarkup = (p as { prom_markup_pct?: number | null }).prom_markup_pct;
       const markup     = resolveMarkup(productMarkup, p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0);
       const commission = p.category_slug ? (catCommissionMap.get(p.category_slug) ?? 0) : 0;
-      const price = promPrice({
+      const fac = factorOf(factors, 'prom', p.sku);
+      const adjustFactor = totalFactor(fac);
+      const promInputs = {
         cost: (s as { price_cost?: number | null }).price_cost,
         retail: retailPrice,
         manualOverride: priceWholesale,
         productMarkupPct: productMarkup,
         categoryMarkupPct: p.category_slug ? (catMarkupMap.get(p.category_slug) ?? 0) : 0,
         commissionPct: commission,
-      });
+      };
+      const price = promPrice({ ...promInputs, adjustFactor });
 
-      const priceOldBase = s.price_retail != null
-        ? ((s as { price_retail_old?: number | null }).price_retail_old ?? null)
-        : ((s as { price_old?: number | null }).price_old ?? null);
       let promPriceOld: number | null = null;
-      if (!priceWholesale && priceOldBase && priceOldBase > retailPrice) {
-        promPriceOld = promPriceFromBase(priceOldBase, markup, commission);
+      if (hasPromo(fac)) {
+        // Акція МП (міграція 147): стара ціна = та сама формула без акційних
+        // корекцій — реальна ціна товару без акції; Prom показує знижку
+        promPriceOld = promPrice({ ...promInputs, adjustFactor: fac.regular });
+      } else {
+        const priceOldBase = s.price_retail != null
+          ? ((s as { price_retail_old?: number | null }).price_retail_old ?? null)
+          : ((s as { price_old?: number | null }).price_old ?? null);
+        if (!priceWholesale && priceOldBase && priceOldBase > retailPrice) {
+          // Та сама корекція, що й на ціну: інакше зсув сам по собі вигадував би «знижку»
+          promPriceOld = promPriceFromBase(priceOldBase, markup, commission, adjustFactor);
+        }
       }
       const hasDiscount = promPriceOld != null && promPriceOld > price;
 

@@ -26,6 +26,8 @@ export type RozetkaInputs = {
   commissionPct: number;              // categories.rozetka_commission_pct
   smart?: boolean;                    // products.rozetka_smart
   smartTariff?: SmartBracket[];       // тариф «Умови Smart» (app_settings), дефолт — чинний
+  /** Множник активних корекцій каналу (lib/price-adjustments), 1 — без корекцій. */
+  adjustFactor?: number;
 };
 
 /** База націнки: ціна входу, без неї — роздріб. */
@@ -33,13 +35,23 @@ function markupBase(cost: number | null | undefined, retail: number): number {
   return cost && cost > 0 ? cost : retail;
 }
 
-/** Ціна Rozetka БЕЗ Smart-надбавки (округлення вгору до 5 грн). */
-export function rozetkaBasePrice(inp: Pick<RozetkaInputs, 'cost' | 'retail' | 'productMarkupPct' | 'categoryMarkupPct' | 'commissionPct'>): number {
+// Множник корекцій МП — акції й зміни «до дати» (міграція 147). Без корекцій формула має давати РІВНО те
+// саме, що й до них, тому всі гілки з множником вмикаються лише при f ≠ 1, а
+// допуск на хвіст подвійної точності — лише там (100.0000001 не стає 105/101).
+const EPS = 1e-9;
+const hasFactor = (f: number | undefined): f is number => f != null && Math.abs(f - 1) > 1e-12;
+const ceilStep = (v: number, step: number, f: number | undefined) =>
+  hasFactor(f) ? Math.ceil((v * f) / step - EPS) * step : Math.ceil(v / step) * step;
+
+/** Ціна Rozetka БЕЗ Smart-надбавки (округлення вгору до 5 грн), з корекціями. */
+export function rozetkaBasePrice(inp: Pick<RozetkaInputs, 'cost' | 'retail' | 'productMarkupPct' | 'categoryMarkupPct' | 'commissionPct' | 'adjustFactor'>): number {
   const markup = resolveMarkup(inp.productMarkupPct, inp.categoryMarkupPct);
-  if (inp.commissionPct <= 0 && markup <= 0) return inp.retail;
+  if (inp.commissionPct <= 0 && markup <= 0) {
+    return hasFactor(inp.adjustFactor) ? ceilStep(inp.retail, 5, inp.adjustFactor) : inp.retail;
+  }
   const withMarkup = markupBase(inp.cost, inp.retail) * (1 + markup / 100);
   const withComm = inp.commissionPct > 0 ? withMarkup / (1 - inp.commissionPct / 100) : withMarkup;
-  return Math.ceil(withComm / 5) * 5;
+  return ceilStep(withComm, 5, inp.adjustFactor);
 }
 
 /**
@@ -106,19 +118,27 @@ export type PromInputs = {
   productMarkupPct: number | null | undefined;   // products.prom_markup_pct
   categoryMarkupPct: number | null | undefined;  // categories.prom_markup_pct
   commissionPct: number;               // categories.prom_commission_pct
+  /** Множник активних корекцій каналу (lib/price-adjustments), 1 — без корекцій. */
+  adjustFactor?: number;
 };
 
-/** Формульна ціна Prom від заданої бази (округлення вгору до 1 грн). */
-export function promPriceFromBase(base: number, markupPct: number, commissionPct: number): number {
+/** Формульна ціна Prom від заданої бази (округлення вгору до 1 грн), з корекціями. */
+export function promPriceFromBase(base: number, markupPct: number, commissionPct: number, adjustFactor?: number): number {
   if (commissionPct >= 100) return 0;
-  return Math.ceil(base * (1 + markupPct / 100) / (1 - commissionPct / 100));
+  return ceilStep(base * (1 + markupPct / 100) / (1 - commissionPct / 100), 1, adjustFactor);
 }
 
-/** Фінальна ціна Prom — те, що їде у фід (ручний override має пріоритет). */
+/**
+ * Фінальна ціна Prom — те, що їде у фід. Ручна ціна (price_wholesale) б'є
+ * формулу, але корекції діють і на неї: «−2 % на бренд» — це зсув ціни, хоч
+ * би звідки вона взялась.
+ */
 export function promPrice(inp: PromInputs): number {
-  if (inp.manualOverride && inp.manualOverride > 0) return inp.manualOverride;
+  if (inp.manualOverride && inp.manualOverride > 0) {
+    return hasFactor(inp.adjustFactor) ? ceilStep(inp.manualOverride, 1, inp.adjustFactor) : inp.manualOverride;
+  }
   const markup = resolveMarkup(inp.productMarkupPct, inp.categoryMarkupPct);
-  return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, inp.commissionPct);
+  return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, inp.commissionPct, inp.adjustFactor);
 }
 
 /** Чиста маржа Prom: ціна × (1 − комісія) − собівартість. */
@@ -138,6 +158,8 @@ export type EpicentrInputs = {
   productMarkupPct: number | null | undefined;   // products.epicentr_markup_pct
   categoryMarkupPct: number | null | undefined;  // categories.epicentr_markup_pct
   commissionPct: number;               // categories.epicentr_commission_pct
+  /** Множник активних корекцій каналу (lib/price-adjustments), 1 — без корекцій. */
+  adjustFactor?: number;
 };
 
 /**
@@ -146,8 +168,8 @@ export type EpicentrInputs = {
  */
 export function epicentrPrice(inp: EpicentrInputs): number {
   const markup = resolveMarkup(inp.productMarkupPct, inp.categoryMarkupPct);
-  if (inp.commissionPct <= 0 && markup <= 0) return Math.ceil(inp.retail);
-  return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, inp.commissionPct);
+  if (inp.commissionPct <= 0 && markup <= 0) return ceilStep(inp.retail, 1, inp.adjustFactor);
+  return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, inp.commissionPct, inp.adjustFactor);
 }
 
 /** Чиста маржа Епіцентру: ціна × (1 − комісія) − собівартість. */

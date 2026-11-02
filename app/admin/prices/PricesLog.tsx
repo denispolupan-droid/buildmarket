@@ -15,6 +15,8 @@ type LogEntry = {
   comment: string | null;
   revert_at: string | null;
   reverted_at: string | null;
+  /** Запис-корекція МП (акція / зміна «до дати», міграція 147): відкат = вимкнути її корекції */
+  adjustment?: boolean;
   effective_from: string | null;
   status: string;
   count: number | null;
@@ -27,6 +29,8 @@ const TYPE_LABEL: Record<string, string> = {
   fixed:         'Фіксована ціна',
   set_markup:    'Націнка = N %',
   mp_revert:     'Відкат переоцінки МП',
+  adj_revert:    'Завершення акції МП',
+  adj_reset:     'Вимкнення акцій МП',
   manual:        'Ручна правка',
   promo_cancel:  'Завершення акції',
   supplier_discount: 'Знижка постачальника',
@@ -52,6 +56,8 @@ const MP_COLS: Record<string, { price: string; markup: string; label: string }[]
 function mpCell(rec: Record<string, number | null> | undefined, col: { price: string; markup: string }) {
   if (!rec || (!(col.price in rec) && !(col.markup in rec))) return '—';
   const price  = rec[col.price];
+  // Записи-корекції наценки не міняють — у знімку лише ціна
+  if (!(col.markup in rec)) return price != null ? `${price} ₴` : '—';
   const markup = rec[col.markup];
   return `${price != null ? `${price} ₴` : '—'} · ${markup != null ? `${markup}%` : 'кат.'}`;
 }
@@ -121,7 +127,10 @@ export default function PricesLog() {
   // постачальника, акції з датою повернення).
   async function revertMp(entry: LogEntry) {
     const when = formatDate(entry.created_at);
-    if (!confirm(`Відкотити переоцінку від ${when} (${entry.count ?? 0} товарів)?\n\nНацінки Prom/Rozetka повернуться до значень, що були до неї; фіди перерахують ціни від поточної собівартості.`)) return;
+    const msg = entry.adjustment
+      ? `Відкотити корекцію від ${when} (${entry.count ?? 0} товарів)?\n\nЦіни Prom/Rozetka повернуться рівно на її внесок; наценки й інші акції не зміняться.`
+      : `Відкотити переоцінку від ${when} (${entry.count ?? 0} товарів)?\n\nНацінки Prom/Rozetka повернуться до значень, що були до неї; фіди перерахують ціни від поточної собівартості.`;
+    if (!confirm(msg)) return;
     setReverting(entry.id);
     try {
       const res = await fetch('/api/admin/prices/log', {
@@ -158,7 +167,7 @@ export default function PricesLog() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {entries.map(entry => {
         const isOpen = expanded.has(entry.id);
-        const valStr = entry.type === 'manual' || entry.type === 'promo_cancel' || entry.type === 'mp_revert'
+        const valStr = ['manual', 'promo_cancel', 'mp_revert', 'adj_revert', 'adj_reset'].includes(entry.type)
           ? ''
           : entry.type === 'increase_pct'
           ? (entry.value >= 0 ? `+${entry.value}%` : `${entry.value}%`)
@@ -177,8 +186,18 @@ export default function PricesLog() {
         const isCancelled = entry.status === 'cancelled';
         const isMp        = isMpTarget(entry.target);
         const isReverted  = entry.status === 'reverted';
-        const canRevert   = isMp && entry.type !== 'mp_revert' && entry.status === 'applied' && !entry.reverted_at && hasSnapshot;
+        // Запис-корекція відкочується завжди (і запланований теж — вимикаються її
+        // корекції); стара переоцінка МП — лише застосована, зі знімком націнок
+        const isAdj       = !!entry.adjustment;
+        const canRevert   = isAdj
+          ? (entry.status === 'applied' || entry.status === 'pending') && !entry.reverted_at
+          : isMp && entry.type !== 'mp_revert' && entry.status === 'applied' && !entry.reverted_at && hasSnapshot;
         const mpCols      = isMp ? (MP_COLS[entry.target] ?? []) : [];
+        const kindBadge   = isAdj ? (entry.is_promo ? 'Акція МП' : 'Тимчасова зміна МП')
+          : entry.type === 'adj_revert' ? 'Завершення'
+          : entry.type === 'adj_reset' ? 'Вимкнення акцій'
+          : isMp ? (entry.type === 'mp_revert' ? 'Відкат' : entry.revert_at ? 'Тимчасова націнка МП' : 'Націнка МП')
+          : null;
 
         return (
           <div key={entry.id} style={{
@@ -223,10 +242,10 @@ export default function PricesLog() {
                     Скасовано
                   </span>
                 )}
-                {isMp && (
+                {kindBadge && (
                   <span style={{ fontSize: 11, fontWeight: 600, color: '#5B21B6', background: '#F5F3FF', border: '1px solid #DDD6FE',
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
-                    {entry.type === 'mp_revert' ? 'Відкат' : entry.revert_at ? 'Тимчасова націнка МП' : 'Націнка МП'}
+                    {kindBadge}
                   </span>
                 )}
                 {isReverted && (
@@ -270,7 +289,7 @@ export default function PricesLog() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                {isPending && (
+                {isPending && !isAdj && (
                   <button
                     onClick={() => cancelPending(entry.id)}
                     disabled={cancelling === entry.id}
@@ -283,9 +302,9 @@ export default function PricesLog() {
                   <button
                     onClick={() => revertMp(entry)}
                     disabled={reverting === entry.id}
-                    title="Повернути націнки Prom/Rozetka, що були до цієї переоцінки"
+                    title={isAdj ? 'Вимкнути — ціни повернуться на її внесок, наценки й інші акції лишаться' : 'Повернути націнки Prom/Rozetka, що були до цієї переоцінки'}
                     style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid #DDD6FE', background: '#F5F3FF', color: '#5B21B6', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                    <Undo2 size={10} /> {reverting === entry.id ? '...' : 'Відкотити'}
+                    <Undo2 size={10} /> {reverting === entry.id ? '...' : isPending ? 'Скасувати' : 'Відкотити'}
                   </button>
                 )}
                 {hasSnapshot && (

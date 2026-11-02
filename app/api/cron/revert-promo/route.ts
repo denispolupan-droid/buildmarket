@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { MP_TARGETS, revertMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
+import { processAdjustmentBoundaries } from '../../../../lib/price-adjustments-db';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,13 +18,21 @@ async function run(req: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  // ── Тимчасові переоцінки маркетплейсів: дата «повернути після» настала ──────
-  // Це не акції сайту (is_promo=false, price_promo не чіпаємо) — повертаються
-  // націнки «до» зі знімка тим самим кодом, що й кнопка «Відкотити» в журналі.
+  // ── Корекції цін МП (міграція 147): почались / закінчились за датою ────────
+  // Фіди рахують ціну на льоту, тож тут лише стан і журнал. Ціни сайту не чіпає.
+  const adj = await processAdjustmentBoundaries(db);
+
+  // ── Нижче — записи без корекцій (adjustment = false). Фільтр обов'язковий:
+  // акції МП теж мають is_promo, і без нього блок акцій сайту зняв би
+  // price_promo на сайті в товарів, у яких закінчилась акція на Rozetka/Prom.
+
+  // Тимчасові переоцінки маркетплейсів через націнку: дата «повернути після»
+  // настала — повертаються націнки «до» зі знімка.
   const { data: mpExpired } = await db
     .from('price_change_log')
     .select('id, type, target, status, reverted_at, snapshot, created_at, revert_at')
     .in('target', [...MP_TARGETS])
+    .eq('adjustment', false)
     .eq('status', 'applied')
     .lte('revert_at', today)
     .is('reverted_at', null);
@@ -42,11 +51,12 @@ async function run(req: NextRequest) {
     .from('price_change_log')
     .select('id, snapshot')
     .eq('is_promo', true)
+    .eq('adjustment', false)
     .lte('revert_at', today)
     .is('reverted_at', null);
 
   if (!expired?.length) {
-    return NextResponse.json({ reverted: 0, mp_reverted: mpReverted, mp_errors: mpErrors.slice(0, 10) });
+    return NextResponse.json({ reverted: 0, mp_reverted: mpReverted, mp_errors: mpErrors.slice(0, 10), adjustments: adj });
   }
 
   // SKUs from expired entries
@@ -63,6 +73,7 @@ async function run(req: NextRequest) {
     .from('price_change_log')
     .select('snapshot')
     .eq('is_promo', true)
+    .eq('adjustment', false)
     .is('reverted_at', null)
     .gt('revert_at', today);
 
@@ -91,7 +102,7 @@ async function run(req: NextRequest) {
     .update({ reverted_at: new Date().toISOString() })
     .in('id', expired.map(e => e.id));
 
-  return NextResponse.json({ reverted: skusToRevert.length, processed: expired.length, mp_reverted: mpReverted, mp_errors: mpErrors.slice(0, 10) });
+  return NextResponse.json({ reverted: skusToRevert.length, processed: expired.length, mp_reverted: mpReverted, mp_errors: mpErrors.slice(0, 10), adjustments: adj });
 }
 
 // Збій крона раніше бачили лише в логах Vercel (аудит 31.10.2026): тепер і

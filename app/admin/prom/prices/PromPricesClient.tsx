@@ -35,6 +35,8 @@ interface Props {
   stock:      Stock[];
   categories: Category[];
   plan:       'single' | 'econom';
+  /** sku → множник активних корекцій Prom (лише ≠ 1); ціна екрана = ціна фіда */
+  adjFactors?: Record<string, number>;
 }
 
 function promCatLabel(url: string | null): string | null {
@@ -63,7 +65,7 @@ const TH: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '.03em',
 };
 
-export default function PromPricesClient({ products, stock, categories, plan }: Props) {
+export default function PromPricesClient({ products, stock, categories, plan, adjFactors = {} }: Props) {
   const stockMap = useMemo(() => new Map(stock.map(s => [s.sku, s])), [stock]);
   const catMap   = useMemo(() => new Map(categories.map(c => [c.slug, c])), [categories]);
 
@@ -116,14 +118,14 @@ export default function PromPricesClient({ products, stock, categories, plan }: 
     const commission  = promCommissionOf(cat, plan);
     // ЄДИНА формула lib/marketplace-pricing — та сама, що у фіді
     const promPrice   = basePrice > 0 || (manual && manual > 0)
-      ? calcPromPrice({ cost, retail: retailPrice, manualOverride: manual, productMarkupPct: productMkp, categoryMarkupPct: catMkp, commissionPct: commission })
+      ? calcPromPrice({ cost, retail: retailPrice, manualOverride: manual, productMarkupPct: productMkp, categoryMarkupPct: catMkp, commissionPct: commission, adjustFactor: adjFactors[p.sku] })
       : null;
     const net       = promPrice != null && commission > 0 ? promPrice * (1 - commission / 100) : promPrice;
     const marginUah = net != null && cost != null ? net - cost : null;
     const marginPct  = marginUah != null && net != null && net > 0 ? (marginUah / net) * 100 : null;
     const promCatUrl = p.prom_portal_url || cat?.prom_section_url || null;
     return { p, cat, basePrice, cost, manual, productMkp, catMkp, markup, commission, promPrice, marginPct, promCatUrl };
-  }), [products, stockMap, catMap, markups, manualOverrides]);
+  }), [products, stockMap, catMap, markups, manualOverrides, plan, adjFactors]);
 
   // Apply filters
   const filteredRows = useMemo(() => {

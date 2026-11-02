@@ -28,6 +28,10 @@ async function run(req: NextRequest) {
     .from('price_change_log')
     .select('id, is_promo, snapshot, type, target, status, reverted_at, created_at, revert_at')
     .eq('status', 'pending')
+    // Заплановані корекції МП (міграція 147) вмикає крон revert-promo за датою;
+    // тут — лише відкладені правки цін/наценок. Без фільтра знімок корекції
+    // (там лише ціни) пішов би сюди як «застосуй наценки»
+    .eq('adjustment', false)
     .lte('effective_from', now)
     .is('reverted_at', null);
 

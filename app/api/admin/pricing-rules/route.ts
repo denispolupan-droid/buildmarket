@@ -5,6 +5,8 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { computeMarketplacePrice, type PricingRule, type PriceTarget } from '../../../../lib/pricing-rules';
 import { rozetkaPrice, promPrice, promCommissionOf, type PromPlan } from '../../../../lib/marketplace-pricing';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
+import { factorOf, totalFactor } from '../../../../lib/price-adjustments';
+import { loadFactorMap } from '../../../../lib/price-adjustments-db';
 
 export const runtime = 'nodejs';
 
@@ -44,6 +46,8 @@ export async function GET(req: NextRequest) {
     serviceClient.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
   ]);
   const promPlan = ((planRow?.value as string | undefined) ?? 'single') as PromPlan;
+  // «Before» — фактична ціна фіда, тобто з корекціями каналу (акції й зміни «до дати», міграція 147)
+  const factors = await loadFactorMap(serviceClient, [marketplace === 'rozetka' ? 'rozetka' : 'prom']);
 
   const rules = (rulesRaw ?? []) as PricingRule[];
   const commissionOf = new Map<string, number>();
@@ -82,6 +86,7 @@ export async function GET(req: NextRequest) {
           productMarkupPct: productMarkup != null ? Number(productMarkup) : null,
           categoryMarkupPct: categoryMarkup,
           commissionPct, smart: p.rozetka_smart === true, smartTariff,
+          adjustFactor: totalFactor(factorOf(factors, 'rozetka', p.sku)),
         })
       : promPrice({
           cost, retail,
@@ -89,6 +94,7 @@ export async function GET(req: NextRequest) {
           productMarkupPct: productMarkup != null ? Number(productMarkup) : null,
           categoryMarkupPct: categoryMarkup,
           commissionPct,
+          adjustFactor: totalFactor(factorOf(factors, 'prom', p.sku)),
         });
     const beforeProfit = Math.round((before * (1 - commissionPct / 100) - cost) * 100) / 100;
 

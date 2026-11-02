@@ -3,6 +3,8 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import PromPricesClient from './PromPricesClient';
 import { fetchAllRows } from '../../../../lib/db-paginate';
+import { factorOf, totalFactor } from '../../../../lib/price-adjustments';
+import { loadFactorMap } from '../../../../lib/price-adjustments-db';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +19,7 @@ export default async function PromPricesPage() {
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
 
   // Сторінками: ліміт PostgREST 1000 рядків (каталог ~800 SKU і росте)
-  const [products, stock, { data: categories }, { data: planRow }] = await Promise.all([
+  const [products, stock, { data: categories }, { data: planRow }, factorMap] = await Promise.all([
     fetchAllRows((f, t) => db.from('products')
       .select('sku, name, brand, category_slug, volume, prom_markup_pct, on_prom, prom_portal_url')
       .eq('is_active', true)
@@ -32,9 +34,17 @@ export default async function PromPricesPage() {
     db.from('categories')
       .select('slug, name, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct, prom_section_url'),
     db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
+    loadFactorMap(db, ['prom']),
   ]);
 
   const plan = (planRow?.value ?? 'single') as 'single' | 'econom';
+
+  // Акції й тимчасові зміни каналу (міграція 147): sku → множник, щоб ціна на екрані = ціна фіда
+  const adjFactors: Record<string, number> = {};
+  for (const p of products as { sku: string }[]) {
+    const f = totalFactor(factorOf(factorMap, 'prom', p.sku));
+    if (f !== 1) adjFactors[p.sku] = f;
+  }
 
   return (
     <PromPricesClient
@@ -42,6 +52,7 @@ export default async function PromPricesPage() {
       stock={stock}
       categories={categories ?? []}
       plan={plan}
+      adjFactors={adjFactors}
     />
   );
 }

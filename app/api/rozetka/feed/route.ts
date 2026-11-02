@@ -4,6 +4,8 @@ import { formatForRozetka, toRozetkaVolume } from '../../../../lib/rozetka-name'
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { getSmartTariff } from '../../../../lib/rozetka-smart';
 import { rozetkaPrice } from '../../../../lib/marketplace-pricing';
+import { factorOf, hasPromo, totalFactor } from '../../../../lib/price-adjustments';
+import { loadFactorMap } from '../../../../lib/price-adjustments-db';
 import { mpDescription, mpDescriptionRu } from '../../../../lib/marketplace-description';
 import { feedVendor } from '../../../../lib/brand-feed';
 
@@ -73,6 +75,8 @@ export async function GET() {
   // Ціна рахується ЄДИНОЮ формулою lib/marketplace-pricing (та сама, що на всіх
   // адмін-екранах). Тариф Smart — з адмінки (Товари Rozetka → «Умови Smart»).
   const smartTariff = await getSmartTariff();
+  // Корекції цін каналу (акції й зміни «до дати» поверх наценки, міграція 147)
+  const factors = await loadFactorMap(db, ['rozetka']);
 
   const catMap = new Map<string, Cat>((categories as Cat[])?.map(c => [c.slug, c]) || []);
 
@@ -113,7 +117,7 @@ export async function GET() {
     if (!cat) continue;
 
     const retail = Number(stock.price_retail);
-    const price  = rozetkaPrice({
+    const priceInputs = {
       cost: stock.price_cost != null ? Number(stock.price_cost) : null,
       retail,
       productMarkupPct: p.rozetka_markup_pct != null ? Number(p.rozetka_markup_pct) : null,
@@ -121,8 +125,16 @@ export async function GET() {
       commissionPct: Number(cat.rozetka_commission_pct ?? 0),
       smart: p.rozetka_smart === true,
       smartTariff,
-    });
-    const priceOld   = stock.price_old ? Number(stock.price_old) : null;
+    };
+    const fac   = factorOf(factors, 'rozetka', p.sku);
+    const price = rozetkaPrice({ ...priceInputs, adjustFactor: totalFactor(fac) });
+    // Акція МП: стара ціна = та сама формула без акційних корекцій (реальна
+    // ціна товару без акції) — Rozetka показує її перекресленою. Без акції —
+    // як і раніше, price_old зі складу.
+    const promoOld = hasPromo(fac) ? rozetkaPrice({ ...priceInputs, adjustFactor: fac.regular }) : null;
+    const priceOld = promoOld != null && promoOld > price
+      ? promoOld
+      : (stock.price_old ? Number(stock.price_old) : null);
     // Same "in stock" rule as the storefront (ShopClient/CatalogClient) — suppliers report a
     // binary in_stock/out_of_stock status, not exact counts, so stock_qty alone is unreliable.
     const rawQty  = Math.max(0, Math.floor(Number(stock.stock_qty) || 0));

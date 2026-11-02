@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
     .from('price_change_log')
     .select('id, snapshot')
     .eq('is_promo', true)
+    // Акції МП (корекції, міграція 147) — окремий механізм; завершення акцій
+    // сайту їх не стосується, інакше запис МП закрився б без вимкнення корекцій
+    .eq('adjustment', false)
     .is('reverted_at', null)
     .neq('status', 'cancelled');
   const fullyDone = (activeEntries ?? []).filter(e => {
