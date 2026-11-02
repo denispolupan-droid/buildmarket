@@ -33,6 +33,33 @@ export const ROZETKA_DELIVERY_SERVICE_IDS = [1, 56214];
 /** Наш delivery_type для таких замовлень. Свій, а не 'courier': на 'courier' зав'язана логіка НП. */
 export const ROZETKA_DELIVERY_TYPE = 'rozetka_delivery';
 
+/**
+ * Наш delivery_type за службою доставки замовлення Rozetka.
+ *
+ * Раніше тип вгадували за назвою: «нова» або «пошта» → nova_poshta. Під «пошта»
+ * підпадали «Укрпошта» і «Meest ПОШТА» — замовлення з Meest (#26101130) лягло як
+ * Нова Пошта, і картка пропонувала виписати на нього ТТН НП. Тепер — за числовим
+ * id (2024 Укрпошта, 4 Meest, 5 і 43660 НП), назва лише запасна.
+ */
+export const ROZETKA_SERVICE_UKRPOSHTA = 2024;
+export const ROZETKA_SERVICE_MEEST = 4;
+const ROZETKA_SERVICE_NP = [5, 43660];
+
+export function rozetkaDeliveryTypeFor(
+  delivery: { delivery_service_id?: number | null; delivery_service_name?: string | null } | null | undefined,
+): string {
+  if (isRozetkaDelivery(delivery)) return ROZETKA_DELIVERY_TYPE;
+  const id = delivery?.delivery_service_id != null ? Number(delivery.delivery_service_id) : null;
+  if (id === ROZETKA_SERVICE_UKRPOSHTA) return 'ukrposhta';
+  if (id === ROZETKA_SERVICE_MEEST) return 'meest';
+  if (id != null && ROZETKA_SERVICE_NP.includes(id)) return 'nova_poshta';
+  const name = (delivery?.delivery_service_name ?? '').toLowerCase();
+  if (name.includes('укрпошт') || name.includes('ukrposhta')) return 'ukrposhta';
+  if (name.includes('meest') || name.includes('міст')) return 'meest';
+  if (name.includes('нова') || name.includes('nova poshta')) return 'nova_poshta';
+  return 'courier';
+}
+
 export function isRozetkaDelivery(
   delivery: { delivery_service_id?: number | null; delivery_service_name?: string | null } | null | undefined,
 ): boolean {

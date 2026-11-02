@@ -395,6 +395,29 @@ export function buildPromComment(order: Pick<PromOrder, 'comment' | 'client_note
   return parts.length ? parts.join('. ') : null;
 }
 
+/**
+ * Наш delivery_type за способом доставки Prom. Живий Prom шле provider
+ * 'meest_express' (його нема в документації, де лише nova_poshta / justin /
+ * delivery_auto / ukrposhta), а delivery_option.delivery_type не існує взагалі —
+ * тож Meest падав у фолбек nova_poshta (#26091224, #26101231). Назва способу
+ * («Meest ПОШТА», «Укрпошта») — запасна ознака, коли provider_data = null.
+ */
+export function promDeliveryTypeFor(
+  provider: string | null | undefined,
+  option: { name?: string | null; delivery_type?: string | null } | null | undefined,
+): string {
+  const p = (provider ?? '').toLowerCase();
+  if (p === 'nova_poshta') return 'nova_poshta';
+  if (p === 'ukrposhta') return 'ukrposhta';
+  if (p === 'rozetka_delivery') return 'rz_delivery';
+  if (p.startsWith('meest')) return 'meest';
+  const name = (option?.name ?? '').toLowerCase();
+  if (name.includes('meest') || name.includes('міст')) return 'meest';
+  if (name.includes('укрпошт')) return 'ukrposhta';
+  if (name.includes('rozetka')) return 'rz_delivery';
+  return option?.delivery_type || 'nova_poshta';
+}
+
 export function promOrderToOurFormat(order: PromOrder) {
   // Отримувач: delivery_recipient точніший за client_* (той може бути порожній)
   const rcp        = order.delivery_recipient;
@@ -411,11 +434,7 @@ export function promOrderToOurFormat(order: PromOrder) {
   const prov = order.delivery_provider_data;
   const ra   = prov?.recipient_address;
 
-  let deliveryType         = 'nova_poshta';
-  if (prov?.provider === 'ukrposhta')    deliveryType = 'ukrposhta';
-  else if (prov?.provider === 'nova_poshta') deliveryType = 'nova_poshta';
-  else if (prov?.provider === 'rozetka_delivery') deliveryType = 'rz_delivery';
-  else if (order.delivery_option?.delivery_type) deliveryType = order.delivery_option.delivery_type;
+  const deliveryType = promDeliveryTypeFor(prov?.provider, order.delivery_option);
 
   let deliveryCityRef: string | null      = null;   // для НП навмисно null: Prom-ref не резолвиться в НП
   let deliveryWarehouseRef: string | null = null;

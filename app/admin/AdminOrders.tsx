@@ -50,7 +50,8 @@ import NpReturnModal from '../components/admin/NpReturnModal';
 import { rozetkaStatusLabel, isRozetkaAhead } from '../../lib/rozetka-status';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
-import { deliveryPlace } from '../../lib/delivery-label';
+import { deliveryPlace, trackHref } from '../../lib/delivery-label';
+import { isManualPostalCarrier, MANUAL_CARRIER_LABEL, looksLikeManualTtn } from '../../lib/carriers';
 import {
   marketplacePaymentMethod,
   PAYMENT_METHOD_HINT, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_ORDER,
@@ -184,10 +185,12 @@ const STATUSES = [
 const SOURCE_EDITABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock'];
 
 /** Перевізники, яким потрібні місто й відділення (у самовивозу й Харкова їх немає). */
-const DELIVERY_NEEDS_CITY = ['nova', 'rz_delivery', 'rozetka_delivery'];
+const DELIVERY_NEEDS_CITY = ['nova', 'rz_delivery', 'rozetka_delivery', 'ukrposhta', 'meest'];
 
 const DELIVERY_LABEL: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'Харків і область', pickup: 'Самовивіз',
+  // Приходять з маркетплейсів; накладну поки оформлюють у кабінеті перевізника чи площадки
+  ukrposhta: 'Укрпошта', meest: 'Meest', courier: "Кур'єр",
   // Точки видачі Rozetka: накладна оформлюється власним API Rozetka, не НП
   rozetka_delivery: 'Rozetka Доставка',
   // Ті самі фізичні точки, але наш власний договір з rz-delivery (замовлення сайту).
@@ -3196,6 +3199,7 @@ export default function AdminOrders({
             const carrierLabel = order.delivery_type === 'pickup' ? 'Самовивіз'
               : isRzPickup ? 'Rozetka Доставка'
               : order.delivery_type === RZ_DELIVERY_TYPE ? 'ROZETKA Доставка'
+              : isManualPostalCarrier(order.delivery_type) ? MANUAL_CARRIER_LABEL[order.delivery_type]
               : 'Нова Пошта';
 
             // ТТН вже в реєстрі НП → тиха зелена крапка в чипі номера. Показуємо
@@ -5118,6 +5122,10 @@ export default function AdminOrders({
                             )}
                             <option value="pickup">Самовивіз</option>
                             <option value="kharkiv">Харків і область</option>
+                            {/* Накладну Укрпошти/Meest поки виписують у кабінеті перевізника
+                                чи площадки — тут лише тип і адреса, номер вписується руками */}
+                            <option value="ukrposhta">Укрпошта</option>
+                            <option value="meest">Meest</option>
                           </select>
                           {DELIVERY_NEEDS_CITY.includes(editDeliveryForm.type) && (
                             <>
@@ -5204,6 +5212,7 @@ export default function AdminOrders({
                       <div className="oc-sub-lbl">
                         {isRzPickup ? 'Накладна Rozetka'
                           : order.delivery_type === RZ_DELIVERY_TYPE ? 'ЕН ROZETKA Доставки'
+                          : isManualPostalCarrier(order.delivery_type) ? `Накладна ${MANUAL_CARRIER_LABEL[order.delivery_type]}`
                           : 'ТТН Нової Пошти'}
                       </div>
                       {(order.delivery_type === 'nova' || order.delivery_type === 'nova_poshta') ? (
@@ -5507,7 +5516,78 @@ export default function AdminOrders({
                             </>
                           )}
                         </div>
-                      ) : (
+                      ) : isManualPostalCarrier(order.delivery_type) ? (() => {
+                        // Укрпошта / Meest: API перевізника в нас ще немає — накладну
+                        // виписують у кабінеті перевізника чи маркетплейсу, а сюди
+                        // вписують номер. Далі звичайний хвіст saveTTN (відгрузка,
+                        // номер у маркетплейс). Вручення підтверджує Prom (для його
+                        // замовлень) або менеджер — крон НП такі номери не питає.
+                        const carrier = order.delivery_type;
+                        const label = MANUAL_CARRIER_LABEL[carrier];
+                        const typed = (ttnValues[order.id] ?? '').trim();
+                        const changed = typed !== (order.tracking_number ?? '');
+                        const valid = looksLikeManualTtn(carrier, typed);
+                        const busy = ttnSaving === order.id;
+                        const canSave = valid && changed && !busy && !order.tracking_number;
+                        const href = order.tracking_number ? trackHref(carrier, order.tracking_number) : null;
+                        return (
+                          <>
+                            <div className="oc-ttn-row" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
+                                <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
+                                <input type="text" value={ttnValues[order.id] ?? ''}
+                                  readOnly={!!order.tracking_number}
+                                  onChange={e => setTtnValues(prev => ({ ...prev, [order.id]: e.target.value.toUpperCase() }))}
+                                  onKeyDown={e => { if (e.key === 'Enter' && canSave) saveTTN(order.id); }}
+                                  placeholder={`Номер накладної ${label}`}
+                                  title={`Накладну ${label} створіть у кабінеті перевізника або маркетплейсу і вставте номер`}
+                                  style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: order.tracking_number ? '30px' : '8px', border: `1px solid ${typed && !valid && !order.tracking_number ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                {order.tracking_number && (
+                                  <button onClick={() => copyTtn(order.tracking_number!)} title="Копіювати номер"
+                                    style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                                      color: copiedTtn === order.tracking_number ? '#15803D' : 'var(--text-muted)' }}>
+                                    {copiedTtn === order.tracking_number ? <Check size={13} /> : <Copy size={13} />}
+                                  </button>
+                                )}
+                              </div>
+                              {!order.tracking_number ? (
+                                <button onClick={() => saveTTN(order.id)} disabled={!canSave}
+                                  title={!typed ? 'Вставте номер накладної' : !valid ? 'Номер не схожий на накладну ' + label : 'Прив\'язати накладну до замовлення'}
+                                  style={{ height: '32px', width: '32px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  {busy ? '…' : <Save size={14} />}
+                                </button>
+                              ) : (
+                                <>
+                                  {href && (
+                                    <a href={href} target="_blank" rel="noopener noreferrer" title={`Відстеження ${label}`}
+                                      style={{ height: '32px', width: '32px', borderRadius: '7px', border: '1px solid var(--border)', color: 'var(--brand-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                      <ExternalLink size={14} />
+                                    </a>
+                                  )}
+                                  {!order.carrier_accepted_at && order.status !== 'delivered' && (
+                                    <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
+                                      title={`Відв'язати номер від замовлення (саму накладну видаліть у кабінеті ${label})`}
+                                      style={{ height: '32px', width: '32px', borderRadius: '7px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                      {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {typed && !valid && !order.tracking_number && (
+                              <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>
+                                {carrier === 'ukrposhta' ? 'Штрихкод Укрпошти — 13 цифр (або RR123456789UA)' : 'Номер Meest — латиниця, цифри й дефіс'}
+                              </div>
+                            )}
+                            {!order.tracking_number && (
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                Накладну створіть у кабінеті {order.channel_code === 'epicentr' ? 'Епіцентру' : order.channel_code === 'rozetka' ? 'Rozetka' : order.channel_code === 'prom' ? 'Prom' : label} і вставте номер.
+                              </div>
+                            )}
+                          </>
+                        );
+                      })() : (
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Доставка не Нова Пошта</div>
                       )}
                       </div>

@@ -6,6 +6,7 @@ import { rzTrackStatuses } from '../../../../../../lib/rz-delivery-api';
 import { RZ_DELIVERY_TYPE } from '../../../../../../lib/rz-delivery';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { getRozetkaDeliveryTtns } from '../../../../../../lib/rozetka-delivery-ttn';
+import { isManualPostalCarrier, MANUAL_CARRIER_LABEL } from '../../../../../../lib/carriers';
 import { snapshotFor, type TtnCarrier, type TtnSnapshot } from '../../../../../../lib/ttn-snapshot';
 import { buildTtnDetails, type NpLiveDoc, type RozetkaLiveTtn, type RzLiveStatus } from '../../../../../../lib/ttn-details';
 
@@ -30,6 +31,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
   const ttn = String(order.tracking_number ?? '').trim();
   if (!ttn) return NextResponse.json({ error: 'У замовлення немає накладної' }, { status: 400 });
+  // Укрпошта / Meest: API перевізника в нас ще немає, а питати НП про чужий номер марно
+  if (isManualPostalCarrier(order.delivery_type)) {
+    return NextResponse.json({ error: `Деталі накладної ${MANUAL_CARRIER_LABEL[order.delivery_type]} — у кабінеті перевізника` }, { status: 400 });
+  }
 
   const carrier: TtnCarrier = order.delivery_type === RZ_DELIVERY_TYPE ? 'rz_delivery'
     : order.delivery_type === ROZETKA_DELIVERY_TYPE ? 'rozetka_delivery'

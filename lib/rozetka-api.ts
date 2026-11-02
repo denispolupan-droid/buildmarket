@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 export { ROZETKA_STATUS_LABEL, rozetkaStatusLabel, isRozetkaAhead, rozetkaNeedsTtn } from './rozetka-status';
 import { isRozetkaBackwards } from './rozetka-status';
 export * from './rozetka-delivery';
-import { isRozetkaDelivery, rozetkaPickupAddress, ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
+import { isRozetkaDelivery, rozetkaPickupAddress, rozetkaDeliveryTypeFor } from './rozetka-delivery';
 
 // Base host for the Rozetka Seller API — confirmed against the official apiDoc spec at
 // https://api-seller.rozetka.com.ua/apidoc/ (endpoints documented there, e.g. POST /sites,
@@ -752,18 +752,12 @@ export function rozetkaOrderToOurFormat(order: RozetkaOrder) {
   const del = order.delivery;
   const cityName = del?.city?.city_name ?? del?.city?.title ?? '';
 
-  // delivery_service_name isn't a fixed enum on Rozetka's side — normalize the common case
-  // (Nova Poshta) and fall back to a generic "courier" bucket otherwise, matching the shape
-  // the rest of the app (Prom sync, order form) already uses for delivery_type.
   const serviceName = (del?.delivery_service_name ?? '').toLowerCase();
   // Доставка в точки видачі Rozetka — окремий тип, а не 'courier': накладна
   // оформлюється власним API Rozetka, а не Новою Поштою (див. lib/rozetka-delivery.ts).
+  // Укрпошта й Meest — свої типи за delivery_service_id (rozetkaDeliveryTypeFor).
   const isRzDelivery = isRozetkaDelivery(del);
-  const deliveryType = isRzDelivery
-    ? ROZETKA_DELIVERY_TYPE
-    : serviceName.includes('нова') || serviceName.includes('пошта')
-      ? 'nova_poshta'
-      : 'courier';
+  const deliveryType = rozetkaDeliveryTypeFor(del);
   const isPostomat = serviceName.includes('поштомат');
 
   const addressParts = [
