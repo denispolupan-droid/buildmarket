@@ -2966,6 +2966,43 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .proc-btn.ghost { border-color: transparent; background: transparent; color: var(--text-muted); }
 .proc-btn.ghost:hover { border-color: var(--border); color: var(--text-primary); }
 
+/* ── Модалка адмінки (app/components/admin/ui/Modal.tsx) ──────────────────
+   Нативний <dialog> у верхньому шарі браузера: без z-index, Escape закриває,
+   фокус усередині. Вигляд — як у колишніх модалках на position: fixed
+   (радіус 16, тінь 0 20px 60px, напівпрозора підкладка). */
+.ui-modal {
+  /* margin: auto — центрування <dialog>; глобальний скид margin: 0 його вбиває */
+  margin: auto; inset: 0;
+  padding: 0; border: none; border-radius: 16px;
+  background: var(--bg-card); color: var(--text-primary);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px);
+  overflow: auto; overscroll-behavior: contain;
+}
+.ui-modal::backdrop { background: rgba(15,23,42,0.45); }
+.ui-modal[open] { animation: ui-modal-in 0.18s cubic-bezier(0.22,1,0.36,1); }
+@keyframes ui-modal-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+html:has(dialog.ui-modal[open]) { overflow: hidden; }
+.ui-modal-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.ui-modal-title { margin: 0; flex: 1; min-width: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.ui-modal-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px; border: none;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.ui-modal-x:hover { background: var(--bg-soft, #F1F5F9); color: var(--text-primary); }
+.ui-modal-foot {
+  display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+  padding: 12px 20px 16px; border-top: 1px solid var(--border);
+}
+/* Телефон — на всю ширину, як .adm-modal-box у колишніх модалках */
+@media (max-width: 768px) {
+  .ui-modal { width: calc(100vw - 24px) !important; max-width: 100%; max-height: calc(100dvh - 24px); }
+}
+
 /* ── Панель масових дій журналу замовлень ──────────────────────────────────
    Світла картка замість темного градієнта (єдина така плашка в адмінці),
    кнопки — .proc-btn, групи за ходом роботи розділені тонкою лінією.

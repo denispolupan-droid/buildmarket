@@ -2,6 +2,7 @@
 
 import { Truck } from 'lucide-react';
 import { itemTitle } from './helpers';
+import { Modal } from '../../components/admin/ui/Modal';
 import { useOrdersCtx } from './OrdersContext';
 
 export function NpRegistryPickerModal() {
@@ -13,8 +14,9 @@ export function NpRegistryPickerModal() {
     <>
       {/* Вибір реєстру НП: сьогодні вже є відкриті — в який додати чи створити новий */}
       {registryPick && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="adm-modal-box" style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '420px', maxWidth: '96vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        // Світлий фон як і раніше: кольори тексту всередині задані під білу картку.
+        <Modal open onClose={() => setRegistryPick(null)} width={420} padding={24} style={{ background: '#fff' }} aria-label="Реєстр НП">
+          <div>
             <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>
               Реєстр НП · {registryPick.items.length} ТТН
             </div>
@@ -47,7 +49,7 @@ export function NpRegistryPickerModal() {
               Скасувати
             </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {shipModal && (() => {
@@ -58,12 +60,13 @@ export function NpRegistryPickerModal() {
           } : null);
         const hasAny = shipModal.items.some(i => i.shipQty > 0);
         const isPartial = shipModal.items.some(i => i.shipQty < (i.orderQty - i.shippedQty));
-        // padding + overflow на підкладці: замовлення з довгим списком товарів
-        // інакше не влізе, і верх вікна — заголовок і перші позиції — опиниться
-        // вище екрана, куди не доскролити.
+        // Довгий список товарів скролиться всередині модалки (max-height у .ui-modal),
+        // тож заголовок і перші позиції не виїжджають вище екрана.
+        // dismissible={false}: як і раніше, повз картку не закривається — щоб не
+        // загубити введені кількості; закриває «Скасувати».
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-            <div className="adm-modal-box" style={{ background: '#fff', borderRadius: '16px', padding: '28px 28px 24px', width: '480px', maxWidth: '96vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+          <Modal open onClose={() => setShipModal(null)} dismissible={false} width={480} padding="28px 28px 24px" style={{ background: '#fff' }} aria-label="Відвантаження">
+            <div>
               <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>Відвантаження</div>
               <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '20px' }}>
                 Вкажіть кількість для відвантаження (можна змінити для часткового відвантаження)
@@ -138,7 +141,7 @@ export function NpRegistryPickerModal() {
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 

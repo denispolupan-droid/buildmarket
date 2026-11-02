@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 import type { ToastType } from '../../lib/toast';
 
@@ -36,11 +36,28 @@ export default function ToastProvider() {
     return () => window.removeEventListener('show-toast', handler);
   }, [remove]);
 
-  if (toasts.length === 0) return null;
+  // Контейнер — popover у верхньому шарі браузера: модалки адмінки — <dialog>
+  // (теж верхній шар), і звичайний z-index тост сховав би під модалкою.
+  // Якщо модалка відкрилась уже після тосту, піднімаємо тост знову над нею.
+  const hostRef = useRef<HTMLDivElement>(null);
+  const hasToasts = toasts.length > 0;
+  useEffect(() => {
+    const raise = () => {
+      const el = hostRef.current;
+      if (!el || typeof el.showPopover !== 'function') return;
+      try { if (el.matches(':popover-open')) el.hidePopover(); el.showPopover(); } catch { /* браузер без popover — лишається fixed */ }
+    };
+    if (hasToasts) raise();
+    window.addEventListener('ui-modal-open', raise);
+    return () => window.removeEventListener('ui-modal-open', raise);
+  }, [hasToasts]);
+
+  if (!hasToasts) return null;
 
   return (
-    <div style={{
-      position: 'fixed', top: '24px', left: '50%', transform: 'translateX(-50%)',
+    <div ref={hostRef} popover="manual" style={{
+      position: 'fixed', top: '24px', left: '50%', right: 'auto', bottom: 'auto', transform: 'translateX(-50%)',
+      margin: 0, padding: 0, border: 'none', background: 'transparent', overflow: 'visible',
       zIndex: 99999, display: 'flex', flexDirection: 'column', gap: '8px',
       alignItems: 'center', pointerEvents: 'none',
     }}>

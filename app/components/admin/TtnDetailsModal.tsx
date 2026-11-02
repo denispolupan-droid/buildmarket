@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import type { TtnDetails } from '../../../lib/ttn-details';
+import { Modal } from './ui/Modal';
 
 /**
  * «Деталі ЕН»: що вписано в накладну — післяплата, отримувач, звідки/куди,
@@ -31,40 +32,30 @@ export default function TtnDetailsModal({ orderId, orderNumber, onClose }: Props
     return () => { cancelled = true; };
   }, [orderId]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   function copyTtn() {
     if (!data) return;
     navigator.clipboard?.writeText(data.ttn).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {});
   }
 
-  return (
-    <div onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div className="adm-modal-box" onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '520px', maxWidth: '96vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>{data ? data.ttn : 'Накладна'}</span>
-              {data && (
-                <button onClick={copyTtn} title="Скопіювати номер"
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: copied ? '#15803D' : 'var(--text-muted)', display: 'inline-flex' }}>
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                </button>
-              )}
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              {data ? `${data.carrierLabel} · ` : ''}замовлення #{orderNumber}
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex' }}><X size={18} /></button>
-        </div>
+  const title = (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>{data ? data.ttn : 'Накладна'}</span>
+        {data && (
+          <button type="button" onClick={copyTtn} title="Скопіювати номер"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: copied ? '#15803D' : 'var(--text-muted)', display: 'inline-flex' }}>
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+          </button>
+        )}
+      </div>
+      <div style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-muted)' }}>
+        {data ? `${data.carrierLabel} · ` : ''}замовлення #{orderNumber}
+      </div>
+    </>
+  );
 
+  return (
+    <Modal open onClose={onClose} title={title} width={520} padding={0} aria-label={`Накладна до замовлення #${orderNumber}`}>
         <div style={{ padding: '14px 20px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {!data && !error && <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Завантажуємо дані накладної…</div>}
           {error && (
@@ -108,7 +99,6 @@ export default function TtnDetailsModal({ orderId, orderNumber, onClose }: Props
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
