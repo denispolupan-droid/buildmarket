@@ -87,6 +87,20 @@ describe('buildMutualStatement', () => {
     expect(buildMutualStatement({ accounts: ['customer'], opening: {}, entries }).rows).toHaveLength(2);
   });
 
+  it('перепривʼязка оплати до замовлення (той самий рахунок, різні замовлення) — ховається, оплата не двоїться', () => {
+    const entries = [
+      e({ id: 'pay', txn_id: 'p', account_type: 'customer', amount: -615, doc_type: 'payment', order_id: null, business_date: '2026-10-29' }),
+      e({ id: 'r1', txn_id: 'rl', account_type: 'customer', amount: 615,  doc_type: 'relink', order_id: null, business_date: '2026-10-31' }),
+      e({ id: 'r2', txn_id: 'rl', account_type: 'customer', amount: -615, doc_type: 'relink', order_id: 'ord-1', business_date: '2026-10-31' }),
+    ];
+    const s = buildMutualStatement({ accounts: ['customer'], opening: {}, entries });
+    expect(s.rows.map(r => r.id)).toEqual(['pay']);
+    expect(s.hiddenInternal).toBe(2);
+    expect(s.closing).toBe(-615);
+    const all = buildMutualStatement({ accounts: ['customer'], opening: {}, entries, showInternal: true });
+    expect(all.rows.map(r => r.label)).toEqual(['Оплата', 'Перенесення з замовлення', 'Перенесення на замовлення']);
+  });
+
   it('проводка і її сторно в періоді ховаються парою; сторно без оригіналу — ні', () => {
     const entries = [
       e({ id: 'orig', account_type: 'partner', amount: 500, business_date: '2026-09-14' }),
