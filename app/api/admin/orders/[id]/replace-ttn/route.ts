@@ -96,7 +96,8 @@ export async function POST(
   }
   if (order.channel_code === 'prom' && order.prom_order_id) {
     try {
-      await setPromTTN(order.prom_order_id as number, ttn);
+      // Тип доставки — із замовлення: без нього номер Укрпошти/Meest ішов би в Prom як ЕН НП
+      await setPromTTN(order.prom_order_id as number, ttn, (order.delivery_type as string | null) ?? undefined);
     } catch (e) {
       pushErrors.push(`Prom: ${(e as Error).message}`);
     }

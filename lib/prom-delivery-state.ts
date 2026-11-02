@@ -9,6 +9,8 @@
  * «Огляді» до самого вручення (#26091224, #26091243, #26091258).
  */
 
+import { isManualPostalCarrier } from './carriers';
+
 export type PromDeliveryData = {
   unified_status?: string | null;
   declaration_number?: string | null;
@@ -75,8 +77,10 @@ export function promDeliveryPatch(order: PromDeliveryOrder, dpd: PromDeliveryDat
 /**
  * Чи веде доставку цього замовлення сам Prom (наші крони посилку не бачать):
  * «Магазини Rozetka» або будь-який спосіб без нашого номера ЕН — декларацію
- * виписали в кабінеті Prom (Meest тощо).
+ * виписали в кабінеті Prom (Meest тощо). Укрпошта й Meest — навіть зі своїм
+ * номером: їхнього API у нас ще немає, а Prom після save_declaration_id сам
+ * віддає рух у unified_status.
  */
 export function isPromLedDelivery(order: { delivery_type: string | null; tracking_number: string | null }): boolean {
-  return order.delivery_type === 'rz_delivery' || !order.tracking_number;
+  return order.delivery_type === 'rz_delivery' || !order.tracking_number || isManualPostalCarrier(order.delivery_type);
 }

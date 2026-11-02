@@ -1,15 +1,57 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Scale, Send } from 'lucide-react';
+import { Loader2, Scale, Send, Wrench } from 'lucide-react';
 
-type Finding = { key: string; area: string; level: 'red' | 'yellow' | 'green' | 'info'; title: string; detail: string; items: string[] };
+type Fix = { id: string; label: string; detail: string; amount: number | null };
+type Finding = { key: string; area: string; level: 'red' | 'yellow' | 'green' | 'info'; title: string; detail: string; items: string[]; fixes?: Fix[] };
+
+/** Виправлення в один клік: перше натискання — показати, що буде проведено; друге — провести. */
+function FixRow({ fix, onDone }: { fix: Fix; onDone: (id: string) => void }) {
+  const [stage, setStage] = useState<'idle' | 'confirm' | 'busy' | 'done' | 'error'>('idle');
+  const [msg, setMsg] = useState('');
+  async function apply() {
+    setStage('busy');
+    try {
+      const res = await fetch('/api/admin/recon/fix', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: fix.id }) });
+      const d = await res.json();
+      setMsg(d.message ?? d.error ?? '');
+      setStage(res.ok && d.ok ? 'done' : 'error');
+      if (res.ok && d.ok) onDone(fix.id);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e)); setStage('error');
+    }
+  }
+  const small = (primary: boolean): React.CSSProperties => ({
+    height: 26, padding: '0 10px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? '#1E3A5F' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
+  });
+  return (
+    <div style={{ marginLeft: 16, marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'var(--bg-secondary, rgba(100,116,139,.07))' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Wrench size={13} style={{ color: 'var(--text-muted)' }} />
+        <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{fix.label}</span>
+        <span style={{ flex: 1 }} />
+        {stage === 'idle' && <button style={small(false)} onClick={() => setStage('confirm')}>Виправити…</button>}
+        {stage === 'confirm' && <>
+          <button style={small(true)} onClick={apply}>Підтвердити</button>
+          <button style={small(false)} onClick={() => setStage('idle')}>Скасувати</button>
+        </>}
+        {stage === 'busy' && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+        {stage === 'done' && <span style={{ color: '#15803D', fontWeight: 700 }}>✓ готово</span>}
+      </div>
+      {(stage === 'confirm' || stage === 'idle') && <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{fix.detail}</div>}
+      {(stage === 'done' || stage === 'error') && msg && <div style={{ color: stage === 'error' ? '#DC2626' : 'var(--text-muted)', marginTop: 2 }}>{msg}</div>}
+    </div>
+  );
+}
 const DOT: Record<Finding['level'], string> = { red: '#DC2626', yellow: '#CA8A04', green: '#15803D', info: '#64748B' };
 const ORDER = ['red', 'yellow', 'info', 'green'];
 
 /**
  * Звірка з маркетплейсами й рахунками (агент mp_recon, lib/recon/run): щопонеділка
- * в Telegram; тут — ручний запуск і результат. Лише читання — нічого не проводить.
+ * в Telegram; тут — ручний запуск, результат і виправлення в один клік (агент лише
+ * пропонує; проводить людина другим натисканням «Підтвердити»).
  */
 export default function ReconCard({ last }: { last: { at: string; findings: Finding[] } | null }) {
   const [busy, setBusy] = useState<'' | 'view' | 'send'>('');
@@ -41,7 +83,7 @@ export default function ReconCard({ last }: { last: { at: string; findings: Find
     <div className="fin-card" style={{ marginTop: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, color: 'var(--text-primary)' }}><Scale size={16} /> Звірка з маркетплейсами й рахунками</span>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>щопонеділка о 08:20 · лише читання{at ? ` · останній запуск ${new Date(at).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>щопонеділка о 07:20 · виправлення — лише за підтвердженням{at ? ` · останній запуск ${new Date(at).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</span>
         <span style={{ flex: 1 }} />
         <button onClick={() => run(false)} disabled={!!busy} style={btn(false)}>{busy === 'view' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Scale size={14} />} Звірити зараз</button>
         <button onClick={() => run(true)} disabled={!!busy} style={btn(true)}>{busy === 'send' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />} І надіслати в Telegram</button>
@@ -60,6 +102,7 @@ export default function ReconCard({ last }: { last: { at: string; findings: Find
               {f.level !== 'green' && f.items.length > 0 && (
                 <ul style={{ margin: '4px 0 0 34px', padding: 0, color: 'var(--text-muted)' }}>{f.items.map((i, k) => <li key={k}>{i}</li>)}</ul>
               )}
+              {(f.fixes ?? []).map(x => <FixRow key={x.id} fix={x} onDone={id => { if (id === 'np-refresh') void run(false); }} />)}
             </div>
           ))}
         </div>

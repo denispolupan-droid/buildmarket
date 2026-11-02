@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { npMarkingPdf } from '../../../../../../lib/np-api';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
+import { isManualPostalCarrier } from '../../../../../../lib/carriers';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -94,12 +95,21 @@ export async function DELETE(
 
   const { data: order, error: orderErr } = await db
     .from('orders')
-    .select('tracking_number, tracking_ref')
+    .select('tracking_number, tracking_ref, delivery_type')
     .eq('id', id)
     .single();
 
   if (orderErr || !order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   if (!order.tracking_number) return NextResponse.json({ error: 'Немає ТТН для видалення' }, { status: 400 });
+
+  // Укрпошта / Meest: накладну оформлювали в кабінеті перевізника чи площадки,
+  // НП про неї не знає. Раніше кошик усе одно йшов у НП (resolveRef + delete) —
+  // тепер лише відв'язуємо номер, а саму накладну видаляють там, де створили.
+  if (isManualPostalCarrier(order.delivery_type)) {
+    await db.from('orders').update({ tracking_number: null, tracking_ref: null }).eq('id', id);
+    await syncDraftShipmentTracking(id, null);
+    return NextResponse.json({ ok: true, np_deleted: false, np_error: null });
+  }
 
   // Get Ref — from DB or resolve via NP API
   const ref = order.tracking_ref ?? (apiKey ? await resolveRef(apiKey, order.tracking_number) : null);

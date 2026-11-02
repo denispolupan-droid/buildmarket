@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildMutualStatement, parseCounterpartyRef, counterpartyRefString, accountsFor, operationLabel,
-  buildJournal, documentHref, groupOf, parseGroup, openItemsByOrder, saldoWords, agingBuckets,
+  buildJournal, documentHref, groupOf, parseGroup, openItemsByOrder, saldoWords, agingBuckets, orderNumberFromText,
   type LedgerEntry,
 } from '../lib/accounting/mutual-settlements';
 
@@ -87,6 +87,20 @@ describe('buildMutualStatement', () => {
     expect(buildMutualStatement({ accounts: ['customer'], opening: {}, entries }).rows).toHaveLength(2);
   });
 
+  it('перепривʼязка оплати до замовлення (той самий рахунок, різні замовлення) — ховається, оплата не двоїться', () => {
+    const entries = [
+      e({ id: 'pay', txn_id: 'p', account_type: 'customer', amount: -615, doc_type: 'payment', order_id: null, business_date: '2026-10-29' }),
+      e({ id: 'r1', txn_id: 'rl', account_type: 'customer', amount: 615,  doc_type: 'relink', order_id: null, business_date: '2026-10-31' }),
+      e({ id: 'r2', txn_id: 'rl', account_type: 'customer', amount: -615, doc_type: 'relink', order_id: 'ord-1', business_date: '2026-10-31' }),
+    ];
+    const s = buildMutualStatement({ accounts: ['customer'], opening: {}, entries });
+    expect(s.rows.map(r => r.id)).toEqual(['pay']);
+    expect(s.hiddenInternal).toBe(2);
+    expect(s.closing).toBe(-615);
+    const all = buildMutualStatement({ accounts: ['customer'], opening: {}, entries, showInternal: true });
+    expect(all.rows.map(r => r.label)).toEqual(['Оплата', 'Перенесення з замовлення', 'Перенесення на замовлення']);
+  });
+
   it('проводка і її сторно в періоді ховаються парою; сторно без оригіналу — ні', () => {
     const entries = [
       e({ id: 'orig', account_type: 'partner', amount: 500, business_date: '2026-09-14' }),
@@ -106,6 +120,19 @@ describe('buildMutualStatement', () => {
       e({ id: 'early', account_type: 'customer', amount: 1, business_date: '2026-10-01' }),
     ];
     expect(buildMutualStatement({ accounts: ['customer'], opening: {}, entries }).rows.map(r => r.id)).toEqual(['early', 'late']);
+  });
+});
+
+describe('orderNumberFromText', () => {
+  it('бере єдиний номер замовлення з опису', () => {
+    expect(orderNumberFromText('Оплата карткою онлайн (Monobank) — замовлення #26101215')).toBe(26101215);
+    expect(orderNumberFromText('#26101215 і знову #26101215')).toBe(26101215);
+  });
+  it('нічого або кілька різних номерів — null', () => {
+    expect(orderNumberFromText(null)).toBeNull();
+    expect(orderNumberFromText('Реєстр НоваПей №19663323')).toBeNull();
+    expect(orderNumberFromText('#26101215, #26101216')).toBeNull();
+    expect(orderNumberFromText('пункт #12')).toBeNull();
   });
 });
 

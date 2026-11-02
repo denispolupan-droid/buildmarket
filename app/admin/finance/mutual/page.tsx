@@ -6,7 +6,7 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { SELLER } from '../../../../lib/company';
 import { isSpecialDebtor } from '../../../../lib/accounting/sale-party';
 import {
-  accountsFor, agingBuckets, buildJournal, buildMutualStatement, counterpartyRefString, documentHref, groupAccounts, groupOf,
+  accountsFor, agingBuckets, buildJournal, buildMutualStatement, counterpartyRefString, documentHref, groupAccounts, groupOf, orderNumberFromText,
   openItemsByOrder, orderHref, parseCounterpartyRef, parseGroup, saldoWords, specialLabel,
   COUNTERPARTY_GROUPS, SETTLEMENT_ACCOUNT_LABEL,
   type CounterpartyGroup, type CounterpartyRef, type LedgerEntry, type OpenItem, type SettlementAccount,
@@ -550,7 +550,8 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
   const alloc = ref.kind === 'supplier' ? await loadAllocations(db, st.rows) : null;
   const lines = st.rows.map((r, i) => {
     const doc = r.doc_id ? docMap.get(r.doc_id) : undefined;
-    const orderNumber = r.order_id ? (ordMap.get(r.order_id) ?? null) : null;
+    // Без order_id — номер з опису (оплати Mono, перепривʼязані схованою парою relink)
+    const orderNumber = r.order_id ? (ordMap.get(r.order_id) ?? null) : orderNumberFromText(r.description);
     return {
       ...r, doc, orderNumber, running: runningAfter[i],
       allocNote: alloc ? allocationNote(r, alloc) : null,
@@ -655,8 +656,8 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
       {(st.hiddenInternal > 0 || showInternal) && (
         <div className="act-no-print fin-hint" style={{ margin: '0 0 10px', fontSize: '12px' }}>
           {showInternal
-            ? 'Показано внутрішні заліки між рахунками контрагента і сторновані проводки. '
-            : `Сховано рядків: ${st.hiddenInternal} — внутрішні заліки авансу партнера і проводки разом з їх сторно (у сумі нуль, на сальдо не впливають). `}
+            ? 'Показано внутрішні заліки, перенесення оплат між замовленнями і сторновані проводки. '
+            : `Сховано рядків: ${st.hiddenInternal} — внутрішні заліки авансу партнера, перенесення оплат між замовленнями і проводки разом з їх сторно (у сумі нуль, на сальдо не впливають). `}
           <Link href={qs({ ...base, internal: showInternal ? null : '1', view: view === 'act' ? 'act' : null })} className="fin-hint-toggle">
             {showInternal ? 'Сховати' : 'Показати'}
           </Link>

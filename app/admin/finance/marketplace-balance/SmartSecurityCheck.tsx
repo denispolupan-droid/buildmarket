@@ -3,38 +3,66 @@
 import { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Loader2, Upload } from 'lucide-react';
-import { parseSecurityRows, type SmartCompare } from '../../../../lib/rozetka-security';
+import { parseSecurityRows, type SecurityRow, type SmartCompare } from '../../../../lib/rozetka-security';
 
 const fmt = (v: number) => v.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const smallBtn = (primary: boolean): React.CSSProperties => ({
+  height: '28px', padding: '0 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+  border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? '#1E3A5F' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
+});
 
 /**
  * Smart Rozetka за історією гарантійного платежу. Rozetka показує Smart построчно
  * лише в цьому вивантаженні — ні в API, ні в акті його немає. Файл розбирається
- * в браузері, на сервер ідуть тільки рядки; нічого не проводиться.
+ * в браузері, на сервер ідуть тільки рядки. Різницю (Rozetka зняла більше) можна
+ * провести кнопкою з підтвердженням — сума рахується на сервері.
  */
 export default function SmartSecurityCheck() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [res, setRes] = useState<SmartCompare | null>(null);
+  const [rows, setRows] = useState<SecurityRow[] | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  const [posted, setPosted] = useState<number | null>(null);
+
+  async function send(body: { rows: SecurityRow[]; post?: boolean }) {
+    const r = await fetch('/api/admin/finance/marketplace-balance/rozetka-security', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error ?? 'Не вдалося звірити');
+    return d as SmartCompare & { posted?: { amount: number } };
+  }
 
   async function onFile(file: File) {
-    setBusy(true); setError(''); setRes(null);
+    setBusy(true); setError(''); setRes(null); setRows(null); setConfirm(false); setPosted(null);
     try {
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       const sheet = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
-      const rows = parseSecurityRows(sheet);
-      const r = await fetch('/api/admin/finance/marketplace-balance/rozetka-security', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? 'Не вдалося звірити');
-      setRes(d);
+      const parsed = parseSecurityRows(sheet);
+      setRes(await send({ rows: parsed }));
+      setRows(parsed);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  // Різницю проводить сервер (сума — з його порівняння), потім звіряємо ще раз
+  async function postDelta() {
+    if (!rows) return;
+    setBusy(true); setError('');
+    try {
+      const d = await send({ rows, post: true });
+      setPosted(d.posted?.amount ?? null);
+      setRes(await send({ rows }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false); setConfirm(false);
     }
   }
 
@@ -66,7 +94,19 @@ export default function SmartSecurityCheck() {
               {res.unattributed.map(u => `${u.ts.slice(0, 10)} — ${fmt(u.amount)} ₴`).join('; ')}.
             </div>
           )}
-          {!ok && <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>Різницю проводять «Операцією» як Smart-збір без замовлення.</div>}
+          {posted != null && <div style={{ marginTop: '4px', color: '#15803D', fontWeight: 700 }}>Проведено {fmt(posted)} ₴ як Smart без замовлення.</div>}
+          {!ok && res.delta > 0 && rows && (
+            <div style={{ marginTop: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {!confirm
+                ? <button type="button" onClick={() => setConfirm(true)} disabled={busy} style={smallBtn(false)}>Провести {fmt(res.delta)} ₴ як Smart без замовлення…</button>
+                : <>
+                    <span style={{ color: 'var(--text-primary)' }}>Списання з балансу Rozetka на {fmt(res.delta)} ₴ датою {res.to}?</span>
+                    <button type="button" onClick={postDelta} disabled={busy} style={smallBtn(true)}>Підтвердити</button>
+                    <button type="button" onClick={() => setConfirm(false)} disabled={busy} style={smallBtn(false)}>Скасувати</button>
+                  </>}
+            </div>
+          )}
+          {!ok && res.delta < 0 && <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>У нас Smart більше, ніж зняла Rozetka, — перевірте Smart-проводки по замовленнях.</div>}
         </div>
       )}
       {!res && !error && (

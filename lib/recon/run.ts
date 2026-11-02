@@ -10,9 +10,12 @@ import { getEpicentrBillingInvoice } from '../epicentr-api';
 import { openItemsByOrder } from '../accounting/mutual-settlements';
 import { reconcileRozetka } from './rozetka';
 import { balanceFinding, fmtUah, payoutFinding, renderReconHtml, MONEY_EPS, type ReconFinding } from './rules';
+import { codGapFixes, novapayFixes, NP_REFRESH_FIX } from './fixes';
 
 /**
- * Агент звірки з маркетплейсами й грошовими рахунками (тижневий, етап 1 — лише читання).
+ * Агент звірки з маркетплейсами й грошовими рахунками (тижневий). Сам нічого не
+ * проводить: етап 2 додає до знахідок пропозиції виправлень (lib/recon/fixes), які
+ * людина застосовує кнопкою на /admin/digest.
  *
  * Що звіряє:
  *  • Rozetka — та сама звірка, що на екрані «Маркетплейси» (lib/recon/rozetka):
@@ -88,10 +91,24 @@ async function rozetkaFindings(prev: Map<string, number>, now: Date): Promise<Re
       delta: artSum,
       title: artBad.map(a => `${a.label}: ${fmtUah(a.delta)}`).join('; '),
       detail: 'знак: + ми провели більше, ніж Rozetka списала',
-      items: artBad.filter(a => a.note).map(a => `${a.label}: ${a.note}`),
+      items: [...artBad.filter(a => a.note).map(a => `${a.label}: ${a.note}`), ...await stuckRzDelivery(now)],
     });
   }
   return out;
+}
+
+/**
+ * «Відправлено», а перевізник посилку не приймав понад 2 дні: збір за організацію
+ * видачі ми провели при відвантаженні, а Rozetka зніме його лише при прийманні —
+ * звідси «зайві» 35 ₴ у статті зборів (02.11: №26101209 — посилку так і не віддали).
+ */
+async function stuckRzDelivery(now: Date): Promise<string[]> {
+  const db = createServiceClient();
+  const before = new Date(now.getTime() - 2 * 86_400_000).toISOString();
+  const { data } = await db.from('orders').select('order_number, shipped_at')
+    .eq('status', 'shipped').in('delivery_type', ['rozetka_delivery', 'rz_delivery']).is('carrier_accepted_at', null)
+    .lt('shipped_at', before).order('shipped_at').limit(10);
+  return (data ?? []).map(o => `№${o.order_number} — «відправлено» ${String(o.shipped_at).slice(0, 10)}, перевізник не приймав: посилку справді віддали?`);
 }
 
 async function epicentrFindings(db: Db, now: Date): Promise<ReconFinding[]> {
@@ -140,9 +157,11 @@ async function bankFindings(db: Db, prev: Map<string, number>, now: Date): Promi
     out.push({ key: 'bank:mono', area: 'Банк Mono', level: 'info', title: 'живий залишок недоступний', detail: 'Mono API не відповів', items: [] });
   }
   if (np) {
-    out.push(balanceFinding({ key: 'bank:novapay', area: 'НоваПей', ours: npLedger, theirs: np.available,
+    const f = balanceFinding({ key: 'bank:novapay', area: 'НоваПей', ours: npLedger, theirs: np.available,
       theirsLabel: `доступно в НоваПей (${age(np.fetchedAt)} год тому)`, previousDelta: prev.get('bank:novapay') ?? null,
-      note: 'Різниця = нерозібрані рядки на екрані «НоваПей» або виплати в дорозі' }));
+      note: 'Різниця = нерозібрані рядки на екрані «НоваПей» або документи, яких у виписці ще немає (залишок оновлюється раніше за виписку)' });
+    if (f.level !== 'green') f.fixes = [...await novapayFixes(db), NP_REFRESH_FIX];
+    out.push(f);
   } else {
     out.push({ key: 'bank:novapay', area: 'НоваПей', level: 'info', title: 'живий залишок недоступний', detail: 'кеш НоваПей порожній', items: [] });
   }
@@ -165,11 +184,17 @@ async function payoutFindings(db: Db, now: Date): Promise<ReconFinding[]> {
       const { data } = await db.from('orders').select('id, order_number, delivered_at').in('id', ids.slice(i, i + 200)).limit(200);
       for (const o of data ?? []) nums.set(o.id, { n: o.order_number, delivered: o.delivered_at ? String(o.delivered_at).slice(0, 10) : null });
     }
-    out.push(payoutFinding(cp.id, cp.label, open.map(i => {
+    const f = payoutFinding(cp.id, cp.label, open.map(i => {
       const o = nums.get(i.orderId!);
       const lastDate = o?.delivered && o.delivered > i.lastDate ? o.delivered : i.lastDate;
       return { orderNumber: o?.n ?? null, net: i.net, lastDate };
-    }), now));
+    }), now);
+    // Наложку виплатили частково рівно на ціну позиції — її не було в посилці
+    if (cp.id === 'np:cod') {
+      const fixes = await codGapFixes(db, open.filter(i => i.net > MONEY_EPS).map(i => ({ orderId: i.orderId!, net: i.net })));
+      if (fixes.length) { f.fixes = fixes; if (f.level === 'green') f.level = 'yellow'; }
+    }
+    out.push(f);
   }
   return out;
 }

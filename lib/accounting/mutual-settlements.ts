@@ -146,6 +146,18 @@ export function documentHref(p: {
   return orderHref(p.orderNumber);
 }
 
+/**
+ * Номер замовлення з опису проводки («… — замовлення #26101215»). Для проводок
+ * без order_id: напр. оплати Mono, які пізніше перепривʼязали до замовлення
+ * парою relink (вона схована), — щоб рядок усе одно вів на замовлення.
+ * Лише один номер в описі — інакше неоднозначно, повертаємо null.
+ */
+export function orderNumberFromText(text: string | null | undefined): number | null {
+  const all = [...String(text ?? '').matchAll(/#(\d{6,})\b/g)].map(m => Number(m[1]));
+  const uniq = [...new Set(all)];
+  return uniq.length === 1 ? uniq[0] : null;
+}
+
 export function orderHref(orderNumber: number | null | undefined): string | null {
   return orderNumber != null ? `/admin?status=&q=${orderNumber}` : null;
 }
@@ -289,6 +301,7 @@ export function operationLabel(account: SettlementAccount, docType: string | nul
     case 'commission':                return 'Комісія';
     case 'debt_adjustment':           return 'Коригування боргу';
     case 'correction':                return 'Коригування';
+    case 'relink':                    return inc ? 'Перенесення з замовлення' : 'Перенесення на замовлення';
     default:                          return inc ? 'Нараховано' : 'Зараховано';
   }
 }
@@ -313,10 +326,16 @@ export function buildMutualStatement(params: {
     const legs = byTxn.get(e.txn_id);
     if (legs) legs.push(e); else byTxn.set(e.txn_id, [e]);
   }
+  // Так само — перенесення між замовленнями на тому ж рахунку (doc_type
+  // 'relink': оплату перепривʼязали з «без замовлення» на замовлення):
+  // для контрагента руху немає, а без цього оплата в виписці виглядала двічі.
+  // Нульова пара з ТИМ САМИМ замовленням не ховається — це не перенесення.
   const internalTxn = new Set<string>();
   for (const [txn, legs] of byTxn) {
+    if (legs.length < 2 || Math.abs(legs.reduce((s, l) => s + Number(l.amount), 0)) >= EPS) continue;
     const accs = new Set(legs.map(l => l.account_type));
-    if (accs.size > 1 && Math.abs(legs.reduce((s, l) => s + Number(l.amount), 0)) < EPS) internalTxn.add(txn);
+    const orders = new Set(legs.map(l => l.order_id ?? null));
+    if (accs.size > 1 || orders.size > 1) internalTxn.add(txn);
   }
   // Помилкова проводка і її сторно в межах періоду: для контрагента цих рухів
   // не було (напр. дзеркала тригера, сторновані міграцією 121) — пару ховаємо.

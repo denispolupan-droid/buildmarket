@@ -15,7 +15,7 @@ export type NotifyContext = {
   /** Сума замовлення — потрібна в підтвердженні, щоб покупець упізнав своє */
   total?: number | null;
   trackingNumber?: string | null;
-  carrier?: 'nova' | 'rozetka' | null;
+  carrier?: 'nova' | 'rozetka' | 'ukrposhta' | 'meest' | null;
   /** Скільки днів безкоштовного зберігання лишилось (для нагадування) */
   daysLeft?: number | null;
 };
@@ -28,7 +28,7 @@ const shortSite = () => SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
 // (lib/delivery-label). Власна копія рядка тут уже призводила до розбіжності:
 // у SMS «Rozetka Доставка», у листі «Нова Пошта» на тому самому замовленні.
 const carrier = (c: NotifyContext['carrier']) =>
-  carrierInfo(c === 'rozetka' ? 'rz_delivery' : 'nova');
+  carrierInfo(c === 'rozetka' ? 'rz_delivery' : c ?? 'nova');
 
 export function buildMessage(event: NotifyEvent, ctx: NotifyContext): string | null {
   switch (event) {

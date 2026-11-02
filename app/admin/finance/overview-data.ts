@@ -113,6 +113,9 @@ export type OverviewData = {
        методика, що KPI «Прибуток») і виручка попереднього періоду для дельти */
     sources: { code: string; count: number; revenue: number; share: number; avgCheck: number; profit: number; margin: number | null; prevRevenue: number }[];
     planCum: { labels: string[]; fact: (number | null)[]; plan: number[] | null; monthLabel: string };
+    /* Ті самі продажі й очікуваний прибуток, згруповані по київських місяцях
+       створення (до 12, порожні місяці на початку відкинуто; останній — поточний, неповний) */
+    months: { labels: string[]; years: string[]; revenue: number[]; profit: number[]; counts: number[] };
   };
   /* План виручки на поточний місяць (app_settings) проти факту з обліку */
   plan: {
@@ -125,6 +128,8 @@ export type OverviewData = {
   };
 };
 
+const MONTHS = 12;      // помісячне вікно (слайд «Місяці»)
+const KPI_MONTHS = 6;   // стовпчики під KPI — останні 6 з них
 const UA_MONTHS = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Серп','Вер','Жов','Лис','Гру'];
 
 // Календарна дата за Києвом (toISOString зсував би 1-ше число місяця на «31-ше»)
@@ -185,12 +190,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   }
   const prevDayIdx = new Map(prevDays.map((d, i) => [d, i]));
 
-  // Вікно помісячних стовпчиків: 6 календарних місяців включно з поточним
-  const monthlyFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  // Вікно помісячних агрегатів: 12 календарних місяців включно з поточним
+  // (слайд «Місяці»); стовпчики KPI беруть останні 6
+  const monthlyFrom = new Date(now.getFullYear(), now.getMonth() - (MONTHS - 1), 1);
   const monthlyFromStr = dstr(monthlyFrom);
   const monthlyFromIso = monthlyFrom.toISOString();
   const monthKeys: string[] = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = MONTHS - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
@@ -608,9 +614,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     prevRevenue: Math.round(prevChRev.get(c.code) ?? 0),
   }));
 
-  // ── Помісячні агрегати (6 міс.) для стовпчиків KPI ─────────────────────────
+  // ── Помісячні агрегати (12 міс.): слайд «Місяці» + стовпчики KPI (6) ──────
   const mIdx = new Map(monthKeys.map((k, i) => [k, i]));
-  const mRev = new Array(6).fill(0), mCogs = new Array(6).fill(0), mFee = new Array(6).fill(0), mDeliv = new Array(6).fill(0);
+  const mRev = new Array(MONTHS).fill(0), mCogs = new Array(MONTHS).fill(0), mFee = new Array(MONTHS).fill(0), mDeliv = new Array(MONTHS).fill(0);
   for (const r of monthlyLedger) {
     const i = mIdx.get(r.business_date.slice(0, 7));
     if (i === undefined) continue;
@@ -622,7 +628,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     else if (bucket === 'deal') mDeliv[i] += amt;
   }
   const mProfit = mRev.map((v, i) => v - mCogs[i] - mFee[i] - mDeliv[i]);
-  const mOrd = new Array(6).fill(0), mOrdSum = new Array(6).fill(0), mProfitEst = new Array(6).fill(0);
+  const mOrd = new Array(MONTHS).fill(0), mOrdSum = new Array(MONTHS).fill(0), mProfitEst = new Array(MONTHS).fill(0);
   for (const o of monthlyOrders as EstOrder[]) {
     // created_at → київський місяць
     const key = new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' }).slice(0, 7);
@@ -630,16 +636,17 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     if (i === undefined) continue;
     mOrd[i] += 1; mOrdSum[i] += Number(o.total_price ?? 0); mProfitEst[i] += orderMargin(o);
   }
+  const last6 = <T,>(arr: T[]) => arr.slice(-KPI_MONTHS);
   const monthly = {
-    labels: monthKeys.map(k => UA_MONTHS[Number(k.slice(5, 7)) - 1]),
-    revenue: mRev,
-    profit: mProfit,
-    profitEst: mProfitEst,
-    orders: mOrd,
-    orderSum: mOrdSum,
+    labels: last6(monthKeys.map(k => UA_MONTHS[Number(k.slice(5, 7)) - 1])),
+    revenue: last6(mRev),
+    profit: last6(mProfit),
+    profitEst: last6(mProfitEst),
+    orders: last6(mOrd),
+    orderSum: last6(mOrdSum),
     // Маржа — від тієї самої бази, що «Замовлення · сума»: очікуваний прибуток ÷ сума замовлень
-    margin: mOrdSum.map((v, i) => pct(mProfitEst[i], v)),
-    avgCheck: mOrd.map((n, i) => (n > 0 ? Math.round(mOrdSum[i] / n) : null)),
+    margin: last6(mOrdSum.map((v, i) => pct(mProfitEst[i], v))),
+    avgCheck: last6(mOrd.map((n, i) => (n > 0 ? Math.round(mOrdSum[i] / n) : null))),
   };
 
   // ── Вікно 7/30/90 днів для великого графіка (незалежно від пресета) ────────
@@ -656,7 +663,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const kyivToday = today.ymd;                        // YYYY-MM-DD за Києвом
   const daysPassed = Number(kyivToday.slice(8, 10));
   const daysInMonth = new Date(Number(kyivToday.slice(0, 4)), Number(kyivToday.slice(5, 7)), 0).getDate();
-  const monthFact = mRev[5];                          // поточний місяць із помісячних агрегатів
+  const monthFact = mRev[MONTHS - 1];                 // поточний місяць із помісячних агрегатів
   const planValue = planRow?.value != null && planRow.value !== '' ? Number(planRow.value) : null;
   const plan = {
     value: Number.isFinite(planValue as number) ? planValue : null,
@@ -729,6 +736,18 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       plan: plan.value ? cumLabels.map((_, i) => Math.round(plan.value! / daysInMonth * (i + 1))) : null,
       monthLabel: plan.monthLabel,
     },
+    months: (() => {
+      // Місяці до першого замовлення — порожні, їх не малюємо
+      const first = Math.max(0, mOrd.findIndex(n => n > 0));
+      const keys = monthKeys.slice(first);
+      return {
+        labels: keys.map(k => UA_MONTHS[Number(k.slice(5, 7)) - 1]),
+        years: keys.map(k => k.slice(0, 4)),
+        revenue: mOrdSum.slice(first).map(v => Math.round(v)),
+        profit: mProfitEst.slice(first).map(v => Math.round(v)),
+        counts: mOrd.slice(first),
+      };
+    })(),
   };
 
   return {

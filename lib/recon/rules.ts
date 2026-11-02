@@ -1,10 +1,11 @@
 /**
  * Тижнева звірка з маркетплейсами й грошовими рахунками — чиста частина (під тести):
  * пороги, класифікація знахідок, динаміка проти минулого запуску, текст для Telegram.
- * Збір даних — lib/recon/run.ts. У БД агент нічого не пише, крім журналу запусків.
+ * Збір даних — lib/recon/run.ts, виправлення — lib/recon/fixes.ts.
  *
  * Принцип той самий, що в дайджесті: цифри рахує код за правилами, що вже працюють
- * на екранах «Маркетплейси» і «Взаєморозрахунки»; агент нічого не проводить сам.
+ * на екранах «Маркетплейси» і «Взаєморозрахунки»; агент нічого не проводить сам —
+ * лише пропонує, а проводить людина кнопкою.
  */
 import { escTg } from '../telegram';
 
@@ -19,7 +20,69 @@ export type ReconFinding = {
   items: string[];
   /** числове розходження (наш облік − їхнє/живе), для динаміки */
   delta?: number | null;
+  /** Виправлення в один клік (етап 2): лише пропозиції — проводить людина кнопкою. */
+  fixes?: ReconFix[];
 };
+
+/**
+ * Пропозиція виправлення. id стабільний і самодостатній (з нього сервер заново
+ * збирає пропозицію з БД і перевіряє, що вона ще актуальна), сума — лише для показу.
+ */
+export type ReconFix = { id: string; label: string; detail: string; amount: number | null };
+
+// ── НоваПей: категорія за прецедентами ─────────────────────────────────────────
+
+export type NpHistoryRow = { counterparty: string | null; direction: string; category: string | null };
+
+const normCp = (s: string | null) => String(s ?? '').toLowerCase().replace(/["'«»]/g, '').replace(/\s+/g, ' ').trim();
+
+/**
+ * Нерозібраний рядок виписки → категорія, якою ВСІ попередні документи того самого
+ * контрагента в тому самому напрямку вже проведені. Різні категорії в минулому —
+ * пропозиції немає (вирішує людина на екрані «НоваПей»).
+ */
+export function suggestNovapayCategory(row: { counterparty: string | null; direction: string }, history: NpHistoryRow[]): { category: string; count: number } | null {
+  const cp = normCp(row.counterparty);
+  if (!cp) return null;
+  const same = history.filter(h => h.direction === row.direction && normCp(h.counterparty) === cp && h.category && h.category !== 'ignore');
+  const cats = new Set(same.map(h => h.category!));
+  if (cats.size !== 1) return null;
+  return { category: [...cats][0], count: same.length };
+}
+
+const NP_CATEGORY_LABEL: Record<string, string> = {
+  owner: 'вивід власника', 'transfer:bank': 'переказ на Mono', 'transfer:cash': 'переказ у касу',
+  'topup:rozetka': 'поповнення Rozetka', 'topup:prom': 'поповнення Prom',
+  'transfer-in:bank': 'переказ з Mono', 'transfer-in:cash': 'внесення готівки', 'transfer-in:owner': 'внесок власника',
+  logistics: 'витрата: логістика', packaging: 'витрата: пакування', rent: 'витрата: оренда', salary: 'витрата: зарплата',
+  marketing: 'витрата: маркетинг', opex: 'витрата: операційна', taxes: 'витрата: податки', loading: 'витрата: вантажні', customs: 'витрата: митниця',
+};
+export const npCategoryLabel = (c: string, supplierName?: string | null) =>
+  c.startsWith('supplier:') ? `оплата постачальнику${supplierName ? ` ${supplierName}` : ''}` : NP_CATEGORY_LABEL[c] ?? c;
+
+// ── Наложка: недоплата = позиція, якої не було в посилці ───────────────────────
+
+export type SaleLine = { sku: string; name?: string | null; qty: number; price: number; cost_price: number | null; supplier_id: number | string | null; fulfillment_type: string | null };
+
+/**
+ * НоваПей виплатила менше за наложку — шукаємо позицію (або кілька штук однієї
+ * позиції), ціна якої рівно дорівнює недоплаті. Лише один кандидат — інакше
+ * пропозиції немає. Лише дропшип: товар зі свого складу при «не відправили»
+ * лишився на складі, і це вже повернення залишку, а не дві проводки.
+ */
+export function findGapLine(gap: number, lines: SaleLine[]): { line: SaleLine; qty: number } | null {
+  if (!(gap > MONEY_EPS)) return null;
+  const hits: { line: SaleLine; qty: number }[] = [];
+  for (const l of lines) {
+    if (!(l.price > 0)) continue;
+    const k = Math.round(gap / l.price);
+    if (k >= 1 && k <= l.qty && Math.abs(k * l.price - gap) < 0.005) hits.push({ line: l, qty: k });
+  }
+  if (hits.length !== 1) return null;
+  const h = hits[0];
+  if (h.line.fulfillment_type !== 'dropship' || h.line.supplier_id == null || h.line.cost_price == null) return null;
+  return h;
+}
 
 /** Скільки днів нормально чекати виплату по врученому замовленню. Довше — знахідка. */
 export const PAYOUT_LAG_DAYS: Record<string, number> = {
@@ -112,8 +175,11 @@ export function renderReconHtml(findings: ReconFinding[], meta: { periodLabel: s
     if (f.level !== 'green') {
       lines.push(`   ${escTg(f.detail)}`);
       for (const i of f.items.slice(0, 5)) lines.push(`   • ${escTg(i)}`);
+      for (const x of (f.fixes ?? []).filter(x => x.id !== 'np-refresh').slice(0, 3)) lines.push(`   🛠 ${escTg(x.label)}`);
     }
   }
+  const fixCount = findings.reduce((s, f) => s + (f.fixes ?? []).filter(x => x.id !== 'np-refresh').length, 0);
+  if (fixCount) lines.push('', `🛠 Виправлень чекають підтвердження: ${fixCount} — <a href="${meta.adminUrl}/digest">Дайджест → Звірка</a>`);
   lines.push('', `<a href="${meta.adminUrl}/finance/marketplace-balance">Маркетплейси</a> · <a href="${meta.adminUrl}/finance/mutual">Взаєморозрахунки</a>`);
   let out = lines.join('\n');
   if (out.length > TG_LIMIT) out = out.slice(0, TG_LIMIT - 1) + '…';

@@ -15,6 +15,8 @@
  *  - rz_delivery      — «ROZETKA Доставка» власного договору (замовлення сайту).
  */
 
+import { isManualPostalCarrier } from '../carriers';
+
 export type MergeTtnOrder = {
   id: string;
   order_number: number;
@@ -42,7 +44,7 @@ const KIND_LABEL: Record<MergeTtnKind, string> = {
 export function mergeTtnKind(deliveryType: string | null | undefined): MergeTtnKind | null {
   if (deliveryType === 'rozetka_delivery') return 'rozetka_delivery';
   if (deliveryType === 'rz_delivery') return 'rz_delivery';
-  if (deliveryType === 'pickup') return null;
+  if (deliveryType === 'pickup' || isManualPostalCarrier(deliveryType)) return null;
   return 'nova';
 }
 
@@ -57,6 +59,10 @@ export function planMergeTtn(orders: MergeTtnOrder[]): MergeTtnPlan {
     return { ok: false, error: `Уже має накладну: ${withTtn.map(o => `№${o.order_number}`).join(', ')}` };
   }
 
+  // Укрпошта / Meest: накладну виписують у кабінеті перевізника — там і об'єднують
+  if (orders.some(o => isManualPostalCarrier(o.delivery_type))) {
+    return { ok: false, error: 'Укрпошта й Meest звідси не об\'єднуються — оформіть одну накладну в кабінеті перевізника і впишіть номер у кожне замовлення' };
+  }
   const kinds = new Set(orders.map(o => mergeTtnKind(o.delivery_type)));
   if (kinds.has(null)) return { ok: false, error: 'Самовивіз в одну посилку не об\'єднується' };
   if (kinds.size > 1) {

@@ -6,6 +6,7 @@ import { rozetkaDeliveryPhase, pickLeadingRozetkaInfo } from './rozetka-delivery
 import { RZ_DELIVERY_TYPE, rzPhase, rzCarrierAccepted } from './rz-delivery';
 import { rzTrackStatuses } from './rz-delivery-api';
 import { groupByTracking } from './delivery-tracking';
+import { isNpTracked } from './carriers';
 import { pickReturnTtn, buildReturnTracking } from './np-return-tracking';
 import { completeShipmentByTtn, saleDocCounts, settleLegacyCommission } from './accounting/completion';
 import { recordTxn } from './accounting/money';
@@ -120,8 +121,10 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
   // Номер у неї свій, і Нова Пошта про нього не знає так само, як про «RMP-…»,
   // тому з npOrders він теж має бути виключений — інакше замовлення назавжди
   // застрягне у «shipped» з непроведеним продажем.
-  const npOrders = orders.filter(o =>
-    o.delivery_type !== ROZETKA_DELIVERY_TYPE && o.delivery_type !== RZ_DELIVERY_TYPE);
+  // Укрпошта й Meest (з маркетплейсів) — теж не НП: їхнього API у нас ще немає,
+  // а НП на такий номер відповідала б «не знайдено». Вручення таких посилок
+  // підтверджує Prom (prom-sync) або менеджер кнопкою (isNpTracked, lib/carriers).
+  const npOrders = orders.filter(o => isNpTracked(o.delivery_type));
   const rzOrders = orders.filter(o => o.delivery_type === ROZETKA_DELIVERY_TYPE);
   const rzOwnOrders = orders.filter(o => o.delivery_type === RZ_DELIVERY_TYPE);
 

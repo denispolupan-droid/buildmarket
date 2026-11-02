@@ -4,6 +4,7 @@ import { notifyCustomer } from './send';
 import { notifyCustomerStatus } from '../telegram';
 import { buildCustomerStatusEmail } from '../invoice-email';
 import { SITE_URL } from '../site';
+import { isManualPostalCarrier } from '../carriers';
 
 // Фан-аут подій посилки («перевізник прийняв» / «прибула, чекає на отримувача»)
 // в усі канали покупця: SMS/Viber + Telegram + email.
@@ -73,7 +74,9 @@ export async function notifyParcelEvent(order: ParcelOrder, event: 'shipped' | '
     ctx: {
       orderNumber:    num,
       trackingNumber: order.tracking_number,
-      carrier:        order.delivery_type === 'rz_delivery' ? 'rozetka' : 'nova',
+      carrier:        order.delivery_type === 'rz_delivery' ? 'rozetka'
+        : isManualPostalCarrier(order.delivery_type) ? order.delivery_type
+        : 'nova',
     },
   }).catch((err: unknown) => console.error('[notify-parcel] sms failed:', order.id, err));
 
