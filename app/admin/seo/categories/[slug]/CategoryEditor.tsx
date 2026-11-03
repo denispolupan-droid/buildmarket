@@ -177,7 +177,7 @@ export default function CategoryEditor(props: Props) {
       {msg && <div style={{ ...card, padding: '8px 12px', marginBottom: 10, fontSize: 13, color: msg.tone === 'danger' ? 'var(--color-danger)' : 'var(--text-primary)' }}>{msg.text}</div>}
       {warnings.length > 0 && (
         <div style={{ ...card, padding: '8px 12px', marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-warning, #b45309)', marginBottom: 4 }}>Стандарт: що не сходиться</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-warning, var(--color-warn))', marginBottom: 4 }}>Стандарт: що не сходиться</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
         </div>
       )}

@@ -17,6 +17,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import DraftCloseConfirm from './DraftCloseConfirm';
 import { X, Minus, ClipboardList } from 'lucide-react';
+import { fmtInt as fmt } from '../../lib/format';
 
 const NewPOModal = dynamic(() => import('./procurement/NewPOModal'), { ssr: false });
 
@@ -51,9 +52,6 @@ function loadDrafts(): PoDraft[] {
 function saveDrafts(drafts: PoDraft[]) {
   try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(drafts)); }
   catch { /* quota */ }
-}
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 }
 
 export default function PoDraftManager() {
@@ -212,7 +210,7 @@ export default function PoDraftManager() {
       {totalTabCount > 0 && (
         <div style={{
           position: 'fixed', bottom: 0, left: `${SIDEBAR_W}px`, right: 0,
-          height: '42px', background: '#0F172A', zIndex: 1007,
+          height: '42px', background: 'var(--text-primary)', zIndex: 1007,
           borderTop: '1px solid rgba(255,255,255,0.07)',
         }} />
       )}
@@ -305,7 +303,6 @@ export default function PoDraftManager() {
 
             return (
               <div key={draft.id} style={{ position: 'relative', alignSelf: 'flex-end', flexShrink: 0 }}>
-
 
                 <div className={`doc-tab${isActive ? ' active' : ''}`}>
                   <div

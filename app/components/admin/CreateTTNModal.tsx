@@ -492,8 +492,8 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
 
   const radio = (active: boolean): React.CSSProperties => ({
     flex: 1, height: '34px', borderRadius: '7px',
-    border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
-    background: active ? '#1E3A5F' : 'var(--bg-soft)',
+    border: `1.5px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
+    background: active ? 'var(--navy)' : 'var(--bg-soft)',
     color: active ? '#fff' : 'var(--text-secondary)',
     fontSize: '12px', fontWeight: 600, cursor: 'pointer',
   });
@@ -525,7 +525,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             </div>
           )}
           {senderError && (
-            <div style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', border: '1px solid #FECACA' }}>
+            <div style={{ padding: '10px 12px', background: 'var(--bg-danger)', borderRadius: '8px', color: 'var(--color-danger)', fontSize: '13px', border: '1px solid #FECACA' }}>
               {senderError}
             </div>
           )}
@@ -591,7 +591,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                   </button>
                 </div>
                 {isOrganization && legal ? (
-                  <div style={{ marginTop: '8px', padding: '9px 12px', background: '#EFF4FF', border: '1px solid #C7D7F5', borderRadius: '8px', fontSize: '12px', color: '#1E3A5F', lineHeight: 1.45 }}>
+                  <div style={{ marginTop: '8px', padding: '9px 12px', background: '#EFF4FF', border: '1px solid #C7D7F5', borderRadius: '8px', fontSize: '12px', color: 'var(--navy)', lineHeight: 1.45 }}>
                     <div style={{ fontWeight: 700 }}>{legal.legalName || 'Юрособа з картки контрагента'}</div>
                     <div>{taxNumberLabel(legal.taxNumber)} {legal.taxNumber}{legal.legalAddress ? ` · ${legal.legalAddress}` : ''}</div>
                     <div style={{ fontSize: '11px', color: '#4880B8', marginTop: '3px' }}>
@@ -663,9 +663,9 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 />
                 {(() => {
                   const r = addrCheck.result;
-                  const okStyle: React.CSSProperties = { fontSize: '11px', color: '#16A34A', marginTop: '4px', lineHeight: 1.4 };
-                  const badStyle: React.CSSProperties = { fontSize: '11px', color: '#DC2626', marginTop: '4px', lineHeight: 1.4 };
-                  const chip: React.CSSProperties = { fontSize: '11px', padding: '2px 8px', borderRadius: '999px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#991B1B', cursor: 'pointer' };
+                  const okStyle: React.CSSProperties = { fontSize: '11px', color: 'var(--status-instock)', marginTop: '4px', lineHeight: 1.4 };
+                  const badStyle: React.CSSProperties = { fontSize: '11px', color: 'var(--color-danger)', marginTop: '4px', lineHeight: 1.4 };
+                  const chip: React.CSSProperties = { fontSize: '11px', padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border-danger)', background: 'var(--bg-danger)', color: '#991B1B', cursor: 'pointer' };
                   if (addrCheck.status === 'loading') {
                     return <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}><Loader2 size={11} className="spin" />Перевіряємо адресу в довіднику НП…</div>;
                   }
@@ -717,10 +717,10 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 </div>
               )}
               {whResolve.failed && !selectedWH && !whLoading && (
-                <div style={{ fontSize: '11px', color: '#B45309', marginTop: '4px', lineHeight: 1.4 }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-warn)', marginTop: '4px', lineHeight: 1.4 }}>
                   №{whResolve.num} НП не віддала — зазвичай це ліміт запитів, а не відсутній {isPostomat ? 'поштомат' : 'пункт'}.{' '}
                   <button type="button" onClick={retryWhByNumber}
-                    style={{ border: 'none', background: 'none', padding: 0, color: '#1E3A5F', fontWeight: 700, cursor: 'pointer', fontSize: '11px' }}>
+                    style={{ border: 'none', background: 'none', padding: 0, color: 'var(--navy)', fontWeight: 700, cursor: 'pointer', fontSize: '11px' }}>
                     Повторити пошук
                   </button>
                 </div>
@@ -753,12 +753,12 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
               {/* Показуємо інфо залежно від ефективного типу */}
               {(senderTypeOverride ?? senderInfo.senderType) === 'address' ? (
                 senderInfo.addressRef ? (
-                  <div style={{ padding: '10px 14px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '8px', fontSize: '13px', color: '#15803D' }}>
+                  <div style={{ padding: '10px 14px', background: 'var(--bg-success)', border: '1px solid var(--border-success)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)' }}>
                     🏭 Забір зі складу: <strong>{senderInfo.addressDesc || senderInfo.addressRef}</strong>
-                    <div style={{ fontSize: '11px', color: '#16A34A', marginTop: '2px' }}>НП приїде за товаром на зареєстровану адресу</div>
+                    <div style={{ fontSize: '11px', color: 'var(--status-instock)', marginTop: '2px' }}>НП приїде за товаром на зареєстровану адресу</div>
                   </div>
                 ) : (
-                  <div style={{ padding: '10px 14px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                  <div style={{ padding: '10px 14px', background: '#FEF3C7', border: '1px solid var(--border-warn)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-warn-dark)' }}>
                     ⚠ Адреса забору не налаштована. Перейдіть у Налаштування → НП Відправник.
                   </div>
                 )
@@ -807,7 +807,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                   </div>
                 ) : (
                   <input
-                    style={{ ...inp, borderColor: !seatRows[0].weight ? '#FCA5A5' : undefined, background: !seatRows[0].weight ? 'rgba(239,68,68,0.06)' : undefined }}
+                    style={{ ...inp, borderColor: !seatRows[0].weight ? 'var(--border-danger)' : undefined, background: !seatRows[0].weight ? 'rgba(239,68,68,0.06)' : undefined }}
                     type="number" min="0.1" step="0.1" value={seatRows[0].weight}
                     onChange={e => setSeatField(0, 'weight', e.target.value)}
                     placeholder="кг"
@@ -835,7 +835,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 </div>
                 {editRows.map((r, i) => {
                   const n = seatNums[i];
-                  const redIf = (bad: boolean): React.CSSProperties => (bad ? { borderColor: '#FCA5A5', background: 'rgba(239,68,68,0.06)' } : {});
+                  const redIf = (bad: boolean): React.CSSProperties => (bad ? { borderColor: 'var(--border-danger)', background: 'rgba(239,68,68,0.06)' } : {});
                   const dimBad = (v: number) => needSeatDims && !(v > 0);
                   return (
                     <div key={i} style={{ display: 'grid', gridTemplateColumns: seatGrid, gap: '6px', alignItems: 'center' }}>
@@ -875,7 +875,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
                       {order.items.find(i => i.sku === l.sku)?.name ?? l.sku}
                     </span>
-                    <span style={{ color: l.weightKg > 0 ? 'var(--text-primary)' : '#FCA5A5', flexShrink: 0, marginLeft: '6px', fontWeight: 600 }}>
+                    <span style={{ color: l.weightKg > 0 ? 'var(--text-primary)' : 'var(--border-danger)', flexShrink: 0, marginLeft: '6px', fontWeight: 600 }}>
                       {l.weightKg > 0 ? `${l.qty}×${l.volume} = ${l.totalKg} кг` : `${l.qty} шт — вага невідома`}
                     </span>
                   </div>
@@ -918,16 +918,16 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '11px 14px', borderRadius: '10px', cursor: 'pointer',
                 border: `1.5px solid ${codEnabled ? '#F59E0B' : 'var(--border)'}`,
-                background: codEnabled ? '#FFFBEB' : 'var(--bg-soft)',
+                background: codEnabled ? 'var(--bg-warn)' : 'var(--bg-soft)',
               }}
               onClick={() => setCodEnabled(v => !v)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Banknote size={15} color={codEnabled ? '#D97706' : 'var(--text-muted)'} />
-                <span style={{ fontSize: '13px', fontWeight: 600, color: codEnabled ? '#92400E' : 'var(--text-secondary)' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: codEnabled ? 'var(--text-warn-dark)' : 'var(--text-secondary)' }}>
                   Накладений платіж (COD)
                 </span>
-                {isCod && <span style={{ fontSize: '11px', background: '#FDE68A', color: '#92400E', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>з замовлення</span>}
+                {isCod && <span style={{ fontSize: '11px', background: '#FDE68A', color: 'var(--text-warn-dark)', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>з замовлення</span>}
               </div>
               <div style={{
                 width: '34px', height: '18px', borderRadius: '9px', position: 'relative', transition: 'background 0.2s',
@@ -940,10 +940,10 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
               </div>
             </div>
             {codEnabled && (
-              <div style={{ marginTop: '8px', padding: '12px 14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
-                <label style={{ ...lbl, color: '#92400E' }}>Сума до стягнення з одержувача, грн</label>
+              <div style={{ marginTop: '8px', padding: '12px 14px', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '8px' }}>
+                <label style={{ ...lbl, color: 'var(--text-warn-dark)' }}>Сума до стягнення з одержувача, грн</label>
                 <input
-                  style={{ ...inp, borderColor: '#FCD34D' }}
+                  style={{ ...inp, borderColor: 'var(--border-warn)' }}
                   type="number" min="1" step="0.01" value={codAmount}
                   onChange={e => setCodAmount(e.target.value)}
                 />
@@ -965,7 +965,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
           </section>
 
           {error && (
-            <div style={{ padding: '10px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>
+            <div style={{ padding: '10px 12px', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '8px', color: 'var(--color-danger)', fontSize: '13px' }}>
               {error}
             </div>
           )}
@@ -977,7 +977,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
             Скасувати
           </button>
           <button onClick={handleSubmit} disabled={submitting || senderLoading || !!senderError}
-            style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (submitting || senderLoading || !!senderError) ? 0.5 : 1 }}>
+            style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (submitting || senderLoading || !!senderError) ? 0.5 : 1 }}>
             {submitting ? <><Loader2 size={14} className="spin" />Створення...</> : <><Truck size={14} />Створити ТТН</>}
           </button>
         </div>

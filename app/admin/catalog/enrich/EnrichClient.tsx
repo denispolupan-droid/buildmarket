@@ -97,7 +97,7 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>
         Агент збагачення каталогу
       </h1>
-      <p style={{ color: '#64748B', marginBottom: 28, fontSize: 14 }}>
+      <p style={{ color: 'var(--text-soft)', marginBottom: 28, fontSize: 14 }}>
         Генерує <code>description_full</code> за допомогою AI на основі характеристик та прикладів з категорії.
         Без опису: <strong>{totalMissing}</strong> товарів.
       </p>
@@ -146,11 +146,11 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
       {/* Progress */}
       {(running || done) && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#475569', marginBottom: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
             <span>{running && currentName ? `⏳ ${currentName}` : done ? '✅ Завершено' : ''}</span>
             <span>{progress.done} / {progress.total} {progress.errors > 0 && `· ${progress.errors} помилок`}</span>
           </div>
-          <div style={{ background: '#E2E8F0', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--border)', borderRadius: 6, height: 8, overflow: 'hidden' }}>
             <div style={{
               height: '100%',
               width: `${pct}%`,
@@ -167,13 +167,13 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {log.map((item, i) => (
             <div key={i} style={{
-              background: item.status === 'error' ? '#FEF2F2' : '#F8FAFC',
-              border: `1px solid ${item.status === 'error' ? '#FECACA' : '#E2E8F0'}`,
+              background: item.status === 'error' ? 'var(--bg-danger)' : 'var(--bg-soft)',
+              border: `1px solid ${item.status === 'error' ? '#FECACA' : 'var(--border)'}`,
               borderRadius: 8,
               padding: '12px 14px',
             }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: item.description_full ? 6 : 0, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-soft)', fontFamily: 'monospace' }}>
                   {item.sku}
                 </span>
                 {item.status === 'ok'
@@ -201,7 +201,7 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: 12, fontWeight: 600,
-  color: '#64748B', marginBottom: 4,
+  color: 'var(--text-soft)', marginBottom: 4,
 };
 
 const selectStyle: React.CSSProperties = {

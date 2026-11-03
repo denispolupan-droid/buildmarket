@@ -87,7 +87,7 @@ export default function InvoiceOptionsModal({ order, onClose, onSaved }: Props) 
             Скасувати
           </button>
           <button onClick={save} disabled={saving}
-            style={{ height: '36px', padding: '0 18px', borderRadius: '9px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+            style={{ height: '36px', padding: '0 18px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? '...' : 'Зберегти'}
           </button>
         </div>

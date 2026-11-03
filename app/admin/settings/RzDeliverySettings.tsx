@@ -183,7 +183,7 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
       <div style={{ ...card, gap: '10px' }}>
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
           <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)}
-            style={{ width: '18px', height: '18px', marginTop: '1px', flexShrink: 0, accentColor: '#15803D', cursor: 'pointer' }} />
+            style={{ width: '18px', height: '18px', marginTop: '1px', flexShrink: 0, accentColor: 'var(--color-success)', cursor: 'pointer' }} />
           <span>
             <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
               Показувати покупцям у кошику
@@ -195,7 +195,7 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
           </span>
         </label>
         {!enabled && (
-          <div style={{ fontSize: '12.5px', color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '9px', padding: '9px 11px', lineHeight: 1.5 }}>
+          <div style={{ fontSize: '12.5px', color: 'var(--color-warn)', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '9px', padding: '9px 11px', lineHeight: 1.5 }}>
             Зараз доставка прихована — покупці бачать лише Нову Пошту.
           </div>
         )}
@@ -224,12 +224,12 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
             </button>
           </div>
           {check.state === 'ok' && (
-            <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#15803D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Check size={14} />{check.text}
             </div>
           )}
           {check.state === 'error' && (
-            <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <AlertCircle size={14} />{check.text}
             </div>
           )}
@@ -332,18 +332,18 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
       </div>
 
       {error && (
-        <div style={{ fontSize: '13px', color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '10px 12px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '10px', padding: '10px 12px' }}>
           {error}
         </div>
       )}
       {saved_ && (
-        <div style={{ fontSize: '13px', color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '10px 12px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-success)', background: 'var(--bg-success)', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '10px 12px' }}>
           Збережено
         </div>
       )}
 
       <button onClick={save} disabled={saving}
-        style={{ height: '46px', borderRadius: '12px', border: 'none', background: saving ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
+        style={{ height: '46px', borderRadius: '12px', border: 'none', background: saving ? 'var(--text-muted)' : 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
         {saving ? 'Зберігаємо…' : 'Зберегти'}
       </button>
 

@@ -72,7 +72,7 @@ export function OrderActionsColumn({ order }: {
                     && (['supplier', 'mixed'].includes(order.fulfillment_mode ?? 'supplier') || !!order.supplier_sent_at) && (
                     <button onClick={() => startSupplierSend([order.id])} disabled={supplierQueueLoading}
                       title={order.supplier_sent_at ? `Надіслано ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · натисніть щоб надіслати ще раз` : 'Надіслати замовлення постачальнику'}
-                      style={{ ...btn, color: order.supplier_sent_at ? '#15803D' : 'var(--text-primary)', cursor: supplierQueueLoading ? 'wait' : 'pointer', opacity: supplierQueueLoading ? 0.6 : 1 }}>
+                      style={{ ...btn, color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--text-primary)', cursor: supplierQueueLoading ? 'wait' : 'pointer', opacity: supplierQueueLoading ? 0.6 : 1 }}>
                       <Mail size={13} /> {order.supplier_sent_at ? 'Надіслано постачальнику' : 'Надіслати постачальнику'}
                     </button>
                   )}
@@ -99,7 +99,7 @@ export function OrderActionsColumn({ order }: {
                         <button
                           onClick={() => shipOrder(order.id)}
                           disabled={shipping === order.id || !!loading || !hasRemaining}
-                          style={{ ...btn, background: hasRemaining ? '#DCFCE7' : '#F3F4F6', color: hasRemaining ? '#166534' : '#9CA3AF', border: `1.5px solid ${hasRemaining ? '#86EFAC' : '#E5E7EB'}`, opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
+                          style={{ ...btn, background: hasRemaining ? '#DCFCE7' : '#F3F4F6', color: hasRemaining ? '#166534' : 'var(--text-gray-light)', border: `1.5px solid ${hasRemaining ? 'var(--border-success)' : '#E5E7EB'}`, opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
                           <Truck size={13} /> {shipping === order.id ? 'Створення...' : hasRemaining ? 'Відвантажити' : 'Відвантажено'}
                         </button>
                         {order.fulfillment_mode === 'supplier' && !order.tracking_number && hasRemaining && (
@@ -109,7 +109,7 @@ export function OrderActionsColumn({ order }: {
                         )}
                         {docs.map(doc => (
                           <a key={doc.id} href={`/vidatkova/${doc.id}`} target="_blank"
-                            style={{ fontSize: '11px', color: '#1E3A5F', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '2px 0' }}>
+                            style={{ fontSize: '11px', color: 'var(--navy)', fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '2px 0' }}>
                             📄 {doc.number}
                           </a>
                         ))}
@@ -127,7 +127,7 @@ export function OrderActionsColumn({ order }: {
                     return (
                       <>
                         {expectedDate && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '7px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px', color: '#92400E', fontWeight: 600 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '7px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px', color: 'var(--text-warn-dark)', fontWeight: 600 }}>
                             📅 Очікується: {new Date(expectedDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </div>
                         )}
@@ -204,7 +204,7 @@ export function OrderActionsColumn({ order }: {
                         {retDocs.map(doc => (
                           <a key={doc.id} href={`/admin/accounting/documents/${doc.id}`} target="_blank" rel="noopener noreferrer"
                             title="Документ повернення від покупця"
-                            style={{ ...btnMuted, color: '#B45309' }}>
+                            style={{ ...btnMuted, color: 'var(--color-warn)' }}>
                             <RotateCcw size={13} /> {doc.number}
                           </a>
                         ))}
@@ -243,7 +243,7 @@ export function OrderActionsColumn({ order }: {
                   {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
                     <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
                       title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
-                      style={{ ...btn, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontWeight: 600 }}>
+                      style={{ ...btn, border: '1px solid #FDE68A', background: 'var(--bg-warn)', color: 'var(--color-warn)', fontWeight: 600 }}>
                       <RotateCcw size={13} /> Повернення
                     </button>
                   )}

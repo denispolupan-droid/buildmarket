@@ -4,13 +4,10 @@ import { useEffect, useState } from 'react';
 import { Search, ClipboardCheck } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import { showConfirm } from '../../../../lib/confirm';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 type Warehouse = { id: number; name: string; is_default: boolean };
 type Item = { sku: string; name: string; plan: number; reserved: number; avg_cost: number };
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export default function InventoryClient() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -130,7 +127,7 @@ export default function InventoryClient() {
           </select>
         </div>
         <button onClick={loadItems} disabled={loading || warehouseId === ''}
-          style={{ height: '34px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
+          style={{ height: '34px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
           {loading ? 'Завантаження…' : items ? 'Оновити залишки' : 'Почати перерахунок'}
         </button>
         {items && (
@@ -150,8 +147,8 @@ export default function InventoryClient() {
 
       {/* Результат проведення */}
       {result && (
-        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-primary)' }}>
-          ✅ Проведено документ <a href={`/admin/accounting/documents/${result.doc_id}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 800, color: '#15803D' }}>{result.doc_number}</a> —
+        <div style={{ background: 'var(--bg-success)', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-primary)' }}>
+          ✅ Проведено документ <a href={`/admin/accounting/documents/${result.doc_id}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 800, color: 'var(--color-success)' }}>{result.doc_number}</a> —
           розбіжностей {result.diffs}, надлишок <strong>{fmt(result.surplus_cost)} ₴</strong>, нестача <strong>{fmt(result.shortage_cost)} ₴</strong>.
         </div>
       )}
@@ -190,10 +187,10 @@ export default function InventoryClient() {
                           value={facts[i.sku] ?? ''}
                           onChange={e => setFacts(prev => ({ ...prev, [i.sku]: e.target.value }))}
                           inputMode="decimal"
-                          style={{ ...inp, height: '30px', width: '80px', textAlign: 'right', fontWeight: 700, borderColor: f === null ? '#FCA5A5' : hasDiff ? (delta > 0 ? '#86EFAC' : '#FCA5A5') : 'var(--border)' }}
+                          style={{ ...inp, height: '30px', width: '80px', textAlign: 'right', fontWeight: 700, borderColor: f === null ? 'var(--border-danger)' : hasDiff ? (delta > 0 ? 'var(--border-success)' : 'var(--border-danger)') : 'var(--border)' }}
                         />
                       </td>
-                      <td style={{ padding: '7px 14px', textAlign: 'right', fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: !hasDiff ? 'var(--text-muted)' : delta > 0 ? '#15803D' : '#DC2626' }}>
+                      <td style={{ padding: '7px 14px', textAlign: 'right', fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: !hasDiff ? 'var(--text-muted)' : delta > 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {f === null ? '?' : hasDiff ? (delta > 0 ? `+${delta}` : delta) : '—'}
                       </td>
                       <td style={{ padding: '7px 14px', textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
@@ -212,15 +209,15 @@ export default function InventoryClient() {
               Розбіжностей: <strong>{diffs.length}</strong>
               {diffs.length > 0 && (
                 <>
-                  {' · '}надлишок <strong style={{ color: '#15803D' }}>+{fmt(surplus)} ₴</strong>
-                  {' · '}нестача <strong style={{ color: '#DC2626' }}>−{fmt(shortage)} ₴</strong>
+                  {' · '}надлишок <strong style={{ color: 'var(--color-success)' }}>+{fmt(surplus)} ₴</strong>
+                  {' · '}нестача <strong style={{ color: 'var(--color-danger)' }}>−{fmt(shortage)} ₴</strong>
                 </>
               )}
             </div>
             <input value={note} onChange={e => setNote(e.target.value)} placeholder="Коментар (необов'язково)"
               style={{ ...inp, flex: '1 1 200px' }} />
             <button onClick={submit} disabled={saving || !diffs.length}
-              style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving || !diffs.length ? 'default' : 'pointer', opacity: saving || !diffs.length ? 0.6 : 1 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving || !diffs.length ? 'default' : 'pointer', opacity: saving || !diffs.length ? 0.6 : 1 }}>
               <ClipboardCheck size={15} /> {saving ? 'Проводимо…' : 'Провести інвентаризацію'}
             </button>
           </div>

@@ -207,7 +207,7 @@ export default function AttributesClient({ imported: initialImported }: Props) {
             {loading ? 'Імпортується…' : 'Імпортувати'}
           </button>
           {message && (
-            <span style={{ fontSize: 13, color: message.ok ? '#16A34A' : '#EF4444' }}>
+            <span style={{ fontSize: 13, color: message.ok ? 'var(--status-instock)' : '#EF4444' }}>
               {message.text}
             </span>
           )}

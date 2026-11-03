@@ -117,7 +117,7 @@ export default function PricingModelClient() {
             style={{
               height: 34, padding: '0 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
               border: mp === m ? 'none' : '1px solid var(--border)',
-              background: mp === m ? '#1E3A5F' : 'var(--bg-card)',
+              background: mp === m ? 'var(--navy)' : 'var(--bg-card)',
               color: mp === m ? '#fff' : 'var(--text-secondary)',
             }}
           >
@@ -127,7 +127,7 @@ export default function PricingModelClient() {
       </div>
 
       {error && <p style={{ color: '#EF4444', fontSize: 13 }}>{error}</p>}
-      {loading && <p style={{ color: '#94A3B8', fontSize: 13 }}>Рахуємо…</p>}
+      {loading && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Рахуємо…</p>}
 
       {t && (
         <>
@@ -210,18 +210,18 @@ export default function PricingModelClient() {
                     <td style={{ ...td, fontFamily: 'monospace', fontSize: 12 }}>{r.sku}</td>
                     <td style={{ ...td, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.name}>
                       {r.name}
-                      {r.excluded && <span style={{ marginLeft: 6, fontSize: 11, color: '#DC2626' }}>не поштучно</span>}
+                      {r.excluded && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-danger)' }}>не поштучно</span>}
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>{uah(r.cost)}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{uah(r.before)}</td>
                     <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{uah(r.after)}</td>
-                    <td style={{ ...td, textAlign: 'right', color: r.changePct > 30 ? '#DC2626' : r.changePct > 15 ? '#B45309' : 'var(--text-secondary)' }}>
+                    <td style={{ ...td, textAlign: 'right', color: r.changePct > 30 ? 'var(--color-danger)' : r.changePct > 15 ? 'var(--color-warn)' : 'var(--text-secondary)' }}>
                       {r.changePct > 0 ? '+' : ''}{r.changePct}%
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <span style={{ color: 'var(--text-muted)' }}>{Math.round(r.profitBefore)}</span>
                       {' → '}
-                      <span style={{ color: '#16A34A', fontWeight: 600 }}>{Math.round(r.profitAfter)} ₴</span>
+                      <span style={{ color: 'var(--status-instock)', fontWeight: 600 }}>{Math.round(r.profitAfter)} ₴</span>
                     </td>
                   </tr>
                 ))}
@@ -258,8 +258,8 @@ function Chip({ label, active, onClick, color }: { label: string; active: boolea
       onClick={onClick}
       style={{
         height: 30, padding: '0 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-        border: `1px solid ${active ? (color ?? '#1E3A5F') : 'var(--border)'}`,
-        background: active ? (color ?? '#1E3A5F') : 'var(--bg-card)',
+        border: `1px solid ${active ? (color ?? 'var(--navy)') : 'var(--border)'}`,
+        background: active ? (color ?? 'var(--navy)') : 'var(--bg-card)',
         color: active ? '#fff' : (color ?? 'var(--text-secondary)'),
       }}
     >

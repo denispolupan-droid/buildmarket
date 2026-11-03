@@ -283,7 +283,7 @@ export default function ReportView({ report, days }: { report: SearchReport; day
           <h2 style={h2}>Що показують цифри</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
             {r.findings.map((f, i) => (
-              <div key={i} style={{ ...card, borderLeft: `3px solid ${f.tone === 'good' ? '#15803D' : f.tone === 'warn' ? '#B45309' : 'var(--brand-blue)'}` }}>
+              <div key={i} style={{ ...card, borderLeft: `3px solid ${f.tone === 'good' ? 'var(--color-success)' : f.tone === 'warn' ? 'var(--color-warn)' : 'var(--brand-blue)'}` }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>{f.title}</div>
                 <p style={{ ...hint, marginTop: 6 }}>{f.text}</p>
               </div>
@@ -321,7 +321,7 @@ export default function ReportView({ report, days }: { report: SearchReport; day
                   <td style={td}>{k.kind}</td>
                   <td style={tdNum}>{nf(k.impressions)}</td>
                   <td style={tdNum}>{nf(k.clicks)}</td>
-                  <td style={{ ...tdNum, color: k.impressions >= 500 && k.ctr < 0.3 ? '#B45309' : 'var(--text-primary)', fontWeight: k.impressions >= 500 && k.ctr < 0.3 ? 700 : 400 }}>
+                  <td style={{ ...tdNum, color: k.impressions >= 500 && k.ctr < 0.3 ? 'var(--color-warn)' : 'var(--text-primary)', fontWeight: k.impressions >= 500 && k.ctr < 0.3 ? 700 : 400 }}>
                     {k.ctr.toFixed(2)}%
                   </td>
                   <td style={tdNum}>{Math.round(k.clickShare)}%</td>
@@ -377,7 +377,7 @@ export default function ReportView({ report, days }: { report: SearchReport; day
       <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h2 style={h2}>Запити</h2>
         {r.queriesError ? (
-          <div style={{ ...card, color: '#B45309' }}>
+          <div style={{ ...card, color: 'var(--color-warn)' }}>
             Search Console не віддала запити: {r.queriesError}. Решта звіту рахується з нашої історії й лишається вірною.
           </div>
         ) : (

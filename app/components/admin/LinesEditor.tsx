@@ -174,14 +174,14 @@ export default function LinesEditor({ target, docDate, initial, title, hint }: {
           </span>
           <button onClick={() => { setRows(prev => prev.filter((_, idx) => idx !== i)); setSaved(false); }}
             title="Прибрати рядок"
-            style={{ height: '28px', width: '28px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'transparent', color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ height: '28px', width: '28px', borderRadius: '7px', border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Trash2 size={13} />
           </button>
         </div>
       ))}
 
       {rows.length === 0 && (
-        <div style={{ padding: '12px 16px', fontSize: '12.5px', color: '#B45309', borderTop: '1px solid var(--border-light)' }}>
+        <div style={{ padding: '12px 16px', fontSize: '12.5px', color: 'var(--color-warn)', borderTop: '1px solid var(--border-light)' }}>
           Не лишилось жодного рядка — накладна без товарів не зберігається.
         </div>
       )}
@@ -216,11 +216,11 @@ export default function LinesEditor({ target, docDate, initial, title, hint }: {
         <div style={{ fontSize: '12px', fontStyle: 'italic', color: 'var(--text-muted)', marginTop: '2px' }}>{hryvniaInWords(total)}</div>
 
         {error && (
-          <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
+          <div style={{ marginTop: '10px', fontSize: '12.5px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
         )}
 
         {warnings.length > 0 && (
-          <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '9px', padding: '9px 11px' }}>
+          <div style={{ marginTop: '10px', fontSize: '12.5px', color: 'var(--text-warn-dark)', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '9px', padding: '9px 11px' }}>
             <div style={{ fontWeight: 700, marginBottom: '4px' }}>Збережено, але зверніть увагу:</div>
             {warnings.map((w, i) => <div key={i} style={{ marginTop: i ? '3px' : 0 }}>• {w}</div>)}
           </div>
@@ -229,7 +229,7 @@ export default function LinesEditor({ target, docDate, initial, title, hint }: {
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={save} disabled={busy || !dirty || rows.length === 0}
             style={{ height: '36px', padding: '0 18px', borderRadius: '9px', border: 'none', fontSize: '13px', fontWeight: 700,
-              background: busy || !dirty || rows.length === 0 ? '#94A3B8' : '#15803D', color: '#fff',
+              background: busy || !dirty || rows.length === 0 ? 'var(--text-muted)' : 'var(--color-success)', color: '#fff',
               cursor: busy || !dirty || rows.length === 0 ? 'default' : 'pointer' }}>
             {busy ? 'Зберігаємо…' : 'Зберегти зміни'}
           </button>
@@ -239,7 +239,7 @@ export default function LinesEditor({ target, docDate, initial, title, hint }: {
               Повернути як було
             </button>
           )}
-          {saved && !dirty && <span style={{ fontSize: '12.5px', color: '#15803D', fontWeight: 600 }}>✓ Збережено</span>}
+          {saved && !dirty && <span style={{ fontSize: '12.5px', color: 'var(--color-success)', fontWeight: 600 }}>✓ Збережено</span>}
           {!dirty && !saved && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Змін немає</span>}
         </div>
       </div>

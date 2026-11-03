@@ -813,7 +813,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
     <div>
       {/* ШІ-чернетка картки — лише для нового товару */}
       {isNew && (
-        <div style={{ ...sectionStyle, background: cardRun?.proposal.issues.length ? '#FFFBEB' : 'var(--bg-card)' }}>
+        <div style={{ ...sectionStyle, background: cardRun?.proposal.issues.length ? 'var(--bg-warn)' : 'var(--bg-card)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
               <Sparkles size={15} /> Чернетка картки від ШІ
@@ -830,7 +830,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             )}
             <span style={{ flex: 1 }} />
             <button type="button" onClick={() => proposeCard()} disabled={proposing || !name.trim()}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: proposing || !name.trim() ? 'default' : 'pointer', opacity: proposing || !name.trim() ? 0.6 : 1 }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: proposing || !name.trim() ? 'default' : 'pointer', opacity: proposing || !name.trim() ? 0.6 : 1 }}>
               {proposing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
               {proposing ? 'Шукаю лінійку, стандарт і технічний лист…' : cardRun ? 'Запропонувати ще раз' : 'Запропонувати картку'}
             </button>
@@ -839,18 +839,18 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             Введіть назву з прайсу постачальника вище або нижче в полі «Назва товару» — агент підбере бренд, категорію,
             назву за стандартом, фасування й характеристики зі словника. Поля далі можна правити; тексти — кнопкою AI після збереження.
           </p>
-          {proposeError && <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '8px' }}>{proposeError}</div>}
+          {proposeError && <div style={{ fontSize: '12px', color: 'var(--color-danger)', marginTop: '8px' }}>{proposeError}</div>}
           {cardRun && (
             <div style={{ marginTop: '10px', fontSize: '12px', lineHeight: 1.5 }}>
               {cardRun.proposal.issues.length > 0 && (
-                <div style={{ color: '#92400E', marginBottom: '6px' }}>
+                <div style={{ color: 'var(--text-warn-dark)', marginBottom: '6px' }}>
                   {cardRun.proposal.issues.map((i, k) => (
                     <div key={k} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}><AlertTriangle size={12} style={{ marginTop: '3px', flexShrink: 0 }} />{i.message}</div>
                   ))}
                 </div>
               )}
               {cardRun.proposal.sibling_sku && (
-                <div style={{ color: 'var(--text-secondary)' }}>Лінійка в каталозі: <a href={`/admin/products/${cardRun.proposal.sibling_sku}`} target="_blank" rel="noreferrer" style={{ color: '#1E3A5F', fontWeight: 600 }}>{cardRun.proposal.sibling_sku}</a> — назва й характеристики скопійовані з неї.</div>
+                <div style={{ color: 'var(--text-secondary)' }}>Лінійка в каталозі: <a href={`/admin/products/${cardRun.proposal.sibling_sku}`} target="_blank" rel="noreferrer" style={{ color: 'var(--navy)', fontWeight: 600 }}>{cardRun.proposal.sibling_sku}</a> — назва й характеристики скопійовані з неї.</div>
               )}
               <div style={{ color: 'var(--text-secondary)' }}>
                 Площадки як у сусідів категорії: Prom {cardRun.proposal.marketplace.on_prom ? '✓' : '—'} · Rozetka {cardRun.proposal.marketplace.on_rozetka ? '✓' : '—'}
@@ -866,7 +866,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
               {cardRun.proposal.sources.length > 0 && (
                 <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>
                   Джерела: {cardRun.proposal.sources.map((s, k) => (
-                    <a key={k} href={s} target="_blank" rel="noreferrer" style={{ color: '#1E3A5F', marginRight: '8px', wordBreak: 'break-all' }}>{new URL(s).hostname}</a>
+                    <a key={k} href={s} target="_blank" rel="noreferrer" style={{ color: 'var(--navy)', marginRight: '8px', wordBreak: 'break-all' }}>{new URL(s).hostname}</a>
                   ))}
                 </div>
               )}
@@ -1060,7 +1060,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
             <input type="checkbox" checked={isNewBadge} onChange={e => setIsNewBadge(e.target.checked)} style={{ accentColor: '#22C55E' }} />
-            <span style={{ fontSize: '14px', fontWeight: isNewBadge ? 700 : 400, color: isNewBadge ? '#16A34A' : 'var(--text-secondary)' }}>✨ НОВИНКА</span>
+            <span style={{ fontSize: '14px', fontWeight: isNewBadge ? 700 : 400, color: isNewBadge ? 'var(--status-instock)' : 'var(--text-secondary)' }}>✨ НОВИНКА</span>
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Сортування:</label>
@@ -1157,7 +1157,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           {!isNew && (
             <a
               href={`/admin/prices?sku=${encodeURIComponent(sku)}`}
-              style={{ fontSize: '13px', fontWeight: 600, color: '#1E3A5F', textDecoration: 'none', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '7px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)', textDecoration: 'none', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '7px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
               ✏️ Редагувати ціни →
             </a>
@@ -1187,11 +1187,11 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             <div style={{ padding: '10px 14px', background: '#EFF4FF', borderRadius: '8px', border: '1px solid #BFDBFE', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               onClick={() => window.location.href = `/admin/prices?sku=${encodeURIComponent(sku)}`}>
               <div style={{ fontSize: '20px', marginBottom: '2px' }}>✏️</div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', textAlign: 'center' }}>Редагувати<br />ціни</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', textAlign: 'center' }}>Редагувати<br />ціни</div>
             </div>
           </div>
         ) : (
-          <div style={{ padding: '12px 16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <div style={{ padding: '12px 16px', background: 'var(--bg-soft)', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
             💡 Після збереження товару встановіть ціни в розділі <strong>Ціни</strong>.
           </div>
         )}
@@ -1226,7 +1226,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                 src={imageUrl.startsWith('/') ? imageUrl : imageUrl}
                 alt="preview"
                 style={{ width: 80, height: 80, objectFit: 'contain', borderRadius: 8,
-                  border: '1px solid var(--border)', background: '#f8fafc', flexShrink: 0 }}
+                  border: '1px solid var(--border)', background: 'var(--bg-soft)', flexShrink: 0 }}
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             )}
@@ -1345,7 +1345,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           if (!missing.length) return null;
           return (
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#B45309' }}>Обов&apos;язкові без значення:</span>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-warn)' }}>Обов&apos;язкові без значення:</span>
               {missing.map(label => (
                 <button
                   key={label}
@@ -1357,7 +1357,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                   title="Додати рядок"
                   style={{
                     fontSize: '11px', padding: '2px 8px', borderRadius: '999px',
-                    border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309',
+                    border: '1px solid #FDE68A', background: 'var(--bg-warn)', color: 'var(--color-warn)',
                     fontWeight: 600, cursor: 'pointer',
                   }}
                 >
@@ -1399,7 +1399,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                   onClick={() => removeChar(i)}
                   style={{
                     width: '44px', height: '44px', borderRadius: '8px', border: '1px solid #FECACA',
-                    background: '#FEF2F2', color: '#DC2626', cursor: 'pointer',
+                    background: 'var(--bg-danger)', color: 'var(--color-danger)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
@@ -1530,7 +1530,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               height: '48px', padding: '0 20px', borderRadius: '10px',
-              border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626',
+              border: '1px solid #FECACA', background: 'var(--bg-danger)', color: 'var(--color-danger)',
               fontSize: '14px', fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -1544,7 +1544,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px',
             height: '48px', padding: '0 28px', borderRadius: '10px',
-            background: '#1E3A5F', color: '#fff', border: 'none',
+            background: 'var(--navy)', color: '#fff', border: 'none',
             fontSize: '14px', fontWeight: 600, cursor: saving || finishing ? 'wait' : 'pointer',
             opacity: saving || finishing ? 0.7 : 1,
           }}

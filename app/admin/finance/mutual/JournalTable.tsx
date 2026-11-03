@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { saldoWords } from '../../../../lib/accounting/mutual-settlements';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 export type JournalItem = {
   href: string;
@@ -16,15 +17,11 @@ export type JournalItem = {
   closing: number;
 };
 
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 /** Сальдо зі знаком; хто кому винен — підказкою (для площадок мінус — «отримано наперед»). */
 function Saldo({ v, special }: { v: number; special: boolean }) {
   if (Math.abs(v) < 0.005) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
   return (
-    <span style={{ color: v > 0 ? '#15803D' : '#B45309' }} title={saldoWords(v, special).text}>
+    <span style={{ color: v > 0 ? 'var(--color-success)' : 'var(--color-warn)' }} title={saldoWords(v, special).text}>
       {v > 0 ? '' : '−'}{fmt(Math.abs(v))}
     </span>
   );

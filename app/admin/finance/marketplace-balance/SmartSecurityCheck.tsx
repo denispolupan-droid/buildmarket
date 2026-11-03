@@ -8,7 +8,7 @@ import { parseSecurityRows, type SecurityRow, type SmartCompare } from '../../..
 const fmt = (v: number) => v.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const smallBtn = (primary: boolean): React.CSSProperties => ({
   height: '28px', padding: '0 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-  border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? '#1E3A5F' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
+  border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
 });
 
 /**
@@ -72,7 +72,7 @@ export default function SmartSecurityCheck() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>Smart за гарантійним платежем</span>
         {res && (
-          <span style={{ fontSize: '13px', fontWeight: 800, color: ok ? '#15803D' : '#DC2626' }}>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
             {ok ? '✓ сходиться' : `розходиться на ${fmt(res.delta)} ₴`}
           </span>
         )}
@@ -84,7 +84,7 @@ export default function SmartSecurityCheck() {
           {busy ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={13} />} Завантажити xlsx
         </button>
       </div>
-      {error && <div style={{ color: '#DC2626', fontSize: '12px', marginTop: '6px' }}>{error}</div>}
+      {error && <div style={{ color: 'var(--color-danger)', fontSize: '12px', marginTop: '6px' }}>{error}</div>}
       {res && (
         <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '6px', fontVariantNumeric: 'tabular-nums', lineHeight: 1.55 }}>
           Rozetka зняла <b>{fmt(res.theirTotal)} ₴</b> ({res.count} списань, {res.from} — {res.to}), у нас проведено <b>{fmt(res.oursTotal)} ₴</b>.
@@ -94,7 +94,7 @@ export default function SmartSecurityCheck() {
               {res.unattributed.map(u => `${u.ts.slice(0, 10)} — ${fmt(u.amount)} ₴`).join('; ')}.
             </div>
           )}
-          {posted != null && <div style={{ marginTop: '4px', color: '#15803D', fontWeight: 700 }}>Проведено {fmt(posted)} ₴ як Smart без замовлення.</div>}
+          {posted != null && <div style={{ marginTop: '4px', color: 'var(--color-success)', fontWeight: 700 }}>Проведено {fmt(posted)} ₴ як Smart без замовлення.</div>}
           {!ok && res.delta > 0 && rows && (
             <div style={{ marginTop: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               {!confirm

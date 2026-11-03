@@ -108,27 +108,27 @@ export default function NpReturnModal({ orderId, orderNumber, onClose, onDone }:
   // Білий фон навмисно: кольори тексту нижче підібрані під нього (темна тема — пізніше).
   const box: React.CSSProperties = { background: '#fff', padding: '24px', width: '100%' };
   const row: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '12.5px', padding: '3px 0' };
-  const muted: React.CSSProperties = { color: '#6B7280' };
+  const muted: React.CSSProperties = { color: 'var(--text-gray)' };
 
   return (
     <Modal open onClose={onClose} width={470} padding={0} dismissible={false} aria-label="Повернення Новою Поштою" style={{ background: '#fff' }}>
       <div style={box}>
-        <div style={{ fontWeight: 800, fontSize: '16px', color: '#B45309' }}>↩ Повернення Новою Поштою</div>
-        <div style={{ fontSize: '12.5px', color: '#6B7280', margin: '4px 0 16px', lineHeight: 1.5 }}>
+        <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--color-warn)' }}>↩ Повернення Новою Поштою</div>
+        <div style={{ fontSize: '12.5px', color: 'var(--text-gray)', margin: '4px 0 16px', lineHeight: 1.5 }}>
           Замовлення #{orderNumber} — заявка створюється одразу в кабінеті НП. Посилка поїде назад
           на наше відділення, зберігання перестане капати.
         </div>
 
         {loadErr && (
-          <div style={{ padding: '10px 12px', borderRadius: '9px', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12.5px' }}>
+          <div style={{ padding: '10px 12px', borderRadius: '9px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', color: '#B91C1C', fontSize: '12.5px' }}>
             {loadErr}
           </div>
         )}
 
-        {!info && !loadErr && <div style={{ fontSize: '13px', color: '#6B7280' }}>Запитуємо НП…</div>}
+        {!info && !loadErr && <div style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Запитуємо НП…</div>}
 
         {info && done && (
-          <div style={{ padding: '12px', borderRadius: '9px', background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D', fontSize: '13px', lineHeight: 1.6 }}>
+          <div style={{ padding: '12px', borderRadius: '9px', background: 'var(--bg-success)', border: '1px solid #BBF7D0', color: 'var(--color-success)', fontSize: '13px', lineHeight: 1.6 }}>
             <div style={{ fontWeight: 700 }}>✓ Заявка на повернення створена{done.number ? `: ${done.number}` : ''}</div>
             <div style={{ color: '#166534' }}>Посилка поїде на {done.returnTo}. Зворотну ЕН НП створить сама — вона зʼявиться в кабінеті.</div>
           </div>
@@ -136,7 +136,7 @@ export default function NpReturnModal({ orderId, orderNumber, onClose, onDone }:
 
         {info && !done && (
           <>
-            <div style={{ padding: '10px 12px', borderRadius: '9px', background: 'var(--bg-soft, #F8FAFC)', border: '1px solid var(--border-light, #E2E8F0)', marginBottom: '14px' }}>
+            <div style={{ padding: '10px 12px', borderRadius: '9px', background: 'var(--bg-soft, var(--bg-soft))', border: '1px solid var(--border-light, var(--border))', marginBottom: '14px' }}>
               <div style={row}><span style={muted}>ТТН</span><span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{info.ttn}</span></div>
               {info.carrier && <>
                 <div style={row}><span style={muted}>Статус НП</span><span style={{ fontWeight: 600 }}>{info.carrier.status}</span></div>
@@ -170,27 +170,27 @@ export default function NpReturnModal({ orderId, orderNumber, onClose, onDone }:
                 </button>
               </div>
             ) : !info.possible ? (
-              <div style={{ padding: '10px 12px', borderRadius: '9px', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12.5px', lineHeight: 1.5, marginBottom: '14px' }}>
+              <div style={{ padding: '10px 12px', borderRadius: '9px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', color: '#B91C1C', fontSize: '12.5px', lineHeight: 1.5, marginBottom: '14px' }}>
                 {info.error ?? 'НП не дозволяє створити повернення по цій ТТН.'}
               </div>
             ) : (
               <>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' }}>
                   Причина {info.reason ? `· ${info.reason.Description}` : ''}
                 </label>
                 <select value={subtype} onChange={e => setSubtype(e.target.value)}
-                  style={{ width: '100%', height: '38px', padding: '0 10px', border: '1.5px solid var(--border, #E2E8F0)', borderRadius: '9px', fontSize: '13px', boxSizing: 'border-box', background: '#fff', marginBottom: '12px' }}>
+                  style={{ width: '100%', height: '38px', padding: '0 10px', border: '1.5px solid var(--border, var(--border))', borderRadius: '9px', fontSize: '13px', boxSizing: 'border-box', background: '#fff', marginBottom: '12px' }}>
                   {info.subtypes.map(s => <option key={s.Ref} value={s.Ref}>{s.Description}</option>)}
                 </select>
 
-                <label style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '5px' }}>
                   Коментар (необовʼязково) — лише українською, без латиниці, «#» і «:»
                 </label>
                 <input value={note} onChange={e => setNote(e.target.value)}
                   placeholder={`Повернення по замовленню ${orderNumber}`}
-                  style={{ width: '100%', height: '38px', padding: '0 10px', border: '1.5px solid var(--border, #E2E8F0)', borderRadius: '9px', fontSize: '13px', boxSizing: 'border-box', marginBottom: '8px' }} />
+                  style={{ width: '100%', height: '38px', padding: '0 10px', border: '1.5px solid var(--border, var(--border))', borderRadius: '9px', fontSize: '13px', boxSizing: 'border-box', marginBottom: '8px' }} />
 
-                <div style={{ fontSize: '11.5px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 10px', lineHeight: 1.5, marginBottom: '14px' }}>
+                <div style={{ fontSize: '11.5px', color: 'var(--text-warn-dark)', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 10px', lineHeight: 1.5, marginBottom: '14px' }}>
                   Зворотна доставка платна — НП спише її з нашого рахунку ({info.address?.NonCash ? 'безготівково' : 'готівкою'}).
                   Товар потрібно буде оприбуткувати після отримання; фінансове повернення оформлюється окремо кнопкою «↩ Повернення».
                 </div>
@@ -200,17 +200,17 @@ export default function NpReturnModal({ orderId, orderNumber, onClose, onDone }:
         )}
 
         {err && (
-          <div style={{ padding: '9px 11px', borderRadius: '9px', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12.5px', marginBottom: '12px' }}>{err}</div>
+          <div style={{ padding: '9px 11px', borderRadius: '9px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', color: '#B91C1C', fontSize: '12.5px', marginBottom: '12px' }}>{err}</div>
         )}
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
           <button onClick={onClose}
-            style={{ flex: 1, height: '38px', borderRadius: '9px', border: '1px solid var(--border, #E2E8F0)', background: 'none', color: 'var(--text-secondary, #475569)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ flex: 1, height: '38px', borderRadius: '9px', border: '1px solid var(--border, var(--border))', background: 'none', color: 'var(--text-secondary, var(--text-secondary))', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             {done ? 'Закрити' : 'Скасувати'}
           </button>
           {info && !done && !info.existing && info.possible && (
             <button onClick={create} disabled={busy}
-              style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: busy ? '#94A3B8' : '#B45309', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
+              style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: busy ? 'var(--text-muted)' : 'var(--color-warn)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
               {busy ? '⏳ Створюємо…' : '↩ Створити повернення'}
             </button>
           )}

@@ -10,6 +10,7 @@ import { MonthBars, TrendBadge } from './overview-charts';
 import { requireStaffPage } from '../../../lib/auth-guard';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { fmtInt as fmt } from '../../../lib/format';
 
 // «Огляд» — перший екран фінансів у стилі BI (Stripe/Metabase): KPI з
 // порівнянням до попереднього періоду, воронка, динаміка, action-центр.
@@ -21,10 +22,6 @@ export const dynamic = 'force-dynamic';
 
 // YYYY-MM-DD → дд.мм для підписів періоду
 const dmy = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
-}
 
 /** Дата останнього успішного оновлення живого залишку — «12.08» або «12.08, 18:34» за сьогодні. */
 function staleLabel(iso: string): string {
@@ -168,12 +165,12 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 return (
                   <Link key={s.key} href={s.href} style={{ textDecoration: 'none', display: 'block' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px', gap: '8px' }}>
-                      <span style={{ color: warn ? '#B45309' : 'var(--text-secondary)', fontWeight: warn ? 600 : 400, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: warn ? 'var(--color-warn)' : 'var(--text-secondary)', fontWeight: warn ? 600 : 400, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {warn && <span className="fin-dot orange" />}{s.label}
                       </span>
-                      <span style={{ fontWeight: 700, color: warn ? '#B45309' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      <span style={{ fontWeight: 700, color: warn ? 'var(--color-warn)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                         {s.count}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {fmt(s.sum)} ₴</span>
-                        {s.stuck && <span style={{ color: '#B45309', fontWeight: 600, marginLeft: '6px' }}>● {s.stuck}</span>}
+                        {s.stuck && <span style={{ color: 'var(--color-warn)', fontWeight: 600, marginLeft: '6px' }}>● {s.stuck}</span>}
                       </span>
                     </div>
                     <div className="fin-funnel-track">
@@ -189,8 +186,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             {ov.buyout.pct === null ? (
               <>Викуп: завершених замовлень за період ще немає</>
             ) : (
-              <>Викуп завершених за період: <b style={{ color: ov.buyout.pct >= 90 ? '#15803D' : '#B45309' }}>{ov.buyout.pct}%</b>
-                {ov.buyout.refused > 0 && <span style={{ color: '#DC2626' }}> · відмов {ov.buyout.refused} на {fmt(ov.buyout.refusedSum)} ₴</span>}
+              <>Викуп завершених за період: <b style={{ color: ov.buyout.pct >= 90 ? 'var(--color-success)' : 'var(--color-warn)' }}>{ov.buyout.pct}%</b>
+                {ov.buyout.refused > 0 && <span style={{ color: 'var(--color-danger)' }}> · відмов {ov.buyout.refused} на {fmt(ov.buyout.refusedSum)} ₴</span>}
               </>
             )}
           </div>
@@ -217,7 +214,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 return (
                   <Link key={w.label} href={`/admin/finance${qs ? `?${qs}` : ''}`}
                     style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, textDecoration: 'none',
-                      color: active ? '#fff' : 'var(--text-secondary)', background: active ? '#1E3A5F' : 'var(--bg-soft)' }}>
+                      color: active ? '#fff' : 'var(--text-secondary)', background: active ? 'var(--navy)' : 'var(--bg-soft)' }}>
                     {w.label}
                   </Link>
                 );
@@ -245,7 +242,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 const shownTotal = monoShown + npShown + ov.accounts.cash;
                 return (
                   <>
-                    <div className="fin-money-val" style={{ color: shownTotal >= 0 ? '#15803D' : '#DC2626' }}
+                    <div className="fin-money-val" style={{ color: shownTotal >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
                       title={`Mono ${fmt(monoShown)} + НоваПей ${fmt(npShown)} + каса ${fmt(ov.accounts.cash)}`}>
                       {fmt(shownTotal)} ₴
                     </div>
@@ -268,13 +265,13 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                         { label: 'Каса', v: ov.accounts.cash, stale: null },
                       ].map(a => (
                         <div key={a.label} title={a.title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
-                          <span style={{ color: a.stale ? '#B45309' : 'var(--text-muted)', fontWeight: a.stale ? 700 : undefined, minWidth: 0, whiteSpace: 'nowrap' }}>
+                          <span style={{ color: a.stale ? 'var(--color-warn)' : 'var(--text-muted)', fontWeight: a.stale ? 700 : undefined, minWidth: 0, whiteSpace: 'nowrap' }}>
                             {a.label}
                             {/* Мовчазно зламану інтеграцію не видно тижнями, тож кажемо прямо.
                                 Коротко — рядок вузький, подробиці в підказці. */}
                             {a.stale && <AlertTriangle size={11} color="#B45309" style={{ verticalAlign: '-1px', marginLeft: 4 }} />}
                           </span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? '#DC2626' : 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>{fmt(a.v)} ₴</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: a.v < 0 ? 'var(--color-danger)' : 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>{fmt(a.v)} ₴</span>
                         </div>
                       ))}
                     </div>
@@ -286,8 +283,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                       <div style={{ marginTop: '3px', paddingTop: '5px', borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <div title="Товар вручено, гроші вже зібрані, але ще не на наших рахунках: наложка в НоваПей до виплати, Пром-оплата й Rozetka Pay до виплати площадки (за обліком)"
                           style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
-                          <span style={{ color: '#B45309', fontWeight: 700, minWidth: 0 }}>Вручено, гроші в дорозі</span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#B45309', whiteSpace: 'nowrap', flexShrink: 0 }}>+{fmt(ov.moneyTransit.delivered)} ₴</span>
+                          <span style={{ color: 'var(--color-warn)', fontWeight: 700, minWidth: 0 }}>Вручено, гроші в дорозі</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--color-warn)', whiteSpace: 'nowrap', flexShrink: 0 }}>+{fmt(ov.moneyTransit.delivered)} ₴</span>
                         </div>
                         {[
                           { label: 'НоваПей', v: ov.moneyTransit.heldNovapay, title:
@@ -306,8 +303,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                         {ov.moneyTransit.shipped > 0 && (
                           <div title={`Гроші, яких ще немає на наших рахунках, за відправлені й не вручені посилки: наложка ${fmt(ov.moneyTransit.shippedCod)} ₴ + передоплати площадок, ще не виплачені RozetkaPay, ${fmt(ov.moneyTransit.shippedPrepaid)} ₴. Оплати карткою на сайті та вже виплачені передоплати сюди не входять — вони вже в нас. Скільки товару їде і що на ньому заробимо — «Аналітика», картка «В дорозі».`}
                             style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
-                            <span style={{ color: '#B45309', fontWeight: 600, minWidth: 0 }}>Ще їде до покупця</span>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#B45309', whiteSpace: 'nowrap', flexShrink: 0 }}>+{fmt(ov.moneyTransit.shipped)} ₴</span>
+                            <span style={{ color: 'var(--color-warn)', fontWeight: 600, minWidth: 0 }}>Ще їде до покупця</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--color-warn)', whiteSpace: 'nowrap', flexShrink: 0 }}>+{fmt(ov.moneyTransit.shipped)} ₴</span>
                           </div>
                         )}
                       </div>
@@ -319,14 +316,14 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             <div>
               <div className="fin-kpi-label">Дебіторка · нам винні</div>
               <div className="fin-money-val">{fmt(ov.ar.total)} ₴</div>
-              <div className="fin-money-sub" style={ov.ar.overdueCount > 0 ? { color: '#DC2626', fontWeight: 600 } : undefined}>
+              <div className="fin-money-sub" style={ov.ar.overdueCount > 0 ? { color: 'var(--color-danger)', fontWeight: 600 } : undefined}>
                 {ov.ar.overdueCount > 0 ? `● прострочено ${fmt(ov.ar.overdueSum)} ₴` : 'без прострочень'}
               </div>
               <div className="fin-money-sub"><Link href="/admin/finance/mutual?group=customers" style={{ color: 'var(--text-muted)' }}>клієнти →</Link></div>
             </div>
             <div>
               <div className="fin-kpi-label">Кредиторка · ми винні</div>
-              <div className="fin-money-val" style={{ color: ov.ap.total > 0 ? '#B45309' : undefined }}>{fmt(ov.ap.total)} ₴</div>
+              <div className="fin-money-val" style={{ color: ov.ap.total > 0 ? 'var(--color-warn)' : undefined }}>{fmt(ov.ap.total)} ₴</div>
               <div className="fin-money-sub"><Link href="/admin/finance/mutual?group=suppliers" style={{ color: 'var(--text-muted)' }}>постачальники →</Link></div>
             </div>
             <div>
@@ -350,7 +347,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               {/* Звичайний перенос: місце внизу колонки є, а трикрапка з'їдала суму */}
               {(ov.mpTransit.prom + ov.mpTransit.rozetka) > 0 && (
                 <div className="fin-money-sub" title="Комісії по відвантажених, ще не доставлених посилках — площадка спише їх при доставці">
-                  в дорозі комісій <span style={{ color: '#B45309', fontWeight: 600, whiteSpace: 'nowrap' }}>−{fmt(ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</span>
+                  в дорозі комісій <span style={{ color: 'var(--color-warn)', fontWeight: 600, whiteSpace: 'nowrap' }}>−{fmt(ov.mpTransit.prom + ov.mpTransit.rozetka)} ₴</span>
                   {' · '}<Link href="/admin/finance/marketplace-balance" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>деталі →</Link>
                 </div>
               )}
@@ -368,7 +365,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                   Чиста позиція <span style={{ color: 'var(--text-muted)' }}>· рахунки + МП + нам винні − ми винні</span>
                 </span>
-                <span style={{ fontSize: '14px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: net >= 0 ? '#15803D' : '#DC2626' }}>
+                <span style={{ fontSize: '14px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                   {net >= 0 ? '' : '−'}{fmt(Math.abs(net))} ₴
                 </span>
               </div>

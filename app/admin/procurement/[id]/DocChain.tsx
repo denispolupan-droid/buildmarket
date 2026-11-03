@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, GitBranch, Loader2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { fmtInt as fmt } from '../../../../lib/format';
 
 type LandedCostLine = { document_id: string; cost_type: string; description: string | null; amount: number };
 
@@ -18,7 +19,6 @@ type ChainData = {
   landedCosts:  LandedCostLine[];
 };
 
-function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 function fmtDate(s: string) { return new Date(s).toLocaleDateString('uk-UA'); }
 
 const ACCOUNT_LABELS: Record<string, string> = {
@@ -56,7 +56,7 @@ function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href,
             <span style={{ fontSize: '13px', fontWeight: 600, color: cancelled ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: cancelled ? 'line-through' : 'none' }}>{title}</span>
           )}
           {cancelled && (
-            <span style={{ fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-danger)', background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px' }}>
               Скасовано
             </span>
           )}
@@ -210,7 +210,7 @@ export default function DocChain({ poId }: { poId: string }) {
                               {lines.length > 0 && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
                                   {lines.map(l => (
-                                    <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : '#15803D', display: 'flex', gap: '6px' }}>
+                                    <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : 'var(--color-success)', display: 'flex', gap: '6px' }}>
                                       <span style={{ fontFamily: 'monospace' }}>{l.sku}</span>
                                       <span>{l.qty > 0 ? `+${l.qty}` : l.qty} шт</span>
                                     </div>

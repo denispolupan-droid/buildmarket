@@ -76,15 +76,15 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
   return (
     <Modal open onClose={onClose} width={640} padding={0} aria-label="Логотипи брендів" style={{ background: '#fff' }}>
       <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #E2E8F0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ImageIcon size={20} color="#3DBFB8" />
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>Логотипи брендів</div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{brands.length} брендів у каталозі</div>
+              <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>{brands.length} брендів у каталозі</div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 4 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
             <X size={20} />
           </button>
         </div>
@@ -98,7 +98,7 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
             return (
               <div key={brand} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
                 <div style={{
-                  width: 56, height: 40, borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC',
+                  width: 56, height: 40, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-soft)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden',
                 }}>
                   {logoUrl
@@ -113,7 +113,7 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
                 <label
                   title={logoUrl ? undefined : 'Спочатку завантажте лого'}
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748B',
+                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-soft)',
                     cursor: logoUrl && !isBusy ? 'pointer' : 'default', opacity: logoUrl ? 1 : 0.4, flexShrink: 0,
                   }}
                 >

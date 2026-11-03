@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Printer, RefreshCw } from 'lucide-react';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 /**
  * Акт звірки взаємних розрахунків — у формі, як його друкують постачальники з 1С:
@@ -47,10 +48,6 @@ type Props = {
   ourSigner: string;
   mode: 'supplier' | 'customer';
 };
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 /** 2026-10-21 → 21.10.2026 (без часових поясів: дата обліку — це вже дата) */
 function fmtDate(d: string) {
@@ -133,7 +130,7 @@ export default function ActClient({
             style={{
               display: 'flex', alignItems: 'center', gap: '7px',
               height: '36px', padding: '0 18px', borderRadius: '8px',
-              border: 'none', background: '#1E3A5F', color: '#fff',
+              border: 'none', background: 'var(--navy)', color: '#fff',
               fontSize: '13px', fontWeight: 700, cursor: 'pointer',
             }}>
             <Printer size={14} /> Друкувати акт
@@ -147,7 +144,7 @@ export default function ActClient({
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
           <input type="date" value={to} onChange={e => setTo(e.target.value)} style={inp} />
           <button onClick={applyDates}
-            style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <RefreshCw size={13} /> Оновити
           </button>
         </div>}
@@ -201,7 +198,7 @@ export default function ActClient({
                   {r.docText}
                   {r.orderNumber != null && (
                     <a href={`/admin?status=&q=${r.orderNumber}`} className="act-no-print"
-                      style={{ marginLeft: '4px', color: '#1D4ED8', textDecoration: 'none', fontWeight: 700 }}>↗</a>
+                      style={{ marginLeft: '4px', color: 'var(--color-info)', textDecoration: 'none', fontWeight: 700 }}>↗</a>
                   )}
                 </td>
                 <td style={num}>{r.debit > 0.005 ? fmt(r.debit) : ''}</td>
@@ -246,7 +243,7 @@ export default function ActClient({
         </div>
 
         {rows.length === 0 && (
-          <div className="act-no-print" style={{ marginTop: '16px', color: '#64748B' }}>Операцій за обраний період немає</div>
+          <div className="act-no-print" style={{ marginTop: '16px', color: 'var(--text-soft)' }}>Операцій за обраний період немає</div>
         )}
       </div>
 

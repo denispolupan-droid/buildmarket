@@ -11,8 +11,8 @@ import {
   type ReturnKind, type ReturnStage, type ReturnReason, type RefundMethod,
 } from '../../../../lib/accounting/returns-rules';
 import type { ReturnRow, ReturnsKpi, ReturnCard } from '../../../../lib/accounting/returns';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
-const fmt = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date().toISOString().slice(0, 10);
 const dateShort = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 const dateTime = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -46,7 +46,7 @@ function StageBadge({ stage, status }: { stage: ReturnStage; status: string }) {
 function KindBadge({ kind }: { kind: ReturnKind }) {
   return (
     <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 7px', borderRadius: '6px',
-      background: kind === 'customer' ? '#FFFBEB' : '#EFF6FF', color: kind === 'customer' ? '#B45309' : '#1E3A5F', whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>
+      background: kind === 'customer' ? 'var(--bg-warn)' : 'var(--brand-blue-light)', color: kind === 'customer' ? 'var(--color-warn)' : 'var(--navy)', whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>
       {kind === 'customer' ? 'ПВ · від покупця' : 'ПП · постачальнику'}
     </span>
   );
@@ -165,8 +165,8 @@ export default function ReturnsClient() {
           </div>
         </div>
 
-        {error && <div style={{ padding: '10px 18px', fontSize: '12.5px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {error}</div>}
-        {toast && <div style={{ padding: '10px 18px', fontSize: '12.5px', color: '#15803D', fontWeight: 600 }}>{toast}</div>}
+        {error && <div style={{ padding: '10px 18px', fontSize: '12.5px', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {error}</div>}
+        {toast && <div style={{ padding: '10px 18px', fontSize: '12.5px', color: 'var(--color-success)', fontWeight: 600 }}>{toast}</div>}
         {loading && rows.length === 0 && <div style={{ padding: '24px', fontSize: '13px', color: 'var(--text-muted)' }}>Завантаження…</div>}
         {!loading && filtered.length === 0 && <div style={{ padding: '24px', fontSize: '13px', color: 'var(--text-muted)' }}>Повернень не знайдено</div>}
 
@@ -424,13 +424,13 @@ function Card({ card, onChanged, onToast, onError }: {
         </div>
       )}
 
-      {err && <div style={{ color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {err}</div>}
+      {err && <div style={{ color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {err}</div>}
 
       {/* ── Хто і на яких умовах ─────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '12px' }}>
         <Section title="Сторони й підстава">
           <Field k={isCustomer ? 'Покупець' : 'Постачальник'} v={<b>{card.counterparty}</b>} />
-          <Field k="Замовлення" v={card.order_number ? <Link href={`/admin/orders/${card.order_id}`} style={{ color: '#1E3A5F', fontWeight: 700 }}>#{card.order_number}</Link> : '—'} />
+          <Field k="Замовлення" v={card.order_number ? <Link href={`/admin/orders/${card.order_id}`} style={{ color: 'var(--navy)', fontWeight: 700 }}>#{card.order_number}</Link> : '—'} />
           {isCustomer && <Field k="Постачальник товару" v={lineSuppliers || '—'} />}
           <Field k="Створив" v={`${card.created_by ?? '—'} · ${dateTime(card.created_at)}`} />
         </Section>
@@ -492,9 +492,9 @@ function Card({ card, onChanged, onToast, onError }: {
             <div key={e.txn_id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 110px', gap: '10px', padding: '8px 0', borderTop: i ? `1px solid ${LINE}` : 'none', alignItems: 'baseline' }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{dateShort(e.business_date)}</span>
               <span>
-                <span style={{ color: '#1E3A5F', fontWeight: 700 }}>Дт</span> {accountLabel(e.debit.account, e.debit.party)}
+                <span style={{ color: 'var(--navy)', fontWeight: 700 }}>Дт</span> {accountLabel(e.debit.account, e.debit.party)}
                 <span style={{ color: 'var(--text-muted)' }}> → </span>
-                <span style={{ color: '#B45309', fontWeight: 700 }}>Кт</span> {accountLabel(e.credit.account, e.credit.party)}
+                <span style={{ color: 'var(--color-warn)', fontWeight: 700 }}>Кт</span> {accountLabel(e.credit.account, e.credit.party)}
                 {e.description && <div style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}>{e.description}</div>}
               </span>
               <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(e.amount)} ₴</span>
@@ -531,7 +531,7 @@ function Stepper({ steps, cancelled }: { steps: Step[]; cancelled: boolean }) {
           <div key={s.label} style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <span style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box', background: s.done ? color : 'var(--bg-card)', border: `2px solid ${color}` }} />
-              {next && <span style={{ flex: 1, height: '2px', margin: '0 6px', background: s.done && next.done ? '#16A34A' : 'var(--border)' }} />}
+              {next && <span style={{ flex: 1, height: '2px', margin: '0 6px', background: s.done && next.done ? 'var(--status-instock)' : 'var(--border)' }} />}
             </div>
             <div style={{ marginTop: '6px', paddingRight: '10px', fontSize: '12.5px', fontWeight: s.done || isCur ? 700 : 500, color: s.done || isCur ? 'var(--text-primary)' : 'var(--text-muted)' }}>
               {s.href ? <Link href={s.href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed currentColor' }}>{s.label}</Link> : s.label}

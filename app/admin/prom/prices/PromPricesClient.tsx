@@ -60,8 +60,8 @@ function marginColor(pct: number) {
 
 const TH: React.CSSProperties = {
   padding: '8px 12px', textAlign: 'left', fontWeight: 600,
-  fontSize: 11, color: '#64748B', whiteSpace: 'nowrap',
-  borderBottom: '1px solid #E2E8F0', background: '#FAFAFA',
+  fontSize: 11, color: 'var(--text-soft)', whiteSpace: 'nowrap',
+  borderBottom: '1px solid var(--border)', background: '#FAFAFA',
   textTransform: 'uppercase', letterSpacing: '.03em',
 };
 
@@ -223,18 +223,18 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid #E2E8F0', color: '#6B7280', textDecoration: 'none' }}>
+        <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', color: 'var(--text-gray)', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <div>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Товари Prom.ua</h1>
-          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>{totalEnabled} / {products.length} увімкнено в Prom</p>
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-gray)' }}>{totalEnabled} / {products.length} увімкнено в Prom</p>
         </div>
       </div>
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 42, borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, fontWeight: 500, color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', background: '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap', background: '#fff' }}>
           <input type="checkbox"
             checked={filteredRows.length > 0 && filteredRows.every(r => selected.has(r.p.sku))}
             ref={el => { if (el) el.indeterminate = filteredRows.some(r => selected.has(r.p.sku)) && !filteredRows.every(r => selected.has(r.p.sku)); }}
@@ -247,11 +247,11 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
         </label>
         <button
           onClick={() => setCollapsed(allCollapsed ? Object.fromEntries(allSlugs.map(s => [s, false])) : Object.fromEntries(allSlugs.map(s => [s, true])))}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, fontWeight: 500, background: '#fff', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, background: '#fff', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
         >
           {allCollapsed ? <><ChevronDown size={13} /> Розгорнути всі</> : <><ChevronRight size={13} /> Згорнути всі</>}
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 42, borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, fontWeight: 500, color: '#475569', whiteSpace: 'nowrap', background: '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', background: '#fff' }}>
           <span>Всі в Prom</span>
           <button
             onClick={() => {
@@ -262,45 +262,45 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
               if (window.confirm(msg)) toggleAll(next);
             }}
             title={totalEnabled === products.length ? 'Вимкнути всі з Prom' : 'Увімкнути всі в Prom'}
-            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? '#22C55E' : totalEnabled > 0 ? '#86EFAC' : '#CBD5E1', transition: 'background 0.2s' }}
+            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? '#22C55E' : totalEnabled > 0 ? 'var(--border-success)' : '#CBD5E1', transition: 'background 0.2s' }}
           >
             <span style={{ position: 'absolute', top: 2, left: totalEnabled === products.length ? 18 : totalEnabled > 0 ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>
         </label>
         <div style={{ position: 'relative', flex: '1 1 220px' }}>
-          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input type="text" placeholder="Пошук за назвою, SKU, брендом..." value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ width: '100%', height: 42, paddingLeft: 38, paddingRight: 14, borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            style={{ width: '100%', height: 42, paddingLeft: 38, paddingRight: 14, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
         </div>
         <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)}
-          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, background: filterBrand ? '#EFF6FF' : '#fff', minWidth: 150 }}>
+          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterBrand ? 'var(--brand-blue-light)' : '#fff', minWidth: 150 }}>
           <option value="">Всі бренди</option>
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, background: filterStatus ? '#EFF6FF' : '#fff', minWidth: 170 }}>
+          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterStatus ? 'var(--brand-blue-light)' : '#fff', minWidth: 170 }}>
           <option value="">Всі статуси Prom</option>
           <option value="on">Увімкнено в Prom</option>
           <option value="off">Виключено з Prom</option>
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-          <span style={{ fontSize: 12, color: '#64748B', whiteSpace: 'nowrap' }}>Наценка на всі:</span>
+          <span style={{ fontSize: 12, color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>Наценка на всі:</span>
           <div style={{ position: 'relative' }}>
             <input value={globalMarkup} onChange={e => setGlobalMarkup(e.target.value)} onKeyDown={e => e.key === 'Enter' && applyGlobalMarkup()}
               type="number" min="0" max="200" step="0.5" placeholder="0"
-              style={{ width: 64, height: 42, padding: '0 20px 0 8px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, boxSizing: 'border-box' }} />
-            <span style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#94A3B8', pointerEvents: 'none' }}>%</span>
+              style={{ width: 64, height: 42, padding: '0 20px 0 8px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, boxSizing: 'border-box' }} />
+            <span style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
           </div>
           <button onClick={applyGlobalMarkup} disabled={globalSaving || !globalMarkup}
-            style={{ height: 42, padding: '0 14px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: globalMarkup && !globalSaving ? 'pointer' : 'default', background: globalMarkup && !globalSaving ? '#2563EB' : '#F1F5F9', color: globalMarkup && !globalSaving ? '#fff' : '#94A3B8', whiteSpace: 'nowrap' }}>
+            style={{ height: 42, padding: '0 14px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: globalMarkup && !globalSaving ? 'pointer' : 'default', background: globalMarkup && !globalSaving ? '#2563EB' : '#F1F5F9', color: globalMarkup && !globalSaving ? '#fff' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {globalSaving ? 'Зберігаю...' : 'Застосувати'}
           </button>
         </div>
       </div>
 
       {/* Знайдено */}
-      <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>
+      <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 12 }}>
         Знайдено: <strong>{filteredRows.length}</strong> товарів у <strong>{grouped.size}</strong> категоріях
         {selected.size > 0 && <span style={{ marginLeft: 8, color: '#2563EB', fontWeight: 600 }}>· вибрано {selected.size}</span>}
       </div>
@@ -324,36 +324,36 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
             : null;
 
           return (
-            <div key={catSlug} style={{ background: '#fff', borderRadius: 10, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+            <div key={catSlug} style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
 
               {/* Category header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: '#F8FAFC', borderBottom: isCollapsed ? 'none' : '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--bg-soft)', borderBottom: isCollapsed ? 'none' : '1px solid var(--border)' }}>
                 <button onClick={() => setCollapsed(p => ({ ...p, [catSlug]: !isCollapsed }))} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   {isCollapsed ? <ChevronRight size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
                 </button>
                 <button
                   onClick={() => bulkToggle(catSlug, !allOn)}
                   title={allOn ? 'Вимкнути всі в Prom' : 'Увімкнути всі в Prom'}
-                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? '#22C55E' : someOn ? '#86EFAC' : '#CBD5E1', transition: 'background 0.2s' }}
+                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? '#22C55E' : someOn ? 'var(--border-success)' : '#CBD5E1', transition: 'background 0.2s' }}
                 >
                   <span style={{ position: 'absolute', top: 2, left: allOn ? 18 : someOn ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </button>
                 <span onClick={() => setCollapsed(p => ({ ...p, [catSlug]: !isCollapsed }))} style={{ fontWeight: 600, fontSize: 13, color: '#1E293B', flex: 1, cursor: 'pointer' }}>
                   {cat?.name ?? catSlug}
                 </span>
-                <span style={{ fontSize: 11, color: '#94A3B8' }}>{rows.length} товарів</span>
-                {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FFF7ED', color: '#92400E' }}>комісія {commission}%</span>}
-                {avgMarkup !== null && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#EFF6FF', color: '#1D4ED8' }}>наценка ~{avgMarkup}%</span>}
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rows.length} товарів</span>
+                {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FFF7ED', color: 'var(--text-warn-dark)' }}>комісія {commission}%</span>}
+                {avgMarkup !== null && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'var(--brand-blue-light)', color: 'var(--color-info)' }}>наценка ~{avgMarkup}%</span>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>Наценка:</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>Наценка:</span>
                   <div style={{ position: 'relative' }}>
                     <input value={catMarkupInputs[catSlug] ?? ''} onChange={e => setCatMarkupInputs(p => ({ ...p, [catSlug]: e.target.value }))} onKeyDown={e => e.key === 'Enter' && applyBulkMarkup(catSlug)}
                       type="number" min="0" max="200" step="1" placeholder={catMkp != null ? String(catMkp) : '0'}
                       style={{ padding: '3px 18px 3px 6px', borderRadius: 4, border: '1px solid #CBD5E1', fontSize: 11, width: 52, boxSizing: 'border-box' }} />
-                    <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: '#94A3B8', pointerEvents: 'none' }}>%</span>
+                    <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
                   </div>
                   <button onClick={() => applyBulkMarkup(catSlug)} disabled={catSaving === catSlug || !catMarkupInputs[catSlug]}
-                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', background: catMarkupInputs[catSlug] && catSaving !== catSlug ? '#EFF6FF' : '#F1F5F9', color: catMarkupInputs[catSlug] && catSaving !== catSlug ? '#2563EB' : '#94A3B8', border: `1px solid ${catMarkupInputs[catSlug] && catSaving !== catSlug ? '#BFDBFE' : '#E2E8F0'}`, cursor: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'pointer' : 'default' }}>
+                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', background: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--brand-blue-light)' : '#F1F5F9', color: catMarkupInputs[catSlug] && catSaving !== catSlug ? '#2563EB' : 'var(--text-muted)', border: `1px solid ${catMarkupInputs[catSlug] && catSaving !== catSlug ? '#BFDBFE' : 'var(--border)'}`, cursor: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'pointer' : 'default' }}>
                     {catSaving === catSlug ? 'Зберігаю...' : 'Застосувати'}
                   </button>
                 </div>
@@ -401,12 +401,12 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                             <input type="checkbox" checked={isSelected} onChange={() => setSelected(prev => { const s = new Set(prev); s.has(p.sku) ? s.delete(p.sku) : s.add(p.sku); return s; })}
                               style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
                           </td>
-                          <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>{p.sku}</td>
+                          <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>{p.sku}</td>
                           <td style={{ padding: '8px 12px', maxWidth: 300 }}>
                             <div style={{ fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                            {p.volume && <div style={{ fontSize: 11, color: '#94A3B8' }}>{p.volume}</div>}
+                            {p.volume && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.volume}</div>}
                           </td>
-                          <td style={{ padding: '8px 12px', color: '#475569', whiteSpace: 'nowrap' }}>{p.brand}</td>
+                          <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.brand}</td>
                           <td style={{ padding: '8px 12px', maxWidth: 180 }}>
                             {promCatUrl ? (
                               <a href={promCatUrl} target="_blank" rel="noreferrer"
@@ -420,16 +420,16 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                             )}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#111' }}>
-                            {cost != null ? `${cost.toFixed(0)} ₴` : basePrice > 0 ? <span style={{ color: '#94A3B8' }}>{basePrice.toFixed(0)} ₴</span> : <span style={{ color: '#D1D5DB' }}>—</span>}
+                            {cost != null ? `${cost.toFixed(0)} ₴` : basePrice > 0 ? <span style={{ color: 'var(--text-muted)' }}>{basePrice.toFixed(0)} ₴</span> : <span style={{ color: '#D1D5DB' }}>—</span>}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', color: rComm > 0 ? '#92400E' : '#D1D5DB', fontWeight: 500 }}>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', color: rComm > 0 ? 'var(--text-warn-dark)' : '#D1D5DB', fontWeight: 500 }}>
                             {rComm > 0 ? `${rComm}%` : '—'}
                           </td>
                           {/* Наценка inline */}
                           <td style={{ padding: '4px 8px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                               {productMkp != null && rCatMkp != null && productMkp !== rCatMkp && (
-                                <span style={{ fontSize: 10, color: '#94A3B8' }}>кат:{rCatMkp}</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>кат:{rCatMkp}</span>
                               )}
                               <div style={{ position: 'relative' }}>
                                 <input type="number" min="0" max="200" step="0.5"
@@ -437,8 +437,8 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                                   onChange={e => setMarkups(prev => ({ ...prev, [p.sku]: e.target.value }))}
                                   onBlur={e => saveMarkup(p.sku, e.target.value)}
                                   placeholder={rCatMkp != null ? `${rCatMkp}` : '0'}
-                                  style={{ width: 56, height: 26, padding: '0 18px 0 6px', borderRadius: 5, border: '1px solid #E2E8F0', fontSize: 12, background: markups[p.sku] ? '#EFF6FF' : '#fff', outline: savingMarkup === p.sku ? '2px solid #93C5FD' : undefined }} />
-                                <span style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: '#94A3B8', pointerEvents: 'none' }}>%</span>
+                                  style={{ width: 56, height: 26, padding: '0 18px 0 6px', borderRadius: 5, border: '1px solid var(--border)', fontSize: 12, background: markups[p.sku] ? 'var(--brand-blue-light)' : '#fff', outline: savingMarkup === p.sku ? '2px solid #93C5FD' : undefined }} />
+                                <span style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
                               </div>
                             </div>
                           </td>
@@ -448,7 +448,7 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                             {marginPct != null
-                              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? '#ECFDF5' : marginPct >= 10 ? '#FFFBEB' : '#FEF2F2', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
+                              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? '#ECFDF5' : marginPct >= 10 ? 'var(--bg-warn)' : 'var(--bg-danger)', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
                               : <span style={{ color: '#D1D5DB' }}>—</span>}
                           </td>
                           {/* Toggle */}
@@ -465,17 +465,17 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                                 <input type="number" value={editManual} onChange={e => setEditManual(e.target.value)} placeholder="авто" autoFocus
                                   style={{ width: 68, height: 26, padding: '0 5px', border: '1.5px solid #C2410C', borderRadius: 5, fontSize: 12, outline: 'none' }} />
                                 <button onClick={() => saveManual(p.sku)} disabled={savingEdit}
-                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid #16A34A', background: '#F0FDF4', color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--status-instock)', background: 'var(--bg-success)', color: 'var(--status-instock)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <Check size={11} />
                                 </button>
                                 <button onClick={() => setEditSku(null)}
-                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid #E2E8F0', background: '#F9FAFB', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--border)', background: '#F9FAFB', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <X size={11} />
                                 </button>
                               </div>
                             ) : (
                               <button onClick={() => { setEditSku(p.sku); setEditManual(manual != null && manual > 0 ? String(manual) : ''); }} title="Встановити ручну ціну"
-                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #E2E8F0', background: manual ? '#FFF7ED' : 'transparent', color: manual ? '#C2410C' : '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: manual ? '#FFF7ED' : 'transparent', color: manual ? '#C2410C' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Pencil size={11} />
                               </button>
                             )}
@@ -492,13 +492,13 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
       </div>
 
       {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap', fontSize: 12, color: '#64748B' }}>
+      <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-soft)' }}>
         {([['#16A34A', '≥ 30%'], ['#65A30D', '20–30%'], ['#D97706', '10–20%'], ['#EA580C', '0–10%'], ['#DC2626', '< 0%']] as [string, string][]).map(([color, label]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} /> {label}
           </div>
         ))}
-        <span style={{ color: '#94A3B8' }}>— маржа після комісії Prom · ✎ ручна ціна</span>
+        <span style={{ color: 'var(--text-muted)' }}>— маржа після комісії Prom · ✎ ручна ціна</span>
       </div>
     </div>
   );

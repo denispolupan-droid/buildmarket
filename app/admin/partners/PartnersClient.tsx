@@ -265,7 +265,7 @@ export default function PartnersClient({
           </p>
         </div>
         <button onClick={() => setShowNew(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '9px', background: '#1E3A5F', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '9px', background: 'var(--navy)', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           <Plus size={14} /> Новий контрагент
         </button>
       </div>
@@ -296,8 +296,8 @@ export default function PartnersClient({
 
       {/* ── Pending payouts ─────────────────────────────────────────────────── */}
       {payouts.length > 0 && (
-        <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: '#B45309', marginBottom: '10px' }}>
+        <div style={{ background: '#FEF3C7', border: '1px solid var(--border-warn)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-warn)', marginBottom: '10px' }}>
             ⏳ Заявки на виплату ({payouts.length})
           </div>
           {payouts.map(p => {
@@ -313,11 +313,11 @@ export default function PartnersClient({
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => handlePayout(p.id, 'approve')} disabled={saving}
-                    style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <CheckCircle size={12} /> Підтвердити
                   </button>
                   <button onClick={() => handlePayout(p.id, 'reject')} disabled={saving}
-                    style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1px solid var(--border-danger)', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <XCircle size={12} /> Відхилити
                   </button>
                 </div>
@@ -336,14 +336,14 @@ export default function PartnersClient({
             <button key={t.value} onClick={() => setTab(t.value)}
               style={{
                 height: '32px', padding: '0 14px', borderRadius: '8px', fontSize: '13px', fontWeight: isActive ? 700 : 400,
-                border: `1px solid ${isActive ? '#1E3A5F' : 'var(--border)'}`,
-                background: isActive ? '#1E3A5F' : 'var(--bg-card)',
+                border: `1px solid ${isActive ? 'var(--navy)' : 'var(--border)'}`,
+                background: isActive ? 'var(--navy)' : 'var(--bg-card)',
                 color: isActive ? '#fff' : 'var(--text-secondary)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '6px',
               }}>
               {t.label}
               {cnt > 0 && (
-                <span style={{ fontSize: '10px', fontWeight: 700, background: isActive ? 'rgba(255,255,255,0.25)' : '#E2E8F0', color: isActive ? '#fff' : '#475569', borderRadius: '4px', padding: '0 5px', lineHeight: '16px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: isActive ? '#fff' : 'var(--text-secondary)', borderRadius: '4px', padding: '0 5px', lineHeight: '16px' }}>
                   {cnt}
                 </span>
               )}
@@ -416,7 +416,7 @@ export default function PartnersClient({
                   <div style={{ textAlign: 'right' }}>
                     {hasBalance ? (
                       <>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: avail >= 0 ? '#15803D' : '#DC2626' }}>{fmtMoney(avail)}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: avail >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmtMoney(avail)}</div>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>всього: {fmtMoney(Number(c.balance))}</div>
                       </>
                     ) : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>—</span>}
@@ -430,7 +430,7 @@ export default function PartnersClient({
                   {/* Status */}
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button onClick={() => toggleActive(c.id, c.is_active)}
-                      style={{ padding: '2px 10px', borderRadius: '20px', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: c.is_active ? '#DCFCE7' : '#F1F5F9', color: c.is_active ? '#16A34A' : '#64748B' }}>
+                      style={{ padding: '2px 10px', borderRadius: '20px', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: c.is_active ? '#DCFCE7' : '#F1F5F9', color: c.is_active ? 'var(--status-instock)' : 'var(--text-soft)' }}>
                       {c.is_active ? 'Активний' : 'Вимкнено'}
                     </button>
                   </div>
@@ -465,7 +465,7 @@ export default function PartnersClient({
                       </button>
                       {hasBalance && (
                         <button onClick={() => { setTopupId(isTopup ? null : c.id); setTopupAmount(''); setTopupNote(''); setError(''); }}
-                          style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: '#EFF6FF', color: '#4880B8', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: 'var(--brand-blue-light)', color: '#4880B8', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Plus size={11} /> Поповнити баланс
                         </button>
                       )}
@@ -563,10 +563,10 @@ export default function PartnersClient({
                           <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Нотатки</div>
                           <input value={String(editForm.notes ?? '')} onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))} style={inp} placeholder="Внутрішні примітки" />
                         </div>
-                        {error && <div style={{ color: '#DC2626', fontSize: '12px' }}>{error}</div>}
+                        {error && <div style={{ color: 'var(--color-danger)', fontSize: '12px' }}>{error}</div>}
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button onClick={() => handleSaveEdit(c.id)} disabled={saving}
-                            style={{ height: '32px', padding: '0 16px', borderRadius: '7px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: saving ? 0.7 : 1 }}>
+                            style={{ height: '32px', padding: '0 16px', borderRadius: '7px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: saving ? 0.7 : 1 }}>
                             <Save size={12} /> Зберегти
                           </button>
                           <button onClick={() => { setEditingId(null); setEditForm({}); }}
@@ -589,14 +589,14 @@ export default function PartnersClient({
                           <input value={topupNote} onChange={e => setTopupNote(e.target.value)} placeholder="Оплата рахунку №..." style={inp} />
                         </div>
                         <button onClick={() => handleTopup(c.id)} disabled={saving}
-                          style={{ height: '34px', padding: '0 16px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                          style={{ height: '34px', padding: '0 16px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                           Поповнити
                         </button>
                         <button onClick={() => setTopupId(null)}
                           style={{ height: '34px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '12px', cursor: 'pointer' }}>
                           Скасувати
                         </button>
-                        {error && <div style={{ color: '#DC2626', fontSize: '12px' }}>{error}</div>}
+                        {error && <div style={{ color: 'var(--color-danger)', fontSize: '12px' }}>{error}</div>}
                       </div>
                     )}
 
@@ -622,19 +622,19 @@ export default function PartnersClient({
             <div style={{ background: 'var(--bg-card)', overflow: 'hidden', width: '100%' }}>
 
               {/* Header */}
-              <div style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #0F2040 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ background: 'linear-gradient(135deg, var(--navy) 0%, #0F2040 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                     <span style={{ fontSize: '20px', fontWeight: 800, color: '#fff' }}>{vc.name}</span>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '20px', background: typeInfo.bg, color: typeInfo.color }}>{typeInfo.label}</span>
                   </div>
-                  {vc.company && <div style={{ fontSize: '13px', color: '#94A3B8' }}>{vc.company}</div>}
-                  <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                  {vc.company && <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{vc.company}</div>}
+                  <div style={{ fontSize: '11px', color: 'var(--text-soft)', marginTop: '2px' }}>
                     {vc.customer_number ? `#${String(vc.customer_number).padStart(3, '0')}` : `ID: ${vc.id.slice(0, 8)}…`}
                     {vc.partner_code && ` · Код: ${vc.partner_code}`}
                   </div>
                 </div>
-                <button onClick={() => setViewingId(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => setViewingId(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <X size={16} />
                 </button>
               </div>
@@ -678,10 +678,10 @@ export default function PartnersClient({
 
                 {/* Balance (partners) */}
                 {hasBalance && (
-                  <div style={{ background: Number(avail) >= 0 ? '#F0FDF4' : '#FEF2F2', borderRadius: '10px', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ background: Number(avail) >= 0 ? 'var(--bg-success)' : 'var(--bg-danger)', borderRadius: '10px', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '3px' }}>Баланс</div>
-                      <div style={{ fontSize: '20px', fontWeight: 800, color: avail >= 0 ? '#15803D' : '#DC2626' }}>{fmtMoney(avail)}</div>
+                      <div style={{ fontSize: '20px', fontWeight: 800, color: avail >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmtMoney(avail)}</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Всього: {fmtMoney(Number(vc.balance))} · Заморожено: {fmtMoney(Number(vc.balance_held))}</div>
                     </div>
                     {vc.credit_limit && (
@@ -695,8 +695,8 @@ export default function PartnersClient({
 
                 {/* Notes */}
                 {vc.notes && (
-                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '9px', padding: '12px 16px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginBottom: '4px' }}>Нотатки</div>
+                  <div style={{ background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '9px', padding: '12px 16px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', textTransform: 'uppercase', marginBottom: '4px' }}>Нотатки</div>
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{vc.notes}</div>
                   </div>
                 )}
@@ -706,12 +706,12 @@ export default function PartnersClient({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Договори</div>
                     <button onClick={() => setShowNewContract(v => !v)}
-                      style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>
+                      style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>
                       + Новий
                     </button>
                   </div>
                   {showNewContract && (
-                    <div style={{ background: '#F8FAFC', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                         <div>
                           <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px' }}>Умови оплати</div>
@@ -735,7 +735,7 @@ export default function PartnersClient({
                       </div>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button onClick={() => setShowNewContract(false)} style={{ fontSize: '12px', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>
-                        <button onClick={addCustomerContract} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: '#1E3A5F', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
+                        <button onClick={addCustomerContract} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: 'var(--navy)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
                       </div>
                     </div>
                   )}
@@ -746,17 +746,17 @@ export default function PartnersClient({
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {contracts.map(c => (
-                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: c.is_auto ? '#FAFAFA' : 'var(--bg-soft)', borderRadius: '8px', border: `1px solid ${c.is_auto ? '#E2E8F0' : 'var(--border)'}` }}>
-                          <FileText size={13} style={{ color: c.is_auto ? '#94A3B8' : '#4880B8', flexShrink: 0 }} />
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: c.is_auto ? '#FAFAFA' : 'var(--bg-soft)', borderRadius: '8px', border: `1px solid ${c.is_auto ? 'var(--border)' : 'var(--border)'}` }}>
+                          <FileText size={13} style={{ color: c.is_auto ? 'var(--text-muted)' : '#4880B8', flexShrink: 0 }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</span>
                             {c.is_auto && (
-                              <span title="Створено автоматично при першому замовленні" style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: '#F1F5F9', color: '#94A3B8', marginLeft: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Авто</span>
+                              <span title="Створено автоматично при першому замовленні" style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: '#F1F5F9', color: 'var(--text-muted)', marginLeft: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Авто</span>
                             )}
                             {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms === 'consignment' ? 'Консигнація' : c.payment_terms}</span>}
-                            {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: '#15803D', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
+                            {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: 'var(--color-success)', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
                           </div>
-                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? '#F0FDF4' : '#F1F5F9', color: c.status === 'active' ? '#15803D' : '#64748B' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? 'var(--bg-success)' : '#F1F5F9', color: c.status === 'active' ? 'var(--color-success)' : 'var(--text-soft)' }}>
                             {c.status === 'active' ? 'Активний' : c.status === 'expired' ? 'Закінчився' : 'Неактивний'}
                           </span>
                         </div>
@@ -772,7 +772,7 @@ export default function PartnersClient({
                     <Edit2 size={13} /> Редагувати
                   </button>
                   <button onClick={() => setViewingId(null)}
-                    style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                     Закрити
                   </button>
                 </div>
@@ -802,8 +802,8 @@ export default function PartnersClient({
                 <button key={t.value} onClick={() => setNewForm(prev => ({ ...prev, type: t.value }))}
                   style={{
                     flex: 1, padding: '7px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                    border: `1.5px solid ${newForm.type === t.value ? '#1E3A5F' : 'var(--border)'}`,
-                    background: newForm.type === t.value ? '#1E3A5F' : 'var(--bg-soft)',
+                    border: `1.5px solid ${newForm.type === t.value ? 'var(--navy)' : 'var(--border)'}`,
+                    background: newForm.type === t.value ? 'var(--navy)' : 'var(--bg-soft)',
                     color: newForm.type === t.value ? '#fff' : 'var(--text-secondary)',
                   }}>
                   {t.label}
@@ -906,7 +906,7 @@ export default function PartnersClient({
                   <div style={{ background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                       <div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '3px', textTransform: 'uppercase' }}>Умови оплати</div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', marginBottom: '3px', textTransform: 'uppercase' }}>Умови оплати</div>
                         <select value={newForm.contract_payment_terms}
                           onChange={e => setNewForm(p => ({ ...p, contract_payment_terms: e.target.value }))}
                           style={{ ...inp, cursor: 'pointer' }}>
@@ -916,14 +916,14 @@ export default function PartnersClient({
                         </select>
                       </div>
                       <div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '3px', textTransform: 'uppercase' }}>Днів відстрочки</div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', marginBottom: '3px', textTransform: 'uppercase' }}>Днів відстрочки</div>
                         <input type="number" min={0} value={newForm.contract_credit_days}
                           onChange={e => setNewForm(p => ({ ...p, contract_credit_days: Number(e.target.value) }))}
                           disabled={newForm.contract_payment_terms !== 'deferred'}
                           style={{ ...inp, opacity: newForm.contract_payment_terms !== 'deferred' ? 0.4 : 1 }} />
                       </div>
                       <div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '3px', textTransform: 'uppercase' }}>Кредитний ліміт ₴</div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', marginBottom: '3px', textTransform: 'uppercase' }}>Кредитний ліміт ₴</div>
                         <input type="number" min={0} value={newForm.contract_credit_limit}
                           onChange={e => setNewForm(p => ({ ...p, contract_credit_limit: Number(e.target.value) }))}
                           style={inp} />
@@ -942,7 +942,7 @@ export default function PartnersClient({
 
             </div>{/* end scroll */}
 
-            {newError && <div style={{ color: '#DC2626', fontSize: '13px', margin: '10px 0 4px' }}>{newError}</div>}
+            {newError && <div style={{ color: 'var(--color-danger)', fontSize: '13px', margin: '10px 0 4px' }}>{newError}</div>}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexShrink: 0 }}>
               <button onClick={() => setShowNew(false)}
@@ -950,7 +950,7 @@ export default function PartnersClient({
                 Скасувати
               </button>
               <button onClick={handleCreate} disabled={newSaving}
-                style={{ flex: 1, height: '40px', borderRadius: '9px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: newSaving ? 0.7 : 1 }}>
+                style={{ flex: 1, height: '40px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: newSaving ? 0.7 : 1 }}>
                 {newSaving ? 'Збереження...' : 'Створити'}
               </button>
             </div>
@@ -994,7 +994,7 @@ function PartnerTransactions({ partnerId }: { partnerId: string }) {
             {tx.description && <span style={{ color: 'var(--text-muted)', marginLeft: '8px' }}>{tx.description}</span>}
           </div>
           <div style={{ display: 'flex', gap: '16px', flexShrink: 0 }}>
-            <span style={{ color: tx.amount >= 0 ? '#15803D' : '#DC2626', fontWeight: 700 }}>
+            <span style={{ color: tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 700 }}>
               {tx.amount >= 0 ? '+' : ''}{Number(tx.amount).toFixed(2)} ₴
             </span>
             <span style={{ color: 'var(--text-muted)', minWidth: '76px', textAlign: 'right' }}>

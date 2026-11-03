@@ -216,12 +216,12 @@ export default function NpSenderSettings({
             </button>
           </div>
           {keyStatus === 'ok' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', color: '#15803D' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', color: 'var(--color-success)' }}>
               <Check size={15} /> Підключено{senderName ? `: ${senderName}` : ''}
             </div>
           )}
           {keyStatus === 'error' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', color: '#DC2626' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', color: 'var(--color-danger)' }}>
               <AlertCircle size={15} /> Невірний ключ або немає відправника в кабінеті НП
             </div>
           )}
@@ -243,7 +243,7 @@ export default function NpSenderSettings({
                 {cityLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={15} />}
               </div>
               <input
-                style={{ ...inp, paddingLeft: '38px', border: selectedCity ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedCity ? 'rgba(134,239,172,0.08)' : 'var(--bg-soft)' }}
+                style={{ ...inp, paddingLeft: '38px', border: selectedCity ? '1.5px solid var(--border-success)' : '1.5px solid var(--border)', background: selectedCity ? 'rgba(134,239,172,0.08)' : 'var(--bg-soft)' }}
                 placeholder="Введіть назву міста..."
                 value={cityQuery}
                 disabled={!step2Active}
@@ -285,8 +285,8 @@ export default function NpSenderSettings({
                 onClick={() => { setSenderType(t); setSelectedWH(null); setWhQuery(''); setSelectedAddr(null); }}
                 style={{
                   flex: 1, height: '40px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: step3Active ? 'pointer' : 'not-allowed',
-                  border: `1.5px solid ${senderType === t ? '#1E3A5F' : 'var(--border)'}`,
-                  background: senderType === t ? '#1E3A5F' : 'var(--bg-soft)',
+                  border: `1.5px solid ${senderType === t ? 'var(--navy)' : 'var(--border)'}`,
+                  background: senderType === t ? 'var(--navy)' : 'var(--bg-soft)',
                   color: senderType === t ? '#fff' : 'var(--text-secondary)',
                 }}
               >
@@ -306,7 +306,7 @@ export default function NpSenderSettings({
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}><Search size={15} /></div>
                   <input
-                    style={{ ...inp, paddingLeft: '38px', paddingRight: '36px', border: selectedWH ? '1.5px solid #86EFAC' : '1.5px solid var(--border)', background: selectedWH ? 'rgba(134,239,172,0.08)' : 'var(--bg-soft)' }}
+                    style={{ ...inp, paddingLeft: '38px', paddingRight: '36px', border: selectedWH ? '1.5px solid var(--border-success)' : '1.5px solid var(--border)', background: selectedWH ? 'rgba(134,239,172,0.08)' : 'var(--bg-soft)' }}
                     placeholder={selectedCity ? 'Номер або адреса відділення...' : 'Спочатку оберіть місто'}
                     value={whQuery}
                     disabled={!selectedCity}
@@ -336,14 +336,14 @@ export default function NpSenderSettings({
                 <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження адрес з НП...
               </div>
             ) : npAddresses.length === 0 ? (
-              <div style={{ padding: '12px 14px', background: '#FEF3C7', borderRadius: '10px', fontSize: '13px', color: '#92400E', border: '1px solid #FCD34D' }}>
+              <div style={{ padding: '12px 14px', background: '#FEF3C7', borderRadius: '10px', fontSize: '13px', color: 'var(--text-warn-dark)', border: '1px solid var(--border-warn)' }}>
                 ⚠ Адрес забору не знайдено. Зареєструйте адресу в кабінеті НП: my.novaposhta.ua → Адреси відправника.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {npAddresses.map(addr => (
-                  <label key={addr.Ref} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: `1.5px solid ${selectedAddr?.Ref === addr.Ref ? '#1E3A5F' : 'var(--border)'}`, borderRadius: '10px', cursor: 'pointer', background: selectedAddr?.Ref === addr.Ref ? 'var(--brand-blue-light)' : 'var(--bg-soft)' }}>
-                    <input type="radio" name="np_address" checked={selectedAddr?.Ref === addr.Ref} onChange={() => setSelectedAddr(addr)} style={{ accentColor: '#1E3A5F', width: '16px', height: '16px' }} />
+                  <label key={addr.Ref} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: `1.5px solid ${selectedAddr?.Ref === addr.Ref ? 'var(--navy)' : 'var(--border)'}`, borderRadius: '10px', cursor: 'pointer', background: selectedAddr?.Ref === addr.Ref ? 'var(--brand-blue-light)' : 'var(--bg-soft)' }}>
+                    <input type="radio" name="np_address" checked={selectedAddr?.Ref === addr.Ref} onChange={() => setSelectedAddr(addr)} style={{ accentColor: 'var(--navy)', width: '16px', height: '16px' }} />
                     <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: selectedAddr?.Ref === addr.Ref ? 600 : 400 }}>{addr.Description}</span>
                   </label>
                 ))}
@@ -355,7 +355,7 @@ export default function NpSenderSettings({
 
       {/* Error */}
       {error && (
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '10px', fontSize: '13px', color: '#DC2626' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', borderRadius: '10px', fontSize: '13px', color: 'var(--color-danger)' }}>
           <AlertCircle size={15} /> {error}
         </div>
       )}
@@ -363,7 +363,7 @@ export default function NpSenderSettings({
       {/* Save */}
       <button
         onClick={handleSave} disabled={saving}
-        style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', background: saved ? '#16A34A' : '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start', opacity: saving ? 0.6 : 1 }}
+        style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', background: saved ? 'var(--status-instock)' : 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start', opacity: saving ? 0.6 : 1 }}
       >
         {saving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</>
                : saved ? <><Check size={15} />Збережено</>

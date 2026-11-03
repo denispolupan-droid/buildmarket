@@ -24,7 +24,7 @@ function FixRow({ fix, onDone }: { fix: Fix; onDone: (id: string) => void }) {
   }
   const small = (primary: boolean): React.CSSProperties => ({
     height: 26, padding: '0 10px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? '#1E3A5F' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
+    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
   });
   return (
     <div style={{ marginLeft: 16, marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'var(--bg-secondary, rgba(100,116,139,.07))' }}>
@@ -38,10 +38,10 @@ function FixRow({ fix, onDone }: { fix: Fix; onDone: (id: string) => void }) {
           <button style={small(false)} onClick={() => setStage('idle')}>Скасувати</button>
         </>}
         {stage === 'busy' && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
-        {stage === 'done' && <span style={{ color: '#15803D', fontWeight: 700 }}>✓ готово</span>}
+        {stage === 'done' && <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>✓ готово</span>}
       </div>
       {(stage === 'confirm' || stage === 'idle') && <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{fix.detail}</div>}
-      {(stage === 'done' || stage === 'error') && msg && <div style={{ color: stage === 'error' ? '#DC2626' : 'var(--text-muted)', marginTop: 2 }}>{msg}</div>}
+      {(stage === 'done' || stage === 'error') && msg && <div style={{ color: stage === 'error' ? 'var(--color-danger)' : 'var(--text-muted)', marginTop: 2 }}>{msg}</div>}
     </div>
   );
 }
@@ -75,7 +75,7 @@ export default function ReconCard({ last }: { last: { at: string; findings: Find
 
   const btn = (primary: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 7, height: 34, padding: '0 14px', borderRadius: 9,
-    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? '#1E3A5F' : 'var(--bg-card)',
+    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)',
     color: primary ? '#fff' : 'var(--text-secondary)', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
   });
 
@@ -88,7 +88,7 @@ export default function ReconCard({ last }: { last: { at: string; findings: Find
         <button onClick={() => run(false)} disabled={!!busy} style={btn(false)}>{busy === 'view' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Scale size={14} />} Звірити зараз</button>
         <button onClick={() => run(true)} disabled={!!busy} style={btn(true)}>{busy === 'send' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />} І надіслати в Telegram</button>
       </div>
-      {error && <div style={{ color: '#DC2626', fontSize: 13, marginTop: 8 }}>{error}</div>}
+      {error && <div style={{ color: 'var(--color-danger)', fontSize: 13, marginTop: 8 }}>{error}</div>}
       {findings && (
         <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
           {[...findings].sort((a, b) => ORDER.indexOf(a.level) - ORDER.indexOf(b.level)).map(f => (

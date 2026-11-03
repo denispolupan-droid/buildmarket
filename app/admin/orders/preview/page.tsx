@@ -85,7 +85,7 @@ export default function OrderPreviewPage() {
           <span style={{ position: 'absolute', top: '-4px', right: '-4px', minWidth: '16px', height: '16px', borderRadius: '999px', background: BLUE, color: '#fff', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>2</span>
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '999px', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>AD</div>
+          <div style={{ width: '32px', height: '32px', borderRadius: '999px', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>AD</div>
           <ChevronDown size={14} color={MUTED} />
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function OrderPreviewPage() {
                 <button style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${HAIR}`, background: CARD, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SECONDARY }}><Copy size={15} /></button>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                <button style={{ flex: 1, height: '40px', borderRadius: '10px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Зберегти</button>
+                <button style={{ flex: 1, height: '40px', borderRadius: '10px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Зберегти</button>
                 <button style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${HAIR}`, background: CARD, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SECONDARY }}><Truck size={16} /></button>
               </div>
               <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '40px', marginTop: '10px', borderRadius: '10px', border: '1px solid #BFD3FF', background: BLUE_SOFT, color: BLUE, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}><Mail size={15} /> Надіслати постачальнику</button>
@@ -259,7 +259,7 @@ export default function OrderPreviewPage() {
                 <div key={i} style={{ position: 'relative', textAlign: 'center', paddingTop: '4px' }}>
                   {/* connector */}
                   {i < arr.length - 1 && (
-                    <div style={{ position: 'absolute', top: '13px', left: '50%', width: '100%', height: '2px', background: arr[i + 1].st === 'idle' ? '#E2E8F0' : (s.dot as string) }} />
+                    <div style={{ position: 'absolute', top: '13px', left: '50%', width: '100%', height: '2px', background: arr[i + 1].st === 'idle' ? 'var(--border)' : (s.dot as string) }} />
                   )}
                   <div style={{ position: 'relative', zIndex: 1, width: '28px', height: '28px', margin: '0 auto', borderRadius: '999px', background: s.st === 'idle' ? '#F1F5F9' : (s.dot as string), border: s.st === 'idle' ? `2px solid #CBD5E1` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {s.icon}

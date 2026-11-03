@@ -47,10 +47,10 @@ export function BulkSupplierSendModal() {
               {bulkResults !== null ? (
                 <div style={{ padding: '18px 22px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {bulkResults.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '9px', background: r.emailed ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${r.emailed ? '#BBF7D0' : '#FECACA'}` }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '9px', background: r.emailed ? 'var(--bg-success)' : 'var(--bg-danger)', border: `1px solid ${r.emailed ? '#BBF7D0' : '#FECACA'}` }}>
                       <span style={{ fontSize: '18px' }}>{r.emailed ? '✅' : '⚠️'}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: r.emailed ? '#15803D' : '#B91C1C' }}>{r.supplierName}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: r.emailed ? 'var(--color-success)' : '#B91C1C' }}>{r.supplierName}</div>
                         <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
                           {r.emailed ? 'Відправлено' : (r.error ? `Не відправлено: ${r.error}` : 'Не відправлено (немає email)')}{r.orderNumbers.length > 0 && ` · ${r.orderNumbers.map(n => `#${n}`).join(', ')}`}
                         </div>
@@ -81,7 +81,7 @@ export function BulkSupplierSendModal() {
                       const hasSupplier = g.supplierId != null;
                       const validEmail = g.email.includes('@');
                       return (
-                        <div key={gi} style={{ border: `1.5px solid ${hasSupplier && validEmail ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '10px', padding: '12px', background: 'var(--bg-soft)' }}>
+                        <div key={gi} style={{ border: `1.5px solid ${hasSupplier && validEmail ? 'var(--border)' : 'var(--border-danger)'}`, borderRadius: '10px', padding: '12px', background: 'var(--bg-soft)' }}>
                           {/* Назва постачальника й лічильник — одним рядком, номери
                               замовлень — під ними з переносом. Поки номери стояли
                               в тому ж рядку з flexShrink: 0, десяток замовлень
@@ -103,8 +103,8 @@ export function BulkSupplierSendModal() {
                                 return (
                                   <button key={ci} type="button"
                                     onClick={() => setBulkGroups(prev => prev ? prev.map((x, i) => i === gi ? { ...x, email: c.email } : x) : prev)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 9px', borderRadius: '7px', cursor: 'pointer', border: `1.5px solid ${isSel ? '#1E3A5F' : 'var(--border)'}`, background: isSel ? '#EFF4FF' : 'var(--bg-card)', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSel ? '#1E3A5F' : '#CBD5E1'}`, background: isSel ? '#1E3A5F' : 'transparent' }} />
+                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 9px', borderRadius: '7px', cursor: 'pointer', border: `1.5px solid ${isSel ? 'var(--navy)' : 'var(--border)'}`, background: isSel ? '#EFF4FF' : 'var(--bg-card)', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSel ? 'var(--navy)' : '#CBD5E1'}`, background: isSel ? 'var(--navy)' : 'transparent' }} />
                                     {c.name || c.email}
                                   </button>
                                 );
@@ -117,10 +117,10 @@ export function BulkSupplierSendModal() {
                             value={g.email}
                             onChange={e => setBulkGroups(prev => prev ? prev.map((x, i) => i === gi ? { ...x, email: e.target.value } : x) : prev)}
                             placeholder="email@supplier.com"
-                            style={{ width: '100%', height: '34px', padding: '0 10px', border: `1.5px solid ${validEmail ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '7px', fontSize: '12.5px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                            style={{ width: '100%', height: '34px', padding: '0 10px', border: `1.5px solid ${validEmail ? 'var(--border)' : 'var(--border-danger)'}`, borderRadius: '7px', fontSize: '12.5px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
                           />
                           {!hasSupplier && (
-                            <div style={{ fontSize: '11px', color: '#B45309', marginTop: '5px' }}>⚠ Постачальника не визначено — це замовлення пропустимо, надішліть окремо</div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-warn)', marginTop: '5px' }}>⚠ Постачальника не визначено — це замовлення пропустимо, надішліть окремо</div>
                           )}
                         </div>
                       );
@@ -151,7 +151,7 @@ export function BulkSupplierSendModal() {
                       else showToast(`Листи постачальникам надіслано (${sent})`, 'success');
                       if (sent) setSelectedIds(new Set());
                     }}
-                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #162035 0%, var(--navy) 100%)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                     Готово
                   </button>
                 ) : (
@@ -161,7 +161,7 @@ export function BulkSupplierSendModal() {
                       Скасувати
                     </button>
                     <button onClick={sendBulkSuppliers} disabled={bulkSending || sendable.length === 0}
-                      style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: sendable.length > 0 ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (bulkSending || sendable.length === 0) ? 'default' : 'pointer', opacity: bulkSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: sendable.length > 0 ? 'linear-gradient(135deg, #162035 0%, var(--navy) 100%)' : 'var(--text-muted)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (bulkSending || sendable.length === 0) ? 'default' : 'pointer', opacity: bulkSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {bulkSending ? '⏳ Відправлення...' : `📧 Відправити всі (${sendable.length})`}
                     </button>
                   </>

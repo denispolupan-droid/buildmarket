@@ -6,6 +6,7 @@ import {
   parseMonobankBusiness, autoMatchBankTxn, buildPaymentBody,
   BANK_SPECIAL_OPTS, type BankContract as Contract,
 } from '../../../lib/bank-import';
+import { fmtMoney as fmt } from '../../../lib/format';
 
 type ParsedTxn = {
   id: string; date: string; amount: number;
@@ -14,9 +15,6 @@ type ParsedTxn = {
   matchReason?: string; contractId: string;
   saving?: boolean; saved?: boolean; error?: string;
 };
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-
 
 const inp: React.CSSProperties = { height: '34px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '7px', fontSize: '12px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%' };
 
@@ -156,7 +154,7 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                     </button>
                     {ready > 0 && (
                       <button onClick={applyAll} disabled={applying}
-                        style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: applying ? 0.7 : 1 }}>
+                        style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: applying ? 0.7 : 1 }}>
                         {applying ? '⏳ Застосовуємо...' : `✅ Застосувати всі (${ready})`}
                       </button>
                     )}
@@ -164,27 +162,27 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                 </>
               )}
 
-              {err && <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', display: 'flex', gap: '7px', alignItems: 'center' }}><AlertCircle size={14} />{err}</div>}
+              {err && <div style={{ padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', color: 'var(--color-danger)', fontSize: '13px', display: 'flex', gap: '7px', alignItems: 'center' }}><AlertCircle size={14} />{err}</div>}
 
               {/* Transaction list */}
               {txns.map(txn => {
                 const conf = CONF[txn.confidence];
                 return (
-                  <div key={txn.id} style={{ background: txn.saved ? '#F0FDF4' : 'var(--bg-soft)', border: `1px solid ${txn.saved ? '#86EFAC' : txn.error ? '#FECACA' : 'var(--border)'}`, borderRadius: '10px', padding: '12px 14px' }}>
+                  <div key={txn.id} style={{ background: txn.saved ? 'var(--bg-success)' : 'var(--bg-soft)', border: `1px solid ${txn.saved ? 'var(--border-success)' : txn.error ? '#FECACA' : 'var(--border)'}`, borderRadius: '10px', padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                       <div>
-                        <span style={{ fontSize: '17px', fontWeight: 800, color: '#15803D' }}>+{fmt(txn.amount)} ₴</span>
+                        <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-success)' }}>+{fmt(txn.amount)} ₴</span>
                         <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>{txn.date}</span>
                       </div>
                       {txn.saved
-                        ? <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={13} /> Збережено</span>
+                        ? <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={13} /> Збережено</span>
                         : <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: conf.color, background: conf.bg }}>{conf.label}</span>
                       }
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-primary)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txn.description || '—'}</div>
                     {txn.counterparty && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>{txn.counterparty}</div>}
                     {txn.matchReason && !txn.saved && <div style={{ fontSize: '11px', color: conf.color, marginBottom: '6px' }}>🎯 {txn.matchReason}</div>}
-                    {txn.error && <div style={{ fontSize: '11px', color: '#DC2626', marginBottom: '6px' }}>{txn.error}</div>}
+                    {txn.error && <div style={{ fontSize: '11px', color: 'var(--color-danger)', marginBottom: '6px' }}>{txn.error}</div>}
 
                     {!txn.saved && (
                       <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
@@ -200,7 +198,7 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                           </optgroup>
                         </select>
                         <button onClick={() => saveOne(txn)} disabled={!txn.contractId || txn.saving}
-                          style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: txn.contractId ? '#1E3A5F' : '#E2E8F0', color: txn.contractId ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                          style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: txn.contractId ? 'var(--navy)' : 'var(--border)', color: txn.contractId ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
                           {txn.saving ? '...' : '✓ OK'}
                         </button>
                       </div>

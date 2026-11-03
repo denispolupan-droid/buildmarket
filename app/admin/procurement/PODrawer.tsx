@@ -105,7 +105,7 @@ export default function PODrawer({ poId, poLabel, onClose }: Props) {
           position: 'fixed', bottom: 0, right: '24px', zIndex: 600,
           display: 'flex', alignItems: 'center', gap: '8px',
           height: '38px', padding: '0 14px',
-          background: '#1E3A5F', color: '#fff',
+          background: 'var(--navy)', color: '#fff',
           borderRadius: '10px 10px 0 0',
           boxShadow: '0 -4px 20px rgba(0,0,0,0.2)',
           cursor: 'pointer', fontSize: '13px', fontWeight: 700,
@@ -139,7 +139,7 @@ export default function PODrawer({ poId, poLabel, onClose }: Props) {
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
         width: 'min(820px, 90vw)',
-        background: 'var(--bg-page, #F8FAFC)',
+        background: 'var(--bg-page, var(--bg-soft))',
         zIndex: 501,
         display: 'flex', flexDirection: 'column',
         boxShadow: '-8px 0 40px rgba(0,0,0,0.18)',
@@ -151,7 +151,7 @@ export default function PODrawer({ poId, poLabel, onClose }: Props) {
           position: 'sticky', top: 0, zIndex: 10,
           display: 'flex', justifyContent: 'flex-end', gap: '6px',
           padding: '10px 16px',
-          background: 'var(--bg-page, #F8FAFC)',
+          background: 'var(--bg-page, var(--bg-soft))',
           borderBottom: '1px solid var(--border)',
         }}>
           {/* Мінімізувати */}
@@ -192,7 +192,7 @@ export default function PODrawer({ poId, poLabel, onClose }: Props) {
           )}
 
           {error && (
-            <div style={{ margin: '40px', padding: '14px 18px', background: '#FEF2F2', color: '#DC2626', borderRadius: '10px', fontSize: '13px' }}>
+            <div style={{ margin: '40px', padding: '14px 18px', background: 'var(--bg-danger)', color: 'var(--color-danger)', borderRadius: '10px', fontSize: '13px' }}>
               {error}
             </div>
           )}

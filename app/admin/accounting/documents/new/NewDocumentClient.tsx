@@ -175,7 +175,7 @@ export default function NewDocumentClient({
       </div>
 
       {error && (
-        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: '#FEE2E2', color: '#DC2626', fontSize: '13px' }}>
+        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: '#FEE2E2', color: 'var(--color-danger)', fontSize: '13px' }}>
           {error}
         </div>
       )}
@@ -348,13 +348,13 @@ export default function NewDocumentClient({
                 display: 'grid', gridTemplateColumns: isIncoming ? '1fr 80px 100px 100px 36px 36px' : '1fr 80px 100px 100px 36px',
                 padding: '8px 14px', alignItems: 'center',
                 borderBottom: idx < lines.length - 1 ? '1px solid var(--border-light)' : 'none',
-                background: line.is_bonus ? '#FFFBEB' : undefined,
+                background: line.is_bonus ? 'var(--bg-warn)' : undefined,
               }}
             >
               <div>
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {line.name}
-                  {line.is_bonus && <span style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', padding: '1px 5px', borderRadius: '4px' }}>Бонус</span>}
+                  {line.is_bonus && <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', padding: '1px 5px', borderRadius: '4px' }}>Бонус</span>}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{line.sku}</div>
               </div>
@@ -386,7 +386,7 @@ export default function NewDocumentClient({
                   style={{
                     display: 'flex', justifyContent: 'center', alignItems: 'center',
                     background: line.is_bonus ? '#FEF3C7' : 'none',
-                    border: line.is_bonus ? '1.5px solid #FCD34D' : '1.5px solid transparent',
+                    border: line.is_bonus ? '1.5px solid var(--border-warn)' : '1.5px solid transparent',
                     borderRadius: '6px', cursor: 'pointer', padding: '4px', fontSize: '14px',
                     height: '28px', width: '28px',
                   }}
@@ -417,7 +417,7 @@ export default function NewDocumentClient({
               Сума: <strong style={{ color: 'var(--text-primary)' }}>{totalAmount.toFixed(2)} ₴</strong>
             </span>
             {totalAmount > 0 && totalCost > 0 && (
-              <span style={{ color: margin >= 0 ? '#15803D' : '#DC2626', fontWeight: 700 }}>
+              <span style={{ color: margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 700 }}>
                 Маржа: {margin >= 0 ? '+' : ''}{margin.toFixed(2)} ₴
               </span>
             )}
@@ -444,7 +444,7 @@ export default function NewDocumentClient({
           disabled={saving || lines.length === 0}
           style={{
             height: '40px', padding: '0 22px', borderRadius: '9px', fontSize: '13px', fontWeight: 700,
-            border: 'none', background: '#1E3A5F', color: '#fff',
+            border: 'none', background: 'var(--navy)', color: '#fff',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px',
             opacity: saving || lines.length === 0 ? 0.5 : 1,
           }}

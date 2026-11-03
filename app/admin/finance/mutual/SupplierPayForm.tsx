@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Banknote } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import { parseMoney } from '../../../../lib/parse-money';
+import { fmtAbs as fmt } from '../../../../lib/format';
 
 /** Непогашений борг: одна проводка (прихід або РН дропшипу) із залишком */
 type OpenCharge = {
@@ -18,10 +19,6 @@ type OpenCharge = {
   orderNumber: number | null;
   description: string;
 };
-
-function fmt(n: number) {
-  return Math.abs(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 const inp: React.CSSProperties = {
   height: '36px', padding: '0 10px',
@@ -175,7 +172,7 @@ export default function SupplierPayForm({ supplierId, owed }: { supplierId: numb
               style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
           </div>
           <button onClick={submitPay} disabled={paySaving}
-            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: paySaving ? 'wait' : 'pointer', opacity: paySaving ? 0.6 : 1 }}>
+            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: paySaving ? 'wait' : 'pointer', opacity: paySaving ? 0.6 : 1 }}>
             {paySaving ? 'Зберігаємо…' : 'Зафіксувати оплату'}
           </button>
           <button onClick={() => setOpen(false)}
@@ -198,9 +195,9 @@ export default function SupplierPayForm({ supplierId, owed }: { supplierId: numb
                   style={{
                     height: '28px', padding: '0 12px', borderRadius: '999px', cursor: 'pointer', fontSize: '12px',
                     fontWeight: payFill === o.key ? 700 : 600,
-                    border: `1.5px solid ${payFill === o.key ? '#1E3A5F' : 'var(--border)'}`,
+                    border: `1.5px solid ${payFill === o.key ? 'var(--navy)' : 'var(--border)'}`,
                     background: payFill === o.key ? '#EAF1F8' : 'var(--bg-card)',
-                    color: payFill === o.key ? '#1E3A5F' : 'var(--text-secondary)',
+                    color: payFill === o.key ? 'var(--navy)' : 'var(--text-secondary)',
                   }}>
                   {o.label}
                 </button>
@@ -257,11 +254,11 @@ export default function SupplierPayForm({ supplierId, owed }: { supplierId: numb
                         <div key={c.id} style={{
                           display: 'grid', gridTemplateColumns: '80px 120px 1fr 110px 120px', gap: '8px', alignItems: 'center',
                           padding: '6px 10px', fontSize: '12px',
-                          background: take > 0 ? '#F0FDF4' : 'transparent',
+                          background: take > 0 ? 'var(--bg-success)' : 'transparent',
                           borderBottom: i < charges.length - 1 ? '1px solid var(--border-light)' : 'none',
                         }}>
                           <span style={{ color: 'var(--text-muted)' }}>{c.date.slice(8, 10)}.{c.date.slice(5, 7)}.{c.date.slice(2, 4)}</span>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#B45309' }}>{c.docNumber ?? '—'}</span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--color-warn)' }}>{c.docNumber ?? '—'}</span>
                           <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {c.orderNumber != null ? (
                               <Link href={`/admin?status=&q=${c.orderNumber}`} target="_blank" style={{ color: 'var(--brand-blue)', fontWeight: 700, textDecoration: 'none' }}>
@@ -306,7 +303,7 @@ export default function SupplierPayForm({ supplierId, owed }: { supplierId: numb
                               </div>
                             );
                           })() : (
-                            <span style={{ textAlign: 'right', fontWeight: 700, color: take > 0 ? '#15803D' : 'var(--text-muted)', fontFamily: 'monospace' }}>
+                            <span style={{ textAlign: 'right', fontWeight: 700, color: take > 0 ? 'var(--color-success)' : 'var(--text-muted)', fontFamily: 'monospace' }}>
                               {take > 0 ? `−${fmt(take)} ₴` : '—'}
                             </span>
                           )}
@@ -316,8 +313,8 @@ export default function SupplierPayForm({ supplierId, owed }: { supplierId: numb
                   </div>
                   <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     Закриється документів: <b>{lines.length}</b> на <b>{fmt(sum)} ₴</b>
-                    {rest > 0.005 && <span style={{ color: '#B45309' }}> · аванс {fmt(rest)} ₴</span>}
-                    {rest < -0.005 && <span style={{ color: '#DC2626' }}> · рознесено більше за оплату на {fmt(-rest)} ₴</span>}
+                    {rest > 0.005 && <span style={{ color: 'var(--color-warn)' }}> · аванс {fmt(rest)} ₴</span>}
+                    {rest < -0.005 && <span style={{ color: 'var(--color-danger)' }}> · рознесено більше за оплату на {fmt(-rest)} ₴</span>}
                     {Math.abs(rest) > 0.005 && sum > 0 && (
                       // Найчастіший намір — заплатити рівно за вибране.
                       // Без цього суму переписують руками, а скопійована

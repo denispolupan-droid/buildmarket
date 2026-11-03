@@ -119,9 +119,9 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               : `Оплату ще не підтверджено (${PAYMENT_LABEL[order.payment_type] ?? order.payment_type})`}
             style={{
               ...rowBadge,
-              color: isCod ? '#92400E' : paymentConfirmed ? '#15803D' : '#B91C1C',
-              background: isCod ? '#FEF3C7' : paymentConfirmed ? '#DCFCE7' : '#FEF2F2',
-              borderColor: isCod ? '#FCD34D' : paymentConfirmed ? '#86EFAC' : '#FCA5A5',
+              color: isCod ? 'var(--text-warn-dark)' : paymentConfirmed ? 'var(--color-success)' : '#B91C1C',
+              background: isCod ? '#FEF3C7' : paymentConfirmed ? '#DCFCE7' : 'var(--bg-danger)',
+              borderColor: isCod ? 'var(--border-warn)' : paymentConfirmed ? 'var(--border-success)' : 'var(--border-danger)',
             }}>
             {isCod ? 'НАЛОЖКА' : paymentConfirmed ? 'ОПЛАЧЕНО' : 'НЕ ОПЛАЧЕНО'}
           </span>
@@ -134,9 +134,9 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 : `Чекаємо виплату: вручено, але ${fmtMoney(settlement.open)} ₴ ще не дійшли до нас (НоваПей / RozetkaPay / покупець)`}
               style={{
                 ...rowBadge,
-                color: settlement.state === 'received' ? '#166534' : '#B45309',
+                color: settlement.state === 'received' ? '#166534' : 'var(--color-warn)',
                 background: settlement.state === 'received' ? '#BBF7D0' : '#FEF3C7',
-                borderColor: settlement.state === 'received' ? '#4ADE80' : '#FCD34D',
+                borderColor: settlement.state === 'received' ? '#4ADE80' : 'var(--border-warn)',
               }}>
               {settlement.state === 'received' ? '₴ ВИПЛАЧЕНО' : '₴ ЧЕКАЄМО'}
             </span>
@@ -177,7 +177,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 <span title={c} aria-label="Коментар покупця" className="oc-note"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 100, minWidth: 0,
                     padding: '1px 7px 1px 5px', borderRadius: '20px', maxWidth: '220px',
-                    background: '#FEF3C7', border: '1px solid #FCD34D', color: '#92400E',
+                    background: '#FEF3C7', border: '1px solid var(--border-warn)', color: 'var(--text-warn-dark)',
                     fontSize: '11px', fontWeight: 600, lineHeight: 1.5 }}>
                   <MessageSquare size={12} style={{ flexShrink: 0 }} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c}</span>
@@ -197,7 +197,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   width: '16px', height: '16px', padding: 0, border: 'none', background: 'none', cursor: 'pointer',
-                  color: copiedPhone === order.phone ? '#15803D' : 'var(--text-muted)',
+                  color: copiedPhone === order.phone ? 'var(--color-success)' : 'var(--text-muted)',
                 }}>
                 {copiedPhone === order.phone ? <Check size={11} strokeWidth={3} /> : <Copy size={11} />}
               </button>
@@ -216,7 +216,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               {itemTitle(order.items[0])}
               <span style={{ marginLeft: '4px' }}>×{order.items[0].qty}</span>
               {order.items.length > 1 && <span style={{ marginLeft: '4px' }}>+{order.items.length - 1}</span>}
-              {order.items.some(i => i.is_bonus) && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#15803D', fontWeight: 600, background: '#F0FDF4', padding: '0 5px', borderRadius: '4px' }}>🎁 бонус</span>}
+              {order.items.some(i => i.is_bonus) && <span style={{ marginLeft: '6px', fontSize: '10px', color: 'var(--color-success)', fontWeight: 600, background: 'var(--bg-success)', padding: '0 5px', borderRadius: '4px' }}>🎁 бонус</span>}
               </div>
             </div>
           )}
@@ -225,7 +225,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
         {/* Сума (+ маркер промокоду) — між клієнтом і доставкою */}
         <span style={{ width: '84px', flexShrink: 0, fontSize: '13px', fontWeight: 800, color: 'var(--brand-blue)', textAlign: 'right', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', paddingRight: '24px', boxSizing: 'border-box' }}>
           {order.promo_code && (
-            <Tag size={12} style={{ color: '#B45309', flexShrink: 0 }}
+            <Tag size={12} style={{ color: 'var(--color-warn)', flexShrink: 0 }}
               aria-label={`Промокод ${order.promo_code}`} />
           )}
           <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${Number(order.promo_discount ?? 0).toFixed(2)} ₴ (сума вже з урахуванням)` : undefined}>
@@ -269,7 +269,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               }}>
               <Truck size={10} style={{ flexShrink: 0 }} />
               {isRozetkaPoint ? 'Rozetka' : 'НП'} {order.tracking_number}
-              {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />}
+              {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--status-instock)', flexShrink: 0 }} />}
               {copiedTtn === order.tracking_number && <Check size={10} strokeWidth={3} />}
             </span>
           )}
@@ -309,7 +309,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 }}>
                 <Truck size={9} style={{ flexShrink: 0 }} />
                 <span style={{ whiteSpace: 'nowrap' }}>{order.tracking_number}</span>
-                {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />}
+                {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--status-instock)', flexShrink: 0 }} />}
                 {copiedTtn === order.tracking_number && <Check size={9} strokeWidth={3} />}
               </span>
             )}
@@ -327,7 +327,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
           {order.status === 'shipped' && order.tracking_number && !order.carrier_status_text && (
             <span
               title={`${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRozetkaPoint ? 'Rozetka Доставкою' : 'Новою Поштою'}`}
-              style={{ fontSize: '12px', flexShrink: 0, color: order.carrier_accepted_at ? '#15803D' : '#B45309' }}>
+              style={{ fontSize: '12px', flexShrink: 0, color: order.carrier_accepted_at ? 'var(--color-success)' : 'var(--color-warn)' }}>
               {order.carrier_accepted_at ? '✓' : '⏳'}
             </span>
           )}
@@ -336,7 +336,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             if (days < 7) return null;
             return (
               <span title={`Відправлено ${days} дн тому — довго висить. Перевірте доставку та завершіть замовлення («Доставлено»), інакше продаж не проведеться.`}
-                style={{ fontSize: '10px', fontWeight: 700, flexShrink: 0, padding: '1px 5px', borderRadius: '10px', color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FCA5A5', whiteSpace: 'nowrap' }}>
+                style={{ fontSize: '10px', fontWeight: 700, flexShrink: 0, padding: '1px 5px', borderRadius: '10px', color: '#B91C1C', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', whiteSpace: 'nowrap' }}>
                 ⚠ {days}д
               </span>
             );
@@ -358,14 +358,14 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             <span
               title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
               style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px',
-                color:      order.fulfillment_mode === 'own' ? '#15803D' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
+                color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
                 background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
               {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
             </span>
           )}
           {order.supplier_sent_at && (
             <span title={`Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
-              style={{ display: 'inline-flex', alignItems: 'center', color: '#15803D', flexShrink: 0 }}>
+              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--color-success)', flexShrink: 0 }}>
               <Check size={13} strokeWidth={3} />
             </span>
           )}
@@ -389,7 +389,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               <span title={received ? `Виплачено — гроші дійшли до нас (${fmtMoney(settlement!.received)} ₴)` : waiting ? `Чекаємо виплату: ${fmtMoney(settlement!.open)} ₴ ще не дійшли до нас` : paid ? 'Оплачено' : undefined}
                 style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', whiteSpace: 'nowrap',
                   background: received ? '#BBF7D0' : waiting ? '#FEF3C7' : paid ? '#DCFCE7' : 'var(--border-light)',
-                  color: received ? '#166534' : waiting ? '#B45309' : paid ? '#15803D' : 'var(--text-secondary)',
+                  color: received ? '#166534' : waiting ? 'var(--color-warn)' : paid ? 'var(--color-success)' : 'var(--text-secondary)',
                   fontWeight: received || waiting ? 700 : undefined, display: 'inline-flex', alignItems: 'center' }}>
                 {received ? '✓' : waiting ? '…' : ''}{label}
               </span>
@@ -402,7 +402,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
           {!isDropship && (
             <span style={{ fontSize: '11px', padding: '2px 5px', borderRadius: '20px', display: 'inline-block',
               background: noCallback || callbackDone ? '#DCFCE7' : '#FEF3C7',
-              color: noCallback || callbackDone ? '#15803D' : '#B45309' }}>
+              color: noCallback || callbackDone ? 'var(--color-success)' : 'var(--color-warn)' }}>
               {noCallback ? '✓' : callbackDone ? '✓📞' : '📞'}
             </span>
           )}

@@ -34,7 +34,7 @@ export default async function ReorderPage() {
       <div style={{ maxWidth: '1000px' }}>
         <div style={{ padding: '48px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
           <CheckCircle2 size={40} color="#15803D" style={{ marginBottom: '12px' }} />
-          <div style={{ fontSize: '16px', fontWeight: 700, color: '#15803D', marginBottom: '6px' }}>Всі залишки в нормі</div>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-success)', marginBottom: '6px' }}>Всі залишки в нормі</div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             Немає позицій нижче мінімального залишку
           </div>

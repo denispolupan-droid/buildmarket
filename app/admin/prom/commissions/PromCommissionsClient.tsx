@@ -118,7 +118,7 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
     <Modal open onClose={onClose} width={720} padding={0} aria-label="Категорія Prom">
       <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <input
               ref={inputRef}
@@ -130,7 +130,7 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
           </div>
           <button
             onClick={onClose}
-            style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 13, cursor: 'pointer' }}
+            style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #E5E7EB', background: '#F9FAFB', color: 'var(--text-gray)', fontSize: 13, cursor: 'pointer' }}
           >
             Закрити
           </button>
@@ -139,9 +139,9 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
         {/* List */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {loading ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>Завантаження…</div>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Завантаження…</div>
           ) : items.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>Нічого не знайдено</div>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Нічого не знайдено</div>
           ) : items.map(entry => (
             <div
               key={entry.prom_category_id}
@@ -155,7 +155,7 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{entry.name}</div>
-                {entry.path && <div style={{ fontSize: 11, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.path}</div>}
+                {entry.path && <div style={{ fontSize: 11, color: 'var(--text-gray-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.path}</div>}
               </div>
               {entry.commission_single != null && (
                 <span style={{ fontSize: 12, fontWeight: 700, color: pctColor(entry.commission_single), flexShrink: 0 }}>
@@ -209,14 +209,14 @@ function PromRow({
       display: 'grid', gridTemplateColumns: GRID,
       gap: 6, alignItems: 'center',
       padding: '6px 10px', borderBottom: '1px solid #F1F5F9',
-      background: indent === 0 ? '#F8FAFC' : '#fff',
+      background: indent === 0 ? 'var(--bg-soft)' : '#fff',
     }}>
 
       {/* Наша категорія */}
       <div style={{
         paddingLeft: indent * 14,
         fontSize: indent === 0 ? 13 : 12, fontWeight: indent === 0 ? 700 : 400,
-        color: indent === 0 ? '#1E293B' : '#475569',
+        color: indent === 0 ? '#1E293B' : 'var(--text-secondary)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {indent > 0 && <span style={{ color: '#D1D5DB', marginRight: 4 }}>└</span>}
@@ -234,13 +234,13 @@ function PromRow({
             <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#059669', flexShrink: 0, fontWeight: 700 }}>
               {v.prom_id}
             </span>
-            <span style={{ fontSize: 12, color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {v.prom_name}
             </span>
             <button
               onMouseDown={e => { e.preventDefault(); onClear(cat.slug); }}
               title="Змінити категорію"
-              style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 14, lineHeight: 1, padding: '0 2px' }}
+              style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray-light)', fontSize: 14, lineHeight: 1, padding: '0 2px' }}
             >×</button>
           </div>
         ) : (
@@ -270,9 +270,9 @@ function PromRow({
                   display: 'flex', flexDirection: 'column',
                 }}>
                   {dropLoading ? (
-                    <div style={{ padding: '8px 12px', fontSize: 12, color: '#94A3B8' }}>Пошук…</div>
+                    <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)' }}>Пошук…</div>
                   ) : suggestions.length === 0 ? (
-                    <div style={{ padding: '8px 12px', fontSize: 12, color: '#94A3B8' }}>Нічого не знайдено</div>
+                    <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)' }}>Нічого не знайдено</div>
                   ) : (
                     <>
                       <div style={{ maxHeight: 320, overflowY: 'auto' }}>
@@ -291,11 +291,11 @@ function PromRow({
                                 <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: pctColor(entry.commission_single), flexShrink: 0 }}>{entry.commission_single}%</span>
                               )}
                             </div>
-                            {entry.path && <div style={{ fontSize: 10, color: '#9CA3AF' }}>{entry.path}</div>}
+                            {entry.path && <div style={{ fontSize: 10, color: 'var(--text-gray-light)' }}>{entry.path}</div>}
                           </div>
                         ))}
                       </div>
-                      <div style={{ padding: '4px 12px', fontSize: 10, color: '#94A3B8', borderTop: '1px solid #F1F5F9', background: '#FAFAFA', borderRadius: '0 0 8px 8px' }}>
+                      <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid #F1F5F9', background: '#FAFAFA', borderRadius: '0 0 8px 8px' }}>
                         {v.prom_name.length < 2 ? `Перші ${suggestions.length} · введи запит для звуження` : `${suggestions.length} результатів`}
                       </div>
                     </>
@@ -309,8 +309,8 @@ function PromRow({
               title="Переглянути повний каталог Prom"
               style={{
                 flexShrink: 0, padding: '5px 7px', borderRadius: 5,
-                border: '1px solid #CBD5E1', background: '#F8FAFC',
-                color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                border: '1px solid #CBD5E1', background: 'var(--bg-soft)',
+                color: 'var(--text-soft)', cursor: 'pointer', display: 'flex', alignItems: 'center',
               }}
             >
               <List size={13} />
@@ -538,16 +538,16 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
     <div style={{ padding: '28px 32px 64px', maxWidth: 1200 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid #E5E7EB', color: '#6B7280', textDecoration: 'none' }}>
+        <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid #E5E7EB', color: 'var(--text-gray)', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <div>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Комісії Prom.ua</h1>
-          <p style={{ margin: '3px 0 0', color: '#6B7280', fontSize: 13 }}>
+          <p style={{ margin: '3px 0 0', color: 'var(--text-gray)', fontSize: 13 }}>
             {filledCount} / {categories.length} категорій з Prom ID
             &nbsp;·&nbsp; Активний план: <strong style={{ color: activePlanMeta.color }}>{activePlanMeta.label}</strong>
             <button onClick={() => setTariffOpen(v => !v)}
-              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: '#B45309', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: 'var(--color-warn)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               <Truck size={11} style={{ verticalAlign: '-1px', marginRight: 4 }} />
               Дешева доставка: {tariff.map(b => `від ${b.from} → ${b.fee} грн`).join(' · ')}
             </button>
@@ -557,8 +557,8 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
 
       {/* «Дешева доставка» — редагований тариф компенсації доставки НП */}
       {tariffOpen && (
-        <div style={{ margin: '0 0 16px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #FDBA74', background: '#FFFBEB', maxWidth: 640 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 10 }}>
+        <div style={{ margin: '0 0 16px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #FDBA74', background: 'var(--bg-warn)', maxWidth: 640 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-warn)', marginBottom: 10 }}>
             «Дешева доставка» — компенсація організації доставки НП (грн з ПДВ, за сумою замовлення)
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -566,14 +566,14 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
                 <span>замовлення від</span>
                 <input value={b.from} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, from: e.target.value } : x))}
-                  style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} />
+                  style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, textAlign: 'right' }} />
                 <span>грн →</span>
                 <input value={b.fee} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, fee: e.target.value } : x))}
-                  style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: 13, textAlign: 'right' }} />
+                  style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, textAlign: 'right' }} />
                 <span>грн</span>
                 {tariffDraft.length > 1 && (
                   <button onClick={() => setTariffDraft(d => d.filter((_, j) => j !== i))} title="Прибрати поріг"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 2, display: 'flex' }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray-light)', padding: 2, display: 'flex' }}>
                     <X size={13} />
                   </button>
                 )}
@@ -581,16 +581,16 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
             ))}
           </div>
           <button onClick={() => setTariffDraft(d => [...d, { from: '', fee: '' }])}
-            style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px dashed #FDBA74', background: 'none', color: '#B45309', fontSize: 12, cursor: 'pointer' }}>
+            style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px dashed #FDBA74', background: 'none', color: 'var(--color-warn)', fontSize: 12, cursor: 'pointer' }}>
             <Plus size={11} /> Додати поріг
           </button>
-          {tariffError && <div style={{ marginTop: 8, fontSize: 12, color: '#DC2626', fontWeight: 600 }}>{tariffError}</div>}
+          {tariffError && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-danger)', fontWeight: 600 }}>{tariffError}</div>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
             <button onClick={saveDeliveryTariff} disabled={tariffSaving}
-              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#B45309', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
+              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: 'var(--color-warn)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
               {tariffSaving ? 'Зберігаю…' : 'Зберегти'}
             </button>
-            <span style={{ fontSize: 12, color: '#92400E' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-warn-dark)' }}>
               Замовлення, дешевші за перший поріг, — без збору. Діє з моменту збереження: нові доставки — за новим тарифом; вже проведені списання не перераховуються.
             </span>
           </div>
@@ -618,17 +618,17 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
       </div>
 
       {/* Table */}
-      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: GRID,
           gap: 6, padding: '8px 10px',
-          background: '#F1F5F9', borderBottom: '1px solid #E2E8F0',
-          fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '.04em',
+          background: '#F1F5F9', borderBottom: '1px solid var(--border)',
+          fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', textTransform: 'uppercase', letterSpacing: '.04em',
         }}>
           <div>Категорія</div>
           <div>Prom категорія</div>
           {PLANS.map(p => (
-            <div key={p.key} style={{ textAlign: 'center', color: plan === p.key ? p.color : '#94A3B8' }}>
+            <div key={p.key} style={{ textAlign: 'center', color: plan === p.key ? p.color : 'var(--text-muted)' }}>
               {plan === p.key ? '★ ' : ''}{p.short}
             </div>
           ))}
@@ -648,7 +648,7 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
         ))}
       </div>
 
-      <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 12 }}>
+      <p style={{ fontSize: 12, color: 'var(--text-gray-light)', marginTop: 12 }}>
         Введи ID або назву для швидкого пошуку, або натисни <List size={11} style={{ verticalAlign: 'middle' }} /> щоб переглянути повний каталог Prom.
       </p>
 

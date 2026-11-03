@@ -10,6 +10,7 @@ import EditPricesButton from './EditPricesButton';
 import ReceiptPaymentPanel from './ReceiptPaymentPanel';
 import { procurementPaymentOr } from '../../../../../lib/accounting/procurement-payments';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { fmtMoney as fmt } from '../../../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +20,6 @@ const COST_TYPE_LABELS: Record<string, string> = {
   delivery: '🚚 Доставка', loading: '📦 Навант./розвант.',
   customs: '🏛 Мито/брокер', packaging: '📦 Пакування', other: '➕ Інше',
 };
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 export default async function ReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -138,7 +137,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{doc.doc_number}</h1>
-            <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, color: '#15803D', background: '#F0FDF4' }}>Проведено</span>
+            <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-success)', background: 'var(--bg-success)' }}>Проведено</span>
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '3px' }}>
             Прихід товару{supplierName && ` · ${supplierName}`}{warehouseName && ` · ${warehouseName}`}
@@ -147,7 +146,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         </div>
         {doc.parent_doc_id && (
           <Link href={`/admin/procurement/${doc.parent_doc_id}`}
-            style={{ fontSize: '12px', color: '#1E3A5F', textDecoration: 'none', background: '#EFF4FF', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
+            style={{ fontSize: '12px', color: 'var(--navy)', textDecoration: 'none', background: '#EFF4FF', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
             ↑ Замовлення
           </Link>
         )}
@@ -226,7 +225,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
             return (
               <>
                 {parts[0]}
-                <Link href={href} style={{ fontWeight: 700, color: '#1D4ED8', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+                <Link href={href} style={{ fontWeight: 700, color: 'var(--color-info)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
                   {parentDoc.doc_number}
                 </Link>
                 <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>· {date}</span>
@@ -259,13 +258,13 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           const lcAdded    = finalPrice - origPrice;
           const costPrice  = line.is_bonus ? 0 : Number(line.cost_price || 0);
           return (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? '#FFFBEB' : undefined }}>
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? 'var(--bg-warn)' : undefined }}>
               <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-primary)' }}>{line.sku}</span>
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {nameMap.get(line.sku) || line.sku}
                   {line.is_bonus && (
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
                   )}
                 </div>
               </div>

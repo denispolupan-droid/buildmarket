@@ -118,7 +118,7 @@ export default function RegisterPanel() {
     <>
       {/* Panel */}
       <div style={{
-        background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: '14px',
+        background: '#fff', border: '1.5px solid var(--border)', borderRadius: '14px',
         marginBottom: '20px', overflow: 'hidden',
         boxShadow: hasRegister ? '0 2px 12px rgba(30,58,95,0.08)' : 'none',
       }}>
@@ -128,33 +128,33 @@ export default function RegisterPanel() {
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '12px 18px', cursor: 'pointer',
-            background: hasRegister ? '#EFF4FF' : '#F8FAFC',
+            background: hasRegister ? '#EFF4FF' : 'var(--bg-soft)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <FileText size={16} color={hasRegister ? '#1E3A5F' : '#94A3B8'} />
-            <span style={{ fontSize: '14px', fontWeight: 700, color: hasRegister ? '#1E3A5F' : '#64748B' }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: hasRegister ? 'var(--navy)' : 'var(--text-soft)' }}>
               Реєстр НП {currentNumber ? `#${currentNumber}` : ''}
             </span>
             {ttns.length > 0 && (
-              <span style={{ background: '#1E3A5F', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
+              <span style={{ background: 'var(--navy)', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
                 {ttns.length} ТТН
               </span>
             )}
-            {!hasRegister && <span style={{ fontSize: '12px', color: '#94A3B8' }}>Порожньо — додайте ТТН кнопкою 📋</span>}
+            {!hasRegister && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Порожньо — додайте ТТН кнопкою 📋</span>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {hasRegister && (
               <>
                 <button
                   onClick={e => { e.stopPropagation(); handlePrint(); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #E2E8F0', background: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#374151' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid var(--border)', background: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#374151' }}
                 >
                   <Printer size={13} /> Роздрукувати
                 </button>
                 <button
                   onClick={e => { e.stopPropagation(); setSendModal(true); setError(''); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: '#1E3A5F', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#fff' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: 'var(--navy)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#fff' }}
                 >
                   <Mail size={13} /> Відправити
                 </button>
@@ -167,14 +167,14 @@ export default function RegisterPanel() {
         {/* TTN list */}
         {open && ttns.length > 0 && (
           <div style={{ padding: '8px 18px 12px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr auto auto', gap: '8px', padding: '6px 0', fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', borderBottom: '1px solid #F1F5F9', marginBottom: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr auto auto', gap: '8px', padding: '6px 0', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid #F1F5F9', marginBottom: '4px' }}>
               <span>ТТН</span><span>Отримувач</span><span style={{ textAlign: 'right' }}>COD</span><span />
             </div>
             {ttns.map(t => (
-              <div key={t.ttn} style={{ display: 'grid', gridTemplateColumns: '150px 1fr auto auto', gap: '8px', padding: '5px 0', alignItems: 'center', borderBottom: '1px solid #F8FAFC' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1E3A5F', fontWeight: 600 }}>{t.ttn}</span>
+              <div key={t.ttn} style={{ display: 'grid', gridTemplateColumns: '150px 1fr auto auto', gap: '8px', padding: '5px 0', alignItems: 'center', borderBottom: '1px solid var(--bg-soft)' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>{t.ttn}</span>
                 <span style={{ fontSize: '12px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.contact}</span>
-                <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, textAlign: 'right' }}>{t.amount} ₴</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, textAlign: 'right' }}>{t.amount} ₴</span>
                 <button
                   onClick={() => setTtns(prev => prev.filter(x => x.ttn !== t.ttn))}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', display: 'flex' }}
@@ -187,7 +187,7 @@ export default function RegisterPanel() {
         )}
 
         {error && (
-          <div style={{ padding: '8px 18px', background: '#FEF2F2', color: '#DC2626', fontSize: '12px' }}>{error}</div>
+          <div style={{ padding: '8px 18px', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: '12px' }}>{error}</div>
         )}
       </div>
 
@@ -196,46 +196,46 @@ export default function RegisterPanel() {
         <Modal open onClose={() => setSendModal(false)} width={420} padding={0} dismissible={false} aria-label="Надіслати реєстр" style={{ background: '#fff' }}>
           <div style={{ background: '#fff', padding: '24px', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Mail size={18} color="#1E3A5F" /> Відправити реєстр
               </div>
-              <button onClick={() => setSendModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', display: 'flex' }}>
+              <button onClick={() => setSendModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#64748B' }}>
+              <div style={{ background: 'var(--bg-soft)', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: 'var(--text-soft)' }}>
                 Реєстр #{currentNumber} · {ttns.length} посилок
               </div>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', display: 'block', marginBottom: '5px' }}>Ім&apos;я постачальника</label>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: '5px' }}>Ім&apos;я постачальника</label>
                 <input
                   value={sendName} onChange={e => setSendName(e.target.value)}
                   placeholder="Назва компанії або ПІБ"
-                  style={{ width: '100%', height: '38px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', height: '38px', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748B', display: 'block', marginBottom: '5px' }}>Email постачальника *</label>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: '5px' }}>Email постачальника *</label>
                 <input
                   value={sendEmail} onChange={e => setSendEmail(e.target.value)}
                   placeholder="supplier@example.com"
                   type="email"
-                  style={{ width: '100%', height: '38px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', height: '38px', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
             </div>
 
-            {error && <div style={{ marginTop: '12px', fontSize: '12px', color: '#DC2626' }}>{error}</div>}
+            {error && <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--color-danger)' }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button onClick={() => setSendModal(false)} style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#64748B' }}>
+              <button onClick={() => setSendModal(false)} style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-soft)' }}>
                 Скасувати
               </button>
               <button
                 onClick={handleSend} disabled={sending || !sendEmail.trim()}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: sendDone ? '#16A34A' : '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: !sendEmail.trim() ? 0.5 : 1 }}
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: sendDone ? 'var(--status-instock)' : 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: !sendEmail.trim() ? 0.5 : 1 }}
               >
                 {sending ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Відправляємо...</>
                          : sendDone ? <><Check size={14} />Відправлено!</>

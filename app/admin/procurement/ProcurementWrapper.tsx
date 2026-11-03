@@ -135,8 +135,8 @@ export default function ProcurementWrapper({
 
   const chip = (active: boolean): React.CSSProperties => ({
     height: '30px', padding: '0 11px', borderRadius: '7px',
-    border: `1px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
-    background: active ? '#1E3A5F' : 'var(--bg-soft)',
+    border: `1px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
+    background: active ? 'var(--navy)' : 'var(--bg-soft)',
     color: active ? '#fff' : 'var(--text-secondary)',
     fontSize: '12px', fontWeight: active ? 700 : 500,
     cursor: 'pointer', whiteSpace: 'nowrap',
@@ -220,7 +220,7 @@ export default function ProcurementWrapper({
           )}
           {hasFilters && (
             <button onClick={reset}
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border-danger)', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
               <X size={12} /> Скинути
             </button>
           )}

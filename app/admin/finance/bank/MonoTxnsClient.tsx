@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { INCOME_ACCOUNTS, INCOME_CATEGORY_LABEL } from '../../../../lib/mono-income-rules';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 export type MonoRow = {
   id: string; txn_time: string; amount: number; direction: 'in' | 'out';
@@ -13,7 +14,6 @@ export type MonoRow = {
 };
 export type SupplierOpt = { id: string; name: string };
 
-const fmt = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dmy = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 
 const OUT_CATEGORIES: { value: string; label: string }[] = [
@@ -124,14 +124,14 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
           <div className="fin-money-val">{liveBank !== null ? fmt(liveBank) : fmt(ledgerBank)} ₴</div>
           <div className="fin-money-sub">{liveBank !== null ? `живий · за обліком ${fmt(ledgerBank)} ₴` : 'за обліком'}
             {liveBank !== null && Math.abs(liveBank - ledgerBank) > 0.01 && (
-              <div style={{ color: '#B45309', fontWeight: 600, marginTop: '2px' }}>облік ≠ живий на {fmt(ledgerBank - liveBank)} ₴ — на категоризацію: списань {fmt(todoOut)} ₴, надходжень {fmt(todoIn)} ₴</div>
+              <div style={{ color: 'var(--color-warn)', fontWeight: 600, marginTop: '2px' }}>облік ≠ живий на {fmt(ledgerBank - liveBank)} ₴ — на категоризацію: списань {fmt(todoOut)} ₴, надходжень {fmt(todoIn)} ₴</div>
             )}
           </div>
         </div>
         <div className="fin-card" style={{ gridColumn: 'span 7', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div className="fin-kpi-label">Виписка Mono</div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-            операцій {rows.length} · на категоризацію <b style={{ color: todo.length ? '#B45309' : '#15803D' }}>{todo.length}</b>
+            операцій {rows.length} · на категоризацію <b style={{ color: todo.length ? 'var(--color-warn)' : 'var(--color-success)' }}>{todo.length}</b>
           </div>
           <button onClick={refresh} disabled={busy === 'refresh'}
             style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 12px', border: '1px solid var(--border)', borderRadius: '7px', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
@@ -147,7 +147,7 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
         </div>
       </div>
 
-      {msg && <div className="fin-card" style={{ fontSize: '12.5px', color: msg.startsWith('Помилка') ? '#DC2626' : '#15803D' }}>{msg}</div>}
+      {msg && <div className="fin-card" style={{ fontSize: '12.5px', color: msg.startsWith('Помилка') ? 'var(--color-danger)' : 'var(--color-success)' }}>{msg}</div>}
 
       <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: 'var(--bg-soft)' }}>
@@ -155,7 +155,7 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
             {(['todo', 'all'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', background: filter === f ? '#1E3A5F' : 'var(--bg-card)', color: filter === f ? '#fff' : 'var(--text-secondary)' }}>
+                style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', background: filter === f ? 'var(--navy)' : 'var(--bg-card)', color: filter === f ? '#fff' : 'var(--text-secondary)' }}>
                 {f === 'todo' ? `На категоризацію (${todo.length})` : `Усі (${rows.length})`}
               </button>
             ))}
@@ -170,18 +170,18 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
               </tr>
             </thead>
             <tbody>
-              {shown.length === 0 && <tr><td colSpan={4} style={{ ...cell, textAlign: 'center', color: '#15803D', padding: '24px' }}>✓ Усе рознесено</td></tr>}
+              {shown.length === 0 && <tr><td colSpan={4} style={{ ...cell, textAlign: 'center', color: 'var(--color-success)', padding: '24px' }}>✓ Усе рознесено</td></tr>}
               {shown.map(r => (
                 <tr key={r.id}>
                   <td style={cell}>{dmy(String(r.txn_time))}</td>
-                  <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.direction === 'in' ? '#15803D' : 'var(--text-primary)' }}>{r.direction === 'in' ? '+' : '−'}{fmt(Number(r.amount))}</td>
+                  <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.direction === 'in' ? 'var(--color-success)' : 'var(--text-primary)' }}>{r.direction === 'in' ? '+' : '−'}{fmt(Number(r.amount))}</td>
                   <td style={{ ...cell, maxWidth: '460px' }}>
                     <div style={{ fontWeight: 600 }}>{r.counter_name ?? r.description}</div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '11.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.comment ?? ''}>{r.comment}</div>
                   </td>
                   <td style={{ ...cell, minWidth: '320px' }}>
                     {r.status !== 'unmatched' && (
-                      <span style={{ color: r.status === 'ignored' ? 'var(--text-muted)' : '#15803D', fontSize: '12px' }}>
+                      <span style={{ color: r.status === 'ignored' ? 'var(--text-muted)' : 'var(--color-success)', fontSize: '12px' }}>
                         ✓ {STATUS_LABEL[r.status]}{r.category ? ` · ${categoryLabel(r.category, partners)}` : ''}
                         {r.note && <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{r.note}</div>}
                       </span>
@@ -213,7 +213,7 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
                           <input value={desc[r.id] ?? ''} onChange={e => setDesc(d => ({ ...d, [r.id]: e.target.value }))} placeholder="Опис (необов'язково)" style={inp} />
                         )}
                         <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id || (choice[r.id] === 'order' && !orderNo[r.id]) || (choice[r.id]?.startsWith('partner-') && !partner[r.id])}
-                          style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? '#1D4ED8' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>
+                          style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? 'var(--color-info)' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>
                           {busy === r.id ? 'Проводимо…' : 'Провести'}
                         </button>
                       </div>

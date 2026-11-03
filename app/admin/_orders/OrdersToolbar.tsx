@@ -181,9 +181,9 @@ export function OrdersToolbar() {
                   onClick={() => pushFilters({ channel: ch.value })}
                   style={{
                     height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    border: `1.5px solid ${active ? (cfg?.color ?? '#1E3A5F') : 'var(--border)'}`,
+                    border: `1.5px solid ${active ? (cfg?.color ?? 'var(--navy)') : 'var(--border)'}`,
                     background: active ? (cfg?.bg ?? '#EFF4FF') : 'var(--bg-card)',
-                    color: active ? (cfg?.color ?? '#1E3A5F') : 'var(--text-secondary)',
+                    color: active ? (cfg?.color ?? 'var(--navy)') : 'var(--text-secondary)',
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}
                 >
@@ -290,9 +290,9 @@ export function OrdersToolbar() {
                   title="Замовлення, які в кабінеті Rozetka вже рухнули далі, ніж у нас"
                   style={{
                     height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    border: `1.5px solid ${cabinetAheadOnly ? '#15803D' : 'var(--border)'}`,
+                    border: `1.5px solid ${cabinetAheadOnly ? 'var(--color-success)' : 'var(--border)'}`,
                     background: cabinetAheadOnly ? '#DCFCE7' : 'var(--bg-card)',
-                    color: cabinetAheadOnly ? '#15803D' : 'var(--text-secondary)',
+                    color: cabinetAheadOnly ? 'var(--color-success)' : 'var(--text-secondary)',
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}
                 >

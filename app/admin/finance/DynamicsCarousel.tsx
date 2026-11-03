@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { fmtInt as fmt } from '../../../lib/format';
 
 // Карусель «Динаміка» на «Огляді»: три погляди в одному вікні.
 //   Дні     — щоденні стовпчики виручки/прибутку + тренд (ковзне середнє)
@@ -28,10 +29,6 @@ const SOURCE_META: Record<string, { label: string; color: string }> = {
   rozetka:  { label: 'Rozetka',  color: '#15803D' },
   other:    { label: 'Інше',     color: '#94A3B8' },
 };
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
-}
 
 /* ── Дні: дві панелі зі своїми шкалами (виручка ↑ / прибуток ↓) ───────────
    Одна шкала ховала прибуток біля нуля поруч із виручкою; окрема нижня
@@ -238,7 +235,7 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
   const delta = (s: Dynamics['sources'][number]) => {
     if (s.prevRevenue <= 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
     const d = Math.round((s.revenue - s.prevRevenue) / s.prevRevenue * 100);
-    return <span style={{ color: d >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>{d >= 0 ? '+' : ''}{d}%</span>;
+    return <span style={{ color: d >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>{d >= 0 ? '+' : ''}{d}%</span>;
   };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '40px', minHeight: 224, flexWrap: 'wrap', paddingLeft: '10px' }}>
@@ -288,7 +285,7 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
                   <td style={{ ...td, color: 'var(--text-muted)' }}>{Math.round(s.revenue / total * 100)}%</td>
                   <td style={td}>{s.count}</td>
                   <td style={td}>{fmt(s.avgCheck)} ₴</td>
-                  <td style={{ ...td, color: s.profit >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>
+                  <td style={{ ...td, color: s.profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
                     {fmt(s.profit)} ₴{s.margin !== null && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {Math.round(s.margin)}%</span>}
                   </td>
                   <td style={td}>{delta(s)}</td>
@@ -301,7 +298,7 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
               <td style={{ ...td, color: 'var(--text-muted)' }}>100%</td>
               <td style={{ ...td, fontWeight: 700 }}>{totalCount}</td>
               <td style={td}>{fmt(totalCount ? Math.round(total / totalCount) : 0)} ₴</td>
-              <td style={{ ...td, color: totalProfit >= 0 ? '#15803D' : '#DC2626', fontWeight: 700 }}>
+              <td style={{ ...td, color: totalProfit >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 700 }}>
                 {fmt(totalProfit)} ₴<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {Math.round(totalProfit / total * 100)}%</span>
               </td>
               <td style={td} />
@@ -350,8 +347,8 @@ function PlanCumChart({ p }: { p: Dynamics['planCum'] }) {
       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
         {p.plan
           ? <>Продажі {fmt(lastVal)} ₴ (створені, вкл. в дорозі) проти темпу плану {fmt(p.plan[lastIdx] ?? 0)} ₴ — {onTrack
-              ? <b style={{ color: '#15803D' }}>випереджаємо</b>
-              : <b style={{ color: '#DC2626' }}>відстаємо на {fmt((p.plan[lastIdx] ?? 0) - lastVal)} ₴</b>}</>
+              ? <b style={{ color: 'var(--color-success)' }}>випереджаємо</b>
+              : <b style={{ color: 'var(--color-danger)' }}>відстаємо на {fmt((p.plan[lastIdx] ?? 0) - lastVal)} ₴</b>}</>
           : 'План не задано — введіть його у віджеті «План на місяць», і тут з’явиться лінія темпу.'}
       </div>
     </div>
@@ -373,7 +370,7 @@ export default function DynamicsCarousel({ data }: { data: Dynamics }) {
         {SLIDES.map(s => (
           <button key={s.key} onClick={() => setSlide(s.key)}
             style={{ padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer',
-              color: slide === s.key ? '#fff' : 'var(--text-secondary)', background: slide === s.key ? '#1E3A5F' : 'var(--bg-soft)' }}>
+              color: slide === s.key ? '#fff' : 'var(--text-secondary)', background: slide === s.key ? 'var(--navy)' : 'var(--bg-soft)' }}>
             {s.label}
           </button>
         ))}

@@ -197,9 +197,9 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
         gap: 6, alignItems: 'center',
         padding: '5px 10px',
         borderBottom: '1px solid #F1F5F9',
-        background: indent === 0 ? '#F8FAFC' : '#fff',
+        background: indent === 0 ? 'var(--bg-soft)' : '#fff',
       }}>
-        <div style={{ fontSize: indent === 0 ? 13 : 12, fontWeight: indent === 0 ? 600 : 400, color: indent === 0 ? '#1E293B' : '#475569', paddingLeft: indent * 16 }}>
+        <div style={{ fontSize: indent === 0 ? 13 : 12, fontWeight: indent === 0 ? 600 : 400, color: indent === 0 ? '#1E293B' : 'var(--text-secondary)', paddingLeft: indent * 16 }}>
           {cat.name}
         </div>
 
@@ -212,7 +212,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             onBlur={() => setTimeout(() => setDropSlug(s => s === cat.slug ? null : s), 150)}
             placeholder="rz_id"
             style={{
-              padding: '4px 8px', borderRadius: 5, border: '1px solid #E2E8F0',
+              padding: '4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, width: 96, flexShrink: 0, boxSizing: 'border-box',
               background: v.rz_id ? '#ECFDF5' : '#fff',
             }}
@@ -224,9 +224,9 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             onBlur={() => setTimeout(() => setDropSlug(s => s === cat.slug ? null : s), 150)}
             placeholder="Назва"
             style={{
-              padding: '4px 8px', borderRadius: 5, border: '1px solid #E2E8F0',
+              padding: '4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, flex: 1, minWidth: 0, boxSizing: 'border-box',
-              color: '#475569', background: v.rz_name ? '#F0FDF4' : '#fff',
+              color: 'var(--text-secondary)', background: v.rz_name ? 'var(--bg-success)' : '#fff',
             }}
           />
           {dropSlug === cat.slug && treeSuggestions.length > 0 && (
@@ -252,7 +252,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                   {entry.commission_rz_id && (() => {
                     const parentName = refsMap.get(entry.commission_rz_id)?.name ?? treeMap.get(entry.commission_rz_id)?.name;
                     return (
-                      <span style={{ fontSize: 10, color: '#94A3B8', flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
                         → {entry.commission_rz_id}{parentName ? ` ${parentName}` : ''}
                       </span>
                     );
@@ -271,13 +271,13 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             placeholder="rz_id"
             list="commission-refs-list"
             style={{
-              padding: '4px 8px', borderRadius: 5, border: '1px solid #E2E8F0',
+              padding: '4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, width: 88, flexShrink: 0, boxSizing: 'border-box',
               background: v.commission_rz_id && v.commission_rz_id !== v.rz_id ? '#FFF7ED' : '#ECFDF5',
             }}
           />
           {v.commission_label && v.commission_label !== v.rz_id && (
-            <span style={{ fontSize: 12, color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
               {v.commission_label}
             </span>
           )}
@@ -291,12 +291,12 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             placeholder="0"
             type="number" min="0" max="50" step="0.5"
             style={{
-              padding: '4px 22px 4px 8px', borderRadius: 5, border: '1px solid #E2E8F0',
+              padding: '4px 22px 4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, width: '100%', boxSizing: 'border-box',
               background: v.commission ? '#FFF7ED' : '#fff',
             }}
           />
-          <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#94A3B8' }}>%</span>
+          <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-muted)' }}>%</span>
         </div>
 
         {/* save */}
@@ -321,7 +321,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
   return (
     <div style={{ padding: '28px 32px', maxWidth: 1400, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-        <Link href="/admin/rozetka/products" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>← Товари</Link>
+        <Link href="/admin/rozetka/products" style={{ fontSize: 13, color: 'var(--text-soft)', textDecoration: 'none' }}>← Товари</Link>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1E293B', margin: 0 }}>Rozetka</h1>
 
         {/* Tab switcher */}
@@ -335,7 +335,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                 display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px',
                 borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500,
                 background: view === key ? '#fff' : 'transparent',
-                color: view === key ? '#1E293B' : '#64748B',
+                color: view === key ? '#1E293B' : 'var(--text-soft)',
                 boxShadow: view === key ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
                 transition: 'all .15s',
               }}
@@ -345,19 +345,19 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {view === 'commissions' && (
-            <span style={{ fontSize: 12, color: '#64748B' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-soft)' }}>
               {filledCommissions} / {categories.length} категорій з комісією
             </span>
           )}
           {view === 'categories' && catRefLoaded && (
             <>
-              <span style={{ fontSize: 12, color: '#64748B' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-soft)' }}>
                 {catRef.length} категорій Rozetka · {catRef.filter(r => r.our_categories.length > 0).length} з прив'язкою
               </span>
               <button onClick={downloadCsv} style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
-                background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 8,
-                fontSize: 13, color: '#475569', cursor: 'pointer',
+                background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 8,
+                fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer',
               }}>
                 <Download size={13} /> Скачати TSV
               </button>
@@ -383,16 +383,16 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
       {view === 'commissions' && (<>
       {/* Tariff import error */}
       {tErr && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#DC2626' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: 8, marginBottom: 16, fontSize: 13, color: 'var(--color-danger)' }}>
           <AlertTriangle size={14} /> {tErr}
-          <button onClick={() => setTErr(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}><X size={14} /></button>
+          <button onClick={() => setTErr(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }}><X size={14} /></button>
         </div>
       )}
 
       {/* Tariff import preview panel */}
       {tRes && (
-        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: tRes.applied ? '#ECFDF5' : '#F0F9FF', borderBottom: '1px solid #E2E8F0' }}>
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: tRes.applied ? '#ECFDF5' : '#F0F9FF', borderBottom: '1px solid var(--border)' }}>
             {tRes.applied
               ? <><CheckCircle size={15} color="#059669" /><span style={{ fontSize: 13, fontWeight: 600, color: '#059669' }}>Тариф оновлено: {tRes.categories} категорій, {tRes.brackets} порогів{tRes.totalInTable != null ? ` · у таблиці ${tRes.totalInTable}` : ''}</span></>
               : <>
@@ -412,19 +412,19 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                   )}
                 </>
             }
-            <button onClick={() => setTRes(null)} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}><X size={14} /></button>
+            <button onClick={() => setTRes(null)} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={14} /></button>
           </div>
 
           {!tRes.applied && (tRes.sampleChanges?.length ?? 0) > 0 && (
             <div style={{ padding: '10px 16px', maxHeight: 220, overflowY: 'auto' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
                 Зміни (перші {tRes.sampleChanges!.length})
               </div>
               {tRes.sampleChanges!.map((c, i) => (
-                <div key={`${c.rz_id}-${c.price_from}-${i}`} style={{ display: 'flex', gap: 10, fontSize: 12, padding: '3px 0', borderBottom: '1px solid #F8FAFC' }}>
-                  <span style={{ flex: 1, color: '#475569' }}>{c.category_name ?? c.rz_id}</span>
-                  <span style={{ color: '#94A3B8', fontFamily: 'monospace' }}>[{c.rz_id}] від {c.price_from}₴</span>
-                  <span style={{ color: '#DC2626', textDecoration: c.old_pct != null ? 'line-through' : 'none' }}>{c.old_pct != null ? `${c.old_pct}%` : 'нове'}</span>
+                <div key={`${c.rz_id}-${c.price_from}-${i}`} style={{ display: 'flex', gap: 10, fontSize: 12, padding: '3px 0', borderBottom: '1px solid var(--bg-soft)' }}>
+                  <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{c.category_name ?? c.rz_id}</span>
+                  <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>[{c.rz_id}] від {c.price_from}₴</span>
+                  <span style={{ color: 'var(--color-danger)', textDecoration: c.old_pct != null ? 'line-through' : 'none' }}>{c.old_pct != null ? `${c.old_pct}%` : 'нове'}</span>
                   <span style={{ color: '#059669', fontWeight: 600 }}>→ {c.new_pct}%</span>
                 </div>
               ))}
@@ -440,13 +440,13 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
         ))}
       </datalist>
 
-      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{
           display: 'grid', gridTemplateColumns: '180px 1fr 1fr 110px 90px',
           gap: 6, padding: '8px 10px',
-          background: '#F1F5F9', borderBottom: '1px solid #E2E8F0',
-          fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '.04em',
+          background: '#F1F5F9', borderBottom: '1px solid var(--border)',
+          fontSize: 11, fontWeight: 600, color: 'var(--text-soft)', textTransform: 'uppercase', letterSpacing: '.04em',
         }}>
           <div>Категорія</div>
           <div>Rozetka ID · Назва</div>
@@ -470,7 +470,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
         ))}
       </div>
 
-      <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 12 }}>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12 }}>
         Ціна на Rozetka = ціна входу × (1 + наценка%) / (1 − комісія%), округлення до 5 грн.
         Наценки налаштовуються на вкладці «Товари».
       </p>
@@ -481,24 +481,24 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
         <>
           {/* Search */}
           <div style={{ position: 'relative', marginBottom: 14, maxWidth: 420 }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input
               value={catSearch} onChange={e => setCatSearch(e.target.value)}
               placeholder="Пошук за ID, назвою або нашою категорією…"
               style={{
                 width: '100%', boxSizing: 'border-box', paddingLeft: 32, paddingRight: 12,
-                height: 36, border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13,
+                height: 36, border: '1px solid var(--border)', borderRadius: 8, fontSize: 13,
                 outline: 'none', color: '#1E293B',
               }}
             />
           </div>
 
           {catRefLoading && (
-            <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: 14 }}>Завантаження…</div>
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>Завантаження…</div>
           )}
 
           {catRefLoaded && (
-            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
               {/* 6 columns: rz_id | rz_name | comm_id | comm_name | % | our cats */}
               {(() => {
                 const cols = '100px 1fr 100px 1fr 64px 1fr';
@@ -507,8 +507,8 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                   <>
                     <div style={{
                       display: 'grid', gridTemplateColumns: cols,
-                      background: '#F1F5F9', borderBottom: '2px solid #E2E8F0',
-                      fontSize: 11, fontWeight: 700, color: '#64748B',
+                      background: '#F1F5F9', borderBottom: '2px solid var(--border)',
+                      fontSize: 11, fontWeight: 700, color: 'var(--text-soft)',
                       textTransform: 'uppercase', letterSpacing: '.05em',
                     }}>
                       {['ID', 'Категорія Rozetka', 'Ком. ID', 'Комісійна категорія', '%', 'Наші категорії'].map(h => (
@@ -529,13 +529,13 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                         <div style={{ ...cellStyle }}>
                           {r.rz_name}
                         </div>
-                        <div style={{ ...cellStyle, fontFamily: 'monospace', fontSize: 12, color: '#94A3B8' }}>
-                          {r.commission_rz_id ?? <span style={{ color: '#E2E8F0' }}>—</span>}
+                        <div style={{ ...cellStyle, fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>
+                          {r.commission_rz_id ?? <span style={{ color: 'var(--border)' }}>—</span>}
                         </div>
-                        <div style={{ ...cellStyle, color: r.commission_name ? '#475569' : '#CBD5E1' }}>
+                        <div style={{ ...cellStyle, color: r.commission_name ? 'var(--text-secondary)' : '#CBD5E1' }}>
                           {r.commission_name ?? '—'}
                         </div>
-                        <div style={{ ...cellStyle, fontWeight: 600, color: r.commission_pct ? '#0F172A' : '#CBD5E1' }}>
+                        <div style={{ ...cellStyle, fontWeight: 600, color: r.commission_pct ? 'var(--text-primary)' : '#CBD5E1' }}>
                           {r.commission_pct != null ? `${r.commission_pct}%` : '—'}
                         </div>
                         <div style={{ ...cellStyle, color: r.our_categories.length > 0 ? '#334155' : '#CBD5E1', flexWrap: 'wrap', gap: 4, paddingTop: 6, paddingBottom: 6 }}>
@@ -543,7 +543,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                             ? r.our_categories.map(name => (
                                 <span key={name} style={{
                                   display: 'inline-block', padding: '2px 7px',
-                                  background: '#F0FDF4', color: '#059669',
+                                  background: 'var(--bg-success)', color: '#059669',
                                   borderRadius: 4, fontSize: 12, lineHeight: 1.5,
                                 }}>{name}</span>
                               ))
@@ -554,7 +554,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                     ))}
 
                     {catRefFiltered.length === 0 && (
-                      <div style={{ textAlign: 'center', padding: 32, color: '#94A3B8', fontSize: 13 }}>Нічого не знайдено</div>
+                      <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 13 }}>Нічого не знайдено</div>
                     )}
                   </>
                 );

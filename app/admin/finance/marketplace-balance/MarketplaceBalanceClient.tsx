@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, X, ArrowLeftRight, Landmark, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
 import type { LedgerRow, InTransit } from './page';
 import SmartSecurityCheck from './SmartSecurityCheck';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 type CabinetRow = {
   rozetkaOrderId: number;
@@ -59,10 +60,6 @@ const MARKETPLACE_LABEL: Record<string, { label: string; color: string; bg: stri
   epicentr: { label: 'Епіцентр', color: '#1E3A5F', bg: 'var(--bg-soft)' },
 };
 
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 const inp: React.CSSProperties = {
   height: '38px', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: '8px',
   fontSize: '13px', outline: 'none', width: '100%', boxSizing: 'border-box',
@@ -111,7 +108,7 @@ function ArticlesTable({ articles, total, theirLabel }: { articles: Article[]; t
               <span style={{ color: 'var(--text-primary)' }}>{a.label}</span>
               <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.their)} ₴</span>
               <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(a.ours)} ₴</span>
-              <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: ok ? '#15803D' : '#B45309' }}>
+              <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: ok ? 'var(--color-success)' : 'var(--color-warn)' }}>
                 {ok ? '✓ 0' : `${a.delta > 0 ? '+' : ''}${fmt(a.delta)}`}
               </span>
             </div>
@@ -139,7 +136,6 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
   const [topupAmount, setTopupAmount]   = useState('');
   const [topupMethod, setTopupMethod]   = useState<'bank' | 'cash' | 'novapay'>('novapay');
   const [topupDate, setTopupDate]       = useState(new Date().toISOString().slice(0, 10));
-
 
   const [adjustOpen, setAdjustOpen]         = useState(false);
   const [adjDirection, setAdjDirection]     = useState<'charge' | 'credit'>('charge');
@@ -270,7 +266,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               поточний баланс за нашими записами
               {/* У згорнутому вигляді таблиці немає, тож головне з неї виносимо сюди */}
               {!open && data.inTransit.total > 0 && (
-                <span style={{ color: '#B45309', fontWeight: 600 }}>
+                <span style={{ color: 'var(--color-warn)', fontWeight: 600 }}>
                   {' · '}в дорозі −{fmt(data.inTransit.total)} ₴ → прогноз {fmt(data.balance - data.inTransit.total)} ₴
                 </span>
               )}
@@ -279,7 +275,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => { setOpen(true); setTopupOpen(v => !v); setError(''); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Plus size={14} /> Поповнити
           </button>
           <button onClick={() => { setOpen(true); setAdjustOpen(v => !v); setTopupOpen(false); setError(''); }}
@@ -288,7 +284,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
           </button>
           {marketplace === 'prom' && (
             <button onClick={() => { setOpen(true); setPromOpen(v => !v); }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: promOpen ? '1.5px solid #1E3A5F' : '1.5px solid var(--border)', background: 'var(--bg-soft)', color: promOpen ? '#1E3A5F' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: promOpen ? '1.5px solid var(--navy)' : '1.5px solid var(--border)', background: 'var(--bg-soft)', color: promOpen ? 'var(--navy)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
               <Landmark size={14} /> Виписка
             </button>
           )}
@@ -298,7 +294,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               setCabinetOpen(v => !v);
               if (!cabinetOpen && !cabinetData) void loadCabinet();
             }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: cabinetOpen ? '1.5px solid #1E3A5F' : '1.5px solid var(--border)', background: 'var(--bg-soft)', color: cabinetOpen ? '#1E3A5F' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: cabinetOpen ? '1.5px solid var(--navy)' : '1.5px solid var(--border)', background: 'var(--bg-soft)', color: cabinetOpen ? 'var(--navy)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
               <Landmark size={14} /> Кабінет
             </button>
           )}
@@ -315,7 +311,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <span style={lbl}>Комісії в дорозі (ще не проведені)</span>
-              <div style={{ fontSize: '17px', fontWeight: 800, color: '#B45309' }}>
+              <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-warn)' }}>
                 −{fmt(data.inTransit.total)} ₴
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginLeft: '8px' }}>{data.inTransit.items.length} посилок</span>
               </div>
@@ -325,7 +321,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(data.balance - data.inTransit.total)} ₴</div>
             </div>
             <button onClick={() => setShowTransit(v => !v)}
-              style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: '#B45309', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--color-warn)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
               {showTransit ? 'Сховати' : 'Показати'} посилки
             </button>
           </div>
@@ -334,7 +330,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               {data.inTransit.items.map(it => (
                 <div key={it.docId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '5px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Замовлення №{it.orderNumber ?? '—'} · ТТН {it.ttn ?? '—'}</span>
-                  <span style={{ fontWeight: 700, color: '#B45309' }}>−{fmt(it.commission)} ₴</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-warn)' }}>−{fmt(it.commission)} ₴</span>
                 </div>
               ))}
             </div>
@@ -365,13 +361,13 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             <input style={inp} type="date" value={topupDate} onChange={e => setTopupDate(e.target.value)} />
           </div>
           <button onClick={submitTopup} disabled={saving}
-            style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+            style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? '...' : 'Зберегти'}
           </button>
           <button onClick={() => setTopupOpen(false)} style={{ height: '38px', width: '38px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={14} />
           </button>
-          {error && <div style={{ width: '100%', color: '#DC2626', fontSize: '12px' }}>{error}</div>}
+          {error && <div style={{ width: '100%', color: 'var(--color-danger)', fontSize: '12px' }}>{error}</div>}
         </div>
       )}
 
@@ -387,7 +383,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                   return (
                     <button key={v} type="button" onClick={() => setAdjDirection(v)}
                       style={{ flex: 1, border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
-                        background: active ? (v === 'charge' ? '#DC2626' : '#15803D') : 'var(--bg-card)',
+                        background: active ? (v === 'charge' ? 'var(--color-danger)' : 'var(--color-success)') : 'var(--bg-card)',
                         color: active ? '#fff' : 'var(--text-secondary)' }}>
                       {t}
                     </button>
@@ -421,7 +417,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               <input style={inp} value={adjNote} onChange={e => setAdjNote(e.target.value)} placeholder="необовʼязково" />
             </div>
             <button onClick={submitAdjust} disabled={saving}
-              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
               {saving ? '...' : 'Зберегти'}
             </button>
             <button onClick={() => setAdjustOpen(false)} style={{ height: '38px', width: '38px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -431,7 +427,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
             Списання зменшує баланс на площадці (збір за доставку/рекламу), нарахування — збільшує (компенсація від площадки).
           </div>
-          {error && <div style={{ marginTop: '8px', color: '#DC2626', fontSize: '12px' }}>{error}</div>}
+          {error && <div style={{ marginTop: '8px', color: 'var(--color-danger)', fontSize: '12px' }}>{error}</div>}
         </div>
       )}
 
@@ -451,7 +447,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             style={{ width: '100%', minHeight: '110px', padding: '10px 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '12px', fontFamily: 'ui-monospace, monospace', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)', resize: 'vertical' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
             <button onClick={() => loadProm()} disabled={promLoading || !promText.trim()}
-              style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: promLoading || !promText.trim() ? 'default' : 'pointer', opacity: promLoading || !promText.trim() ? 0.5 : 1 }}>
+              style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: promLoading || !promText.trim() ? 'default' : 'pointer', opacity: promLoading || !promText.trim() ? 0.5 : 1 }}>
               {promLoading ? 'Звіряю…' : 'Звірити'}
             </button>
             {promData && (
@@ -460,7 +456,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               </span>
             )}
           </div>
-          {promError && <div style={{ color: '#DC2626', fontSize: '12px', marginTop: '8px' }}>{promError}</div>}
+          {promError && <div style={{ color: 'var(--color-danger)', fontSize: '12px', marginTop: '8px' }}>{promError}</div>}
 
           {promData && (
             <div style={{ marginTop: '14px' }}>
@@ -472,7 +468,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                 return (
                   <div style={{ padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: !known ? 'var(--text-secondary)' : ok ? '#15803D' : '#DC2626' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: !known ? 'var(--text-secondary)' : ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {!known ? 'Вкажіть баланс кабінету — і побачите, чи сходиться'
                           : ok ? '✓ Залишок сходиться'
                           : `Залишок розходиться на ${fmt(b.delta!)} ₴`}
@@ -526,7 +522,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                         </span>
                         <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(row.theirAmount)}</span>
                         <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(row.ourAmount)}</span>
-                        <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: Math.abs(row.delta) < 0.01 ? '#15803D' : '#B45309' }}>
+                        <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: Math.abs(row.delta) < 0.01 ? 'var(--color-success)' : 'var(--color-warn)' }}>
                           {Math.abs(row.delta) < 0.01 ? '0' : `${row.delta > 0 ? '+' : ''}${fmt(row.delta)}`}
                         </span>
                         <span style={{ textAlign: 'right', fontSize: '11.5px', fontWeight: 600, color: s.color }}>{s.text}</span>
@@ -553,7 +549,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               <input style={inp} type="date" value={cabinetTo} onChange={e => setCabinetTo(e.target.value)} />
             </div>
             <button onClick={() => loadCabinet()} disabled={cabinetLoading}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 16px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: cabinetLoading ? 'wait' : 'pointer', opacity: cabinetLoading ? 0.6 : 1 }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: cabinetLoading ? 'wait' : 'pointer', opacity: cabinetLoading ? 0.6 : 1 }}>
               <RefreshCw size={14} style={cabinetLoading ? { animation: 'spin 1s linear infinite' } : undefined} />
               {cabinetLoading ? 'Завантаження…' : 'Оновити'}
             </button>
@@ -566,11 +562,11 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                 </div>
                 <div>
                   <span style={lbl}>Сіра зона (резерви)</span>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#B45309' }}>{fmt(cabinetData.cabinet.sumInGray)} ₴</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-warn)' }}>{fmt(cabinetData.cabinet.sumInGray)} ₴</div>
                 </div>
                 <div>
                   <span style={lbl}>Комісії за період: Rozetka / у нас</span>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: cabinetData.rows.some(r => ['diff', 'missing_ours', 'missing_theirs'].includes(r.status)) ? '#DC2626' : '#15803D' }}>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: cabinetData.rows.some(r => ['diff', 'missing_ours', 'missing_theirs'].includes(r.status)) ? 'var(--color-danger)' : 'var(--color-success)' }}>
                     {fmt(cabinetData.totals.their)} / {fmt(cabinetData.totals.ours)} ₴
                   </div>
                 </div>
@@ -578,7 +574,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             )}
           </div>
 
-          {cabinetError && <div style={{ color: '#DC2626', fontSize: '12px', marginBottom: '10px' }}>{cabinetError}</div>}
+          {cabinetError && <div style={{ color: 'var(--color-danger)', fontSize: '12px', marginBottom: '10px' }}>{cabinetError}</div>}
 
           {cabinetData && (
             <>
@@ -590,7 +586,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                 return (
                   <div style={{ padding: '12px 16px', borderRadius: '10px', marginBottom: '14px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: ok ? '#15803D' : '#DC2626' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {ok ? '✓ Залишок сходиться' : `Залишок розходиться на ${fmt(b.delta)} ₴`}
                       </span>
                       <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
@@ -649,14 +645,14 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                         </span>
                         <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(row.theirAmount)}</span>
                         <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(row.ourAmount)}</span>
-                        <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: Math.abs(row.delta) < 0.01 ? 'var(--text-muted)' : '#DC2626' }}>
+                        <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: Math.abs(row.delta) < 0.01 ? 'var(--text-muted)' : 'var(--color-danger)' }}>
                           {Math.abs(row.delta) < 0.01 ? '—' : `${row.delta > 0 ? '+' : ''}${fmt(row.delta)}`}
                         </span>
                         <span style={{ textAlign: 'right', fontSize: '11px', fontWeight: 600, color: s.color }}>
                           {s.text}
                           {s.action && (
                             <button onClick={() => prefillAdjustFromRow(row)}
-                              style={{ marginLeft: '8px', height: '24px', padding: '0 10px', borderRadius: '6px', border: '1px solid #DC2626', background: 'var(--bg-card)', color: '#DC2626', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                              style={{ marginLeft: '8px', height: '24px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--color-danger)', background: 'var(--bg-card)', color: 'var(--color-danger)', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
                               Провести
                             </button>
                           )}
@@ -676,7 +672,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                 </div>
               )}
               {(cabinetData.smartFees?.count ?? 0) > 0 && (
-                <div style={{ marginTop: '6px', fontSize: '11px', color: '#B45309', lineHeight: 1.6 }}>
+                <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--color-warn)', lineHeight: 1.6 }}>
                   <strong style={{ fontWeight: 700 }}>Smart-збори за період (наші проводки):</strong>{' '}
                   ×{cabinetData.smartFees!.count} на −{fmt(cabinetData.smartFees!.total)} ₴ — Rozetka списує їх поза випискою,
                   тому в таблиці вище їх немає; у балансі кабінету вони вже враховані.
@@ -722,13 +718,13 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                   {new Date(row.business_date).toLocaleDateString('uk-UA')}
                 </span>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: isTopup ? '#15803D' : isBalance ? '#DC2626' : 'var(--text-muted)' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: isTopup ? 'var(--color-success)' : isBalance ? 'var(--color-danger)' : 'var(--text-muted)' }}>
                   {typeLabel}
                 </span>
                 <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
                   {row.description}
                 </span>
-                <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isBalance ? (Number(row.amount) >= 0 ? '#15803D' : '#DC2626') : 'var(--text-muted)' }}>
+                <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isBalance ? (Number(row.amount) >= 0 ? 'var(--color-success)' : 'var(--color-danger)') : 'var(--text-muted)' }}>
                   {isBalance ? `${Number(row.amount) >= 0 ? '+' : ''}${fmt(Number(row.amount))}` : `−${fmt(Number(row.amount))}`} ₴
                 </span>
               </div>

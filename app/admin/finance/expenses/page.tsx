@@ -6,6 +6,7 @@ import FinanceTabs from '../FinanceTabs';
 import AddExpenseButton from './AddExpenseButton';
 import AddTransferButton from './AddTransferButton';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 const db = createServiceClient();
 
@@ -31,10 +32,6 @@ const SOURCE_LABELS: Record<string, string> = {
 function docHref(docType: string, docId: string): string {
   if (docType === 'purchase_order') return `/admin/procurement/${docId}`;
   return `/admin/accounting/documents/${docId}`;
-}
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export default async function ExpensesPage({
@@ -121,7 +118,7 @@ export default async function ExpensesPage({
               style={{ height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)' }} />
           </div>
         ))}
-        <button type="submit" style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+        <button type="submit" style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           Показати
         </button>
       </form>
@@ -222,7 +219,7 @@ export default async function ExpensesPage({
                 </span>
 
                 {/* Сума */}
-                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>
                   −{fmt(Number(row.amount))} ₴
                 </span>
               </div>
@@ -232,7 +229,7 @@ export default async function ExpensesPage({
           {/* Total */}
           <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
             <span>Разом за період</span>
-            <span style={{ color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>−{fmt(total)} ₴</span>
+            <span style={{ color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>−{fmt(total)} ₴</span>
           </div>
         </div>
       )}

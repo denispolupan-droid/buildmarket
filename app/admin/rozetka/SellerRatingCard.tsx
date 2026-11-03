@@ -15,7 +15,7 @@ function StarsRow({ value }: { value: number }) {
   return (
     <span style={{ whiteSpace: 'nowrap' }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <span key={i} style={{ color: value >= i - 0.25 ? '#F59E0B' : '#E2E8F0', fontSize: 15 }}>★</span>
+        <span key={i} style={{ color: value >= i - 0.25 ? '#F59E0B' : 'var(--border)', fontSize: 15 }}>★</span>
       ))}
     </span>
   );

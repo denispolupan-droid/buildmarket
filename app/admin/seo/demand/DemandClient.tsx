@@ -154,7 +154,7 @@ export default function DemandClient() {
                       <td style={tdNum}>{r.impressions.toLocaleString('uk-UA')}</td>
                       <td style={tdNum}>{r.clicks.toLocaleString('uk-UA')}</td>
                       <td style={tdNum}>{r.position.toFixed(1)}</td>
-                      <td style={{ ...tdNum, color: r.in_stock === false ? 'var(--color-danger)' : r.in_stock ? '#15803D' : 'var(--text-muted)', fontWeight: 700 }}>
+                      <td style={{ ...tdNum, color: r.in_stock === false ? 'var(--color-danger)' : r.in_stock ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: 700 }}>
                         {r.in_stock === null ? '—' : r.in_stock ? 'є' : 'немає'}
                       </td>
                     </tr>

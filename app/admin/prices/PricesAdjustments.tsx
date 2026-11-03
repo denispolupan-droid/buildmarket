@@ -90,10 +90,10 @@ export default function PricesAdjustments({ onChanged }: { onChanged: () => void
           padding: '11px 16px', borderRadius: 10, border: `1px solid ${g.state === 'scheduled' ? '#BAE6FD' : 'var(--border)'}`,
           background: g.state === 'scheduled' ? '#F0F9FF' : 'var(--bg-card)',
         }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: g.pct_max >= 0 ? '#15803D' : '#DC2626', whiteSpace: 'nowrap' }}>{pctText(g)}</div>
-          <div style={{ fontSize: 12, color: '#6B7280' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: g.pct_max >= 0 ? 'var(--color-success)' : 'var(--color-danger)', whiteSpace: 'nowrap' }}>{pctText(g)}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-gray)' }}>
             {g.channels.map(c => ADJ_CHANNEL_LABEL[c as AdjChannel] ?? c).join(' + ')}
-            <div style={{ fontSize: 11, color: '#9CA3AF' }}>{g.skus} товарів</div>
+            <div style={{ fontSize: 11, color: 'var(--text-gray-light)' }}>{g.skus} товарів</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
             {g.is_promo ? (
@@ -114,9 +114,9 @@ export default function PricesAdjustments({ onChanged }: { onChanged: () => void
               {g.comment || '—'}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: '#6B7280' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-gray)' }}>
             {g.created_at ? `створено ${fmtDate(g.created_at)}` : ''}
-            <div style={{ fontSize: 11, color: g.ends_on ? '#B45309' : '#9CA3AF' }}>
+            <div style={{ fontSize: 11, color: g.ends_on ? 'var(--color-warn)' : 'var(--text-gray-light)' }}>
               {g.ends_on ? `діє до ${fmtDate(lastDayOf(g.ends_on)!)} включно` : 'без дати завершення'}
             </div>
           </div>

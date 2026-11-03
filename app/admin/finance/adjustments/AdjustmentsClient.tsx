@@ -9,12 +9,12 @@ import {
   type AdjustmentLineInput, type AdjustmentOp, type DebtSide, type SideState, type DebtAccount,
 } from '../../../../lib/accounting/debt-adjustment-rules';
 import type { OpenItem, DebtAdjustmentView } from '../../../../lib/accounting/debt-adjustment';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 type PartyOption = { id: string; label: string; sub: string | null; balance: number; cabinet?: number };
 type SideValue = { account: DebtAccount; party: PartyOption | null; orderId: string | null; state?: SideState; items?: OpenItem[] };
 type LineDraft = { line: AdjustmentLineInput; text: string };
 
-const fmt = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date().toISOString().slice(0, 10);
 const emptySide = (account: DebtAccount): SideValue => ({ account, party: null, orderId: null });
 
@@ -22,7 +22,7 @@ const inputStyle: React.CSSProperties = {
   height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px',
   outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%', boxSizing: 'border-box',
 };
-const btnPrimary: React.CSSProperties = { height: '36px', padding: '0 16px', borderRadius: '9px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
+const btnPrimary: React.CSSProperties = { height: '36px', padding: '0 16px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
 const btnGhost: React.CSSProperties = { height: '32px', padding: '0 12px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
 
 /** Сальдо словами: клієнт «+» = винен нам; постачальник «−» = ми винні; партнер — баланс кабінету. */
@@ -162,7 +162,7 @@ function SidePicker({ title, hint, value, onChange, lockAccount }: {
           )}
           {item && (
             <div style={{ color: 'var(--text-secondary)' }}>
-              По замовленню #{item.order_number}: продаж <strong>{fmt(item.sale)}</strong>, отримано <strong style={{ color: '#15803D' }}>{fmt(item.received)}</strong>, відкрито <strong style={{ color: item.open > 0.005 ? '#DC2626' : 'var(--text-primary)' }}>{fmt(item.open)}</strong> ₴
+              По замовленню #{item.order_number}: продаж <strong>{fmt(item.sale)}</strong>, отримано <strong style={{ color: 'var(--color-success)' }}>{fmt(item.received)}</strong>, відкрито <strong style={{ color: item.open > 0.005 ? 'var(--color-danger)' : 'var(--text-primary)' }}>{fmt(item.open)}</strong> ₴
             </div>
           )}
         </div>
@@ -333,7 +333,7 @@ export default function AdjustmentsClient() {
           </button>
         </div>
         {draftLine && draftError && (
-          <div style={{ marginTop: '8px', fontSize: '12px', color: '#B45309', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={13} /> {draftError}</div>
+          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={13} /> {draftError}</div>
         )}
 
         {lines.length > 0 && (
@@ -343,7 +343,7 @@ export default function AdjustmentsClient() {
                 <span style={{ color: 'var(--text-muted)' }}>{i + 1}</span>
                 <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.text}{l.line.note ? <span style={{ color: 'var(--text-muted)' }}> — {l.line.note}</span> : null}</span>
                 <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(Number(l.line.amount))} ₴</span>
-                <button type="button" onClick={() => setLines(prev => prev.filter((_, j) => j !== i))} style={{ border: 'none', background: 'transparent', color: '#DC2626', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                <button type="button" onClick={() => setLines(prev => prev.filter((_, j) => j !== i))} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer' }}><Trash2 size={14} /></button>
               </div>
             ))}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', fontSize: '12.5px', fontWeight: 700 }}>
@@ -359,12 +359,12 @@ export default function AdjustmentsClient() {
           <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Підстава / коментар до документа
             <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="напр. лист покупця, № претензії" style={{ ...inputStyle, marginTop: '4px' }} />
           </label>
-          <button type="button" onClick={post} disabled={posting || !lines.length} style={{ ...btnPrimary, background: '#15803D', opacity: posting || !lines.length ? 0.5 : 1 }}>
+          <button type="button" onClick={post} disabled={posting || !lines.length} style={{ ...btnPrimary, background: 'var(--color-success)', opacity: posting || !lines.length ? 0.5 : 1 }}>
             <Check size={14} /> {posting ? 'Проводимо…' : 'Провести'}
           </button>
         </div>
-        {error && <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {error}</div>}
-        {toast && <div style={{ marginTop: '10px', fontSize: '12.5px', color: '#15803D', fontWeight: 600 }}>{toast}</div>}
+        {error && <div style={{ marginTop: '10px', fontSize: '12.5px', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {error}</div>}
+        {toast && <div style={{ marginTop: '10px', fontSize: '12.5px', color: 'var(--color-success)', fontWeight: 600 }}>{toast}</div>}
       </div>
 
       {/* ── Журнал ─────────────────────────────────────────────────────── */}
@@ -390,7 +390,7 @@ export default function AdjustmentsClient() {
                 </span>
                 <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(d.total_amount)} ₴</span>
                 <span style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: cancelled ? '#FEF2F2' : '#F0FDF4', color: cancelled ? '#DC2626' : '#15803D' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: cancelled ? 'var(--bg-danger)' : 'var(--bg-success)', color: cancelled ? 'var(--color-danger)' : 'var(--color-success)' }}>
                     {cancelled ? 'Скасовано' : 'Проведено'}
                   </span>
                 </span>
@@ -403,12 +403,12 @@ export default function AdjustmentsClient() {
                         <span style={{ color: 'var(--text-muted)' }}>{l.line_no}</span>
                         <span>
                           <span style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: '6px' }}>{OP_LABEL[l.op as AdjustmentOp] ?? l.op}</span>
-                          <span style={{ color: '#1E3A5F', fontWeight: 700 }}>Дт</span> {l.debit.order_id ? <Link href={`/admin/orders/${l.debit.order_id}`} style={{ color: 'inherit' }}>{l.debit.label}</Link> : l.debit.label}
+                          <span style={{ color: 'var(--navy)', fontWeight: 700 }}>Дт</span> {l.debit.order_id ? <Link href={`/admin/orders/${l.debit.order_id}`} style={{ color: 'inherit' }}>{l.debit.label}</Link> : l.debit.label}
                           <span style={{ color: 'var(--text-muted)' }}> → </span>
-                          <span style={{ color: '#B45309', fontWeight: 700 }}>Кт</span> {l.credit.order_id ? <Link href={`/admin/orders/${l.credit.order_id}`} style={{ color: 'inherit' }}>{l.credit.label}</Link> : l.credit.label}
+                          <span style={{ color: 'var(--color-warn)', fontWeight: 700 }}>Кт</span> {l.credit.order_id ? <Link href={`/admin/orders/${l.credit.order_id}`} style={{ color: 'inherit' }}>{l.credit.label}</Link> : l.credit.label}
                           {l.note && <span style={{ color: 'var(--text-muted)' }}> — {l.note}</span>}
-                          {!l.posted && <span style={{ color: '#DC2626', marginLeft: '6px' }}>(не проведено)</span>}
-                          {l.reversed && <span style={{ color: '#DC2626', marginLeft: '6px' }}>(обернено)</span>}
+                          {!l.posted && <span style={{ color: 'var(--color-danger)', marginLeft: '6px' }}>(не проведено)</span>}
+                          {l.reversed && <span style={{ color: 'var(--color-danger)', marginLeft: '6px' }}>(обернено)</span>}
                         </span>
                         <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(l.amount)} ₴</span>
                       </div>
@@ -418,7 +418,7 @@ export default function AdjustmentsClient() {
                     <span>Створив: {d.created_by ?? '—'}{cancelled ? ` · скасував: ${d.cancelled_by ?? '—'}${d.cancel_reason ? ` (${d.cancel_reason})` : ''}` : ''}</span>
                     {!cancelled && (
                       <button type="button" onClick={() => cancelDoc(d)} disabled={cancelling === d.id}
-                        style={{ ...btnGhost, color: '#DC2626', borderColor: '#FECACA' }}>
+                        style={{ ...btnGhost, color: 'var(--color-danger)', borderColor: '#FECACA' }}>
                         <X size={13} /> {cancelling === d.id ? 'Скасовуємо…' : 'Скасувати документ'}
                       </button>
                     )}

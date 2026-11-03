@@ -23,6 +23,7 @@ import ActClient, { type ActRow } from '../_act/ActClient';
 import CounterpartyPicker from './CounterpartyPicker';
 import PeriodBar from './PeriodBar';
 import JournalTable, { type JournalItem } from './JournalTable';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,9 +42,6 @@ type Counterparty = {
 const CUSTOMER_TYPE_LABEL: Record<string, string> = { dropship_partner: 'Дропшипер', wholesale: 'Оптовик', retail: 'Клієнт' };
 const UUID = /^[0-9a-f-]{36}$/i;
 
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 const dmy = (d: string) => d.slice(0, 10).split('-').reverse().join('.');
 
 const TONE_COLOR = { pos: '#15803D', neg: '#B45309', zero: 'var(--text-muted)' } as const;
@@ -184,7 +182,7 @@ function DtKt({ v }: { v: number }) {
   if (Math.abs(v) < 0.005) return <span style={{ color: 'var(--text-muted)' }}>0,00</span>;
   const dt = v > 0;
   return (
-    <span style={{ color: dt ? '#15803D' : '#B45309' }}>
+    <span style={{ color: dt ? 'var(--color-success)' : 'var(--color-warn)' }}>
       {fmt(Math.abs(v))}
       <span style={{ marginLeft: '5px', fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.02em' }}>{dt ? 'Дт' : 'Кт'}</span>
     </span>
@@ -288,7 +286,7 @@ function SupplierOpen({ charges, transit, owed }: { charges: SupplierCharge[]; t
 
   const td: React.CSSProperties = { padding: '5px 8px 5px 0', fontSize: '13px', borderBottom: '1px solid var(--border-light, var(--border))' };
   const num: React.CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 600 };
-  const link: React.CSSProperties = { color: '#1D4ED8', textDecoration: 'none', fontWeight: 600 };
+  const link: React.CSSProperties = { color: 'var(--color-info)', textDecoration: 'none', fontWeight: 600 };
   const head = (title: string, sum: number, hint?: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 0 2px', borderBottom: '1px solid var(--border)' }}>
       <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)' }} title={hint}>{title}</span>
@@ -379,7 +377,7 @@ function SupplierOpen({ charges, transit, owed }: { charges: SupplierCharge[]; t
                         </td>
                         <td style={num}>
                           {fmt(t.amount)}
-                          {t.paid > 0.005 && <span style={{ color: '#15803D', fontWeight: 400, fontSize: '11px' }}> оплачено {fmt(t.paid)}</span>}
+                          {t.paid > 0.005 && <span style={{ color: 'var(--color-success)', fontWeight: 400, fontSize: '11px' }}> оплачено {fmt(t.paid)}</span>}
                         </td>
                       </tr>
                     );
@@ -445,7 +443,7 @@ function OpenItems({ items, orders, closing, dateTo }: {
                       return (
                         <tr key={i.orderId ?? 'none'}>
                           <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                            {href ? <Link href={href} target="_blank" style={{ color: '#1D4ED8', textDecoration: 'none', fontWeight: 600 }}>#{o!.order_number}</Link> : '—'}
+                            {href ? <Link href={href} target="_blank" style={{ color: 'var(--color-info)', textDecoration: 'none', fontWeight: 600 }}>#{o!.order_number}</Link> : '—'}
                           </td>
                           <td style={{ ...td, color: 'var(--text-secondary)', fontSize: '12.5px' }}>
                             {o ? [ORDER_TAB_LABELS[o.status ?? ''] ?? o.status, carrierInfo(o.delivery_type).name].filter(Boolean).join(' · ') : ''}
@@ -572,7 +570,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
   const td: React.CSSProperties = { padding: '8px 10px', fontSize: '13px', verticalAlign: 'top', borderBottom: '1px solid var(--border-light, var(--border))' };
   const num: React.CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
   const sumRow: React.CSSProperties = { ...td, fontWeight: 700, background: 'var(--bg-soft)' };
-  const link: React.CSSProperties = { color: '#1D4ED8', textDecoration: 'none', fontWeight: 600 };
+  const link: React.CSSProperties = { color: 'var(--color-info)', textDecoration: 'none', fontWeight: 600 };
 
   return (
     <>
@@ -740,7 +738,7 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
                       <td style={{ ...td, color: 'var(--text-secondary)', fontSize: '12.5px' }}>
                         {l.description ?? ''}
                         {l.allocNote && (
-                          <div style={{ marginTop: '2px', fontSize: '11.5px', color: l.allocNote.tone === 'ok' ? '#15803D' : l.allocNote.tone === 'warn' ? '#B45309' : 'var(--text-muted)' }}>
+                          <div style={{ marginTop: '2px', fontSize: '11.5px', color: l.allocNote.tone === 'ok' ? 'var(--color-success)' : l.allocNote.tone === 'warn' ? 'var(--color-warn)' : 'var(--text-muted)' }}>
                             {l.allocNote.text}
                             {l.allocNote.links.map((p, k) => (
                               <span key={k}>{k ? ', ' : ' '}<Link href={p.href} target="_blank" style={{ ...link, fontWeight: 600 }}>{p.label}</Link></span>

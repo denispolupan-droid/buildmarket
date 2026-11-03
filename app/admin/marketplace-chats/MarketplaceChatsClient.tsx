@@ -322,7 +322,7 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
             </span>
             {draft && <span className="inbox-src rozetka">{CATEGORY_LABELS[draft.category] ?? draft.category}</span>}
             {draft?.needsHuman && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#92400E' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: 'var(--text-warn-dark)' }}>
                 <AlertTriangle size={12} /> Потрібна людина
               </span>
             )}
@@ -345,11 +345,11 @@ export default function MarketplaceChatsClient({ items, setItems, listLoading, l
               {draftCollapsed ? <><ChevronUp size={13} /> Розгорнути</> : <><ChevronDown size={13} /> Згорнути</>}
             </button>
           </div>
-          {!draftCollapsed && draftError && <div style={{ color: '#DC2626', marginTop: '6px' }}>{draftError}</div>}
+          {!draftCollapsed && draftError && <div style={{ color: 'var(--color-danger)', marginTop: '6px' }}>{draftError}</div>}
           {!draftCollapsed && draft && (
             <>
               <div style={{ color: 'var(--text-secondary)', marginTop: '6px' }}>{draft.summary}</div>
-              {draft.reason && <div style={{ color: '#92400E', marginTop: '4px' }}>{draft.reason}</div>}
+              {draft.reason && <div style={{ color: 'var(--text-warn-dark)', marginTop: '4px' }}>{draft.reason}</div>}
               {revisedBy.length > 0 && (
                 <div style={{ color: 'var(--text-muted)', marginTop: '4px', fontSize: '11px' }}>
                   ✏️ Переписано: {revisedBy.map(r => `«${r}»`).join(' → ')}

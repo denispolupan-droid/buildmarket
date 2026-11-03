@@ -38,7 +38,7 @@ type Props = {
 
 const caps: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const field: React.CSSProperties = { width: '100%', height: '36px', boxSizing: 'border-box', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' };
-const linkBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#1D4ED8', fontSize: '12px', fontWeight: 600 };
+const linkBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-info)', fontSize: '12px', fontWeight: 600 };
 const fieldLabel: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' };
 const unit: React.CSSProperties = { position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '11.5px', color: 'var(--text-muted)', pointerEvents: 'none' };
 const section: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '10px' };
@@ -227,7 +227,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
       <div style={{ ...fieldLabel }}>{label}</div>
       <div style={{ position: 'relative' }}>
         <input value={v} onChange={e => set(e.target.value)} inputMode="decimal"
-          style={{ ...field, height: '38px', padding: '0 30px 0 10px', fontSize: '13.5px', fontVariantNumeric: 'tabular-nums', borderColor: warn ? '#DC2626' : 'var(--border)' }} />
+          style={{ ...field, height: '38px', padding: '0 30px 0 10px', fontSize: '13.5px', fontVariantNumeric: 'tabular-nums', borderColor: warn ? 'var(--color-danger)' : 'var(--border)' }} />
         <span style={unit}>{suffix}</span>
       </div>
     </label>
@@ -242,7 +242,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
     const s = seatNums[i];
     const bad = multiSeat && ![s.length, s.width, s.height].every(n => Number.isFinite(n) && n > 0);
     return (
-      <div style={{ ...field, height: '38px', display: 'flex', alignItems: 'center', padding: '0 30px 0 4px', position: 'relative', borderColor: bad ? '#DC2626' : 'var(--border)' }}>
+      <div style={{ ...field, height: '38px', display: 'flex', alignItems: 'center', padding: '0 30px 0 4px', position: 'relative', borderColor: bad ? 'var(--color-danger)' : 'var(--border)' }}>
         {dimInput(i, 'length', 'Довжина, см')}
         <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>×</span>
         {dimInput(i, 'width', 'Ширина, см')}
@@ -259,7 +259,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
       <div style={{ position: 'relative' }}>
         <input value={seats[i].weight} onChange={e => setSeatField(i, 'weight', e.target.value)} inputMode="decimal"
           aria-label={!multiSeat ? 'Вага, кг' : sameSeats ? 'Вага одного місця, кг' : `Вага місця ${i + 1}, кг`}
-          style={{ ...field, height: '38px', padding: '0 30px 0 10px', fontSize: '13.5px', fontVariantNumeric: 'tabular-nums', borderColor: bad ? '#DC2626' : 'var(--border)' }} />
+          style={{ ...field, height: '38px', padding: '0 30px 0 10px', fontSize: '13.5px', fontVariantNumeric: 'tabular-nums', borderColor: bad ? 'var(--color-danger)' : 'var(--border)' }} />
         <span style={unit}>кг</span>
       </div>
     );
@@ -307,7 +307,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
               <div style={{ marginTop: '6px' }}>
                 <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35 }}>
                   {sender.address}
-                  {limitKg != null && <span style={{ fontWeight: 600, color: overLimit ? '#DC2626' : 'var(--text-muted)' }}> · до {limitKg} кг</span>}
+                  {limitKg != null && <span style={{ fontWeight: 600, color: overLimit ? 'var(--color-danger)' : 'var(--text-muted)' }}> · до {limitKg} кг</span>}
                 </div>
                 <div style={{ marginTop: '3px', fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                   {senderSaving
@@ -318,7 +318,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
                 </div>
               </div>
             ) : (
-              <div style={{ marginTop: '6px', fontSize: '12.5px', color: '#B45309', lineHeight: 1.45 }}>
+              <div style={{ marginTop: '6px', fontSize: '12.5px', color: 'var(--color-warn)', lineHeight: 1.45 }}>
                 Відправника ще не обрано — виберіть відділення, звідки здаєте посилки.
                 {!contact && ' ПІБ і телефон беруться з Налаштувань → «ROZETKA Доставка» — заповніть їх спочатку.'}
               </div>
@@ -370,7 +370,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
                         style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: active ? 'var(--bg-soft)' : 'none', border: 'none', borderBottom: '1px solid var(--border-light)', cursor: senderSaving ? 'wait' : 'pointer', textAlign: 'left' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '13px', fontWeight: active ? 700 : 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</div>
-                          <div style={{ fontSize: '11px', color: tooLight ? '#DC2626' : 'var(--text-muted)' }}>
+                          <div style={{ fontSize: '11px', color: tooLight ? 'var(--color-danger)' : 'var(--text-muted)' }}>
                             {p.limitKg != null ? `до ${p.limitKg} кг` : 'ліміт ваги не вказано'}
                             {p.typeMapped === 1 ? ' · міні-відділення' : p.typeMapped === 2 ? ' · поштомат' : ''}
                           </div>
@@ -412,7 +412,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
                   </div>
                   <div style={{ minHeight: '38px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                     <SameSeatsToggle checked={sameSeats} onChange={seatsCtl.setSame} />
-                    <span style={{ fontSize: '12px', color: overLimit ? '#DC2626' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ fontSize: '12px', color: overLimit ? 'var(--color-danger)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                       Разом {weightNum || '—'} кг
                     </span>
                   </div>
@@ -438,7 +438,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
                     </div>
                   ))}
                 </div>
-                <div style={{ fontSize: '11.5px', color: seatsInvalid ? '#DC2626' : 'var(--text-muted)', lineHeight: 1.45 }}>
+                <div style={{ fontSize: '11.5px', color: seatsInvalid ? 'var(--color-danger)' : 'var(--text-muted)', lineHeight: 1.45 }}>
                   {seatsInvalid
                     ? (sameSeats ? 'Вкажіть вагу й габарити місця' : 'Вкажіть вагу й габарити кожного місця')
                     : sameSeats
@@ -448,7 +448,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
               </>
             )}
             {overLimit && (
-              <div style={{ fontSize: '12px', color: '#DC2626' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-danger)' }}>
                 Точка приймає до {limitKg} кг — зменште вагу або оберіть інше відділення.
               </div>
             )}
@@ -460,7 +460,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               {num(cod, setCod, 'Післяплата', '₴', codInvalid, '150px')}
               <div style={{ flex: '1 1 180px', minWidth: 0, minHeight: '38px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ fontSize: '12px', lineHeight: 1.45, color: codInvalid ? '#DC2626' : codChanged ? '#B45309' : 'var(--text-muted)' }}>
+                <div style={{ fontSize: '12px', lineHeight: 1.45, color: codInvalid ? 'var(--color-danger)' : codChanged ? 'var(--color-warn)' : 'var(--text-muted)' }}>
                   {codInvalid
                     ? 'Вкажіть суму (0 — без післяплати)'
                     : codChanged
@@ -484,7 +484,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
           </div>
 
           {error && (
-            <div style={{ fontSize: '12px', color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
           )}
         </div>
 
@@ -494,7 +494,7 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
             Скасувати
           </button>
           <button onClick={submit} disabled={!canSubmit}
-            style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: canSubmit ? '#15803D' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'default' }}>
+            style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: canSubmit ? 'var(--color-success)' : 'var(--text-muted)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'default' }}>
             {busy ? 'Створюємо…' : 'Створити накладну'}
           </button>
         </div>

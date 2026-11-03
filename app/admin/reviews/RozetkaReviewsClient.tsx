@@ -109,7 +109,7 @@ export default function RozetkaReviewsClient() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
-        {error && <div style={{ color: '#DC2626', fontSize: '12px', marginBottom: '10px' }}>{error}</div>}
+        {error && <div style={{ color: 'var(--color-danger)', fontSize: '12px', marginBottom: '10px' }}>{error}</div>}
         {loading && rows.length === 0 && <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Завантаження…</div>}
         {!loading && filtered.length === 0 && (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
@@ -122,7 +122,7 @@ export default function RozetkaReviewsClient() {
             const key = `${row.kind}-${row.id}`;
             return (
               <div key={key} style={{
-                border: `1px solid ${row.unread ? '#FCA5A5' : 'var(--border)'}`,
+                border: `1px solid ${row.unread ? 'var(--border-danger)' : 'var(--border)'}`,
                 background: row.unread ? '#FFF7F7' : 'var(--bg-card)',
                 borderRadius: '12px', padding: '12px 14px',
               }}>
@@ -137,7 +137,7 @@ export default function RozetkaReviewsClient() {
                   {row.vote === 'dislike' && <ThumbsDown size={13} color="#DC2626" />}
                   {row.unread && (
                     <button onClick={() => markRead(row)} title="Позначити прочитаним"
-                      style={{ fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '1px 6px', cursor: 'pointer' }}>
+                      style={{ fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid var(--border-danger)', borderRadius: '5px', padding: '1px 6px', cursor: 'pointer' }}>
                       нове · прочитано?
                     </button>
                   )}
@@ -158,19 +158,19 @@ export default function RozetkaReviewsClient() {
                 )}
 
                 {row.text && <div style={{ fontSize: '13px', color: 'var(--text-primary)', marginTop: '7px', whiteSpace: 'pre-wrap' }}>{row.text}</div>}
-                {row.dignity && <div style={{ fontSize: '12px', marginTop: '5px' }}><span style={{ color: '#15803D', fontWeight: 700 }}>+ </span><span style={{ color: 'var(--text-secondary)' }}>{row.dignity}</span></div>}
-                {row.shortcomings && <div style={{ fontSize: '12px', marginTop: '2px' }}><span style={{ color: '#DC2626', fontWeight: 700 }}>− </span><span style={{ color: 'var(--text-secondary)' }}>{row.shortcomings}</span></div>}
+                {row.dignity && <div style={{ fontSize: '12px', marginTop: '5px' }}><span style={{ color: 'var(--color-success)', fontWeight: 700 }}>+ </span><span style={{ color: 'var(--text-secondary)' }}>{row.dignity}</span></div>}
+                {row.shortcomings && <div style={{ fontSize: '12px', marginTop: '2px' }}><span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>− </span><span style={{ color: 'var(--text-secondary)' }}>{row.shortcomings}</span></div>}
 
                 {(row.replies.length > 0 || row.ourReply) && (
                   <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     {row.ourReply && row.replies.length === 0 && (
                       <div style={{ fontSize: '12px', background: 'var(--bg-soft)', borderRadius: '8px', padding: '7px 10px', color: 'var(--text-secondary)' }}>
-                        <span style={{ fontWeight: 700, color: '#1E3A5F' }}>Наша відповідь: </span>{row.ourReply}
+                        <span style={{ fontWeight: 700, color: 'var(--navy)' }}>Наша відповідь: </span>{row.ourReply}
                       </div>
                     )}
                     {row.replies.map((rep, i) => (
                       <div key={i} style={{ fontSize: '12px', background: 'var(--bg-soft)', borderRadius: '8px', padding: '7px 10px', color: 'var(--text-secondary)' }}>
-                        <span style={{ fontWeight: 700, color: '#1E3A5F' }}>{rep.author ?? 'Відповідь'}: </span>{rep.text}
+                        <span style={{ fontWeight: 700, color: 'var(--navy)' }}>{rep.author ?? 'Відповідь'}: </span>{rep.text}
                       </div>
                     ))}
                   </div>

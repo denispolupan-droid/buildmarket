@@ -47,7 +47,7 @@ export default function DigestClient({ enabled: initialEnabled, history }: { ena
 
   const btn = (primary: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 7, height: 36, padding: '0 16px', borderRadius: 9,
-    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? '#1E3A5F' : 'var(--bg-card)',
+    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)',
     color: primary ? '#fff' : 'var(--text-secondary)', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
   });
 
@@ -62,12 +62,12 @@ export default function DigestClient({ enabled: initialEnabled, history }: { ena
         </button>
         <span style={{ flex: 1 }} />
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={enabled} disabled={toggling} onChange={toggle} style={{ accentColor: '#1E3A5F' }} />
+          <input type="checkbox" checked={enabled} disabled={toggling} onChange={toggle} style={{ accentColor: 'var(--navy)' }} />
           Крон увімкнено
         </label>
       </div>
 
-      {error && <div className="fin-card" style={{ color: '#DC2626', fontSize: 13 }}>{error}</div>}
+      {error && <div className="fin-card" style={{ color: 'var(--color-danger)', fontSize: 13 }}>{error}</div>}
 
       {run && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }} className="digest-grid">
@@ -113,7 +113,7 @@ export default function DigestClient({ enabled: initialEnabled, history }: { ena
                 <tr key={h.id} style={{ borderTop: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '6px 0', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{new Date(h.at).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                   <td style={{ padding: '6px 10px', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{h.by}</td>
-                  <td style={{ padding: '6px 10px', color: 'var(--text-primary)' }}>{h.error ? <span style={{ color: '#DC2626' }}>{h.error}</span> : (h.headline ?? '—')}</td>
+                  <td style={{ padding: '6px 10px', color: 'var(--text-primary)' }}>{h.error ? <span style={{ color: 'var(--color-danger)' }}>{h.error}</span> : (h.headline ?? '—')}</td>
                   <td style={{ padding: '6px 10px', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{h.sent ? 'надіслано' : 'перегляд'}</td>
                   <td style={{ padding: '6px 0', whiteSpace: 'nowrap', textAlign: 'right', color: 'var(--text-muted)' }}>${h.cost.toFixed(3)}</td>
                 </tr>

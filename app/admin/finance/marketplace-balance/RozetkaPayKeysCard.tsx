@@ -68,18 +68,18 @@ export default function RozetkaPayKeysCard({ hasKeys: initialHasKeys, login: ini
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={save} disabled={!canSave}
-            style={{ height: '36px', padding: '0 16px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? '#1D4ED8' : 'var(--bg-soft)', color: canSave ? '#fff' : 'var(--text-muted)' }}>
+            style={{ height: '36px', padding: '0 16px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? 'var(--color-info)' : 'var(--bg-soft)', color: canSave ? '#fff' : 'var(--text-muted)' }}>
             {busy ? 'Перевіряємо…' : 'Зберегти'}
           </button>
           {hasKeys && (
             <button onClick={remove} title="Видалити ключі"
-              style={{ height: '36px', padding: '0 10px', border: '1px solid #FECACA', borderRadius: '8px', background: '#FFF5F5', color: '#DC2626', cursor: 'pointer' }}>
+              style={{ height: '36px', padding: '0 10px', border: '1px solid #FECACA', borderRadius: '8px', background: '#FFF5F5', color: 'var(--color-danger)', cursor: 'pointer' }}>
               <Trash2 size={13} />
             </button>
           )}
         </div>
       </div>
-      {msg && <div style={{ marginTop: '8px', fontSize: '12.5px', color: msg.ok ? '#15803D' : '#DC2626' }}>{msg.text}</div>}
+      {msg && <div style={{ marginTop: '8px', fontSize: '12.5px', color: msg.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>{msg.text}</div>}
     </div>
   );
 }

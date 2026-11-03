@@ -102,7 +102,7 @@ export default async function AdminProductsPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               height: '40px', padding: '0 18px', borderRadius: '10px',
-              background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600,
+              background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600,
               textDecoration: 'none',
             }}
           >

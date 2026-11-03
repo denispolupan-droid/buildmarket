@@ -5,10 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { showToast } from '../../../../lib/toast';
 import type { PendingTransit } from '../../../../lib/accounting/transit';
-
-function fmt(n: number) {
-  return Math.abs(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { fmtAbs as fmt } from '../../../../lib/format';
 
 /**
  * Посилки, що повернулись: борг перед постачальником уже проведено при
@@ -57,8 +54,8 @@ export default function PendingTransitBlock({ items }: { items: PendingTransit[]
   };
 
   return (
-    <div className="fin-card" style={{ marginBottom: '12px', padding: '10px 18px', borderLeft: '3px solid #B45309' }}>
-      <div style={{ fontSize: '13px', fontWeight: 800, color: '#B45309' }}>
+    <div className="fin-card" style={{ marginBottom: '12px', padding: '10px 18px', borderLeft: '3px solid var(--color-warn)' }}>
+      <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-warn)' }}>
         Повернулись — потрібне рішення: {items.length}
       </div>
       <div style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 8px' }}>
@@ -88,7 +85,7 @@ export default function PendingTransitBlock({ items }: { items: PendingTransit[]
               {p.suppliers.map(s => s.name).join(', ') || '—'}
               {p.trackingNumber ? ` · ТТН ${p.trackingNumber}` : ''}
             </span>
-            <span style={{ marginLeft: 'auto', fontWeight: 800, color: '#B45309', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ marginLeft: 'auto', fontWeight: 800, color: 'var(--color-warn)', fontVariantNumeric: 'tabular-nums' }}>
               {fmt(p.amount)} ₴
             </span>
             <button onClick={() => decide(p, 'to_supplier')} disabled={busy === p.docId} style={btn}>Повернули постачальнику</button>

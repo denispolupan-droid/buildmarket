@@ -228,7 +228,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
           <Users size={12} /> Контрагенти
         </Link>
         <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>/</span>
-        <span style={{ height: '30px', padding: '0 12px', borderRadius: '8px', border: '1px solid #1E3A5F', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ height: '30px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--navy)', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <FileText size={12} /> Договори
         </span>
       </div>
@@ -241,7 +241,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
           </p>
         </div>
         <button onClick={openCreate}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           <Plus size={15} /> Новий договір
         </button>
       </div>
@@ -312,19 +312,19 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 <span style={{ textAlign: 'right', fontSize: '13px', color: 'var(--text-secondary)' }}>
                   {c.credit_limit > 0 ? `${c.credit_limit.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴` : 'Без ліміту'}
                 </span>
-                <span style={{ textAlign: 'right', fontSize: '13px', color: c.discount_pct > 0 ? '#15803D' : 'var(--text-muted)' }}>
+                <span style={{ textAlign: 'right', fontSize: '13px', color: c.discount_pct > 0 ? 'var(--color-success)' : 'var(--text-muted)' }}>
                   {c.discount_pct > 0 ? `${c.discount_pct}%` : '—'}
                 </span>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: st.color, background: st.bg }}>{st.label}</span>
                 </div>
-                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: balance > 0 ? '#DC2626' : '#15803D' }}>
+                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: balance > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
                   {balance > 0 ? `${balance.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴` : '—'}
                 </span>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexShrink: 0, flexWrap: 'nowrap' }}>
                   <button onClick={() => { setPayModal(c); setPayAmount(balance > 0 ? String(Math.round(balance)) : ''); setPayDate(new Date().toISOString().slice(0, 10)); setPayDesc(''); setPayError(''); }}
                     title="Записати оплату"
-                    style={{ height: '28px', padding: '0 8px', borderRadius: '6px', border: '1.5px solid #86EFAC', background: '#F0FDF4', color: '#15803D', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    style={{ height: '28px', padding: '0 8px', borderRadius: '6px', border: '1.5px solid var(--border-success)', background: 'var(--bg-success)', color: 'var(--color-success)', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <Banknote size={12} /> Оплата
                   </button>
                   <button onClick={() => openEdit(c)} title="Редагувати"
@@ -384,25 +384,25 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                   <Search size={13} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                   <input
                     style={{ ...inp, paddingLeft: '32px', paddingRight: form.customer_id ? '36px' : '12px',
-                      borderColor: !form.customer_id && error ? '#FCA5A5' : form.customer_id ? '#86EFAC' : undefined }}
+                      borderColor: !form.customer_id && error ? 'var(--border-danger)' : form.customer_id ? 'var(--border-success)' : undefined }}
                     value={custSearch}
                     onChange={e => handleCustSearch(e.target.value)}
                     placeholder="Пошук за ім'ям, компанією, телефоном..."
                     autoComplete="off"
                   />
                   {custLoading && (
-                    <Loader2 size={13} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite', color: '#94A3B8' }} />
+                    <Loader2 size={13} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite', color: 'var(--text-muted)' }} />
                   )}
                   {form.customer_id && !custLoading && (
                     <button onClick={clearCustomer}
-                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', display: 'flex', padding: '2px' }}>
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px' }}>
                       <X size={13} />
                     </button>
                   )}
                 </div>
                 {/* Customer number badge */}
                 {form.customer_id && (
-                  <div style={{ marginTop: '5px', fontSize: '12px', color: '#15803D', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <Check size={12} />
                     <span>{form.customer_name}</span>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '1px 7px', borderRadius: '4px', fontWeight: 600 }}>
@@ -426,7 +426,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                           {c.phone && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{c.phone}</div>}
                         </div>
                         {c.customer_number != null && (
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', padding: '2px 7px', borderRadius: '5px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', padding: '2px 7px', borderRadius: '5px', flexShrink: 0 }}>
                             #{String(c.customer_number).padStart(4, '0')}
                           </span>
                         )}
@@ -495,7 +495,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                   style={{ ...inp, height: '64px', resize: 'vertical' }} placeholder="Додаткові умови договору..." />
               </div>
 
-              {error && <div style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>{error}</div>}
+              {error && <div style={{ padding: '10px 12px', background: 'var(--bg-danger)', borderRadius: '8px', color: 'var(--color-danger)', fontSize: '13px' }}>{error}</div>}
             </div>
 
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -503,7 +503,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 Скасувати
               </button>
               <button onClick={handleSave} disabled={saving}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
                 {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : <><Check size={14} />Зберегти</>}
               </button>
             </div>
@@ -530,12 +530,12 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                   {payModal.customer_name || payModal.customer_id}
                 </div>
                 {payModal.customer_number != null && (
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', padding: '2px 8px', borderRadius: '5px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', padding: '2px 8px', borderRadius: '5px', flexShrink: 0 }}>
                     {fmtCustomerNum(payModal.customer_number)}
                   </span>
                 )}
                 {(payModal.balance ?? 0) > 0 && (
-                  <span style={{ color: '#DC2626', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>
+                  <span style={{ color: 'var(--color-danger)', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>
                     Борг: {(payModal.balance ?? 0).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
                   </span>
                 )}
@@ -559,8 +559,8 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                   {(['bank', 'cash', 'acquiring'] as const).map(m => (
                     <button key={m} onClick={() => setPayMethod(m)}
                       style={{ flex: 1, height: '36px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                        border: `1.5px solid ${payMethod === m ? '#1E3A5F' : 'var(--border)'}`,
-                        background: payMethod === m ? '#1E3A5F' : 'var(--bg-soft)',
+                        border: `1.5px solid ${payMethod === m ? 'var(--navy)' : 'var(--border)'}`,
+                        background: payMethod === m ? 'var(--navy)' : 'var(--bg-soft)',
                         color: payMethod === m ? '#fff' : 'var(--text-secondary)' }}>
                       {m === 'bank' ? '🏦 Банк' : m === 'cash' ? '💵 Готівка' : '💳 Еквайринг'}
                     </button>
@@ -582,7 +582,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 </span>
               </label>
 
-              {payError && <div style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px' }}>{payError}</div>}
+              {payError && <div style={{ padding: '10px 12px', background: 'var(--bg-danger)', borderRadius: '8px', color: 'var(--color-danger)', fontSize: '13px' }}>{payError}</div>}
             </div>
 
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -591,7 +591,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 Скасувати
               </button>
               <button onClick={handlePayment} disabled={paying}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: paying ? 0.7 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: paying ? 0.7 : 1 }}>
                 {paying ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : <><Check size={14} />Зафіксувати оплату</>}
               </button>
             </div>

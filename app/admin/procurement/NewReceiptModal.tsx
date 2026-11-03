@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import type { ReceiptDraft, ReceiptLine } from '../ReceiptDraftManager';
 import ProductPickerModal from './ProductPickerModal';
+import { fmtMoney as fmt } from '../../../lib/format';
 
 type Warehouse = { id: number; name: string };
 type Supplier  = { id: number; name: string };
@@ -40,10 +41,6 @@ const lbl: React.CSSProperties = {
   fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
   display: 'block', marginBottom: '4px', textTransform: 'uppercase',
 };
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 // ── Excel parsing ─────────────────────────────────────────────────────────────
 // Normalize: lowercase, strip separators, Ukrainian і/І → ASCII i (1C uses ASCII i in Cyrillic words)
@@ -498,10 +495,10 @@ export default function NewReceiptModal({
             onDragLeave={() => setDragging(false)}
             onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) processFile(f); }}
             onClick={() => fileRef.current?.click()}
-            style={{ border: `2px dashed ${dragging ? '#1E3A5F' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 20px', cursor: 'pointer', background: dragging ? '#EFF4FF' : 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.15s' }}
+            style={{ border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 20px', cursor: 'pointer', background: dragging ? '#EFF4FF' : 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.15s' }}
           >
             {parsing
-              ? <><Loader2 size={18} color="#1E3A5F" style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: '13px', color: '#1E3A5F' }}>Читаємо файл...</span></>
+              ? <><Loader2 size={18} color="#1E3A5F" style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: '13px', color: 'var(--navy)' }}>Читаємо файл...</span></>
               : <><Upload size={18} color={dragging ? '#1E3A5F' : '#94A3B8'} />
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Завантажити з Excel / CSV</div>
@@ -513,7 +510,7 @@ export default function NewReceiptModal({
           </div>
 
           {unmatchedCount > 0 && (
-            <div style={{ padding: '8px 14px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#B45309', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{ padding: '8px 14px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', gap: '6px', alignItems: 'center' }}>
               <AlertCircle size={13} />
               {unmatchedCount} артикул(ів) не знайдено в базі — перевірте вручну (підсвічені помаранчевим)
             </div>
@@ -540,11 +537,11 @@ export default function NewReceiptModal({
                 const rowSum = line.qty * (line.is_bonus ? 0 : line.cost_price);
                 const warn   = line.sku && !line.matched;
                 return (
-                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: COLS, padding: '6px 12px', gap: '8px', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: line.is_bonus ? '#FFFBEB' : warn ? '#FFFBEB' : 'transparent' }}>
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: COLS, padding: '6px 12px', gap: '8px', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: line.is_bonus ? 'var(--bg-warn)' : warn ? 'var(--bg-warn)' : 'transparent' }}>
 
                     {/* SKU input */}
                     <input
-                      style={{ ...inp, fontFamily: 'monospace', fontSize: '11px', borderColor: warn ? '#FCD34D' : undefined }}
+                      style={{ ...inp, fontFamily: 'monospace', fontSize: '11px', borderColor: warn ? 'var(--border-warn)' : undefined }}
                       placeholder="1300-014"
                       value={line.sku}
                       onChange={e => handleSkuChange(idx, e.target.value)}
@@ -595,7 +592,7 @@ export default function NewReceiptModal({
                       <input style={{ ...inp, textAlign: 'right',
                         opacity: initialData.poId && line.qty === 0 ? 0.45 : 1,
                         borderColor: line.ordered_qty != null
-                          ? (line.qty === 0 ? '#CBD5E1' : line.qty === line.ordered_qty ? '#86EFAC' : line.qty < line.ordered_qty ? '#FCD34D' : '#FCA5A5')
+                          ? (line.qty === 0 ? '#CBD5E1' : line.qty === line.ordered_qty ? 'var(--border-success)' : line.qty < line.ordered_qty ? 'var(--border-warn)' : 'var(--border-danger)')
                           : undefined }}
                         type="number" min={initialData.poId ? '0' : '0.001'} step="1"
                         value={line.qty === 0 ? '' : (line.qty || '')}
@@ -626,7 +623,7 @@ export default function NewReceiptModal({
 
                     {/* Bonus toggle */}
                     <button onClick={() => toggleBonus(idx)} title={line.is_bonus ? 'Скасувати бонус' : 'Бонусний товар'}
-                      style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: line.is_bonus ? '#FEF3C7' : 'none', border: line.is_bonus ? '1px solid #FCD34D' : '1px solid transparent', borderRadius: '5px', cursor: 'pointer', color: line.is_bonus ? '#B45309' : 'var(--text-muted)', height: '24px', width: '24px', padding: 0 }}>
+                      style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: line.is_bonus ? '#FEF3C7' : 'none', border: line.is_bonus ? '1px solid var(--border-warn)' : '1px solid transparent', borderRadius: '5px', cursor: 'pointer', color: line.is_bonus ? 'var(--color-warn)' : 'var(--text-muted)', height: '24px', width: '24px', padding: 0 }}>
                       <Gift size={13} />
                     </button>
 
@@ -649,7 +646,7 @@ export default function NewReceiptModal({
 
             {/* Footer — actions only */}
             <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={addLine} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#1E3A5F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+              <button onClick={addLine} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--navy)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
                 + Додати рядок
               </button>
               <button onClick={() => setShowPicker(true)} className="proc-btn sm">
@@ -754,7 +751,7 @@ export default function NewReceiptModal({
                   onMouseEnter={() => setActiveDropdownIdx(i)}
                   style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden', background: isActive ? '#EFF4FF' : 'transparent' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
-                  <span style={{ fontWeight: 700, color: '#1E3A5F', flexShrink: 0 }}>{s.brand}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--navy)', flexShrink: 0 }}>{s.brand}</span>
                   <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
                 </div>
               );

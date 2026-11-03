@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import DraftCloseConfirm from './DraftCloseConfirm';
 import { DRAFT_KEYS, draftCount } from './draft-tab-offset';
 import { X, Minus, PackagePlus } from 'lucide-react';
+import { fmtInt as fmt } from '../../lib/format';
 
 export type ReceiptLine = {
   sku: string; name: string; qty: number;
@@ -58,7 +59,6 @@ function saveDrafts(d: ReceiptDraft[]) {
   try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(d)); }
   catch { /* quota */ }
 }
-function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
 export default function ReceiptDraftManager() {
   const [drafts,       setDrafts]       = useState<ReceiptDraft[]>([]);

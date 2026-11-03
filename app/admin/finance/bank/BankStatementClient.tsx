@@ -6,6 +6,7 @@ import {
   parseMonobankBusiness, autoMatchBankTxn, buildPaymentBody,
   BANK_SPECIAL_OPTS as SPECIAL_OPTS, type BankContract as Contract,
 } from '../../../../lib/bank-import';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 type ParsedTxn = {
   id:          string;           // synthetic id
@@ -22,8 +23,6 @@ type ParsedTxn = {
   saved?:      boolean;
   error?:      string;
 };
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -117,7 +116,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
           onDrop={onDrop}
           onClick={() => fileRef.current?.click()}
           style={{
-            border: `2px dashed ${dragging ? '#1E3A5F' : 'var(--border)'}`,
+            border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`,
             borderRadius: '16px', padding: '64px 32px',
             textAlign: 'center', cursor: 'pointer',
             background: dragging ? '#EFF4FF' : 'var(--bg-soft)',
@@ -139,7 +138,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
       )}
 
       {parseErr && (
-        <div style={{ padding: '14px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', color: '#DC2626', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' }}>
+        <div style={{ padding: '14px 16px', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '10px', color: 'var(--color-danger)', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' }}>
           <AlertCircle size={16} /> {parseErr}
         </div>
       )}
@@ -170,7 +169,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
               </button>
               {readyToApply > 0 && (
                 <button onClick={applyAll} disabled={applying}
-                  style={{ height: '34px', padding: '0 18px', borderRadius: '999px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: applying ? 0.7 : 1 }}>
+                  style={{ height: '34px', padding: '0 18px', borderRadius: '999px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: applying ? 0.7 : 1 }}>
                   {applying
                     ? 'Застосовуємо…'
                     : `Застосувати всі (${readyToApply})`}
@@ -187,15 +186,15 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
 
               return (
                 <div key={txn.id} style={{
-                  background: txn.saved ? '#F0FDF4' : 'var(--bg-card)',
-                  border: `1px solid ${txn.saved ? '#86EFAC' : txn.error ? '#FECACA' : 'var(--border)'}`,
+                  background: txn.saved ? 'var(--bg-success)' : 'var(--bg-card)',
+                  border: `1px solid ${txn.saved ? 'var(--border-success)' : txn.error ? '#FECACA' : 'var(--border)'}`,
                   borderRadius: '10px', padding: '12px 16px',
                   display: 'grid', gridTemplateColumns: '110px 1fr auto auto',
                   gap: '12px', alignItems: 'center',
                 }}>
                   {/* Amount + date */}
                   <div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#15803D' }}>+{fmt(txn.amount)} ₴</div>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-success)' }}>+{fmt(txn.amount)} ₴</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{txn.date}</div>
                   </div>
 
@@ -215,13 +214,13 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
                       </div>
                     )}
                     {txn.error && (
-                      <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '2px' }}>{txn.error}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '2px' }}>{txn.error}</div>
                     )}
                   </div>
 
                   {/* Contract selector */}
                   {txn.saved ? (
-                    <div style={{ fontSize: '12px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <Check size={14} /> {SPECIAL_OPTS.find(o => o.value === txn.contractId)?.label ?? selectedContract?.contract_number ?? '—'}
                     </div>
                   ) : (
@@ -255,7 +254,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
                     <button
                       onClick={() => saveOne(txn)}
                       disabled={!txn.contractId || txn.saving}
-                      style={{ height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: txn.contractId ? '#1E3A5F' : '#E2E8F0', color: txn.contractId ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                      style={{ height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: txn.contractId ? 'var(--navy)' : 'var(--border)', color: txn.contractId ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
                       {txn.saving ? '...' : '✓ OK'}
                     </button>
                   )}

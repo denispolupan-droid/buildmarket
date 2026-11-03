@@ -41,7 +41,7 @@ export function SupplierSendQueueModal() {
                 <div style={{ padding: '28px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '28px' }}>✅</span>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#15803D' }}>Відправлено!</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-success)' }}>Відправлено!</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       #{item?.orderNumber} → {item?.supplierName} ({item?.email || 'email постачальника'})
                     </div>
@@ -58,13 +58,13 @@ export function SupplierSendQueueModal() {
                     const chip = (active: boolean): React.CSSProperties => ({
                       padding: '5px 11px', borderRadius: '999px', fontSize: '12px', cursor: 'pointer',
                       fontWeight: active ? 700 : 600,
-                      border: `1.5px solid ${active ? '#B45309' : 'var(--border)'}`,
+                      border: `1.5px solid ${active ? 'var(--color-warn)' : 'var(--border)'}`,
                       background: active ? '#FEF3C7' : 'var(--bg-card)',
-                      color: active ? '#92400E' : 'var(--text-secondary)',
+                      color: active ? 'var(--text-warn-dark)' : 'var(--text-secondary)',
                     });
                     return (
-                      <div style={{ border: '1.5px solid #FCD34D', background: '#FFFBEB', borderRadius: '9px', padding: '11px 13px' }}>
-                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#B45309', marginBottom: '3px' }}>
+                      <div style={{ border: '1.5px solid var(--border-warn)', background: 'var(--bg-warn)', borderRadius: '9px', padding: '11px 13px' }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--color-warn)', marginBottom: '3px' }}>
                           Замовлення відвантажується з двох складів
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
@@ -76,7 +76,7 @@ export function SupplierSendQueueModal() {
                             return (
                               <div key={l.sku} style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', opacity: skip ? 0.45 : 1 }}>
                                 <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '999px', whiteSpace: 'nowrap',
-                                  color: l.source === 'own' ? '#15803D' : 'var(--brand-blue)',
+                                  color: l.source === 'own' ? 'var(--color-success)' : 'var(--brand-blue)',
                                   background: l.source === 'own' ? '#DCFCE7' : '#EAF1F8' }}>
                                   {l.source === 'own' ? 'наш склад' : 'постачальник'}
                                 </span>
@@ -135,8 +135,8 @@ export function SupplierSendQueueModal() {
                               onClick={() => setSupplierQueue(prev => prev
                                 ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, email: c.email } : it)
                                 : prev)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
-                              <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`, background: isSelected ? '#1E3A5F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? 'var(--navy)' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
+                              <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? 'var(--navy)' : '#CBD5E1'}`, background: isSelected ? 'var(--navy)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
@@ -164,10 +164,10 @@ export function SupplierSendQueueModal() {
                         ? prev.map((it, i) => i === supplierQueueIdx ? { ...it, email: e.target.value } : it)
                         : prev)}
                       placeholder="email@supplier.com"
-                      style={{ width: '100%', height: '38px', padding: '0 12px', border: `1.5px solid ${item.email.includes('@') ? 'var(--border)' : '#FCA5A5'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-soft)', color: 'var(--text-primary)' }}
+                      style={{ width: '100%', height: '38px', padding: '0 12px', border: `1.5px solid ${item.email.includes('@') ? 'var(--border)' : 'var(--border-danger)'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: 'var(--bg-soft)', color: 'var(--text-primary)' }}
                     />
                     {item.contacts.length === 0 && !item.email && (
-                      <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginTop: '4px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-warn)', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginTop: '4px' }}>
                         ⚠ Контакти не знайдено — додайте їх у картці постачальника або введіть email вручну
                       </div>
                     )}
@@ -200,7 +200,7 @@ export function SupplierSendQueueModal() {
                   <button
                     onClick={sendCurrentSupplier}
                     disabled={supplierQueueSending || !item.email.includes('@')}
-                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: item.email.includes('@') ? 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)' : '#94A3B8', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (!item.email.includes('@') || supplierQueueSending) ? 'default' : 'pointer', opacity: supplierQueueSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: item.email.includes('@') ? 'linear-gradient(135deg, #162035 0%, var(--navy) 100%)' : 'var(--text-muted)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: (!item.email.includes('@') || supplierQueueSending) ? 'default' : 'pointer', opacity: supplierQueueSending ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {supplierQueueSending ? '⏳ Відправлення...' : `📧 Відправити${total > 1 ? ` (${idx + 1}/${total})` : ''}`}
                   </button>
                 </div>

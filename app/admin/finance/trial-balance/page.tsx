@@ -125,7 +125,7 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
           <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>По</label>
           <input type="date" name="to" defaultValue={to} style={{ height: '34px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
         </div>
-        <button type="submit" style={{ height: '34px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+        <button type="submit" style={{ height: '34px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           Сформувати
         </button>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
@@ -156,7 +156,7 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
                   <td style={{ ...td, fontWeight: 700 }}>{fmt(sub.opening)}</td>
                   <td style={{ ...td, fontWeight: 700 }}>{fmt(sub.debit)}</td>
                   <td style={{ ...td, fontWeight: 700 }}>{fmt(sub.credit)}</td>
-                  <td style={{ ...td, fontWeight: 800, color: sub.closing >= 0 ? 'var(--text-primary)' : '#DC2626' }}>{fmt(sub.closing)}</td>
+                  <td style={{ ...td, fontWeight: 800, color: sub.closing >= 0 ? 'var(--text-primary)' : 'var(--color-danger)' }}>{fmt(sub.closing)}</td>
                 </tr>,
                 ...(showDetail ? rows.sort((a, b) => a.closing - b.closing).map(r => (
                   <tr key={`${account}|${r.cp}`} style={{ borderTop: '1px solid var(--border-light)' }}>
@@ -166,7 +166,7 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
                     <td style={{ ...td, color: 'var(--text-secondary)' }}>{fmt(r.opening)}</td>
                     <td style={{ ...td, color: 'var(--text-secondary)' }}>{fmt(r.debit)}</td>
                     <td style={{ ...td, color: 'var(--text-secondary)' }}>{fmt(r.credit)}</td>
-                    <td style={{ ...td, color: r.closing >= 0 ? 'var(--text-secondary)' : '#DC2626' }}>{fmt(r.closing)}</td>
+                    <td style={{ ...td, color: r.closing >= 0 ? 'var(--text-secondary)' : 'var(--color-danger)' }}>{fmt(r.closing)}</td>
                   </tr>
                 )) : []),
               ];
@@ -178,7 +178,7 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
               <td style={{ ...td, fontWeight: 800 }}>{fmt(grand.opening)}</td>
               <td style={{ ...td, fontWeight: 800 }}>{fmt(grand.debit)}</td>
               <td style={{ ...td, fontWeight: 800 }}>{fmt(grand.credit)}</td>
-              <td style={{ ...td, fontWeight: 800, color: Math.abs(grand.closing) < 0.01 ? '#15803D' : '#DC2626' }}>{fmt(grand.closing)}</td>
+              <td style={{ ...td, fontWeight: 800, color: Math.abs(grand.closing) < 0.01 ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmt(grand.closing)}</td>
             </tr>
           </tfoot>
         </table>

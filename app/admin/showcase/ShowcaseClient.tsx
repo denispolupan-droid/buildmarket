@@ -120,8 +120,8 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
             <button key={s.key} onClick={() => { setTab(s.key); setSurface(s.key); }} title={s.hint}
               style={{
                 padding: '8px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
-                background: active ? '#1E3A5F' : 'var(--bg-card)',
+                border: `1.5px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
+                background: active ? 'var(--navy)' : 'var(--bg-card)',
                 color: active ? '#fff' : 'var(--text-secondary)',
               }}>
               {s.label}
@@ -132,8 +132,8 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
         <button onClick={() => setTab('categories')} title="Порядок категорій на головній та в сайдбарі"
           style={{
             padding: '8px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            border: `1.5px solid ${tab === 'categories' ? '#1E3A5F' : 'var(--border)'}`,
-            background: tab === 'categories' ? '#1E3A5F' : 'var(--bg-card)',
+            border: `1.5px solid ${tab === 'categories' ? 'var(--navy)' : 'var(--border)'}`,
+            background: tab === 'categories' ? 'var(--navy)' : 'var(--bg-card)',
             color: tab === 'categories' ? '#fff' : 'var(--text-secondary)',
           }}>
           Категорії
@@ -167,7 +167,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
                     ...(canEdit ? rowStyle(i) : {}),
                   }}>
                   {canEdit && <GripVertical size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
-                  <span style={{ width: 26, fontSize: 12, fontWeight: 700, color: '#1E3A5F' }}>
+                  <span style={{ width: 26, fontSize: 12, fontWeight: 700, color: 'var(--navy)' }}>
                     {i + 1}.
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -178,7 +178,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
                       <span style={{ fontFamily: 'monospace' }}>{sku}</span>
                       {it?.price ? ` · ${it.price} грн` : ''}
                       {hidden && (
-                        <span style={{ color: '#B45309', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--color-warn)', fontWeight: 600 }}>
                           {' · '}{!it?.isActive ? 'деактивований' : 'немає в наявності'} — не показується
                         </span>
                       )}
@@ -188,7 +188,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
                     <>
                       <button onClick={() => setCur(moveShowcaseItem(cur, i, -1))} disabled={i === 0} style={miniBtn} title="Вище">↑</button>
                       <button onClick={() => setCur(moveShowcaseItem(cur, i, 1))} disabled={i === cur.length - 1} style={miniBtn} title="Нижче">↓</button>
-                      <button onClick={() => setCur(cur.filter(x => x !== sku))} style={{ ...miniBtn, color: '#DC2626' }} title="Прибрати">
+                      <button onClick={() => setCur(cur.filter(x => x !== sku))} style={{ ...miniBtn, color: 'var(--color-danger)' }} title="Прибрати">
                         <X size={13} />
                       </button>
                     </>
@@ -230,7 +230,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
               <button onClick={save} disabled={saving || !dirty}
-                style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: '#1E3A5F', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
+                style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: 'var(--navy)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
                 {saving ? 'Зберігаю…' : 'Зберегти вітрину'}
               </button>
               {dirty && (

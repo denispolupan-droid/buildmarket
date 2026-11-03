@@ -5,6 +5,7 @@ import { Plus, X, Loader2, Package, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '../../../../lib/toast';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 type RemainingLine = {
   sku: string; name: string; ordered_qty: number; received_qty: number;
@@ -13,8 +14,6 @@ type RemainingLine = {
 };
 
 type ExtraLine = { sku: string; name: string; qty: number; cost_price: number };
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 const inp: React.CSSProperties = {
   height: '32px', padding: '0 8px', border: '1.5px solid var(--border)',
@@ -103,7 +102,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
   return (
     <>
       <button onClick={handleOpen}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid #15803D', background: '#F0FDF4', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--color-success)', background: 'var(--bg-success)', color: 'var(--color-success)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
         <Plus size={14} /> Додатковий прихід
       </button>
 
@@ -137,7 +136,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
               {!loading && (remaining.length > 0 || extras.length > 0) && (
                 <>
                   {remaining.length > 0 && (
-                    <div style={{ padding: '10px 14px', background: '#EFF4FF', borderRadius: '8px', fontSize: '13px', color: '#1E3A5F', marginBottom: '14px' }}>
+                    <div style={{ padding: '10px 14px', background: '#EFF4FF', borderRadius: '8px', fontSize: '13px', color: 'var(--navy)', marginBottom: '14px' }}>
                       Відображено тільки товари яких не вистачає. Відкоригуйте кількість у полі «Залишок».
                     </div>
                   )}
@@ -160,7 +159,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                       <span style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={line.name}>{line.name || '—'}</span>
                       <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>{fmt(line.cost_price)} ₴</span>
                       <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>{line.ordered_qty}</span>
-                      <span style={{ textAlign: 'right', fontSize: '12px', color: '#B45309', fontWeight: 600 }}>{line.received_qty}</span>
+                      <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--color-warn)', fontWeight: 600 }}>{line.received_qty}</span>
                       <input style={{ ...inp, width: '80px', marginLeft: 'auto', textAlign: 'right' }}
                         type="number" min="0" max={line.remaining_qty} step="1"
                         value={qtys[line.sku] ?? line.remaining_qty}
@@ -228,7 +227,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                   💾 Чернетка
                 </button>
                 <button onClick={() => handleCreate(false)} disabled={saving}
-                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
+                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
                   {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Створення...</> : <><Package size={14} />Провести прихід</>}
                 </button>
               </div>

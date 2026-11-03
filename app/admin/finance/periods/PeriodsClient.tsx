@@ -72,7 +72,7 @@ export default function PeriodsClient() {
                 {label(m.month)}{isCurrent && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>поточний</span>}
               </div>
               {m.closed && (
-                <div style={{ fontSize: '11px', color: '#15803D', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-success)', marginTop: '2px' }}>
                   🔒 Закрито {m.closed_at ? new Date(m.closed_at).toLocaleDateString('uk-UA') : ''}{m.closed_by ? ` · ${m.closed_by}` : ''}
                 </div>
               )}
@@ -93,7 +93,7 @@ export default function PeriodsClient() {
                 </button>
               ) : (
                 <button onClick={() => act(m.month, 'close')} disabled={busy === m.month}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: busy === m.month ? 0.6 : 1 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: busy === m.month ? 0.6 : 1 }}>
                   <Lock size={13} /> Закрити місяць
                 </button>
               )}

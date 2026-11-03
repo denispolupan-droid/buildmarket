@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { epicentrPrice, epicentrMargin } from '../../../../lib/marketplace-pricing';
+import { fmtInt as fmt } from '../../../../lib/format';
 
 export type EpiProduct  = { sku: string; name: string; brand: string | null; category_slug: string | null; volume: string | null; on_epicentr: boolean | null; epicentr_markup_pct: number | null };
 export type EpiStock    = { sku: string; price_cost: number | null; price_retail: number | null; stock_status: string | null };
@@ -10,7 +11,6 @@ export type EpiCategory = { slug: string; name: string; epicentr_commission_pct:
 
 type Props = { products: EpiProduct[]; stock: EpiStock[]; categories: EpiCategory[]; fallbackPct: number };
 
-const fmt = (n: number) => n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
 const inp: React.CSSProperties = { width: 64, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12.5, textAlign: 'right', background: '#fff' };
 const codeInp: React.CSSProperties = { ...inp, width: 90, textAlign: 'left', fontFamily: 'monospace' };
 
@@ -113,7 +113,7 @@ export default function EpicentrProductsClient({ products: initialProducts, stoc
         Ціна = вхід × (1 + націнка) ÷ (1 − комісія), округлення вгору до гривні; без входу — від роздрібу. Товарна націнка перебиває категорійну.
         Базова комісія для категорій без ставки — {fallbackPct}% (змінюється на «Огляді»). Код категорії — з дерева категорій Епіцентру (Google-таблиця в кабінеті).
       </div>
-      {err && <div style={{ marginBottom: 10, padding: '8px 12px', background: '#FEF2F2', color: '#DC2626', borderRadius: 7, fontSize: 12.5 }}>{err}</div>}
+      {err && <div style={{ marginBottom: 10, padding: '8px 12px', background: 'var(--bg-danger)', color: 'var(--color-danger)', borderRadius: 7, fontSize: 12.5 }}>{err}</div>}
 
       <div className="fin-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
@@ -181,7 +181,7 @@ export default function EpicentrProductsClient({ products: initialProducts, stoc
                         <td className="name" style={{ paddingLeft: 34, maxWidth: 420 }} title={`${p.sku} · ${p.name}`}>
                           <span style={{ fontFamily: 'monospace', fontSize: 11.5, color: 'var(--text-muted)', marginRight: 8 }}>{p.sku}</span>
                           {p.name}{p.volume ? ` · ${p.volume}` : ''}
-                          {out && <span style={{ marginLeft: 6, fontSize: 10.5, color: '#B45309' }}>немає</span>}
+                          {out && <span style={{ marginLeft: 6, fontSize: 10.5, color: 'var(--color-warn)' }}>немає</span>}
                         </td>
                         <td className="num">
                           <input type="checkbox" checked={!!p.on_epicentr} onChange={() => toggleProduct(p)} style={{ cursor: 'pointer' }} />
@@ -194,7 +194,7 @@ export default function EpicentrProductsClient({ products: initialProducts, stoc
                         </td>
                         <td className="num muted">{commPct}</td>
                         <td className="num">{price ? `${fmt(price)} ₴` : '—'}</td>
-                        <td className="num" style={{ color: margin ? (margin.uah >= 0 ? '#15803D' : '#DC2626') : undefined }}>
+                        <td className="num" style={{ color: margin ? (margin.uah >= 0 ? 'var(--color-success)' : 'var(--color-danger)') : undefined }}>
                           {margin ? `${fmt(margin.uah)} ₴ · ${margin.pct.toFixed(1)}%` : '—'}
                         </td>
                         <td />

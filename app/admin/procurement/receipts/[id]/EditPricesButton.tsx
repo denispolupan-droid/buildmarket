@@ -228,8 +228,8 @@ export default function EditPricesButton({
         style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           height: '34px', padding: '0 14px', borderRadius: '8px',
-          border: '1.5px solid #93C5FD', background: '#EFF6FF',
-          color: '#1D4ED8', fontSize: '12px', fontWeight: 700,
+          border: '1.5px solid #93C5FD', background: 'var(--brand-blue-light)',
+          color: 'var(--color-info)', fontSize: '12px', fontWeight: 700,
           cursor: 'pointer', flexShrink: 0,
         }}
       >
@@ -267,7 +267,7 @@ export default function EditPricesButton({
                 borderRadius: '10px',
                 padding: '14px 16px',
                 marginBottom: '16px',
-                background: dragging ? '#EFF6FF' : 'var(--bg-soft, #F8FAFC)',
+                background: dragging ? 'var(--brand-blue-light)' : 'var(--bg-soft, var(--bg-soft))',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '12px',
                 transition: 'all 0.15s',
@@ -284,9 +284,9 @@ export default function EditPricesButton({
               </div>
               {matches && (
                 <div style={{ fontSize: '12px', textAlign: 'right', flexShrink: 0 }}>
-                  <span style={{ color: '#15803D', fontWeight: 700 }}>✓ {matchedCount} знайдено</span>
+                  <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>✓ {matchedCount} знайдено</span>
                   {unmatchedCount > 0 && (
-                    <span style={{ color: '#DC2626', fontWeight: 600, marginLeft: '8px' }}>✗ {unmatchedCount} не знайдено</span>
+                    <span style={{ color: 'var(--color-danger)', fontWeight: 600, marginLeft: '8px' }}>✗ {unmatchedCount} не знайдено</span>
                   )}
                 </div>
               )}
@@ -301,7 +301,7 @@ export default function EditPricesButton({
 
             {/* Unmatched warning */}
             {matches && unmatchedCount > 0 && (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '8px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', color: '#92400E' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '8px 12px', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
                 <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '1px' }} />
                 <span>
                   Не знайдено у файлі:{' '}
@@ -360,8 +360,8 @@ export default function EditPricesButton({
                             style={{
                               width: '100px', textAlign: 'right',
                               padding: '4px 8px', borderRadius: '6px',
-                              border: `1.5px solid ${wasMatched ? '#86EFAC' : 'var(--border)'}`,
-                              background: wasMatched ? '#F0FDF4' : 'var(--bg-input, #fff)',
+                              border: `1.5px solid ${wasMatched ? 'var(--border-success)' : 'var(--border)'}`,
+                              background: wasMatched ? 'var(--bg-success)' : 'var(--bg-input, #fff)',
                               fontSize: '13px', fontWeight: 600,
                               color: 'var(--text-primary)',
                             }}
@@ -371,8 +371,8 @@ export default function EditPricesButton({
                             onClick={() => promo ? closePromo(l.sku) : openPromo(l.sku, l.qty)}
                             style={{
                               width: '24px', height: '24px', borderRadius: '5px', flexShrink: 0,
-                              border: `1px solid ${promo ? '#FCD34D' : 'var(--border)'}`,
-                              background: promo ? '#FFFBEB' : 'none',
+                              border: `1px solid ${promo ? 'var(--border-warn)' : 'var(--border)'}`,
+                              background: promo ? 'var(--bg-warn)' : 'none',
                               color: promo ? '#D97706' : 'var(--text-muted)',
                               fontSize: '11px', fontWeight: 700, cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -384,10 +384,10 @@ export default function EditPricesButton({
                         {promo && (
                           <div style={{
                             marginTop: '6px', padding: '8px 10px',
-                            background: '#FFFBEB', border: '1px solid #FCD34D',
+                            background: 'var(--bg-warn)', border: '1px solid var(--border-warn)',
                             borderRadius: '8px', fontSize: '12px',
                           }}>
-                            <div style={{ color: '#92400E', fontWeight: 600, marginBottom: '6px' }}>
+                            <div style={{ color: 'var(--text-warn-dark)', fontWeight: 600, marginBottom: '6px' }}>
                               Платних + безкоштовних = {l.qty}
                             </div>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -396,15 +396,15 @@ export default function EditPricesButton({
                                 placeholder="платних"
                                 value={promo.paidQty}
                                 onChange={e => setPromoCalc(p => ({ ...p, [l.sku]: { ...p[l.sku]!, paidQty: e.target.value } }))}
-                                style={{ width: '60px', padding: '3px 6px', borderRadius: '5px', border: '1px solid #FCD34D', fontSize: '12px', textAlign: 'center' }}
+                                style={{ width: '60px', padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--border-warn)', fontSize: '12px', textAlign: 'center' }}
                               />
-                              <span style={{ color: '#92400E' }}>+</span>
+                              <span style={{ color: 'var(--text-warn-dark)' }}>+</span>
                               <input
                                 type="number" min="0" step="1"
                                 placeholder="безкошт."
                                 value={promo.bonusQty}
                                 onChange={e => setPromoCalc(p => ({ ...p, [l.sku]: { ...p[l.sku]!, bonusQty: e.target.value } }))}
-                                style={{ width: '60px', padding: '3px 6px', borderRadius: '5px', border: '1px solid #FCD34D', fontSize: '12px', textAlign: 'center' }}
+                                style={{ width: '60px', padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--border-warn)', fontSize: '12px', textAlign: 'center' }}
                               />
                               <button
                                 onClick={() => applyPromo(l.sku, l.qty)}
@@ -419,7 +419,7 @@ export default function EditPricesButton({
                               const price = parseFloat(prices[l.sku] ?? '0');
                               if (!isNaN(paid) && !isNaN(bonus) && !isNaN(price) && paid + bonus === l.qty) {
                                 const avg = (paid * price) / l.qty;
-                                return <div style={{ marginTop: '4px', color: '#92400E', fontWeight: 600 }}>→ {Math.round(avg * 100) / 100} грн/шт</div>;
+                                return <div style={{ marginTop: '4px', color: 'var(--text-warn-dark)', fontWeight: 600 }}>→ {Math.round(avg * 100) / 100} грн/шт</div>;
                               }
                               return null;
                             })()}
@@ -433,7 +433,7 @@ export default function EditPricesButton({
             </table>
 
             {error && (
-              <div style={{ marginTop: '12px', padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', fontSize: '13px', color: '#DC2626', fontWeight: 600 }}>
+              <div style={{ marginTop: '12px', padding: '8px 12px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-danger)', fontWeight: 600 }}>
                 {error}
               </div>
             )}
@@ -448,7 +448,7 @@ export default function EditPricesButton({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: saving ? '#94A3B8' : '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: saving ? 'var(--text-muted)' : 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <Check size={14} /> {saving ? 'Збереження...' : 'Зберегти'}
               </button>

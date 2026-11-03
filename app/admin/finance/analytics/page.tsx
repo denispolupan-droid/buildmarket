@@ -5,6 +5,7 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { summarizePL, PL_ACCOUNTS } from '../../../../lib/accounting/profit-rules';
 import { requireStaffPage } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { fmtInt as fmt } from '../../../../lib/format';
 
 const db = createServiceClient();
 
@@ -22,10 +23,6 @@ const CHANNEL_LABELS: Record<string, string> = {
   retail:   'Роздріб',
   dropship: 'Дроп',
 };
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
-}
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
@@ -257,7 +254,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   const cur = { revenue: sumRevenue(thisMonthRows), cost: sumCost(thisMonthRows), commission: sumCommission(thisMonthRows), margin: sumMargin(thisMonthRows), count: thisMonthRows.length };
   const prv = { revenue: sumRevenue(prevMonthRows), cost: sumCost(prevMonthRows), commission: sumCommission(prevMonthRows), margin: sumMargin(prevMonthRows), count: prevMonthRows.length };
-
 
   // ── Воронка угод: знімок «зараз», незалежно від місяця створення ──────────
   // «В дорозі» — відвантажені, ще не доставлені: очікуваний прибуток і комісії
@@ -539,7 +535,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             <div className="fin-card-title">Оборот і прибуток по місяцях <span className="fin-card-sub">· оборот = сума замовлень, прибуток = валовий після комісій (доставлені — факт, решта — прогноз) · за датою створення замовлення</span></div>
             <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
               <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
-              <span><span className="fin-dot" style={{ background: '#15803D' }} /> Прибуток</span>
+              <span><span className="fin-dot" style={{ background: 'var(--color-success)' }} /> Прибуток</span>
             </div>
           </div>
           <div style={{ marginTop: '12px' }}>
@@ -581,7 +577,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', fontVariantNumeric: 'tabular-nums' }}>#{d.order_number}</span>
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
                   <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>виручка {fmt(d.total_price)} ₴</span>
-                  <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: d.margin < 0 ? '#DC2626' : '#B45309' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: d.margin < 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>
                     {d.margin < 0 ? '' : '+'}{fmt(d.margin)} ₴ · {d.pct}%
                   </span>
                 </span>
@@ -595,7 +591,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div className="fin-card-title">
-            Топ товарів за прибутком <span className="fin-card-sub">· виручка → собівартість (з комісіями) → валовий прибуток · доставлені за {curMonthLabel} · ABC: <b style={{ color: '#15803D' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: '#B45309' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
+            Топ товарів за прибутком <span className="fin-card-sub">· виручка → собівартість (з комісіями) → валовий прибуток · доставлені за {curMonthLabel} · ABC: <b style={{ color: 'var(--color-success)' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: 'var(--color-warn)' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
           </div>
           {topProducts.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних за період</div>
@@ -607,9 +603,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                     <td style={{ width: '26px' }}>
                       <span title={p.abc === 'A' ? 'Клас A — топ, дає 80% прибутку' : p.abc === 'B' ? 'Клас B — середняк (наступні 15% прибутку)' : 'Клас C — хвіст (5% прибутку або збиткові)'}
                         style={{ fontSize: '10px', fontWeight: 800, width: '18px', height: '18px', borderRadius: '5px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          color: p.abc === 'A' ? '#15803D' : p.abc === 'B' ? '#B45309' : 'var(--text-muted)',
+                          color: p.abc === 'A' ? 'var(--color-success)' : p.abc === 'B' ? 'var(--color-warn)' : 'var(--text-muted)',
                           background: p.abc === 'A' ? '#DCFCE7' : p.abc === 'B' ? '#FEF3C7' : 'var(--bg-soft)',
-                          border: `1px solid ${p.abc === 'A' ? '#86EFAC' : p.abc === 'B' ? '#FCD34D' : 'var(--border)'}` }}>
+                          border: `1px solid ${p.abc === 'A' ? 'var(--border-success)' : p.abc === 'B' ? 'var(--border-warn)' : 'var(--border)'}` }}>
                         {p.abc}
                       </span>
                     </td>
@@ -620,7 +616,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                     <td className="num muted" style={{ fontWeight: 500 }}>{p.qty} шт</td>
                     <td className="num">{fmt(p.revenue)} ₴</td>
                     <td className="num muted" style={{ fontWeight: 500 }}>−{fmt(p.cost)} ₴</td>
-                    <td className="num" style={{ color: p.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                    <td className="num" style={{ color: p.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                       {p.margin >= 0 ? '+' : ''}{fmt(p.margin)} ₴
                       <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 500 }}> · {p.margin_pct}%</span>
                     </td>
@@ -650,7 +646,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                       </div>
                       <div className="fin-funnel-track"><div className="fin-funnel-fill" style={{ width: `${pct}%` }} /></div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        прибуток <span style={{ color: stats.margin >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>{fmt(stats.margin)} ₴</span> · {stats.count} замовл. · {fmt(stats.count > 0 ? stats.margin / stats.count : 0)} ₴/замовл.
+                        прибуток <span style={{ color: stats.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>{fmt(stats.margin)} ₴</span> · {stats.count} замовл. · {fmt(stats.count > 0 ? stats.margin / stats.count : 0)} ₴/замовл.
                       </div>
                     </div>
                   );
@@ -666,12 +662,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                 <tr>
                   <td className="muted">Нові</td>
                   <td className="num">{repeatAgg.new.count} замовл.</td>
-                  <td className="num" style={{ color: repeatAgg.new.margin >= 0 ? '#15803D' : '#DC2626' }}>{fmt(repeatAgg.new.margin)} ₴</td>
+                  <td className="num" style={{ color: repeatAgg.new.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmt(repeatAgg.new.margin)} ₴</td>
                 </tr>
                 <tr>
                   <td className="muted">Повторні</td>
                   <td className="num">{repeatAgg.repeat.count} замовл.</td>
-                  <td className="num" style={{ color: repeatAgg.repeat.margin >= 0 ? '#15803D' : '#DC2626' }}>{fmt(repeatAgg.repeat.margin)} ₴</td>
+                  <td className="num" style={{ color: repeatAgg.repeat.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmt(repeatAgg.repeat.margin)} ₴</td>
                 </tr>
                 <tr>
                   <td className="muted">Частка повторних</td>
@@ -697,13 +693,13 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                   <div key={name}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '4px', gap: '10px' }}>
                       <span style={{ color: 'var(--text-secondary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{name}</span>
-                      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: c.margin >= 0 ? 'var(--text-primary)' : '#DC2626' }}>
+                      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: c.margin >= 0 ? 'var(--text-primary)' : 'var(--color-danger)' }}>
                         {c.margin >= 0 ? '' : '−'}{fmt(Math.abs(c.margin))} ₴
                         <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {share}%</span>
                       </span>
                     </div>
                     <div className="fin-funnel-track">
-                      <div className="fin-funnel-fill" style={{ width: `${Math.max(2, share)}%`, background: c.margin >= 0 ? undefined : '#DC2626' }} />
+                      <div className="fin-funnel-fill" style={{ width: `${Math.max(2, share)}%`, background: c.margin >= 0 ? undefined : 'var(--color-danger)' }} />
                     </div>
                   </div>
                 );
@@ -726,7 +722,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                   <tr key={c.name}>
                     <td className="name">{c.name}</td>
                     <td className="num muted" style={{ fontWeight: 500 }}>{c.orders} зам. · {fmt(c.revenue)} ₴</td>
-                    <td className="num" style={{ width: '100px', color: c.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                    <td className="num" style={{ width: '100px', color: c.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                       {c.margin >= 0 ? '+' : ''}{fmt(c.margin)} ₴
                     </td>
                   </tr>
@@ -752,7 +748,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                     <tr key={brand}>
                       <td className="name">{brand}</td>
                       <td className="num muted" style={{ fontWeight: 500 }}>{s.qty} шт · {fmt(s.revenue)} ₴</td>
-                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctB}%
                       </td>
                     </tr>
@@ -776,7 +772,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                     <tr key={s.key}>
                       <td className="name">{s.name}</td>
                       <td className="num muted" style={{ fontWeight: 500 }}>{s.qty} шт · {fmt(s.revenue)} ₴</td>
-                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? '#15803D' : '#DC2626' }}>
+                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctS}%
                       </td>
                     </tr>

@@ -213,7 +213,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
               {sheetsLoading ? 'Завантаження...' : currentNumber ? `Реєстр НП #${currentNumber}` : 'Реєстр НП'}
             </span>
             {ttns.length > 0 && (
-              <span style={{ background: '#1E3A5F', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
+              <span style={{ background: 'var(--navy)', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
                 {ttns.length} ТТН
               </span>
             )}
@@ -233,12 +233,12 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
                 <Printer size={13} /> Роздрукувати
               </button>
               <button onClick={() => { setSendModal(true); setError(''); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 14px', borderRadius: '7px', border: 'none', background: '#1E3A5F', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#fff' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 14px', borderRadius: '7px', border: 'none', background: 'var(--navy)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#fff' }}>
                 <Mail size={13} /> Відправити
               </button>
               <button onClick={deleteSheet} disabled={deletingSheet}
                 title="Розформувати реєстр в НП"
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #FECACA', background: '#FEF2F2', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#DC2626', opacity: deletingSheet ? 0.5 : 1 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #FECACA', background: 'var(--bg-danger)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: 'var(--color-danger)', opacity: deletingSheet ? 0.5 : 1 }}>
                 {deletingSheet ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <X size={13} />}
                 Розформувати
               </button>
@@ -253,10 +253,10 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
             </div>
             {ttns.map(t => (
               <div key={t.ttn} style={{ display: 'grid', gridTemplateColumns: '160px 90px 1fr 100px 32px', gap: '8px', padding: '5px 0', alignItems: 'center', borderBottom: '1px solid var(--border-light)' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1E3A5F', fontWeight: 600 }}>{t.ttn}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>{t.ttn}</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(ttnDateMap.get(t.ttn) ?? '')}</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.contact}</span>
-                <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, textAlign: 'right' }}>{t.amount} ₴</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, textAlign: 'right' }}>{t.amount} ₴</span>
                 <button
                   disabled={removingTtn === t.ttn}
                   onClick={async () => {
@@ -286,7 +286,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
             ))}
           </div>
         )}
-        {error && <div style={{ padding: '8px 20px', background: '#FEF2F2', color: '#DC2626', fontSize: '12px' }}>{error}</div>}
+        {error && <div style={{ padding: '8px 20px', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: '12px' }}>{error}</div>}
       </div>
 
       {/* Orders table */}
@@ -299,7 +299,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
         </h2>
         {ordersNotAdded.length > 0 && (
           <button onClick={openBulkModal}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '7px', border: '1.5px solid #1E3A5F', background: '#EFF4FF', color: '#1E3A5F', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '7px', border: '1.5px solid var(--navy)', background: '#EFF4FF', color: 'var(--navy)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
             + Додати до реєстру ({ordersNotAdded.length})
           </button>
         )}
@@ -325,18 +325,18 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
                   <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{order.contact}</div>
                   {order.delivery_city_name && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{order.delivery_city_name}</div>}
                 </div>
-                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1E3A5F', fontWeight: 600 }}>{order.tracking_number}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>{order.tracking_number}</span>
                 <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: st.color, background: st.bg }}>{st.label}</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(order.created_at)}</span>
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{order.total_price} ₴</span>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   {inReg ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#15803D', fontWeight: 600 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--color-success)', fontWeight: 600 }}>
                       <Check size={13} /> В реєстрі
                     </span>
                   ) : (
                     <button onClick={() => addToRegister(order)} disabled={isAdding}
-                      style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 12px', borderRadius: '6px', border: '1.5px solid #1E3A5F', background: '#EFF4FF', color: '#1E3A5F', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 12px', borderRadius: '6px', border: '1.5px solid var(--navy)', background: '#EFF4FF', color: 'var(--navy)', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
                       {isAdding ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Truck size={12} />}
                       {isAdding ? '...' : '+ до реєстру'}
                     </button>
@@ -406,9 +406,9 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
               {/* Progress */}
               {bulkAdding && (
                 <div style={{ padding: '8px 20px', background: '#EFF4FF', borderTop: '1px solid #BFDBFE' }}>
-                  <div style={{ fontSize: '12px', color: '#1E3A5F', marginBottom: '4px' }}>Додавання {bulkProgress} / {bulkSelected.size}...</div>
+                  <div style={{ fontSize: '12px', color: 'var(--navy)', marginBottom: '4px' }}>Додавання {bulkProgress} / {bulkSelected.size}...</div>
                   <div style={{ height: '4px', background: '#BFDBFE', borderRadius: '2px' }}>
-                    <div style={{ height: '100%', background: '#1E3A5F', borderRadius: '2px', width: `${(bulkProgress / bulkSelected.size) * 100}%`, transition: 'width 0.3s' }} />
+                    <div style={{ height: '100%', background: 'var(--navy)', borderRadius: '2px', width: `${(bulkProgress / bulkSelected.size) * 100}%`, transition: 'width 0.3s' }} />
                   </div>
                 </div>
               )}
@@ -417,7 +417,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', padding: '14px 20px', borderTop: '1px solid var(--border-light)' }}>
                 {!bulkAdding && <button onClick={() => setBulkModal(false)} style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>}
                 <button onClick={confirmBulkAdd} disabled={bulkAdding || bulkSelected.size === 0}
-                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: bulkSelected.size === 0 ? 'default' : 'pointer', opacity: bulkSelected.size === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: bulkSelected.size === 0 ? 'default' : 'pointer', opacity: bulkSelected.size === 0 ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '7px' }}>
                   {bulkAdding ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Додаємо...</> : `✓ Додати ${bulkSelected.size} ТТН до реєстру`}
                 </button>
               </div>
@@ -451,11 +451,11 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
                   style={{ width: '100%', height: '38px', padding: '0 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
-            {error && <div style={{ marginTop: '12px', fontSize: '12px', color: '#DC2626' }}>{error}</div>}
+            {error && <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--color-danger)' }}>{error}</div>}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
               <button onClick={() => setSendModal(false)} style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>
               <button onClick={handleSend} disabled={sending || !sendEmail.trim()}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: sendDone ? '#16A34A' : '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: !sendEmail.trim() ? 0.5 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: sendDone ? 'var(--status-instock)' : 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: !sendEmail.trim() ? 0.5 : 1 }}>
                 {sending ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Відправляємо...</>
                          : sendDone ? <><Check size={14} />Відправлено!</>
                          : <><Mail size={14} />Відправити</>}

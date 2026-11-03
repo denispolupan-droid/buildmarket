@@ -1232,7 +1232,7 @@ async function sendEmail(){
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Ціни</h1>
-          <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: 13 }}>
+          <p style={{ margin: '4px 0 0', color: 'var(--text-gray)', fontSize: 13 }}>
             {rows.length} товарів · {totalSelected > 0 ? `${totalSelected} вибрано` : 'оберіть для переоцінки'}
           </p>
         </div>
@@ -1263,8 +1263,8 @@ async function sendEmail(){
             style={{
               padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               border: 'none', background: 'none',
-              color: activeTab === tab ? '#1D4ED8' : '#6B7280',
-              borderBottom: activeTab === tab ? '2px solid #1D4ED8' : '2px solid transparent',
+              color: activeTab === tab ? 'var(--color-info)' : 'var(--text-gray)',
+              borderBottom: activeTab === tab ? '2px solid var(--color-info)' : '2px solid transparent',
               marginBottom: -1.5,
             }}
           >
@@ -1304,22 +1304,22 @@ async function sendEmail(){
           {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
         {/* Без ціни */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterNoPrice ? '#DC2626' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterNoPrice ? '#FCA5A5' : '#E5E7EB'}`, borderRadius: 8, background: filterNoPrice ? '#FEF2F2' : '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterNoPrice ? 'var(--color-danger)' : 'var(--text-gray)', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterNoPrice ? 'var(--border-danger)' : '#E5E7EB'}`, borderRadius: 8, background: filterNoPrice ? 'var(--bg-danger)' : '#fff' }}>
           <input type="checkbox" checked={filterNoPrice} onChange={e => setFilterNoPrice(e.target.checked)} />
           Без ціни
         </label>
         {/* Зафіксовані */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterLocked ? '#D97706' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterLocked ? '#FCD34D' : '#E5E7EB'}`, borderRadius: 8, background: filterLocked ? '#FFFBEB' : '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterLocked ? '#D97706' : 'var(--text-gray)', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterLocked ? 'var(--border-warn)' : '#E5E7EB'}`, borderRadius: 8, background: filterLocked ? 'var(--bg-warn)' : '#fff' }}>
           <input type="checkbox" checked={filterLocked} onChange={e => setFilterLocked(e.target.checked)} />
           <Lock size={12} /> Зафіксовані
         </label>
         {/* Неактивні */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: showInactive ? '#6B21A8' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${showInactive ? '#D8B4FE' : '#E5E7EB'}`, borderRadius: 8, background: showInactive ? '#FAF5FF' : '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: showInactive ? '#6B21A8' : 'var(--text-gray)', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${showInactive ? '#D8B4FE' : '#E5E7EB'}`, borderRadius: 8, background: showInactive ? '#FAF5FF' : '#fff' }}>
           <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
           Неактивні
         </label>
         {/* Акція */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterPromo ? '#C2410C' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterPromo ? '#FDBA74' : '#E5E7EB'}`, borderRadius: 8, background: filterPromo ? '#FFF7ED' : '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: filterPromo ? '#C2410C' : 'var(--text-gray)', cursor: 'pointer', whiteSpace: 'nowrap', padding: '6px 12px', border: `1.5px solid ${filterPromo ? '#FDBA74' : '#E5E7EB'}`, borderRadius: 8, background: filterPromo ? '#FFF7ED' : '#fff' }}>
           <input type="checkbox" checked={filterPromo} onChange={e => setFilterPromo(e.target.checked)} />
           <Tag size={12} /> Акція
         </label>
@@ -1378,10 +1378,10 @@ async function sendEmail(){
 
       {/* Repricing panel */}
       {totalSelected > 0 && (
-        <div style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
+        <div style={{ background: 'var(--brand-blue-light)', border: '1.5px solid #BFDBFE', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#1D4ED8' }}>Переоцінка — {totalSelected} товарів</span>
-            <button onClick={cancelRepricing} style={{ ...btnSecondary, fontSize: 12, color: '#6B7280' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-info)' }}>Переоцінка — {totalSelected} товарів</span>
+            <button onClick={cancelRepricing} style={{ ...btnSecondary, fontSize: 12, color: 'var(--text-gray)' }}>
               <X size={13} /> Скасувати
             </button>
           </div>
@@ -1405,14 +1405,14 @@ async function sendEmail(){
 
             if (repricingIsPromo) {
               return (
-                <div style={{ marginBottom: 10, padding: '7px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 7, fontSize: 12, color: '#92400E', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ marginBottom: 10, padding: '7px 12px', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: 7, fontSize: 12, color: 'var(--text-warn-dark)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Tag size={12} />
                   <span><b>{conflicting.length} товар(ів)</b> вже мають акційну ціну — вона буде перезаписана (підсвічено жовтим у таблиці).</span>
                 </div>
               );
             }
             return (
-              <div style={{ marginBottom: 10, padding: '7px 12px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 7, fontSize: 12, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ marginBottom: 10, padding: '7px 12px', background: 'var(--brand-blue-light)', border: '1px solid #BFDBFE', borderRadius: 7, fontSize: 12, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Tag size={12} />
                 <span><b>{conflicting.length} товар(ів)</b> мають активну акцію — <code style={{ fontSize: 11 }}>price_promo</code> залишиться без змін. Якщо потрібно її зняти — спочатку скасуйте акцію, або поставте галочку «Акція».</span>
               </div>
@@ -1481,7 +1481,7 @@ async function sendEmail(){
             {/* «Акція»: сайт — price_promo; МП — корекція, у фід іде стара (перекреслена) ціна */}
             <div>
               <label style={smallLabel}>Тип</label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '5px 10px', border: `1.5px solid ${repricingIsPromo ? '#F97316' : '#E5E7EB'}`, borderRadius: 7, background: repricingIsPromo ? '#FFF7ED' : '#fff', color: repricingIsPromo ? '#C2410C' : '#6B7280', whiteSpace: 'nowrap', height: 32, boxSizing: 'border-box' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '5px 10px', border: `1.5px solid ${repricingIsPromo ? '#F97316' : '#E5E7EB'}`, borderRadius: 7, background: repricingIsPromo ? '#FFF7ED' : '#fff', color: repricingIsPromo ? '#C2410C' : 'var(--text-gray)', whiteSpace: 'nowrap', height: 32, boxSizing: 'border-box' }}>
                 <input type="checkbox" checked={repricingIsPromo} onChange={e => setRepricingIsPromo(e.target.checked)} />
                 <Tag size={12} /> Акція
               </label>
@@ -1497,7 +1497,7 @@ async function sendEmail(){
                   style={{ ...inputSmall, height: 32, paddingRight: 6 }}
                 />
                 {repricingEffectiveFrom && (
-                  <button onClick={() => setRepricingEffectiveFrom('')} style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button onClick={() => setRepricingEffectiveFrom('')} style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-gray-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <X size={11} />
                   </button>
                 )}
@@ -1514,7 +1514,7 @@ async function sendEmail(){
                   style={{ ...inputSmall, height: 32, paddingRight: 6 }}
                 />
                 {repricingRevertAt && (
-                  <button onClick={() => setRepricingRevertAt('')} style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button onClick={() => setRepricingRevertAt('')} style={{ width: 22, height: 22, borderRadius: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-gray-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <X size={11} />
                   </button>
                 )}
@@ -1542,7 +1542,7 @@ async function sendEmail(){
           ))}
 
           {mpWarnings && (
-            <div style={{ marginTop: 8, padding: '7px 12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 7, fontSize: 12, color: '#991B1B', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 8, padding: '7px 12px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', borderRadius: 7, fontSize: 12, color: '#991B1B', lineHeight: 1.5 }}>
               {mpWarnings.loss > 0 && <div>⚠ <b>{mpWarnings.loss} товар(ів)</b> після переоцінки продаватимуться <b>у мінус</b> — ціна мінус комісія нижче собівартості.</div>}
               {mpWarnings.stacked > 0 && <div>⚠ <b>{mpWarnings.stacked} товар(ів)</b> уже мають діючу акцію — нова ляже поверх, знижки перемножаться (−10 % і −10 % = −19 %). Щоб замінити, спершу вимкніть стару у вкладці «Акції МП».</div>}
             </div>
@@ -1552,14 +1552,14 @@ async function sendEmail(){
           {repricingValue && !isMp && (
             <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
               {previewLoading ? (
-                <span style={{ color: '#9CA3AF' }}>Розрахунок...</span>
+                <span style={{ color: 'var(--text-gray-light)' }}>Розрахунок...</span>
               ) : previewRevenue ? (
                 <>
-                  <span style={{ color: '#6B7280' }}>Вплив на виручку:</span>
-                  <span style={{ fontWeight: 700, color: previewRevenue.delta >= 0 ? '#15803D' : '#DC2626' }}>
+                  <span style={{ color: 'var(--text-gray)' }}>Вплив на виручку:</span>
+                  <span style={{ fontWeight: 700, color: previewRevenue.delta >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                     {previewRevenue.delta >= 0 ? '+' : ''}{previewRevenue.delta.toLocaleString('uk-UA')} ₴
                   </span>
-                  <span style={{ color: '#9CA3AF' }}>({previewRevenue.count} поз. × залишок на складі)</span>
+                  <span style={{ color: 'var(--text-gray-light)' }}>({previewRevenue.count} поз. × залишок на складі)</span>
                 </>
               ) : null}
             </div>
@@ -1578,7 +1578,7 @@ async function sendEmail(){
               </span>
             )}
             {repricingRevertAt && !(repricingEffectiveFrom && repricingEffectiveFrom > new Date().toISOString().split('T')[0]) && (
-              <span style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <RotateCcw size={12} /> {isMp
                   ? `Діє до ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')} включно`
                   : `Авто-відкат ${new Date(repricingRevertAt).toLocaleDateString('uk-UA')}`}
@@ -1607,7 +1607,7 @@ async function sendEmail(){
                 </thead>
                 <tbody>
                   {mpPreview.map(row => (
-                    <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF', background: row.promManual && mpWantsProm ? '#FFFBEB' : undefined }}>
+                    <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF', background: row.promManual && mpWantsProm ? 'var(--bg-warn)' : undefined }}>
                       <td style={{ padding: '5px 10px' }}>
                         <span>{row.brand} {row.name}{row.volume && !row.name.includes(row.volume) ? ` ${row.volume}` : ''}</span>
                         {row.promManual && mpWantsProm && (
@@ -1655,7 +1655,7 @@ async function sendEmail(){
                 </thead>
                 <tbody>
                   {repricingPreview.map(row => (
-                    <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF', background: row.hasPromo ? '#FFFBEB' : undefined }}>
+                    <tr key={row.sku} style={{ borderBottom: '1px solid #F0F7FF', background: row.hasPromo ? 'var(--bg-warn)' : undefined }}>
                       <td style={{ padding: '5px 10px' }}>
                         <span>{row.brand} {row.name}{row.volume && !row.name.includes(row.volume) ? ` ${row.volume}` : ''}</span>
                         {row.hasPromo && (() => {
@@ -1692,7 +1692,7 @@ async function sendEmail(){
           <div key={catSlug} style={{ marginBottom: 24 }}>
             {/* Category header */}
             <div
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: isCollapsed ? 10 : '10px 10px 0 0', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: isCollapsed ? 10 : '10px 10px 0 0', cursor: 'pointer' }}
               onClick={() => setCollapsed(prev => { const s = new Set(prev); s.has(catSlug) ? s.delete(catSlug) : s.add(catSlug); return s; })}
             >
               <input
@@ -1703,12 +1703,12 @@ async function sendEmail(){
                 onClick={e => e.stopPropagation()}
               />
               <span style={{ fontWeight: 700, fontSize: 14, color: '#1E293B', flex: 1 }}>{catName}</span>
-              <span style={{ fontSize: 12, color: '#94A3B8' }}>{catRows.length} товарів</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{catRows.length} товарів</span>
               {isCollapsed ? <ChevronDown size={15} color="#94A3B8" /> : <ChevronUp size={15} color="#94A3B8" />}
             </div>
 
             {!isCollapsed && (
-              <div style={{ border: '1px solid #E2E8F0', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden', background: '#fff' }}>
+              <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden', background: '#fff' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
@@ -1728,7 +1728,7 @@ async function sendEmail(){
                     {catRows.map(r => {
                       const isEditing = editSku === r.p.sku;
                       return (
-                        <tr key={r.p.sku} style={{ borderBottom: '1px solid #F3F4F6', background: selected.has(r.p.sku) && r.promo != null ? '#FFFBEB' : selected.has(r.p.sku) ? '#F0F7FF' : undefined }}>
+                        <tr key={r.p.sku} style={{ borderBottom: '1px solid #F3F4F6', background: selected.has(r.p.sku) && r.promo != null ? 'var(--bg-warn)' : selected.has(r.p.sku) ? '#F0F7FF' : undefined }}>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <input type="checkbox" checked={selected.has(r.p.sku)} onChange={() => toggleRow(r.p.sku)} />
                           </td>
@@ -1761,7 +1761,7 @@ async function sendEmail(){
                                 );
                               })()}
                             </div>
-                            <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>{r.p.sku}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-gray-light)', fontFamily: 'monospace' }}>{r.p.sku}</div>
                           </td>
 
                           {isEditing ? (
@@ -1778,21 +1778,21 @@ async function sendEmail(){
                               <td style={{ padding: '6px 8px' }}>
                                 <input type="number" step="0.01" value={editState!.price_drop} onChange={e => setEditState(s => s && ({ ...s, price_drop: e.target.value }))} style={{ ...inputSmall, width: 70 }} />
                               </td>
-                              <td style={{ padding: '6px 8px', fontSize: 12, color: '#9CA3AF' }}>авто</td>
-                              <td style={{ padding: '6px 8px', fontSize: 12, color: '#9CA3AF' }}>авто</td>
+                              <td style={{ padding: '6px 8px', fontSize: 12, color: 'var(--text-gray-light)' }}>авто</td>
+                              <td style={{ padding: '6px 8px', fontSize: 12, color: 'var(--text-gray-light)' }}>авто</td>
                               <td style={{ padding: '6px 8px' }}>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                   <button
                                     title={editState!.lock ? 'Зафіксовано (синк не перезапише)' : 'Не зафіксовано'}
                                     onClick={() => setEditState(s => s && ({ ...s, lock: !s.lock }))}
-                                    style={{ width: 26, height: 26, borderRadius: 6, border: `1.5px solid ${editState!.lock ? '#F59E0B' : '#E5E7EB'}`, background: editState!.lock ? '#FFFBEB' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    style={{ width: 26, height: 26, borderRadius: 6, border: `1.5px solid ${editState!.lock ? '#F59E0B' : '#E5E7EB'}`, background: editState!.lock ? 'var(--bg-warn)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                   >
                                     {editState!.lock ? <Lock size={11} color="#F59E0B" /> : <Unlock size={11} color="#9CA3AF" />}
                                   </button>
-                                  <button onClick={() => saveEdit(r.p.sku)} disabled={saving} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #16A34A', background: '#F0FDF4', color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <button onClick={() => saveEdit(r.p.sku)} disabled={saving} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid var(--status-instock)', background: 'var(--bg-success)', color: 'var(--status-instock)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <Check size={12} />
                                   </button>
-                                  <button onClick={() => setEditSku(null)} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <button onClick={() => setEditSku(null)} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #E5E7EB', background: '#F9FAFB', color: 'var(--text-gray)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <X size={12} />
                                   </button>
                                 </div>
@@ -1800,12 +1800,12 @@ async function sendEmail(){
                             </>
                           ) : (
                             <>
-                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.cost)}</td>
+                              <td style={{ padding: '8px 14px', fontSize: 13, color: 'var(--text-gray)' }}>{fmt(r.cost)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13 }}>{fmt(r.unit)}</td>
                               <td style={{ padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
                                 {r.promo != null ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-                                    <span style={{ color: '#9CA3AF', textDecoration: 'line-through', fontWeight: 400 }}>{fmt(r.retail)}</span>
+                                    <span style={{ color: 'var(--text-gray-light)', textDecoration: 'line-through', fontWeight: 400 }}>{fmt(r.retail)}</span>
                                     <span style={{ color: '#C2410C', fontWeight: 700 }}>{r.promo} ₴</span>
                                   </span>
                                 ) : fmt(r.retail)}
@@ -1835,17 +1835,17 @@ async function sendEmail(){
                                         onClick={e => { e.stopPropagation(); resetMarkup(r.p.sku); }}
                                         disabled={markupBusy === r.p.sku}
                                         title="Зняти власну наценку — ціну рахуватиме наценка постачальника"
-                                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: '#9CA3AF', display: 'inline-flex' }}>
+                                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-gray-light)', display: 'inline-flex' }}>
                                         <X size={11} />
                                       </button>
                                     </div>
                                   );
                                 })()}
                               </td>
-                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }}>{fmt(r.drop)}</td>
-                              <td style={{ padding: '8px 14px', fontSize: 13, color: '#6B7280' }} title="Ціна фіда Prom (редагується в розділі «Ціни Prom»)">
+                              <td style={{ padding: '8px 14px', fontSize: 13, color: 'var(--text-gray)' }}>{fmt(r.drop)}</td>
+                              <td style={{ padding: '8px 14px', fontSize: 13, color: 'var(--text-gray)' }} title="Ціна фіда Prom (редагується в розділі «Ціни Prom»)">
                                 {r.promOld != null && r.promPrice != null && r.promOld > r.promPrice && (
-                                  <span style={{ color: '#9CA3AF', textDecoration: 'line-through', marginRight: 4 }}>{r.promOld} ₴</span>
+                                  <span style={{ color: 'var(--text-gray-light)', textDecoration: 'line-through', marginRight: 4 }}>{r.promOld} ₴</span>
                                 )}
                                 {r.promPrice != null ? `${r.promPrice} ₴` : '—'}
                                 <AdjChip f={r.fPromAdj} />
@@ -1857,7 +1857,7 @@ async function sendEmail(){
                               </td>
                               <td style={{ padding: '8px 14px', fontSize: 13, color: '#0EA5E9', fontWeight: r.rzPrice ? 500 : 400 }} title="Ціна фіда Rozetka, з урахуванням Smart (редагується в розділі «Товари Rozetka»)">
                                 {r.rzOld != null && r.rzPrice != null && r.rzOld > r.rzPrice && (
-                                  <span style={{ color: '#9CA3AF', textDecoration: 'line-through', marginRight: 4, fontWeight: 400 }}>{r.rzOld} ₴</span>
+                                  <span style={{ color: 'var(--text-gray-light)', textDecoration: 'line-through', marginRight: 4, fontWeight: 400 }}>{r.rzOld} ₴</span>
                                 )}
                                 {r.rzPrice != null ? `${r.rzPrice} ₴` : '—'}
                                 <AdjChip f={r.fRzAdj} />
@@ -1874,7 +1874,7 @@ async function sendEmail(){
                                       <Lock size={11} color="#F59E0B" />
                                     </span>
                                   )}
-                                  <button onClick={() => startEdit(r)} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #E5E7EB', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <button onClick={() => startEdit(r)} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #E5E7EB', background: 'transparent', color: 'var(--text-gray-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <Pencil size={11} />
                                   </button>
                                 </div>
@@ -1899,7 +1899,7 @@ async function sendEmail(){
           <div style={{ background: '#fff', padding: 32, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Прайс-лист для клієнта</h2>
-              <button onClick={() => setShowPricelist(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={18} /></button>
+              <button onClick={() => setShowPricelist(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray-light)' }}><X size={18} /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1909,7 +1909,7 @@ async function sendEmail(){
                 <div style={{ display: 'flex', gap: 8 }}>
                   {([['fixline', 'FixLine'], ['fop', 'ФОП Полупан Д.О.']] as [typeof plHeaderVariant, string][]).map(([val, label]) => (
                     <button key={val} onClick={() => setPlHeaderVariant(val)}
-                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${plHeaderVariant === val ? '#1D4ED8' : '#E5E7EB'}`, background: plHeaderVariant === val ? '#EFF6FF' : '#fff', color: plHeaderVariant === val ? '#1D4ED8' : '#374151', fontWeight: plHeaderVariant === val ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${plHeaderVariant === val ? 'var(--color-info)' : '#E5E7EB'}`, background: plHeaderVariant === val ? 'var(--brand-blue-light)' : '#fff', color: plHeaderVariant === val ? 'var(--color-info)' : '#374151', fontWeight: plHeaderVariant === val ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
                       {label}
                     </button>
                   ))}
@@ -1922,13 +1922,13 @@ async function sendEmail(){
                 <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                   {([['price_retail', 'Роздрібна'], ['price_unit', 'Оптова'], ['price_drop', 'Дроп'], ['price_cost', 'Закупівельна']] as [PriceField, string][]).map(([val, label]) => (
                     <button key={val} onClick={() => setPlPriceType(val)}
-                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${plPriceType === val ? '#1D4ED8' : '#E5E7EB'}`, background: plPriceType === val ? '#EFF6FF' : '#fff', color: plPriceType === val ? '#1D4ED8' : '#374151', fontWeight: plPriceType === val ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${plPriceType === val ? 'var(--color-info)' : '#E5E7EB'}`, background: plPriceType === val ? 'var(--brand-blue-light)' : '#fff', color: plPriceType === val ? 'var(--color-info)' : '#374151', fontWeight: plPriceType === val ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
                       {label}
                     </button>
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: '#9CA3AF', whiteSpace: 'nowrap' }}>Маркетплейси:</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-gray-light)', whiteSpace: 'nowrap' }}>Маркетплейси:</span>
                   <button onClick={() => setPlPriceType('price_prom')}
                     style={{ padding: '6px 16px', borderRadius: 8, border: `1.5px solid ${plPriceType === 'price_prom' ? '#7C3AED' : '#E5E7EB'}`, background: plPriceType === 'price_prom' ? '#F5F3FF' : '#fff', color: plPriceType === 'price_prom' ? '#7C3AED' : '#374151', fontWeight: plPriceType === 'price_prom' ? 700 : 400, fontSize: 13, cursor: 'pointer' }}>
                     Prom.ua
@@ -2070,7 +2070,7 @@ async function sendEmail(){
                         <div key={parent.slug} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {catsToDescribe.map((cat, idx) => (
                             <div key={cat.slug}>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', marginBottom: 3, paddingLeft: idx > 0 ? 12 : 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-gray)', marginBottom: 3, paddingLeft: idx > 0 ? 12 : 0 }}>
                                 {idx > 0 ? '↳ ' : ''}{cat.name}
                               </div>
                               <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', paddingLeft: idx > 0 ? 12 : 0 }}>
@@ -2117,12 +2117,12 @@ async function sendEmail(){
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function PreviewChange({ before, after }: { before: number | null; after: number | null }) {
-  if (before === after) return <span style={{ color: '#9CA3AF' }}>{fmt(before)}</span>;
+  if (before === after) return <span style={{ color: 'var(--text-gray-light)' }}>{fmt(before)}</span>;
   return (
     <span>
-      <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>{fmt(before)}</span>
+      <span style={{ color: 'var(--text-gray-light)', textDecoration: 'line-through' }}>{fmt(before)}</span>
       {' → '}
-      <span style={{ color: after != null && before != null && after > before ? '#16A34A' : '#EA580C', fontWeight: 600 }}>{fmt(after)}</span>
+      <span style={{ color: after != null && before != null && after > before ? 'var(--status-instock)' : '#EA580C', fontWeight: 600 }}>{fmt(after)}</span>
     </span>
   );
 }
@@ -2130,12 +2130,12 @@ function PreviewChange({ before, after }: { before: number | null; after: number
 /** Корекції каналу в прев'ю: діючий сумарний зсув і нова корекція. */
 function AdjChange({ current, added }: { current: number; added: number | null }) {
   const cur = Math.abs(current - 1) > 1e-9 ? `діє ${factorLabel(current)}` : 'без корекцій';
-  if (added == null) return <span style={{ color: '#9CA3AF' }}>{cur} · пропущено</span>;
+  if (added == null) return <span style={{ color: 'var(--text-gray-light)' }}>{cur} · пропущено</span>;
   return (
     <span>
-      <span style={{ color: '#9CA3AF' }}>{cur}</span>
+      <span style={{ color: 'var(--text-gray-light)' }}>{cur}</span>
       {' · нова '}
-      <span style={{ color: added > 0 ? '#16A34A' : '#EA580C', fontWeight: 600 }}>{factorLabel(1 + added / 100)}</span>
+      <span style={{ color: added > 0 ? 'var(--status-instock)' : '#EA580C', fontWeight: 600 }}>{factorLabel(1 + added / 100)}</span>
     </span>
   );
 }
@@ -2160,12 +2160,12 @@ function AdjChip({ f }: { f: { regular: number; promo: number } }) {
 /** Націнка МП до → після; «кат.» — товар рахувався від націнки категорії. */
 function MarkupChange({ before, beforeIsCat, after }: { before: number; beforeIsCat: boolean; after: number | null }) {
   const b = `${before}%${beforeIsCat ? ' кат.' : ''}`;
-  if (after == null || after === before) return <span style={{ color: '#9CA3AF' }}>{b}</span>;
+  if (after == null || after === before) return <span style={{ color: 'var(--text-gray-light)' }}>{b}</span>;
   return (
     <span>
-      <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>{b}</span>
+      <span style={{ color: 'var(--text-gray-light)', textDecoration: 'line-through' }}>{b}</span>
       {' → '}
-      <span style={{ color: after > before ? '#16A34A' : '#EA580C', fontWeight: 600 }}>{after}%</span>
+      <span style={{ color: after > before ? 'var(--status-instock)' : '#EA580C', fontWeight: 600 }}>{after}%</span>
     </span>
   );
 }
@@ -2174,15 +2174,15 @@ function MarkupChange({ before, beforeIsCat, after }: { before: number; beforeIs
 
 const th: React.CSSProperties = {
   padding: '8px 14px', textAlign: 'left', fontSize: 11,
-  fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em',
+  fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: '0.05em',
 };
 const thSmall: React.CSSProperties = {
   padding: '6px 10px', textAlign: 'left', fontSize: 10,
-  fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
+  fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase',
 };
-const smallLabel: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: '#6B7280', marginBottom: 4 };
+const smallLabel: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-gray)', marginBottom: 4 };
 const modalLabel: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 };
 const inputSmall: React.CSSProperties = { height: 28, padding: '0 6px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: 12, outline: 'none' };
 const selectStyle: React.CSSProperties = { height: 32, padding: '0 8px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: 13, outline: 'none', background: '#fff' };
-const btnPrimary: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: '#1D4ED8', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
+const btnPrimary: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--color-info)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
 const btnSecondary: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' };

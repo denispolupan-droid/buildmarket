@@ -220,7 +220,7 @@ function BulkAddModal({ items, onClose, onDone }: {
                 value={brands[i]}
                 onChange={e => setBrands(b => b.map((v, j) => j === i ? e.target.value : v))}
                 placeholder="Бренд *"
-                style={{ width: '110px', height: '30px', padding: '0 8px', borderRadius: '6px', border: `1px solid ${brands[i]?.trim() ? 'var(--border)' : '#FCA5A5'}`, fontSize: '12px', flexShrink: 0 }}
+                style={{ width: '110px', height: '30px', padding: '0 8px', borderRadius: '6px', border: `1px solid ${brands[i]?.trim() ? 'var(--border)' : 'var(--border-danger)'}`, fontSize: '12px', flexShrink: 0 }}
               />
             </div>
           ))}
@@ -231,14 +231,14 @@ function BulkAddModal({ items, onClose, onDone }: {
           {progress && (
             <div style={{ marginBottom: '12px' }}>
               <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: '#16A34A', borderRadius: '3px', width: `${(progress.done / progress.total) * 100}%`, transition: 'width 0.2s' }} />
+                <div style={{ height: '100%', background: 'var(--status-instock)', borderRadius: '3px', width: `${(progress.done / progress.total) * 100}%`, transition: 'width 0.2s' }} />
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                 {progress.done} / {progress.total}
-                {progress.errors.length > 0 && <span style={{ color: '#DC2626', marginLeft: '8px' }}>{progress.errors.length} помилок</span>}
+                {progress.errors.length > 0 && <span style={{ color: 'var(--color-danger)', marginLeft: '8px' }}>{progress.errors.length} помилок</span>}
               </div>
               {progress.errors.length > 0 && (
-                <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px', maxHeight: '60px', overflowY: 'auto' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '4px', maxHeight: '60px', overflowY: 'auto' }}>
                   {progress.errors.map((e, i) => <div key={i}>{e}</div>)}
                 </div>
               )}
@@ -366,7 +366,7 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
       {selected.size > 0 && (
         <div style={{
           position: 'sticky', top: 0, zIndex: 50,
-          background: '#1E3A5F', color: '#fff', borderRadius: '10px',
+          background: 'var(--navy)', color: '#fff', borderRadius: '10px',
           padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px',
           marginBottom: '16px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', whiteSpace: 'nowrap',
           flexWrap: 'wrap',

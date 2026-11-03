@@ -60,7 +60,7 @@ export default function ReturnButton({
         ? renderTrigger(() => setOpen(true))
         : externalOpen === undefined && (
           <button onClick={() => setInternalOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid #DC2626', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--color-danger)', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
             <RotateCcw size={13} /> Повернення
           </button>
         )
@@ -78,7 +78,7 @@ export default function ReturnButton({
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', fontSize: '12px', color: '#DC2626', display: 'flex', gap: '6px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-danger)', display: 'flex', gap: '6px' }}>
                 <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '1px' }} />
                 Товар буде знято зі складу. Кредиторська заборгованість перед постачальником зменшиться.
               </div>
@@ -101,7 +101,7 @@ export default function ReturnButton({
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{line.cost_price} ₴/шт</div>
                     </div>
                     <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>{line.qty} шт</span>
-                    <input style={{ ...inp, borderColor: (qtys[line.sku] ?? 0) > 0 ? '#DC2626' : undefined }}
+                    <input style={{ ...inp, borderColor: (qtys[line.sku] ?? 0) > 0 ? 'var(--color-danger)' : undefined }}
                       type="number" min="0" max={line.qty} step="1" placeholder="0"
                       value={qtys[line.sku] ?? ''}
                       onChange={e => setQtys(prev => ({ ...prev, [line.sku]: parseInt(e.target.value) || 0 }))} />
@@ -110,14 +110,14 @@ export default function ReturnButton({
               </div>
 
               {toReturn.length > 0 && (
-                <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', fontSize: '13px', fontWeight: 600, display: 'flex', justifyContent: 'space-between', color: '#DC2626' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, display: 'flex', justifyContent: 'space-between', color: 'var(--color-danger)' }}>
                   <span>Сума повернення:</span>
                   <span>{totalAmt.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                 </div>
               )}
 
-              {done  && <div style={{ padding: '10px 14px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 600 }}>{done}</div>}
-              {error && <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', fontSize: '13px', color: '#DC2626' }}>{error}</div>}
+              {done  && <div style={{ padding: '10px 14px', background: 'var(--bg-success)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>{done}</div>}
+              {error && <div style={{ padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-danger)' }}>{error}</div>}
             </div>
 
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -125,7 +125,7 @@ export default function ReturnButton({
                 Скасувати
               </button>
               <button onClick={handleReturn} disabled={saving || !toReturn.length}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (!toReturn.length || saving) ? 0.5 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (!toReturn.length || saving) ? 0.5 : 1 }}>
                 {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Проведення...</> : `↩ Провести повернення (${toReturn.length} SKU)`}
               </button>
             </div>

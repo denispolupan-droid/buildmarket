@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Modal } from '../../../components/admin/ui/Modal';
 
 const btnPrimary: React.CSSProperties = {
-  background: '#1D4ED8', color: '#fff', border: 'none',
+  background: 'var(--color-info)', color: '#fff', border: 'none',
   padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
   cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
 };
@@ -127,7 +127,7 @@ function PreviewContent() {
 
       {/* PDF / loader / error */}
       {loading && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, background: '#f1f5f9', color: '#6B7280', fontSize: 14 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, background: '#f1f5f9', color: 'var(--text-gray)', fontSize: 14 }}>
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           </svg>
@@ -136,7 +136,7 @@ function PreviewContent() {
         </div>
       )}
       {loadError && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fef2f2', color: '#dc2626', fontSize: 14 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: 14 }}>
           Помилка завантаження: {loadError}
         </div>
       )}
@@ -171,7 +171,7 @@ function PreviewContent() {
                 Скасувати
               </button>
             </div>
-            {emailMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6B7280' }}>{emailMsg}</p>}
+            {emailMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-gray)' }}>{emailMsg}</p>}
           </div>
         </Modal>
       )}

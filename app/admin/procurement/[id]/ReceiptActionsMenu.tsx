@@ -69,7 +69,7 @@ export default function ReceiptActionsMenu({
         onClose={() => setShowReturn(false)}
       />
       {correctError && (
-        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', color: '#DC2626', fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: 'var(--bg-danger)', border: '1.5px solid var(--border-danger)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', color: 'var(--color-danger)', fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
           {correctError}
         </div>
       )}

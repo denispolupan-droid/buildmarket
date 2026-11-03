@@ -5,11 +5,9 @@ import ProcurementWrapper from './ProcurementWrapper';
 import SectionBar, { plural } from './SectionBar';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { fmtInt as fmt } from '../../../lib/format';
 
 const db = createServiceClient();
-
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
 export default async function ProcurementPage({
   searchParams,

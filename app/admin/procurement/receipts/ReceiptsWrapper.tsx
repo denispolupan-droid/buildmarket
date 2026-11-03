@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowRight, X } from 'lucide-react';
+import { fmtInt as fmt } from '../../../../lib/format';
 
 type ReceiptMeta = {
   is_paid?: boolean;
@@ -25,8 +26,6 @@ type Receipt = {
   warehouse: { name: string } | null;
   supplier: { name: string; id: number } | null;
 };
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
 export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
   const [supplier, setSupplier] = useState('all');
@@ -89,7 +88,7 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
             </span>
           )}
           {hasFilters && (
-            <button onClick={reset} style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={reset} style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border-danger)', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
               <X size={12} /> Скинути
             </button>
           )}
@@ -140,7 +139,7 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
               const mode   = meta?.payment_mode;
               if (status === 'paid' || meta?.is_paid) {
                 payBadge = (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--color-success)', background: 'var(--bg-success)', border: '1px solid var(--border-success)', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
                     ✅ Оплачено
                   </span>
                 );
@@ -148,7 +147,7 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
                 const d = meta?.payment_defer_date;
                 const dLabel = d ? new Date(d).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }) : '—';
                 payBadge = (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--text-warn-dark)', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
                     📅 до {dLabel}
                   </span>
                 );
@@ -160,7 +159,7 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
                 );
               } else if (isStandalone && r.total_cost && Number(r.total_cost) > 0) {
                 payBadge = (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
                     ● Не оплачено
                   </span>
                 );
@@ -192,7 +191,7 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
                   {r.notes || '—'}
                 </span>
                 <div>{payBadge ?? <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>}</div>
-                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: '#15803D' }}>
+                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--color-success)' }}>
                   {r.total_cost ? `${fmt(Number(r.total_cost))} ₴` : '—'}
                 </span>
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: lc > 0 ? 700 : 400, color: lc > 0 ? '#7C3AED' : 'var(--text-muted)' }}>

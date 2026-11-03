@@ -202,9 +202,9 @@ export default function NewOrderClient() {
           {CHANNEL_OPTIONS.map(ch => (
             <button key={ch.value} onClick={() => setChannelCode(ch.value)}
               style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                border: `1.5px solid ${channelCode === ch.value ? '#1E3A5F' : '#E2E8F0'}`,
-                background: channelCode === ch.value ? '#1E3A5F' : '#fff',
-                color: channelCode === ch.value ? '#fff' : '#475569' }}>
+                border: `1.5px solid ${channelCode === ch.value ? 'var(--navy)' : 'var(--border)'}`,
+                background: channelCode === ch.value ? 'var(--navy)' : '#fff',
+                color: channelCode === ch.value ? '#fff' : 'var(--text-secondary)' }}>
               {ch.label}
             </button>
           ))}
@@ -225,7 +225,7 @@ export default function NewOrderClient() {
             value={customerSearch}
             onChange={e => setCustomerSearch(e.target.value)}
             onFocus={() => customerResults.length > 0 && setCustomerOpen(true)}
-            style={{ ...inputStyle, paddingLeft: '32px', borderColor: selectedCustomer ? '#86EFAC' : undefined }}
+            style={{ ...inputStyle, paddingLeft: '32px', borderColor: selectedCustomer ? 'var(--border-success)' : undefined }}
           />
           {customerOpen && customerResults.length > 0 && (
             <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', maxHeight: '220px', overflowY: 'auto' }}>
@@ -235,7 +235,7 @@ export default function NewOrderClient() {
                   <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                     {[c.company, c.phone, c.email].filter(Boolean).join(' · ')}
-                    {c.type && <span style={{ marginLeft: '6px', background: '#EFF4FF', color: '#1E3A5F', borderRadius: '4px', padding: '1px 5px' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>}
+                    {c.type && <span style={{ marginLeft: '6px', background: '#EFF4FF', color: 'var(--navy)', borderRadius: '4px', padding: '1px 5px' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>}
                   </span>
                 </button>
               ))}
@@ -244,10 +244,10 @@ export default function NewOrderClient() {
         </div>
 
         {selectedCustomer && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', padding: '8px 12px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '8px', fontSize: '13px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', padding: '8px 12px', background: 'var(--bg-success)', border: '1px solid var(--border-success)', borderRadius: '8px', fontSize: '13px' }}>
             <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{selectedCustomer.name}{selectedCustomer.company ? ` · ${selectedCustomer.company}` : ''}</span>
             <button onClick={() => { setSelectedCustomer(null); setContact(''); setPhone(''); setEmail(''); setCompany(''); }}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#6B7280', padding: '2px', display: 'flex' }}>
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-gray)', padding: '2px', display: 'flex' }}>
               <X size={13} />
             </button>
           </div>
@@ -292,7 +292,7 @@ export default function NewOrderClient() {
                 </button>
               </div>
             ))}
-            <div style={{ textAlign: 'right', fontSize: '14px', fontWeight: 800, color: '#1E3A5F', paddingRight: '10px' }}>
+            <div style={{ textAlign: 'right', fontSize: '14px', fontWeight: 800, color: 'var(--navy)', paddingRight: '10px' }}>
               Разом: {totalPrice.toFixed(2)} грн
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function NewOrderClient() {
                   setProdSearch(`${p.brand} ${p.name}`); setProdOpen(false);
                 }} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
                   <span><span style={{ color: 'var(--text-muted)', marginRight: '6px', fontSize: '11px' }}>{p.sku}</span>{p.brand} {p.name}</span>
-                  {p.price > 0 && <span style={{ color: '#1E3A5F', fontWeight: 700 }}>{p.price} грн</span>}
+                  {p.price > 0 && <span style={{ color: 'var(--navy)', fontWeight: 700 }}>{p.price} грн</span>}
                 </button>
               ))}
             </div>
@@ -329,7 +329,7 @@ export default function NewOrderClient() {
             <input placeholder="Ціна" type="number" min={0} value={addPrice} onChange={e => setAddPrice(e.target.value)}
               style={{ height: '34px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
             <button onClick={addItem}
-              style={{ height: '34px', width: '34px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ height: '34px', width: '34px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Plus size={15} />
             </button>
           </div>
@@ -363,9 +363,9 @@ export default function NewOrderClient() {
               {(['warehouse', 'postomat', 'courier'] as const).map(sub => (
                 <button key={sub} onClick={() => setNovaSubtype(sub)}
                   style={{ flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                    border: `1.5px solid ${novaSubtype === sub ? '#1E3A5F' : '#E2E8F0'}`,
+                    border: `1.5px solid ${novaSubtype === sub ? 'var(--navy)' : 'var(--border)'}`,
                     background: novaSubtype === sub ? '#EFF4FF' : '#fff',
-                    color: novaSubtype === sub ? '#1E3A5F' : '#64748B' }}>
+                    color: novaSubtype === sub ? 'var(--navy)' : 'var(--text-soft)' }}>
                   {sub === 'warehouse' ? '📦 Відділення' : sub === 'postomat' ? '🏧 Поштомат' : '🚚 Кур\'єр'}
                 </button>
               ))}
@@ -403,7 +403,7 @@ export default function NewOrderClient() {
       </div>
 
       <button onClick={handleSubmit} disabled={submitting}
-        style={{ width: '100%', height: '44px', borderRadius: '10px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+        style={{ width: '100%', height: '44px', borderRadius: '10px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
         {submitting ? 'Збереження...' : `Створити замовлення${totalPrice > 0 ? ` · ${totalPrice.toFixed(2)} грн` : ''}`}
       </button>
     </div>

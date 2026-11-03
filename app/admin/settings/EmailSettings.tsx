@@ -141,7 +141,7 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
                       onChange={e => setExtraSenders(prev => prev.map((x, j) => j === i ? { ...x, email: e.target.value } : x))} />
                     <button type="button" title="Видалити"
                       onClick={() => setExtraSenders(prev => prev.filter((_, j) => j !== i))}
-                      style={{ height: '36px', width: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '7px', border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer' }}>
+                      style={{ height: '36px', width: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '7px', border: '1.5px solid #FECACA', background: 'var(--bg-danger)', color: 'var(--color-danger)', cursor: 'pointer' }}>
                       <X size={14} />
                     </button>
                   </div>
@@ -224,7 +224,7 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button onClick={handleSave} disabled={saving}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: saved ? '#15803D' : '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: saved ? 'var(--color-success)' : 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}>
             {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</>
                     : saved  ? <><Check size={14} />Збережено</>
                     : 'Зберегти'}

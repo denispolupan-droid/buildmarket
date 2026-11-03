@@ -223,7 +223,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
                           {CHANNEL_LABELS[ch.channel] ?? ch.channel}
                           <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '6px' }}>{pctVal}%</span>
                         </div>
-                        <div style={{ fontSize: '11px', color: margin >= 0 ? '#15803D' : '#DC2626', marginTop: '1px' }}>
+                        <div style={{ fontSize: '11px', color: margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: '1px' }}>
                           прибуток: {fmt(margin, 0)} ₴
                         </div>
                       </div>
@@ -243,7 +243,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
                 {pl.by_expense.map(e => (
                   <div key={e.type} style={{ padding: '8px 16px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{EXPENSE_LABELS[e.type] ?? e.type}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>{fmt(e.amount, 2)} ₴</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>{fmt(e.amount, 2)} ₴</span>
                   </div>
                 ))}
               </div>
@@ -264,7 +264,7 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
           ]).map(a => (
             <div key={a.key} className="fin-card">
               <div className="fin-kpi-label">{a.label}</div>
-              <div className="fin-money-val" style={a.value < 0 ? { color: '#DC2626' } : undefined}>
+              <div className="fin-money-val" style={a.value < 0 ? { color: 'var(--color-danger)' } : undefined}>
                 {fmt(a.value, 2)} ₴
               </div>
               <div className="fin-money-sub">{a.hint}</div>
@@ -317,19 +317,19 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
                   {ACCOUNT_LABELS[a.account] ?? a.account}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                  <span style={{ color: '#15803D' }}>↓ Надійшло</span>
-                  <span style={{ fontWeight: 600, color: '#15803D' }}>{fmt(a.in, 2)} ₴</span>
+                  <span style={{ color: 'var(--color-success)' }}>↓ Надійшло</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>{fmt(a.in, 2)} ₴</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                  <span style={{ color: '#DC2626' }}>↑ Вибуло</span>
-                  <span style={{ fontWeight: 600, color: '#DC2626' }}>{fmt(a.out, 2)} ₴</span>
+                  <span style={{ color: 'var(--color-danger)' }}>↑ Вибуло</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-danger)' }}>{fmt(a.out, 2)} ₴</span>
                 </div>
                 <div style={{ height: '1px', background: 'var(--border-light)', margin: '6px 0' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Нетто</span>
                   <span style={{
                     fontWeight: 700,
-                    color: (a.in - a.out) >= 0 ? '#15803D' : '#DC2626',
+                    color: (a.in - a.out) >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
                   }}>{fmt(a.in - a.out, 2)} ₴</span>
                 </div>
               </div>

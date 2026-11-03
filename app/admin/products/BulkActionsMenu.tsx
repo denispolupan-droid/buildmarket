@@ -184,7 +184,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
 
             <div style={{ borderTop: '1px solid var(--border-light)', margin: '6px 0 2px' }} />
             <button
-              style={{ ...itemStyle, color: '#DC2626' }}
+              style={{ ...itemStyle, color: 'var(--color-danger)' }}
               disabled={busy}
               onClick={() => openPrompt('delete')}
             >
@@ -197,7 +197,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
       {error && !prompt && (
         <div style={{
           position: 'absolute', top: 40, right: 0, zIndex: 42, width: 280,
-          background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C',
+          background: 'var(--bg-danger)', border: '1px solid #FECACA', color: '#B91C1C',
           borderRadius: 8, padding: '10px 12px', fontSize: 12,
         }}>
           {error}
@@ -234,7 +234,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
                 onClick={closeReport}
                 style={{
                   height: 38, padding: '0 18px', borderRadius: 9, border: 'none',
-                  background: '#1E3A5F', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  background: 'var(--navy)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 }}
               >
                 Зрозуміло
@@ -248,7 +248,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
         <Modal open onClose={() => { if (!busy) setPrompt(null); }} width={420} padding={0} dismissible={!busy} aria-label="Масова дія">
           <div style={{ background: 'var(--bg-card)', padding: 20, width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: prompt === 'delete' ? '#DC2626' : 'var(--text-primary)' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: prompt === 'delete' ? 'var(--color-danger)' : 'var(--text-primary)' }}>
                 {promptTitle[prompt]}
               </div>
               <button
@@ -315,7 +315,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
             )}
 
             {error && (
-              <div style={{ marginTop: 12, background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C', borderRadius: 8, padding: '9px 12px', fontSize: 12 }}>
+              <div style={{ marginTop: 12, background: 'var(--bg-danger)', border: '1px solid #FECACA', color: '#B91C1C', borderRadius: 8, padding: '9px 12px', fontSize: 12 }}>
                 {error}
               </div>
             )}
@@ -333,7 +333,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
                 disabled={busy || (prompt === 'brand' && !value.trim()) || (prompt === 'category' && !value)}
                 style={{
                   height: 38, padding: '0 18px', borderRadius: 9, border: 'none',
-                  background: prompt === 'delete' ? '#DC2626' : '#1E3A5F',
+                  background: prompt === 'delete' ? 'var(--color-danger)' : 'var(--navy)',
                   color: '#fff', fontSize: 13, fontWeight: 600,
                   cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
                 }}

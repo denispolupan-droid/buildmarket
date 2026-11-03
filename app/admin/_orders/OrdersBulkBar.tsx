@@ -28,7 +28,7 @@ export function OrdersBulkBar() {
             {(() => {
               const unpaid = orders.filter(o => selectedIds.has(o.id) && !o.payment_confirmed && o.payment_type !== 'cod' && !['delivered', 'cancelled'].includes(o.status)).length;
               return unpaid > 0
-                ? <span style={{ color: '#B45309', marginLeft: '6px' }} title="Рахунок ще не оплачено">· неоплачених <b>{unpaid}</b></span>
+                ? <span style={{ color: 'var(--color-warn)', marginLeft: '6px' }} title="Рахунок ще не оплачено">· неоплачених <b>{unpaid}</b></span>
                 : null;
             })()}
           </span>

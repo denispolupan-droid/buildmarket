@@ -4,15 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pencil } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { fmtInt as fmt } from '../../../lib/format';
 
 // «План на місяць» — повноширинний прогрес-бар (рішення власника): факт
 // виручки проти плану з app_settings, риска — скільки місяця вже минуло
 // (заливка лівіше риски = темп відстає), праворуч прогноз за поточним темпом.
 // Редагування — олівець → інпут → Enter.
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
-}
 
 export default function PlanCard({ plan }: {
   plan: { value: number | null; fact: number; forecast: number; daysPassed: number; daysInMonth: number; monthLabel: string };
@@ -73,7 +70,7 @@ export default function PlanCard({ plan }: {
             style={{ flex: 1, height: '34px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '14px', outline: 'none', fontVariantNumeric: 'tabular-nums' }}
           />
           <button onClick={save} disabled={saving}
-            style={{ height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
+            style={{ height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
             {saving ? '…' : 'Зберегти'}
           </button>
         </div>
@@ -98,7 +95,7 @@ export default function PlanCard({ plan }: {
               Риска — скільки місяця минуло ({plan.daysPassed}/{plan.daysInMonth} дн., {timePct}%): заливка лівіше риски = темп відстає.
             </span>
             <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-              Прогноз за темпом: <b style={{ color: paceOk ? '#15803D' : '#DC2626' }}>{fmt(plan.forecast)} ₴</b>
+              Прогноз за темпом: <b style={{ color: paceOk ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmt(plan.forecast)} ₴</b>
               {paceOk ? ' — план виконується' : ` — не вистачає ${fmt(plan.value - plan.forecast)} ₴`}
             </span>
           </div>

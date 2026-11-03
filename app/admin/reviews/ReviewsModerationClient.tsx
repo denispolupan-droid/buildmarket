@@ -75,7 +75,7 @@ export default function ReviewsModerationClient({ reviews: initial, embedded = f
               Відгуки
             </h1>
             {pendingCount > 0 && (
-              <p style={{ fontSize: '13px', color: '#DC2626', margin: 0, fontWeight: 600 }}>
+              <p style={{ fontSize: '13px', color: 'var(--color-danger)', margin: 0, fontWeight: 600 }}>
                 {pendingCount} очікують модерації
               </p>
             )}
@@ -95,8 +95,8 @@ export default function ReviewsModerationClient({ reviews: initial, embedded = f
               style={{
                 height: '34px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)',
                 fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                background: filter === f ? '#0F172A' : '#fff',
-                color: filter === f ? '#fff' : '#64748B',
+                background: filter === f ? 'var(--text-primary)' : '#fff',
+                color: filter === f ? '#fff' : 'var(--text-soft)',
               }}
             >
               {f === 'pending' ? `На модерації (${pendingCount})` : f === 'approved' ? 'Схвалені' : 'Всі'}
@@ -112,7 +112,7 @@ export default function ReviewsModerationClient({ reviews: initial, embedded = f
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {filtered.map(r => (
               <div key={r.id} style={{
-                background: 'var(--bg-card)', border: `1px solid ${r.is_approved ? '#E2E8F0' : '#FED7AA'}`,
+                background: 'var(--bg-card)', border: `1px solid ${r.is_approved ? 'var(--border)' : '#FED7AA'}`,
                 borderRadius: '12px', padding: '16px 20px',
                 borderLeft: `4px solid ${r.is_approved ? '#22C55E' : '#F97316'}`,
               }}>
@@ -144,7 +144,7 @@ export default function ReviewsModerationClient({ reviews: initial, embedded = f
                         onClick={() => approve(r.id, true)}
                         disabled={loading === r.id}
                         title="Схвалити"
-                        style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-success)', border: '1px solid #BBF7D0', color: 'var(--status-instock)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         <Check size={14} />
                       </button>
@@ -162,7 +162,7 @@ export default function ReviewsModerationClient({ reviews: initial, embedded = f
                       onClick={() => remove(r.id)}
                       disabled={loading === r.id}
                       title="Видалити"
-                      style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-danger)', border: '1px solid #FECACA', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Trash2 size={14} />
                     </button>

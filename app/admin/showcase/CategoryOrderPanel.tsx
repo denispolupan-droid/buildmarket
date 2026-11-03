@@ -81,7 +81,7 @@ export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
                   ...(canEdit ? rowStyle(i) : {}),
                 }}>
                 {canEdit && <GripVertical size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
-                <span style={{ width: 26, fontSize: 12, fontWeight: 700, color: '#1E3A5F' }}>{i + 1}.</span>
+                <span style={{ width: 26, fontSize: 12, fontWeight: 700, color: 'var(--navy)' }}>{i + 1}.</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{c?.name ?? slug}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -91,7 +91,7 @@ export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap',
-                  background: isCard ? '#1E3A5F' : 'var(--bg-soft)',
+                  background: isCard ? 'var(--navy)' : 'var(--bg-soft)',
                   color: isCard ? '#fff' : 'var(--text-secondary)',
                   border: isCard ? 'none' : '1px solid var(--border)',
                 }}>
@@ -112,7 +112,7 @@ export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
       {canEdit && !loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
           <button onClick={save} disabled={saving || !dirty}
-            style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: '#1E3A5F', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
+            style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: 'var(--navy)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
             {saving ? 'Зберігаю…' : 'Зберегти порядок'}
           </button>
           {dirty && (

@@ -52,9 +52,9 @@ export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; 
   return (
     <div style={{
       marginTop: '4px', padding: '7px 9px', borderRadius: '8px',
-      border: '1px solid #FDE68A', background: '#FFFBEB',
+      border: '1px solid #FDE68A', background: 'var(--bg-warn)',
     }}>
-      <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#B45309' }}>
+      <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--color-warn)' }}>
         Товар у дорозі — {amount.toFixed(2)} ₴
       </div>
       <div style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 6px' }}>
@@ -63,7 +63,7 @@ export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; 
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         <button onClick={() => decide('to_supplier')} disabled={busy}
           title="Товар поїхав назад постачальнику — борг перед ним знімається"
-          style={{ ...decisionBtn, border: '1px solid #FDE68A', color: '#B45309' }}>
+          style={{ ...decisionBtn, border: '1px solid #FDE68A', color: 'var(--color-warn)' }}>
           Повернули постачальнику
         </button>
         <button onClick={() => decide('keep')} disabled={busy}

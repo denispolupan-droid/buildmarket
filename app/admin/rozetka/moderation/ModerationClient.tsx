@@ -100,7 +100,7 @@ export default function ModerationClient() {
       </p>
 
       {err && (
-        <div style={{ ...card, borderColor: '#FECACA', background: '#FEF2F2', color: '#B91C1C', marginBottom: '16px' }}>
+        <div style={{ ...card, borderColor: '#FECACA', background: 'var(--bg-danger)', color: '#B91C1C', marginBottom: '16px' }}>
           Не вдалося отримати дані з Rozetka: {err}
         </div>
       )}
@@ -118,7 +118,7 @@ export default function ModerationClient() {
             </div>
             <div style={card}>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Позицій із проблемами</div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: data.problems.length ? '#B45309' : '#15803D' }}>{data.problems.length}</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: data.problems.length ? 'var(--color-warn)' : 'var(--color-success)' }}>{data.problems.length}</div>
             </div>
             <div style={card}>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Що поїхало на модерацію</div>
@@ -146,7 +146,7 @@ export default function ModerationClient() {
             })}
             {fixable.length > 0 && (
               <button onClick={() => regen(fixable)} disabled={fixing.length > 0}
-                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer', opacity: fixing.length ? 0.6 : 1 }}>
+                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer', opacity: fixing.length ? 0.6 : 1 }}>
                 <Wand2 size={14} /> Перегенерувати описи ({fixable.length})
               </button>
             )}
@@ -198,12 +198,12 @@ export default function ModerationClient() {
                 <div style={{ flexShrink: 0 }}>
                   {p.pending ? (
                     <span title="Нова версія тексту вже подана — чекає модератора. Генерувати ще раз немає сенсу."
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#B45309' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--color-warn)' }}>
                       <Clock size={12} /> виправлення в черзі
                     </span>
                   ) : p.autoFixable ? (
                     <button onClick={() => regen([p.sku])} disabled={fixing.length > 0}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid #BBF7D0', background: 'var(--bg-success)', color: 'var(--color-success)', fontSize: '12px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer' }}>
                       <Wand2 size={12} /> {fixing.includes(p.sku) ? 'Генерую…' : 'Перегенерувати опис'}
                     </button>
                   ) : (

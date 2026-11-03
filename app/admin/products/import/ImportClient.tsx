@@ -147,9 +147,9 @@ export default function ImportClient({ categories }: Props) {
         <div
           onClick={() => inputRef.current?.click()}
           style={{
-            border: '2px dashed #E2E8F0', borderRadius: '12px',
+            border: '2px dashed var(--border)', borderRadius: '12px',
             padding: '48px', textAlign: 'center', cursor: 'pointer',
-            background: file ? '#F0FDF4' : '#FAFAFA',
+            background: file ? 'var(--bg-success)' : '#FAFAFA',
             transition: 'all 0.2s',
           }}
         >
@@ -220,7 +220,7 @@ export default function ImportClient({ categories }: Props) {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               height: '48px', padding: '0 28px', borderRadius: '10px',
-              background: '#1E3A5F', color: '#fff', border: 'none',
+              background: 'var(--navy)', color: '#fff', border: 'none',
               fontSize: '14px', fontWeight: 600, cursor: importing ? 'wait' : 'pointer',
               opacity: importing ? 0.7 : 1, marginTop: '20px',
             }}
@@ -241,32 +241,32 @@ export default function ImportClient({ categories }: Props) {
             Результат імпорту
           </h2>
           <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ flex: 1, padding: '16px', borderRadius: '8px', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#16A34A' }}>
+            <div style={{ flex: 1, padding: '16px', borderRadius: '8px', background: 'var(--bg-success)', border: '1px solid #BBF7D0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--status-instock)' }}>
                 <Check size={20} />
                 <span style={{ fontSize: '24px', fontWeight: 700 }}>{result.success}</span>
               </div>
-              <div style={{ fontSize: '13px', color: '#15803D', marginTop: '4px' }}>Успішно імпортовано</div>
+              <div style={{ fontSize: '13px', color: 'var(--color-success)', marginTop: '4px' }}>Успішно імпортовано</div>
             </div>
             <div style={{
               flex: 1, padding: '16px', borderRadius: '8px',
-              background: result.errors.length > 0 ? '#FEF2F2' : '#F8FAFC',
-              border: `1px solid ${result.errors.length > 0 ? '#FECACA' : '#E2E8F0'}`,
+              background: result.errors.length > 0 ? 'var(--bg-danger)' : 'var(--bg-soft)',
+              border: `1px solid ${result.errors.length > 0 ? '#FECACA' : 'var(--border)'}`,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: result.errors.length > 0 ? '#DC2626' : '#64748B' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: result.errors.length > 0 ? 'var(--color-danger)' : 'var(--text-soft)' }}>
                 <AlertCircle size={20} />
                 <span style={{ fontSize: '24px', fontWeight: 700 }}>{result.errors.length}</span>
               </div>
-              <div style={{ fontSize: '13px', color: result.errors.length > 0 ? '#B91C1C' : '#64748B', marginTop: '4px' }}>Помилок</div>
+              <div style={{ fontSize: '13px', color: result.errors.length > 0 ? '#B91C1C' : 'var(--text-soft)', marginTop: '4px' }}>Помилок</div>
             </div>
           </div>
           {result.errors.length > 0 && (
             <div>
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#DC2626', marginBottom: '8px' }}>Помилки:</h3>
+              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-danger)', marginBottom: '8px' }}>Помилки:</h3>
               <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                 {result.errors.map((err, i) => (
                   <div key={i} style={{
-                    padding: '8px 12px', background: '#FEF2F2', borderRadius: '6px',
+                    padding: '8px 12px', background: 'var(--bg-danger)', borderRadius: '6px',
                     fontSize: '13px', color: '#991B1B', marginBottom: '4px',
                   }}>
                     Рядок {err.row}{err.sku ? ` (${err.sku})` : ''}: {err.error}

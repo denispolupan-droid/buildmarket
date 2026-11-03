@@ -41,8 +41,8 @@ export default function EditDraftButton({ poId, supplierId, supplierName, expect
       style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         height: '34px', padding: '0 14px', borderRadius: '8px',
-        border: '1.5px solid #1E3A5F', background: '#EFF4FF',
-        color: '#1E3A5F', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+        border: '1.5px solid var(--navy)', background: '#EFF4FF',
+        color: 'var(--navy)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
       }}
     >
       <Pencil size={13} /> Редагувати чернетку

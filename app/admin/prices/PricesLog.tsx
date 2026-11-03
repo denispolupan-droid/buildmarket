@@ -215,14 +215,14 @@ export default function PricesLog() {
               <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatDate(entry.created_at)}</div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 14,
-                color: isPositive ? '#15803D' : '#DC2626' }}>
+                color: isPositive ? 'var(--color-success)' : 'var(--color-danger)' }}>
                 {entry.type === 'increase_pct' || entry.type === 'supplier_discount'
                   ? (isPositive ? <TrendingUp size={13} /> : <TrendingDown size={13} />)
                   : <Minus size={13} />}
                 {valStr}
               </div>
 
-              <div style={{ fontSize: 12, color: '#6B7280', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5, textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-gray)', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5, textAlign: 'center' }}>
                 {TARGET_LABEL[entry.target] ?? entry.target}
               </div>
 
@@ -239,7 +239,7 @@ export default function PricesLog() {
                   </span>
                 )}
                 {isCancelled && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', background: '#F3F4F6',
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-gray-light)', background: '#F3F4F6',
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
                     Скасовано
                   </span>
@@ -251,7 +251,7 @@ export default function PricesLog() {
                   </span>
                 )}
                 {isReverted && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#6B7280', background: '#F3F4F6',
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--text-gray)', background: '#F3F4F6',
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
                     <Undo2 size={10} /> Відкочено{entry.reverted_at ? ` ${formatDateOnly(entry.reverted_at)}` : ''}
                   </span>
@@ -276,12 +276,12 @@ export default function PricesLog() {
                 )}
                 {entry.revert_at && !entry.reverted_at && (
                   <span title={isAdj ? 'Останній день дії; наступного дня вимкнеться сама' : isMp ? 'Автовідкат націнок кроном у цю дату' : undefined}
-                    style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#6B7280', flexShrink: 0 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--text-gray)', flexShrink: 0 }}>
                     <RotateCcw size={10} /> до {formatDateOnly(entry.revert_at)}{isAdj ? ' включно' : ''}
                   </span>
                 )}
                 {entry.reverted_at && !isReverted && (
-                  <span style={{ fontSize: 11, color: '#9CA3AF' }}>скасовано {formatDateOnly(entry.reverted_at)}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-gray-light)' }}>скасовано {formatDateOnly(entry.reverted_at)}</span>
                 )}
                 {entry.comment && (
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -296,7 +296,7 @@ export default function PricesLog() {
                     onClick={() => cancelPending(entry.id)}
                     disabled={cancelling === entry.id}
                     title="Скасувати заплановану переоцінку"
-                    style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid var(--border-danger)', background: 'var(--bg-danger)', color: 'var(--color-danger)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                     <X size={10} /> {cancelling === entry.id ? '...' : 'Скасувати'}
                   </button>
                 )}
@@ -320,24 +320,24 @@ export default function PricesLog() {
 
             {isOpen && hasSnapshot && (
               <div style={{ borderTop: '1px solid var(--border)', padding: '0 16px 12px' }}>
-                <div style={{ fontSize: 11, color: '#9CA3AF', padding: '8px 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-gray-light)', padding: '8px 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {TYPE_LABEL[entry.type] ?? entry.type}
                 </div>
                 {isMp ? (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
-                      <tr style={{ background: '#F8FAFC' }}>
+                      <tr style={{ background: 'var(--bg-soft)' }}>
                         {['Артикул', 'Назва', ...mpCols.flatMap(c => [`${c.label}: до`, `${c.label}: після`])].map((h, i) => (
                           <th key={h} style={{ padding: '5px 10px', textAlign: i < 2 ? 'left' : 'right',
-                            color: '#94A3B8', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
+                            color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {entry.snapshot!.slice(0, 100).map(row => (
                         <tr key={row.sku} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '4px 10px', fontFamily: 'monospace', color: '#6B7280' }}>{row.sku}</td>
+                          <td style={{ padding: '4px 10px', fontFamily: 'monospace', color: 'var(--text-gray)' }}>{row.sku}</td>
                           <td style={{ padding: '4px 10px' }}>{row.name}</td>
                           {mpCols.map(c => {
                             const bp = row.before?.[c.price] ?? null;
@@ -345,7 +345,7 @@ export default function PricesLog() {
                             const color = bp != null && ap != null ? (ap > bp ? '#15803D' : ap < bp ? '#DC2626' : '#111') : '#111';
                             return (
                               <React.Fragment key={c.price}>
-                                <td style={{ padding: '4px 10px', textAlign: 'right', color: '#6B7280', whiteSpace: 'nowrap' }}>{mpCell(row.before, c)}</td>
+                                <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-gray)', whiteSpace: 'nowrap' }}>{mpCell(row.before, c)}</td>
                                 <td style={{ padding: '4px 10px', textAlign: 'right', fontWeight: 600, color, whiteSpace: 'nowrap' }}>{mpCell(row.after, c)}</td>
                               </React.Fragment>
                             );
@@ -353,22 +353,22 @@ export default function PricesLog() {
                         </tr>
                       ))}
                       {(entry.snapshot?.length ?? 0) > 100 && (
-                        <tr><td colSpan={2 + mpCols.length * 2} style={{ padding: '6px 10px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                        <tr><td colSpan={2 + mpCols.length * 2} style={{ padding: '6px 10px', color: 'var(--text-gray-light)', fontStyle: 'italic' }}>
                           + ще {entry.snapshot!.length - 100} позицій
                         </td></tr>
                       )}
                     </tbody>
                   </table>
-                  <div style={{ fontSize: 11, color: '#9CA3AF', padding: '6px 0 0' }}>ціна фіда · товарна націнка («кат.» — рахувалась від націнки категорії)</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-gray-light)', padding: '6px 0 0' }}>ціна фіда · товарна націнка («кат.» — рахувалась від націнки категорії)</div>
                 </div>
                 ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
-                      <tr style={{ background: '#F8FAFC' }}>
+                      <tr style={{ background: 'var(--bg-soft)' }}>
                         {['Артикул', 'Назва', 'До', 'Після', 'Різниця'].map(h => (
                           <th key={h} style={{ padding: '5px 10px', textAlign: h === 'Артикул' || h === 'Назва' ? 'left' : 'right',
-                            color: '#94A3B8', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>
+                            color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -379,19 +379,19 @@ export default function PricesLog() {
                         const diff = bv != null && av != null ? (av as number) - (bv as number) : null;
                         return (
                           <tr key={row.sku} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '4px 10px', fontFamily: 'monospace', color: '#6B7280' }}>{row.sku}</td>
+                            <td style={{ padding: '4px 10px', fontFamily: 'monospace', color: 'var(--text-gray)' }}>{row.sku}</td>
                             <td style={{ padding: '4px 10px' }}>{row.name}</td>
-                            <td style={{ padding: '4px 10px', textAlign: 'right', color: '#6B7280' }}>{bv != null ? `${bv} ₴` : '—'}</td>
+                            <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-gray)' }}>{bv != null ? `${bv} ₴` : '—'}</td>
                             <td style={{ padding: '4px 10px', textAlign: 'right', fontWeight: 600 }}>{av != null ? `${av} ₴` : '—'}</td>
                             <td style={{ padding: '4px 10px', textAlign: 'right', fontWeight: 600,
-                              color: diff == null ? '#9CA3AF' : diff > 0 ? '#15803D' : diff < 0 ? '#DC2626' : '#6B7280' }}>
+                              color: diff == null ? 'var(--text-gray-light)' : diff > 0 ? 'var(--color-success)' : diff < 0 ? 'var(--color-danger)' : 'var(--text-gray)' }}>
                               {diff == null ? '—' : diff > 0 ? `+${diff.toFixed(0)} ₴` : `${diff.toFixed(0)} ₴`}
                             </td>
                           </tr>
                         );
                       })}
                       {(entry.snapshot?.length ?? 0) > 100 && (
-                        <tr><td colSpan={5} style={{ padding: '6px 10px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                        <tr><td colSpan={5} style={{ padding: '6px 10px', color: 'var(--text-gray-light)', fontStyle: 'italic' }}>
                           + ще {entry.snapshot!.length - 100} позицій
                         </td></tr>
                       )}

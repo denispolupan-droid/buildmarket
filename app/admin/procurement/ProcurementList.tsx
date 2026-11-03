@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2, Copy } from 'lucide-react';
 import { Modal } from '../../components/admin/ui/Modal';
+import { fmtInt as fmt } from '../../../lib/format';
 
 type Receipt = {
   id: string; doc_number: string; doc_date: string;
@@ -41,8 +42,6 @@ const PO_STATUS_CFG: Record<string, { label: string; color: string; bg: string; 
   paid:                   { label: 'Оплачено',              color: '#15803D', bg: '#F0FDF4', emoji: '✅' },
 };
 const DEFAULT_STATUS = { label: 'Нове', color: '#1E3A5F', bg: '#EFF4FF', emoji: '🆕' };
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 }); }
 
 function payBadge(meta?: Record<string, unknown> | null): { icon: string; text: string } {
   const mode = meta?.payment_mode;
@@ -232,7 +231,6 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
     setSelected(prev => prev.size === orders.length ? new Set() : new Set(orders.map(o => o.id)));
   }
 
-
   if (orders.length === 0) {
     return (
       <div style={{ padding: '64px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
@@ -248,12 +246,12 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div style={{ padding: '10px 16px', background: '#1E3A5F', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ padding: '10px 16px', background: 'var(--navy)', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '13px', color: '#fff', fontWeight: 600 }}>Вибрано: {selected.size}</span>
           <button
             onClick={() => startSendQueue([...selected])}
             disabled={sending.size > 0}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: sending.size > 0 ? 0.6 : 1 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: sending.size > 0 ? 0.6 : 1 }}>
             <Send size={13} />
             Відправити постачальникам
           </button>
@@ -264,7 +262,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
       )}
 
       {sendResult && (
-        <div style={{ padding: '8px 16px', background: sendResult.fails > 0 ? '#FEF3C7' : '#DCFCE7', fontSize: '12px', color: sendResult.fails > 0 ? '#92400E' : '#15803D', display: 'flex', gap: '16px' }}>
+        <div style={{ padding: '8px 16px', background: sendResult.fails > 0 ? '#FEF3C7' : '#DCFCE7', fontSize: '12px', color: sendResult.fails > 0 ? 'var(--text-warn-dark)' : 'var(--color-success)', display: 'flex', gap: '16px' }}>
           {sendResult.ok > 0 && <span>✅ Відправлено: {sendResult.ok}</span>}
           {sendResult.fails > 0 && <span>⚠️ Помилок: {sendResult.fails} (перевірте email постачальників)</span>}
         </div>
@@ -296,7 +294,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                 style={{ cursor: statusKey !== 'draft' ? 'pointer' : 'default' }}
                 onClick={() => statusKey !== 'draft' && openPo(po)}
               >
-                <div style={{ fontSize: '13px', fontWeight: 700, color: statusKey !== 'draft' ? '#1E3A5F' : 'var(--text-primary)', textDecoration: statusKey !== 'draft' ? 'underline' : 'none', textDecorationStyle: 'dotted', textUnderlineOffset: '2px' }}>{po.doc_number}</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: statusKey !== 'draft' ? 'var(--navy)' : 'var(--text-primary)', textDecoration: statusKey !== 'draft' ? 'underline' : 'none', textDecorationStyle: 'dotted', textUnderlineOffset: '2px' }}>{po.doc_number}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(po.doc_date).toLocaleDateString('uk-UA')}</div>
               </div>
               <div style={{ fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -314,7 +312,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   <span style={{ fontSize: '11px', color: '#CBD5E1' }}>—</span>
                 ) : hasReceipts ? (
                   <button onClick={() => toggle(po.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: '6px', color: '#15803D', fontSize: '11px', fontWeight: 700 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: '6px', color: 'var(--color-success)', fontSize: '11px', fontWeight: 700 }}>
                     ✅ {po.receipts.length} прихід{po.receipts.length > 1 ? 'и' : ''}
                     {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                   </button>
@@ -325,11 +323,11 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               {/* Статус: Проведено / Чернетка */}
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {statusKey === 'draft' ? (
-                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#64748B', background: '#F1F5F9', whiteSpace: 'nowrap' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: 'var(--text-soft)', background: '#F1F5F9', whiteSpace: 'nowrap' }}>
                     📝 Чернетка
                   </span>
                 ) : (
-                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: 'var(--color-success)', background: 'var(--bg-success)', whiteSpace: 'nowrap' }}>
                     ✅ Проведено
                   </span>
                 )}
@@ -338,11 +336,11 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {statusKey !== 'draft' && (
                   po.email_sent_at ? (
-                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', whiteSpace: 'nowrap' }}>
                       📤 Відправлено
                     </span>
                   ) : (
-                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
                       ✉ Не відправлено
                     </span>
                   )
@@ -355,14 +353,14 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   const isInvoiced      = po.meta?.payment_status === 'invoiced' || po.procurement_status === 'invoiced';
                   const isReversed      = po.meta?.payment_reversed === true;
                   if (isReversed) return (
-                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: 'var(--color-danger)', background: 'var(--bg-danger)', whiteSpace: 'nowrap' }}>
                       ↩ Оплату скасовано
                     </span>
                   );
                   if (isPaid) {
                     const { icon, text } = payBadge(po.meta);
                     return (
-                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', whiteSpace: 'nowrap' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: 'var(--color-success)', background: 'var(--bg-success)', whiteSpace: 'nowrap' }}>
                         {icon} {text}
                       </span>
                     );
@@ -371,13 +369,13 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     const deferDate = po.meta?.payment_defer_date as string | undefined;
                     const overdue = deferDate && deferDate < new Date().toISOString().slice(0, 10);
                     return (
-                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: overdue ? '#DC2626' : '#B45309', background: overdue ? '#FEF2F2' : '#FEF3C7', whiteSpace: 'nowrap' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: overdue ? 'var(--color-danger)' : 'var(--color-warn)', background: overdue ? 'var(--bg-danger)' : '#FEF3C7', whiteSpace: 'nowrap' }}>
                         {overdue ? '⚠ Відстрочка' : '📅 Відстрочка'}
                       </span>
                     );
                   }
                   return (
-                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: '#DC2626', background: '#FEF2F2', whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, color: 'var(--color-danger)', background: 'var(--bg-danger)', whiteSpace: 'nowrap' }}>
                       ⏳ Не оплачено
                     </span>
                   );
@@ -405,7 +403,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     <button
                       onClick={() => setDeleteConfirm(po)}
                       title="Видалити чернетку"
-                      style={{ background: 'none', border: '1px solid #FCA5A5', borderRadius: '6px', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: '4px 6px' }}>
+                      style={{ background: 'none', border: '1px solid var(--border-danger)', borderRadius: '6px', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: '4px 6px' }}>
                       <Trash2 size={13} />
                     </button>
                     <button
@@ -434,16 +432,16 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                   <Link key={receipt.id} href={`/admin/procurement/receipts/${receipt.id}`}
                     style={{ display: 'grid', gridTemplateColumns: '130px 155px 1fr 90px 110px 100px 115px 115px 75px', padding: '8px 16px 8px 28px', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'var(--bg-soft)', borderTop: '1px solid var(--border-light)' }}>
                     <div>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#15803D' }}>↳ {receipt.doc_number}</div>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-success)' }}>↳ {receipt.doc_number}</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{new Date(receipt.doc_date).toLocaleDateString('uk-UA')}</div>
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Прихід товару</span>
                     <span style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{receipt.notes ?? ''}</span>
-                    <span style={{ textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#15803D' }}>
+                    <span style={{ textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--color-success)' }}>
                       {receipt.total_cost ? `${fmt(Number(receipt.total_cost))} ₴` : '—'}
                     </span>
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803D' }}>✅ Проведено</span>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-success)' }}>✅ Проведено</span>
                     </div>
                     <span /><span /><span />
                     <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -470,7 +468,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
             <strong>{deleteConfirm.doc_number}</strong> · {deleteConfirm.supplier_name ?? '—'}
           </p>
-          <p style={{ fontSize: '12px', color: '#B45309', background: '#FEF3C7', padding: '8px 12px', borderRadius: '8px', marginBottom: '20px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--color-warn)', background: '#FEF3C7', padding: '8px 12px', borderRadius: '8px', marginBottom: '20px' }}>
             Видалення незворотне. Чернетку буде повністю видалено.
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -527,12 +525,12 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
             <div style={{ marginBottom: '12px', padding: '10px 12px', background: multiPO ? '#EFF4FF' : 'var(--bg-soft)', borderRadius: '8px', border: `1px solid ${multiPO ? '#BFDBFE' : 'var(--border)'}` }}>
               {multiPO ? (
                 <>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <Send size={11} /> 1 лист · {item.pos.length} замовлення
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                     {item.pos.map(po => (
-                      <span key={po.id} style={{ fontSize: '12px', fontWeight: 600, color: '#1E3A5F', background: '#fff', padding: '2px 8px', borderRadius: '5px', border: '1px solid #BFDBFE' }}>
+                      <span key={po.id} style={{ fontSize: '12px', fontWeight: 600, color: 'var(--navy)', background: '#fff', padding: '2px 8px', borderRadius: '5px', border: '1px solid #BFDBFE' }}>
                         {po.doc_number}
                       </span>
                     ))}
@@ -558,9 +556,9 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
                     return (
                       <button key={ci} type="button"
                         onClick={() => setSendQueue(prev => prev.map((it, i) => i === 0 ? { ...it, email: c.email } : it))}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? 'var(--navy)' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}
                       >
-                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`, background: isSelected ? '#1E3A5F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? 'var(--navy)' : '#CBD5E1'}`, background: isSelected ? 'var(--navy)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -597,10 +595,10 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               value={item.email}
               onChange={e => setSendQueue(prev => prev.map((it, i) => i === 0 ? { ...it, email: e.target.value } : it))}
               placeholder="email@supplier.com"
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${item.email ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${item.email ? 'var(--border)' : 'var(--border-danger)'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
             />
             {item.contacts.length === 0 && !item.pos[0].supplier_email && (
-              <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-warn)', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
                 ⚠ Контакти не додано — додайте їх у картці постачальника
               </div>
             )}
@@ -613,7 +611,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
               <button
                 onClick={confirmCurrentSend}
                 disabled={sendingCurrent || !item.email.includes('@')}
-                style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: item.email.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: item.email.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
+                style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: item.email.includes('@') ? 'var(--navy)' : 'var(--text-muted)', color: '#fff', cursor: item.email.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
                 {sendingCurrent ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
                 {sendQueue.length > 1 ? 'Відправити та далі →' : multiPO ? `Відправити ${item.pos.length} замовлення` : 'Відправити'}
               </button>
@@ -629,16 +627,16 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
         <div style={{ background: 'var(--bg-card)', padding: '28px', textAlign: 'center', width: '100%' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>{sendQueueResult.ok > 0 ? '✅' : '⚠️'}</div>
           <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 800 }}>Результат відправки</h3>
-          {sendQueueResult.ok > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#15803D' }}>✓ Відправлено постачальникам: {sendQueueResult.ok}</p>}
-          {sendQueueResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#B45309' }}>→ Пропущено: {sendQueueResult.skipped}</p>}
+          {sendQueueResult.ok > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: 'var(--color-success)' }}>✓ Відправлено постачальникам: {sendQueueResult.ok}</p>}
+          {sendQueueResult.skipped > 0 && <p style={{ margin: '0 0 4px', fontSize: '14px', color: 'var(--color-warn)' }}>→ Пропущено: {sendQueueResult.skipped}</p>}
           {(sendQueueResult.draftsExcluded ?? 0) > 0 && (
-            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748B', background: '#F1F5F9', padding: '6px 10px', borderRadius: '6px' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-soft)', background: '#F1F5F9', padding: '6px 10px', borderRadius: '6px' }}>
               📝 Чернетки не відправлено: {sendQueueResult.draftsExcluded}<br/>
               <span style={{ fontSize: '11px' }}>Спочатку проведіть замовлення</span>
             </p>
           )}
           <button onClick={() => setSendQueueResult(null)}
-            style={{ marginTop: '20px', height: '38px', padding: '0 24px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+            style={{ marginTop: '20px', height: '38px', padding: '0 24px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
             Закрити
           </button>
         </div>

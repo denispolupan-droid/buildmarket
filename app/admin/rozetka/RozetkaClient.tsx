@@ -164,12 +164,12 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               <Icon size={13} color={ok ? '#059669' : '#DC2626'} />
-              <span style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
               {clickable && (
-                <span style={{ marginLeft: 'auto', fontSize: 10, color: '#94A3B8' }}>{isOpen ? '▲' : '▼'}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
               )}
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#059669' : '#DC2626' }}>{value}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#059669' : 'var(--color-danger)' }}>{value}</div>
           </div>
           );
         })}
@@ -187,11 +187,11 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
         }}>
           {hasApiKey && maskedToken && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: '#6B7280' }}>Поточний:</span>
+              <span style={{ fontSize: 13, color: 'var(--text-gray)' }}>Поточний:</span>
               <code style={{ fontSize: 13, background: '#F3F4F6', padding: '3px 10px', borderRadius: 6, letterSpacing: 2 }}>{maskedToken}</code>
               <button
                 onClick={deleteToken}
-                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: '#DC2626', fontSize: 12, cursor: 'pointer' }}
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: 'var(--color-danger)', fontSize: 12, cursor: 'pointer' }}
               >
                 <Trash2 size={12} /> Видалити
               </button>
@@ -209,7 +209,7 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
               />
               <button
                 onClick={() => setShowToken(v => !v)}
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 2 }}
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray-light)', padding: 2 }}
               >
                 {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
@@ -217,13 +217,13 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
             <button
               onClick={saveToken}
               disabled={savingToken || !tokenInput.trim()}
-              style={{ padding: '8px 18px', background: tokenInput.trim() ? '#1D4ED8' : '#E5E7EB', color: tokenInput.trim() ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'not-allowed' }}
+              style={{ padding: '8px 18px', background: tokenInput.trim() ? 'var(--color-info)' : '#E5E7EB', color: tokenInput.trim() ? '#fff' : 'var(--text-gray-light)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'not-allowed' }}
             >
               {savingToken ? 'Зберігаємо…' : 'Зберегти'}
             </button>
           </div>
           {tokenMsg && (
-            <div style={{ marginTop: 8, fontSize: 13, color: tokenMsg.ok ? '#065F46' : '#DC2626' }}>
+            <div style={{ marginTop: 8, fontSize: 13, color: tokenMsg.ok ? '#065F46' : 'var(--color-danger)' }}>
               {tokenMsg.text}
             </div>
           )}
@@ -240,16 +240,16 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
           padding: '16px 18px',
           marginBottom: 24,
         }}>
-          <div style={{ fontSize: 12, color: '#64748B', marginBottom: 12, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-soft)', marginBottom: 12, lineHeight: 1.5 }}>
             Логін і пароль від кабінету продавця Rozetka — потрібні для синхронізації замовлень, бо токен API Rozetka діє лише 24 години і оновлюється автоматично через повторний вхід.
           </div>
           {hasCredentials && loginValue && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: '#6B7280' }}>Поточний логін:</span>
+              <span style={{ fontSize: 13, color: 'var(--text-gray)' }}>Поточний логін:</span>
               <code style={{ fontSize: 13, background: '#F3F4F6', padding: '3px 10px', borderRadius: 6 }}>{loginValue}</code>
               <button
                 onClick={deleteCredentials}
-                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: '#DC2626', fontSize: 12, cursor: 'pointer' }}
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: 'var(--color-danger)', fontSize: 12, cursor: 'pointer' }}
               >
                 <Trash2 size={12} /> Видалити
               </button>
@@ -274,7 +274,7 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
               />
               <button
                 onClick={() => setShowPassword(v => !v)}
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 2 }}
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray-light)', padding: 2 }}
               >
                 {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
@@ -282,13 +282,13 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
             <button
               onClick={saveCredentials}
               disabled={savingCred || !loginInput.trim() || !passwordInput.trim()}
-              style={{ padding: '8px 18px', background: (loginInput.trim() && passwordInput.trim()) ? '#1D4ED8' : '#E5E7EB', color: (loginInput.trim() && passwordInput.trim()) ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: (loginInput.trim() && passwordInput.trim()) ? 'pointer' : 'not-allowed' }}
+              style={{ padding: '8px 18px', background: (loginInput.trim() && passwordInput.trim()) ? 'var(--color-info)' : '#E5E7EB', color: (loginInput.trim() && passwordInput.trim()) ? '#fff' : 'var(--text-gray-light)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: (loginInput.trim() && passwordInput.trim()) ? 'pointer' : 'not-allowed' }}
             >
               {savingCred ? 'Зберігаємо…' : 'Зберегти'}
             </button>
           </div>
           {credMsg && (
-            <div style={{ marginTop: 8, fontSize: 13, color: credMsg.ok ? '#065F46' : '#DC2626' }}>
+            <div style={{ marginTop: 8, fontSize: 13, color: credMsg.ok ? '#065F46' : 'var(--color-danger)' }}>
               {credMsg.text}
             </div>
           )}
@@ -299,35 +299,35 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
         {navLinks.map(({ href, label, desc, color }) => (
           <Link key={label} href={href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-            <div style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', border: '1px solid #E2E8F0', cursor: 'pointer', height: '100%', boxSizing: 'border-box' }}>
+            <div style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', border: '1px solid var(--border)', cursor: 'pointer', height: '100%', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
                 <span style={{ fontWeight: 600, fontSize: 14, color: '#1E293B' }}>{label}</span>
                 <ExternalLink size={11} color="#CBD5E1" style={{ marginLeft: 'auto' }} />
               </div>
-              <div style={{ fontSize: 12, color: '#64748B' }}>{desc}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>{desc}</div>
             </div>
           </Link>
         ))}
       </div>
 
       {/* Feed URL */}
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #E2E8F0' }}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', margin: 0 }}>YML-фід для Rozetka</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={checkFeed} disabled={checking} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 7, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
+            <button onClick={checkFeed} disabled={checking} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
               <RefreshCw size={12} style={checking ? { animation: 'spin 1s linear infinite' } : {}} />
               Перевірити
             </button>
-            <a href={feedUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 7, fontSize: 12, color: '#475569', textDecoration: 'none' }}>
+            <a href={feedUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
               <ExternalLink size={12} /> Відкрити
             </a>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '10px 14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '10px 14px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 8, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {feedUrl}
           </div>
           <button onClick={copyFeed} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: copied ? '#ECFDF5' : '#0EA5E9', color: copied ? '#059669' : '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
@@ -337,12 +337,12 @@ export default function RozetkaClient({ feedUrl, hasApiKey: initialHasApiKey, ma
         </div>
 
         {feedOk !== null && (
-          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: feedOk ? '#ECFDF5' : '#FEF2F2', color: feedOk ? '#059669' : '#DC2626' }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: feedOk ? '#ECFDF5' : 'var(--bg-danger)', color: feedOk ? '#059669' : 'var(--color-danger)' }}>
             {feedOk ? '✓ Фід доступний і повертає валідний XML' : '✗ Фід недоступний або повертає помилку'}
           </div>
         )}
 
-        <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, border: '1px solid #FED7AA', fontSize: 12, color: '#92400E', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, border: '1px solid #FED7AA', fontSize: 12, color: 'var(--text-warn-dark)', lineHeight: 1.6 }}>
           Вкажи цю URL в кабінеті Rozetka: <b>Управління товарами → Завантаження прайс-листа → XML/YML</b>.
         </div>
       </div>

@@ -43,7 +43,7 @@ export default function TtnDetailsModal({ orderId, orderNumber, onClose }: Props
         <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>{data ? data.ttn : 'Накладна'}</span>
         {data && (
           <button type="button" onClick={copyTtn} title="Скопіювати номер"
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: copied ? '#15803D' : 'var(--text-muted)', display: 'inline-flex' }}>
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: copied ? 'var(--color-success)' : 'var(--text-muted)', display: 'inline-flex' }}>
             {copied ? <Check size={14} /> : <Copy size={14} />}
           </button>
         )}
@@ -59,7 +59,7 @@ export default function TtnDetailsModal({ orderId, orderNumber, onClose }: Props
         <div style={{ padding: '14px 20px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {!data && !error && <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Завантажуємо дані накладної…</div>}
           {error && (
-            <div style={{ fontSize: '12px', color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
           )}
 
           {data?.sections.map(sec => (

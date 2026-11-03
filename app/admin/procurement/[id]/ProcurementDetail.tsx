@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, X, Upload
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 type Line = { id: number; sku: string; name?: string; brand?: string; qty: number; cost_price: number; supplier_id?: number; adj_delta?: number; effective_qty?: number; is_adj_new?: boolean };
 type ContactEntry = { name: string; email: string; note?: string };
@@ -50,8 +51,6 @@ function statusToStep(status: string): number {
 const inp: React.CSSProperties = { height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%' };
 const lbl: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' };
 
-function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-
 type CustomerOrder = { order_number: number; contact: string | null; company: string | null; status: string; total_price: number | null } | null;
 type ActivityEvent = { icon: string; label: string; detail?: string; date: string | null; isDatetime: boolean };
 type PaymentHistoryEntry = { created_at: string; amount: number; payment_mode: string | null; doc_type: string };
@@ -87,7 +86,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     }
     return { number: invoiceNumber, date: invoiceDate };
   }
-
 
   const [updatingStatus, setUpdatingStatus] = useState(false);
   // Статус доставки — не включає стани оплати ('paid'/'invoiced')
@@ -334,7 +332,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     setDeletingInvoiceFile(false);
   }
 
-
   const currentStepIdx = Math.max(
     statusToStep(newStatus || po.procurement_status || ''),
     po.has_receipt ? 3 : -1,
@@ -422,7 +419,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
     finally { setUpdatingStatus(false); }
   }
 
-
   async function handleReversePayment() {
     setReversing(true);
     try {
@@ -479,15 +475,15 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
 
       {/* Банер "Скасовано" */}
       {isCancelled && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px', marginBottom: '20px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px', marginBottom: '20px', background: 'var(--bg-danger)', border: '1.5px solid var(--border-danger)', borderRadius: '10px' }}>
           <span style={{ fontSize: '20px' }}>🚫</span>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#DC2626' }}>Замовлення скасовано</div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-danger)' }}>Замовлення скасовано</div>
             <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '2px' }}>
               Цей документ анульовано і більше не активний. Перегляд доступний лише для ознайомлення з історією.
             </div>
             {typeof po.meta?.cancel_reason === 'string' && (
-              <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '6px', fontStyle: 'italic' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-danger)', marginTop: '6px', fontStyle: 'italic' }}>
                 Причина: {po.meta.cancel_reason}
               </div>
             )}
@@ -540,7 +536,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               <button
                 onClick={() => setEditingExpDate(true)}
                 title="Змінити дату очікування"
-                style={{ background: 'none', border: 'none', padding: '1px 5px', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', color: savingExpDate ? 'var(--text-muted)' : '#1E3A5F', fontWeight: 500, textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}>
+                style={{ background: 'none', border: 'none', padding: '1px 5px', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', color: savingExpDate ? 'var(--text-muted)' : 'var(--navy)', fontWeight: 500, textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}>
                 {savingExpDate ? '...' : expectedDate ? `· Очікуємо: ${new Date(expectedDate).toLocaleDateString('uk-UA')}` : '· + дата поставки'}
               </button>
             ))}
@@ -555,7 +551,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
             onClick={openSendModal}
             disabled={sendContactsLoading}
             title="Відправити замовлення постачальнику"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: `1.5px solid ${po.email_sent_at ? '#86EFAC' : 'var(--border)'}`, background: po.email_sent_at ? '#F0FDF4' : 'var(--bg-soft)', color: po.email_sent_at ? '#15803D' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: sendContactsLoading ? 'default' : 'pointer', flexShrink: 0, opacity: sendContactsLoading ? 0.7 : 1 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: `1.5px solid ${po.email_sent_at ? 'var(--border-success)' : 'var(--border)'}`, background: po.email_sent_at ? 'var(--bg-success)' : 'var(--bg-soft)', color: po.email_sent_at ? 'var(--color-success)' : 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: sendContactsLoading ? 'default' : 'pointer', flexShrink: 0, opacity: sendContactsLoading ? 0.7 : 1 }}>
             {sendContactsLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
             {po.email_sent_at ? '✅ Відправлено' : 'Відправити'}
           </button>
@@ -566,7 +562,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         {!compact && !po.has_receipt && !isCancelled && (
           <button
             onClick={handleReceive}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 16px', borderRadius: '8px', border: po.draft_receipt_id ? '1.5px solid #1E3A5F' : 'none', background: po.draft_receipt_id ? 'transparent' : '#1E3A5F', color: po.draft_receipt_id ? '#1E3A5F' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 16px', borderRadius: '8px', border: po.draft_receipt_id ? '1.5px solid var(--navy)' : 'none', background: po.draft_receipt_id ? 'transparent' : 'var(--navy)', color: po.draft_receipt_id ? 'var(--navy)' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
             {po.draft_receipt_id
               ? <><FileText size={14} /> Чернетка приходу</>
               : <><Package size={14} /> Прийняти товар</>
@@ -604,8 +600,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                   <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
                   <button
                     onClick={() => { setShowActionsMenu(false); setShowCancelModal(true); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#DC2626', textAlign: 'left' }}>
-                    <X size={14} style={{ color: '#DC2626' }} />
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--color-danger)', textAlign: 'left' }}>
+                    <X size={14} style={{ color: 'var(--color-danger)' }} />
                     Скасувати замовлення
                   </button>
                 </>
@@ -615,8 +611,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                   <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
                   <button
                     onClick={() => { setShowActionsMenu(false); setShowReverseModal(true); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#DC2626', textAlign: 'left' }}>
-                    <X size={14} style={{ color: '#DC2626' }} />
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--color-danger)', textAlign: 'left' }}>
+                    <X size={14} style={{ color: 'var(--color-danger)' }} />
                     Скасувати оплату (Admin)
                   </button>
                 </>
@@ -634,20 +630,20 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       </div>
 
       {/* Progress bar */}
-      <div style={{ background: 'var(--bg-card)', border: `1px solid ${isCancelled ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
+      <div style={{ background: 'var(--bg-card)', border: `1px solid ${isCancelled ? 'var(--border-danger)' : 'var(--border)'}`, borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
         {isCancelled ? (
           /* ── Скасований стан: замість кроків — повідомлення ── */
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#FEE2E2', border: '2px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#FEE2E2', border: '2px solid var(--border-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <span style={{ fontSize: '14px' }}>🚫</span>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>Замовлення анульовано</div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-danger)' }}>Замовлення анульовано</div>
               <div style={{ fontSize: '11px', color: '#EF4444', marginTop: '2px' }}>
                 Документ скасовано і більше не активний. Жодних дій недоступно.
               </div>
             </div>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626', background: '#FEE2E2', border: '1px solid #FCA5A5', padding: '3px 10px', borderRadius: '20px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-danger)', background: '#FEE2E2', border: '1px solid var(--border-danger)', padding: '3px 10px', borderRadius: '20px', flexShrink: 0 }}>
               🚫 Анульовано
             </span>
           </div>
@@ -683,7 +679,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
             {(isPaid || isInvoiced) && (
               <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {isPaid && (
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 10px', borderRadius: '20px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-success)', background: 'var(--bg-success)', border: '1px solid #BBF7D0', padding: '3px 10px', borderRadius: '20px' }}>
                     {payIcon(savedPayMode)} Оплачено
                   </span>
                 )}
@@ -691,7 +687,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                   const deferDate = po.meta?.payment_defer_date as string | undefined;
                   const overdue = deferDate && deferDate < new Date().toISOString().slice(0, 10);
                   return (
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: overdue ? '#DC2626' : '#92400E', background: overdue ? '#FEF2F2' : '#FFFBEB', border: `1px solid ${overdue ? '#FCA5A5' : '#FDE68A'}`, padding: '3px 10px', borderRadius: '20px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: overdue ? 'var(--color-danger)' : 'var(--text-warn-dark)', background: overdue ? 'var(--bg-danger)' : 'var(--bg-warn)', border: `1px solid ${overdue ? 'var(--border-danger)' : '#FDE68A'}`, padding: '3px 10px', borderRadius: '20px' }}>
                       {overdue ? '⚠ Відстрочка прострочена' : '📅 Відстрочення — не оплачено'}
                       {deferDate && <span style={{ fontWeight: 400, marginLeft: '6px' }}>до {new Date(deferDate).toLocaleDateString('uk-UA')}</span>}
                     </span>
@@ -702,7 +698,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
           </>
         )}
       </div>
-
 
       <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '1fr 360px', gap: '20px' }}>
         {/* Left: Lines */}
@@ -740,7 +735,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                   <div style={{ textAlign: 'right' }}>
                     {isNew ? (
                       // Позиція додана через коригування — показуємо тільки ефективну кількість
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-success)', background: 'var(--bg-success)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                         +{line.adj_delta} додано
                       </div>
                     ) : (line.adj_delta ?? 0) !== 0 ? (
@@ -749,7 +744,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                         <div style={{ fontSize: '13px', fontWeight: 600 }}>
                           {line.qty} шт
                         </div>
-                        <div style={{ fontSize: '10px', color: (line.adj_delta ?? 0) < 0 ? '#EF4444' : '#15803D', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '10px', color: (line.adj_delta ?? 0) < 0 ? '#EF4444' : 'var(--color-success)', whiteSpace: 'nowrap' }}>
                           → {line.effective_qty ?? line.qty} ({line.adj_delta! > 0 ? '+' : ''}{line.adj_delta})
                         </div>
                       </>
@@ -771,7 +766,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     {displayPrice > 0 ? (
                       effQty === 0 ? (
                         // Позиція знята коригуванням — 0 з перекресленим оригіналом
-                        <span style={{ color: '#94A3B8' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
                           <span style={{ textDecoration: 'line-through', fontSize: '10px', marginRight: '3px' }}>
                             {fmt(displayPrice * line.qty)} ₴
                           </span>
@@ -805,7 +800,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '3px' }}>
                         <span>З урахуванням к-к</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {adjDiff !== 0 && <span style={{ color: adjDiff < 0 ? '#EF4444' : '#15803D', fontWeight: 600 }}>{adjDiff > 0 ? '+' : ''}{fmt(adjDiff)} ₴</span>}
+                          {adjDiff !== 0 && <span style={{ color: adjDiff < 0 ? '#EF4444' : 'var(--color-success)', fontWeight: 600 }}>{adjDiff > 0 ? '+' : ''}{fmt(adjDiff)} ₴</span>}
                           <span>{fmt(adjustedTotal)} ₴</span>
                         </div>
                       </div>
@@ -830,9 +825,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         {/* Right: Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-
           {/* Рахунок + Оплата — об'єднаний блок */}
-          <div style={{ background: 'var(--bg-card)', border: `1px solid ${isPaid ? '#86EFAC' : 'var(--border)'}`, borderRadius: '12px', padding: po.has_receipt ? '12px 16px' : '16px' }}>
+          <div style={{ background: 'var(--bg-card)', border: `1px solid ${isPaid ? 'var(--border-success)' : 'var(--border)'}`, borderRadius: '12px', padding: po.has_receipt ? '12px 16px' : '16px' }}>
             <div style={{ fontSize: po.has_receipt ? '12px' : '13px', fontWeight: 700, color: po.has_receipt ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '7px' }}>
               <FileText size={14} /> Рахунок-фактура
             </div>
@@ -857,11 +851,11 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       </div>
                       {/* Файл — тільки перегляд/скачування (без видалення) */}
                       {invoiceFile?.url && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: 'var(--bg-success)', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
                           <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
-                          <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
                           <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
+                            style={{ display: 'flex', padding: '3px', color: 'var(--color-success)', flexShrink: 0 }} title="Завантажити">
                             <Download size={13} />
                           </a>
                         </div>
@@ -887,11 +881,11 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                   <div>
                     <label style={lbl}>Файл рахунку (PDF / Excel)</label>
                     {invoiceFile?.url ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', background: 'var(--bg-success)', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
                         <FileText size={14} color="#15803D" style={{ flexShrink: 0 }} />
-                        <span style={{ fontSize: '12px', color: '#15803D', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
                         <a href={invoiceFile.url} target="_blank" rel="noopener noreferrer"
-                          style={{ display: 'flex', padding: '3px', color: '#15803D', flexShrink: 0 }} title="Завантажити">
+                          style={{ display: 'flex', padding: '3px', color: 'var(--color-success)', flexShrink: 0 }} title="Завантажити">
                           <Download size={13} />
                         </a>
                         <button onClick={handleDeleteInvoiceFile} disabled={deletingInvoiceFile}
@@ -922,12 +916,12 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       </button>
                     )}
                     <button onClick={handleSaveInvoice} disabled={savingInvoice || !invoiceNum}
-                      style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : '#E2E8F0', color: invoiceNum ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
+                      style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: invoiceNum ? '#EA580C' : 'var(--border)', color: invoiceNum ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: invoiceNum ? 'pointer' : 'default', opacity: savingInvoice ? 0.7 : 1 }}>
                       {savingInvoice ? '...' : '🧾 Зберегти'}
                     </button>
                     <button onClick={handleConfirmWithoutInvoice} disabled={updatingStatus || ['confirmed_by_supplier','received','paid'].includes(activeStatus)}
                       title="Постачальник не виставляє рахунок"
-                      style={{ height: '34px', padding: '0 10px', borderRadius: '8px', border: '1.5px solid #94A3B8', background: 'none', color: '#64748B', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: updatingStatus ? 0.6 : 1 }}>
+                      style={{ height: '34px', padding: '0 10px', borderRadius: '8px', border: '1.5px solid var(--text-muted)', background: 'none', color: 'var(--text-soft)', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: updatingStatus ? 0.6 : 1 }}>
                       ✓ Без рахунку
                     </button>
                   </div>
@@ -946,10 +940,9 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               <Banknote size={14} /> Оплата постачальнику
             </div>
 
-
             {isPaid && !editingPayment ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ padding: '10px 12px', background: 'var(--bg-success)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckCircle size={16} /> Повністю оплачено</span>
                   {effectiveTotalPaid > 0 && <span style={{ fontSize: '12px', fontWeight: 700 }}>{effectiveTotalPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>}
                 </div>
@@ -962,7 +955,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                         <span style={{ color: 'var(--text-secondary)' }}>
                           {payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}
                         </span>
-                        <span style={{ fontWeight: 700, color: '#15803D' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                       </div>
                     ))}
                   </div>
@@ -981,7 +974,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     <div style={{ display: 'flex', borderRadius: '7px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                       {([{ key: 'transfer', label: '🏦 Рахунок' }, { key: 'cash', label: '💵 Готівка' }] as { key: typeof addPayMode; label: string }[]).map((m, i) => (
                         <button key={m.key} onClick={() => setAddPayMode(m.key)}
-                          style={{ flex: 1, height: '32px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: addPayMode === m.key ? '#1E3A5F' : 'var(--bg-card)', color: addPayMode === m.key ? '#fff' : 'var(--text-secondary)' }}>
+                          style={{ flex: 1, height: '32px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: addPayMode === m.key ? 'var(--navy)' : 'var(--bg-card)', color: addPayMode === m.key ? '#fff' : 'var(--text-secondary)' }}>
                           {m.label}
                         </button>
                       ))}
@@ -1002,7 +995,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                         Скасувати
                       </button>
                       <button onClick={() => handleAddPayment()} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
-                        style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                         {addingPayment ? '...' : '💳 Провести'}
                       </button>
                     </div>
@@ -1014,19 +1007,19 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {/* Часткова оплата: прогрес */}
                 {paymentHistory && paymentHistory.length > 0 && invoiceAmount > 0 && (
-                  <div style={{ padding: '8px 12px', background: '#FFFBEB', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ padding: '8px 12px', background: 'var(--bg-warn)', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Оплачено</span>
-                      <span style={{ fontWeight: 700, color: '#15803D' }}>{effectiveTotalPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                      <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{effectiveTotalPaid.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                     </div>
                     {remaining > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Залишилось</span>
-                        <span style={{ fontWeight: 700, color: '#DC2626' }}>{remaining.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{remaining.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                       </div>
                     )}
                     <div style={{ marginTop: '4px', height: '4px', background: '#E5E7EB', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : '#15803D', borderRadius: '2px', width: `${Math.min(100, (effectiveTotalPaid / invoiceAmount) * 100)}%`, transition: 'width 0.3s' }} />
+                      <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : 'var(--color-success)', borderRadius: '2px', width: `${Math.min(100, (effectiveTotalPaid / invoiceAmount) * 100)}%`, transition: 'width 0.3s' }} />
                     </div>
                   </div>
                 )}
@@ -1042,7 +1035,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     {paymentHistory.map((p, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 10px', background: 'var(--bg-soft)', borderRadius: '6px', fontSize: '11px' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>{payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</span>
-                        <span style={{ fontWeight: 700, color: '#15803D' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                       </div>
                     ))}
                   </div>
@@ -1055,7 +1048,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     </button>
                     {remaining > 0 && !showAddPayment && (
                       <button onClick={() => setShowAddPayment(true)}
-                        style={{ flex: 1, height: '32px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        style={{ flex: 1, height: '32px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                         + Ще оплату
                       </button>
                     )}
@@ -1067,7 +1060,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     <div style={{ display: 'flex', borderRadius: '7px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                       {([{ key: 'transfer', label: '🏦 Рахунок' }, { key: 'cash', label: '💵 Готівка' }] as { key: typeof addPayMode; label: string }[]).map((m, i) => (
                         <button key={m.key} onClick={() => setAddPayMode(m.key)}
-                          style={{ flex: 1, height: '32px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: addPayMode === m.key ? '#1E3A5F' : 'var(--bg-card)', color: addPayMode === m.key ? '#fff' : 'var(--text-secondary)' }}>
+                          style={{ flex: 1, height: '32px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: addPayMode === m.key ? 'var(--navy)' : 'var(--bg-card)', color: addPayMode === m.key ? '#fff' : 'var(--text-secondary)' }}>
                           {m.label}
                         </button>
                       ))}
@@ -1079,7 +1072,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <button onClick={() => setShowAddPayment(false)} style={{ flex: 1, height: '32px', borderRadius: '7px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Скасувати</button>
                       <button onClick={() => handleAddPayment()} disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
-                        style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        style={{ flex: 2, height: '32px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                         {addingPayment ? '...' : '💳 Провести'}
                       </button>
                     </div>
@@ -1095,13 +1088,13 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     {paymentHistory.map((p, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>{payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</span>
-                        <span style={{ fontWeight: 700, color: '#15803D' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{p.amount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                       </div>
                     ))}
                     {remaining > 0 && invoiceAmount > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px solid var(--border-light)', marginTop: '2px' }}>
-                        <span style={{ color: '#DC2626', fontWeight: 600 }}>Залишилось оплатити</span>
-                        <span style={{ fontWeight: 700, color: '#DC2626' }}>{remaining.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
+                        <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>Залишилось оплатити</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{remaining.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                       </div>
                     )}
                   </div>
@@ -1117,7 +1110,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       { key: 'cash',     label: '💵 Готівка' },
                     ] as { key: PayMode; label: string }[]).map((m, i) => (
                       <button key={m.key} onClick={() => setPayMode(m.key)}
-                        style={{ flex: 1, height: '34px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: payMode === m.key ? '#1E3A5F' : 'var(--bg-soft)', color: payMode === m.key ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
+                        style={{ flex: 1, height: '34px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: payMode === m.key ? 'var(--navy)' : 'var(--bg-soft)', color: payMode === m.key ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s' }}>
                         {m.label}
                       </button>
                     ))}
@@ -1128,10 +1121,10 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                 {payMode === 'transfer' && (
                   <>
                     {!po.supplier_bank?.bank_iban && !editingIban ? (
-                      <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E' }}>
+                      <div style={{ padding: '12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
                         ⚠ IBAN постачальника не заповнено — без нього неможливо зробити банківський переказ.
                         <button onClick={() => setEditingIban(true)}
-                          style={{ display: 'block', marginTop: '8px', height: '30px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#92400E', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                          style={{ display: 'block', marginTop: '8px', height: '30px', padding: '0 12px', borderRadius: '6px', border: 'none', background: 'var(--text-warn-dark)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                           + Додати реквізити
                         </button>
                       </div>
@@ -1145,7 +1138,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                         <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                           <button onClick={() => setEditingIban(false)} style={{ flex: 1, height: '30px', borderRadius: '6px', border: '1px solid var(--border)', background: 'none', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 600 }}>Скасувати</button>
                           <button onClick={saveIban} disabled={savingIban || !ibanDraft.iban}
-                            style={{ flex: 2, height: '30px', borderRadius: '6px', border: 'none', background: ibanDraft.iban ? '#1E3A5F' : '#E2E8F0', color: ibanDraft.iban ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: ibanDraft.iban ? 'pointer' : 'default' }}>
+                            style={{ flex: 2, height: '30px', borderRadius: '6px', border: 'none', background: ibanDraft.iban ? 'var(--navy)' : 'var(--border)', color: ibanDraft.iban ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: ibanDraft.iban ? 'pointer' : 'default' }}>
                             {savingIban ? '...' : '💾 Зберегти реквізити'}
                           </button>
                         </div>
@@ -1161,7 +1154,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
 
                     {po.supplier_bank?.bank_iban && !editingIban && (
                       <button onClick={copyPaymentDetails}
-                        style={{ width: '100%', height: '34px', borderRadius: '8px', border: `1px solid ${copied ? '#86EFAC' : 'var(--border)'}`, background: copied ? '#F0FDF4' : 'var(--bg-soft)', color: copied ? '#15803D' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        style={{ width: '100%', height: '34px', borderRadius: '8px', border: `1px solid ${copied ? 'var(--border-success)' : 'var(--border)'}`, background: copied ? 'var(--bg-success)' : 'var(--bg-soft)', color: copied ? 'var(--color-success)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                         {copied ? <><Check size={13} /> Реквізити скопійовано</> : <><Copy size={13} /> Копіювати реквізити</>}
                       </button>
                     )}
@@ -1172,7 +1165,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     </div>
                     <button onClick={() => handleAddPayment('transfer')}
                       disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
-                      style={{ width: '100%', height: '42px', borderRadius: '8px', border: 'none', background: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ width: '100%', height: '42px', borderRadius: '8px', border: 'none', background: !addPayAmount || parseFloat(addPayAmount) <= 0 ? 'var(--border)' : 'var(--color-success)', color: !addPayAmount || parseFloat(addPayAmount) <= 0 ? 'var(--text-muted)' : '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
                       {addingPayment ? '...' : '💳 Підтвердити переказ'}
                     </button>
                   </>
@@ -1208,7 +1201,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                         finally { setUpdatingStatus(false); }
                       }}
                       disabled={updatingStatus || !payAmount || parseFloat(payAmount) <= 0}
-                      style={{ height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#B45309', color: !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ height: '36px', borderRadius: '8px', border: 'none', background: !payAmount || parseFloat(payAmount) <= 0 ? 'var(--border)' : 'var(--color-warn)', color: !payAmount || parseFloat(payAmount) <= 0 ? 'var(--text-muted)' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                       📅 Зафіксувати відстрочку до {new Date(deferDate2).toLocaleDateString('uk-UA')}
                     </button>
                   </>
@@ -1226,7 +1219,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     </div>
                     <button onClick={() => handleAddPayment('cash')}
                       disabled={addingPayment || !addPayAmount || parseFloat(addPayAmount) <= 0}
-                      style={{ height: '36px', borderRadius: '8px', border: 'none', background: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#E2E8F0' : '#15803D', color: !addPayAmount || parseFloat(addPayAmount) <= 0 ? '#94A3B8' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ height: '36px', borderRadius: '8px', border: 'none', background: !addPayAmount || parseFloat(addPayAmount) <= 0 ? 'var(--border)' : 'var(--color-success)', color: !addPayAmount || parseFloat(addPayAmount) <= 0 ? 'var(--text-muted)' : '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                       {addingPayment ? '...' : '💵 Підтвердити готівкову оплату'}
                     </button>
                   </>
@@ -1252,7 +1245,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <a href={`/admin/orders/${po.order_id}`} style={{ fontWeight: 700, color: '#1E3A5F', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}>
+                  <a href={`/admin/orders/${po.order_id}`} style={{ fontWeight: 700, color: 'var(--navy)', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}>
                     #{customerOrder.order_number}
                   </a>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -1310,7 +1303,6 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
         </div>
       </div>
 
-
       {/* Модалка відправки постачальнику */}
       {showSendModal && (
         <Modal open onClose={() => setShowSendModal(false)} width={460} padding={0} dismissible={false} aria-label="Надіслати постачальнику">
@@ -1361,8 +1353,8 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                     return (
                       <button key={ci} type="button"
                         onClick={() => setSendEmail(c.email)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? '#1E3A5F' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
-                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? '#1E3A5F' : '#CBD5E1'}`, background: isSelected ? '#1E3A5F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? 'var(--navy)' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
+                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? 'var(--navy)' : '#CBD5E1'}`, background: isSelected ? 'var(--navy)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1384,10 +1376,10 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               value={sendEmail}
               onChange={e => setSendEmail(e.target.value)}
               placeholder="email@supplier.com"
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${sendEmail.includes('@') ? 'var(--border)' : '#FCA5A5'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1.5px solid ${sendEmail.includes('@') ? 'var(--border)' : 'var(--border-danger)'}`, fontSize: '14px', color: 'var(--text-primary)', background: 'var(--bg-soft)', boxSizing: 'border-box', outline: 'none', marginBottom: '6px' }}
             />
             {sendContacts.length === 0 && !po.supplier_email && (
-              <div style={{ fontSize: '11px', color: '#B45309', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-warn)', background: '#FEF3C7', padding: '6px 10px', borderRadius: '6px', marginBottom: '4px' }}>
                 ⚠ Контакти не додано — додайте їх у картці постачальника
               </div>
             )}
@@ -1401,7 +1393,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               <button
                 onClick={handleSendToSupplier}
                 disabled={sendingMail || !sendEmail.includes('@')}
-                style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: sendEmail.includes('@') ? '#1E3A5F' : '#94A3B8', color: '#fff', cursor: sendEmail.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: sendingMail ? 0.7 : 1 }}>
+                style={{ flex: 2, height: '40px', borderRadius: '8px', border: 'none', background: sendEmail.includes('@') ? 'var(--navy)' : 'var(--text-muted)', color: '#fff', cursor: sendEmail.includes('@') ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: sendingMail ? 0.7 : 1 }}>
                 {sendingMail ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
                 Відправити
               </button>
@@ -1414,7 +1406,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       {showCancelModal && (
         <Modal open onClose={() => setShowCancelModal(false)} width={420} padding={0} aria-label="Скасувати замовлення постачальнику">
           <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-danger)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🚫 Скасувати замовлення?
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
@@ -1442,7 +1434,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', cursor: cancelling ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: cancelling ? 0.7 : 1 }}>
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: '#fff', cursor: cancelling ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: cancelling ? 0.7 : 1 }}>
                 {cancelling ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
                 Скасувати замовлення
               </button>
@@ -1455,13 +1447,13 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
       {showReverseModal && (
         <Modal open onClose={() => setShowReverseModal(false)} width={420} padding={0} aria-label="Сторно документа">
           <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-danger)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               🚫 Скасувати оплату?
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
               <strong>{po.doc_number}</strong> · {po.supplier_name}
             </p>
-            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E', marginBottom: '16px' }}>
+            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)', marginBottom: '16px' }}>
               ⚠ Буде проведено компенсуючу проводку в леджері. Дія тільки для адміністратора.
             </div>
             <div style={{ marginBottom: '16px' }}>
@@ -1481,7 +1473,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                 Назад
               </button>
               <button onClick={handleReversePayment} disabled={reversing}
-                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', cursor: reversing ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: reversing ? 0.7 : 1 }}>
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: '#fff', cursor: reversing ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: reversing ? 0.7 : 1 }}>
                 {reversing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
                 Скасувати оплату
               </button>

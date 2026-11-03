@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 export type NovapayRow = {
   id: string; txn_date: string; amount: number; direction: 'in' | 'out';
@@ -13,7 +14,6 @@ export type NovapayRow = {
 type Pending = { order_number: number; total: number; delivered: string };
 type Aggregate = { date: string; net: number; register: string | null };
 
-const fmt = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dmy = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 
 const CATEGORIES: { value: string; label: string }[] = [
@@ -117,7 +117,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
               <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>+{fmt(receivedUnbooked)} ₴ прийшло після останньої виписки (документ буде після закриття дня)</div>
             )}
             {diff !== null && Math.abs(diff) > 0.01 && (
-              <div style={{ color: '#B45309', fontWeight: 600, marginTop: '2px' }}>
+              <div style={{ color: 'var(--color-warn)', fontWeight: 600, marginTop: '2px' }}>
                 <AlertTriangle size={11} style={{ verticalAlign: '-1px' }} /> облік ≠ живий на {fmt(diff)} ₴ — {unmatched.length ? `нерознесені документи ${fmt(unmatchedSum)} ₴` : ''}{receivedUnbooked > 0 ? `${unmatched.length ? ' + ' : ''}ще не у виписці ${fmt(receivedUnbooked)} ₴` : ''}
               </div>
             )}
@@ -125,7 +125,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
         </div>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
           <div className="fin-kpi-label">Наложка: НоваПей ще не виплатила</div>
-          <div className="fin-money-val" style={{ color: '#B45309' }}>{fmt(npCodShown)} ₴</div>
+          <div className="fin-money-val" style={{ color: 'var(--color-warn)' }}>{fmt(npCodShown)} ₴</div>
           <div className="fin-money-sub" title="np:cod = брутто вручених наложок без виплати по ЕН − реєстри, чий склад не підібрано; мінус те, що вже прийшло на рахунок без документа виписки">
             за обліком {fmt(Math.max(0, npCod))} ₴{receivedUnbooked > 0 ? ` − уже на рахунку ${fmt(receivedUnbooked)} ₴` : ''}{lastRegister ? ` · останній реєстр ${dmy(lastRegister)}` : ''}
             {pending.length > 0 && <> · без виплати по ЕН: {pending.length} ({fmt(pendingSum)} ₴)</>}
@@ -135,7 +135,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
         <div className="fin-card" style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div className="fin-kpi-label">Виписка</div>
           <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-            документів {rows.length} · на категоризацію <b style={{ color: unmatched.length ? '#B45309' : '#15803D' }}>{unmatched.length}</b>
+            документів {rows.length} · на категоризацію <b style={{ color: unmatched.length ? 'var(--color-warn)' : 'var(--color-success)' }}>{unmatched.length}</b>
             {unmatched.length > 0 && <> ({fmt(unmatchedSum)} ₴)</>}
           </div>
           <button onClick={refresh} disabled={busy === 'refresh'}
@@ -150,7 +150,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
         </div>
       </div>
 
-      {msg && <div className="fin-card" style={{ fontSize: '12.5px', color: msg.startsWith('Помилка') ? '#DC2626' : '#15803D' }}>{msg}</div>}
+      {msg && <div className="fin-card" style={{ fontSize: '12.5px', color: msg.startsWith('Помилка') ? 'var(--color-danger)' : 'var(--color-success)' }}>{msg}</div>}
 
       {(pending.length > 0 || aggregate.length > 0) && (
         <div className="fin-card">
@@ -160,7 +160,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
           </div>
           {aggregate.length > 0 && (
             <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              <div style={{ fontWeight: 700, color: '#B45309', marginBottom: '4px' }}>Реєстри, склад яких не підібрано (проведені сумою на np:cod):</div>
+              <div style={{ fontWeight: 700, color: 'var(--color-warn)', marginBottom: '4px' }}>Реєстри, склад яких не підібрано (проведені сумою на np:cod):</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
                 {aggregate.map(a => <span key={`${a.date}-${a.register}`}>{dmy(a.date)} · реєстр {a.register ?? '—'} · <b>{fmt(a.net)}</b></span>)}
               </div>
@@ -177,7 +177,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
             {(['unmatched', 'all'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', background: filter === f ? '#1E3A5F' : 'var(--bg-card)', color: filter === f ? '#fff' : 'var(--text-secondary)' }}>
+                style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', background: filter === f ? 'var(--navy)' : 'var(--bg-card)', color: filter === f ? '#fff' : 'var(--text-secondary)' }}>
                 {f === 'unmatched' ? `На категоризацію (${unmatched.length})` : `Усі (${rows.length})`}
               </button>
             ))}
@@ -193,19 +193,19 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
               </tr>
             </thead>
             <tbody>
-              {shown.length === 0 && <tr><td colSpan={5} style={{ ...cell, textAlign: 'center', color: '#15803D', padding: '24px' }}>✓ Усе рознесено</td></tr>}
+              {shown.length === 0 && <tr><td colSpan={5} style={{ ...cell, textAlign: 'center', color: 'var(--color-success)', padding: '24px' }}>✓ Усе рознесено</td></tr>}
               {shown.map(r => (
                 <tr key={r.id}>
                   <td style={cell}>{dmy(r.txn_date)}</td>
                   <td style={cell}>{KIND_LABEL[r.kind]}{r.register_no && <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>реєстр {r.register_no}</div>}</td>
-                  <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.direction === 'in' ? '#15803D' : 'var(--text-primary)' }}>{r.direction === 'in' ? '+' : '−'}{fmt(Number(r.amount))}</td>
+                  <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.direction === 'in' ? 'var(--color-success)' : 'var(--text-primary)' }}>{r.direction === 'in' ? '+' : '−'}{fmt(Number(r.amount))}</td>
                   <td style={{ ...cell, maxWidth: '420px' }}>
                     <div style={{ fontWeight: 600 }}>{r.counterparty}</div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '11.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.purpose ?? ''}>{r.purpose}</div>
                   </td>
                   <td style={{ ...cell, minWidth: '300px' }}>
                     {r.status === 'posted' && (
-                      <span style={{ color: r.category === 'cod_payout_aggregate' ? '#B45309' : '#15803D', fontSize: '12px' }}>
+                      <span style={{ color: r.category === 'cod_payout_aggregate' ? 'var(--color-warn)' : 'var(--color-success)', fontSize: '12px' }}>
                         ✓ {r.kind === 'cod_payout' ? (r.category === 'cod_payout_aggregate' ? 'виплата сумою (склад не підібрано)' : 'виплата по ЕН') : [...CATEGORIES, ...IN_CATEGORIES].find(c => c.value === r.category)?.label ?? r.category}
                         {r.note && <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{r.note}</div>}
                       </span>
@@ -226,7 +226,7 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
                           <input value={desc[r.id] ?? ''} onChange={e => setDesc(d => ({ ...d, [r.id]: e.target.value }))} placeholder="Опис (необов'язково)" style={inp} />
                         )}
                         <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id}
-                          style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? '#1D4ED8' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>
+                          style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? 'var(--color-info)' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>
                           {busy === r.id ? 'Проводимо…' : 'Провести'}
                         </button>
                       </div>

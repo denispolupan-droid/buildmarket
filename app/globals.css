@@ -65,6 +65,19 @@
   --color-danger:  #DC2626;
   --bg-success:    #F0FDF4;
   --bg-danger:     #FEF2F2;
+  /* Семантичні токени адмінки (аудит 31.10.2026, §6): замість захардкоджених hex
+     в inline-стилях. Світлі значення = ті самі hex, що були в коді; темні — нижче. */
+  --navy:            #1E3A5F;
+  --color-warn:      #B45309;
+  --color-info:      #1D4ED8;
+  --bg-warn:         #FFFBEB;
+  --border-danger:   #FCA5A5;
+  --border-success:  #86EFAC;
+  --border-warn:     #FCD34D;
+  --text-warn-dark:  #92400E;
+  --text-soft:       #64748B;
+  --text-gray:       #6B7280;
+  --text-gray-light: #9CA3AF;
 }
 
 /* ── Dark theme (soft slate) ── */
@@ -90,6 +103,17 @@
   --color-danger:  #f87171;
   --bg-success:    #14291e;
   --bg-danger:     #2d1515;
+  --navy:            #1E3A5F;
+  --color-warn:      #FBBF24;
+  --color-info:      #93C5FD;
+  --bg-warn:         #2D2410;
+  --border-danger:   #7F1D1D;
+  --border-success:  #14532D;
+  --border-warn:     #78350F;
+  --text-warn-dark:  #FCD34D;
+  --text-soft:       #7E93AB;
+  --text-gray:       #7E93AB;
+  --text-gray-light: #546070;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

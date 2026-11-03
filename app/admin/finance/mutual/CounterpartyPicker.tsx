@@ -4,10 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import type { CounterpartyOption } from '../../../api/admin/finance/counterparties/route';
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 /**
  * Вибір контрагента: пошук по клієнтах і партнерах (ім'я в будь-якому написанні,
@@ -104,7 +101,7 @@ export default function CounterpartyPicker({
               З ненульовим сальдо — почніть вводити, щоб знайти будь-кого
             </div>
           )}
-          {error && <div style={{ padding: '10px', fontSize: '13px', color: '#DC2626' }}>{error}</div>}
+          {error && <div style={{ padding: '10px', fontSize: '13px', color: 'var(--color-danger)' }}>{error}</div>}
           {!error && !loading && options.length === 0 && (
             <div style={{ padding: '10px', fontSize: '13px', color: 'var(--text-muted)' }}>
               {query.length === 1 ? 'Введіть ще хоча б одну літеру' : 'Нічого не знайдено'}

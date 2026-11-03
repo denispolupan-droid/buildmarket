@@ -244,7 +244,7 @@ export default function PromoCodesClient({ initial }: { initial: PromoCode[] }) 
                     <td style={{ padding: '10px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace', letterSpacing: '0.04em' }}>
                       {c.code}
                     </td>
-                    <td style={{ padding: '10px', color: '#15803D', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px', color: 'var(--color-success)', fontWeight: 700, whiteSpace: 'nowrap' }}>
                       {c.discount_type === 'percent'
                         ? `${c.discount_value}%${c.max_discount_amount ? ` (макс ${c.max_discount_amount} ₴)` : ''}`
                         : `${c.discount_value} ₴`}
@@ -265,7 +265,7 @@ export default function PromoCodesClient({ initial }: { initial: PromoCode[] }) 
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <button onClick={() => toggleActive(c.id, !c.is_active)}
                           title={c.is_active ? 'Деактивувати' : 'Активувати'}
-                          style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.is_active ? '#DCFCE7' : 'var(--bg-soft)', color: c.is_active ? '#15803D' : 'var(--text-muted)' }}
+                          style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.is_active ? '#DCFCE7' : 'var(--bg-soft)', color: c.is_active ? 'var(--color-success)' : 'var(--text-muted)' }}
                         >{c.is_active ? <Check size={13} /> : <X size={13} />}</button>
                         <button onClick={() => startEdit(c)} title="Редагувати"
                           style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-soft)', color: 'var(--text-secondary)' }}

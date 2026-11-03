@@ -11,7 +11,7 @@ export default function NewOrderButton() {
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '6px',
         height: '36px', padding: '0 18px', borderRadius: '9px',
-        background: 'linear-gradient(135deg, #162035 0%, #1E3A5F 100%)',
+        background: 'linear-gradient(135deg, #162035 0%, var(--navy) 100%)',
         color: '#fff',
         fontSize: '13px', fontWeight: 700,
         border: 'none', cursor: 'pointer',

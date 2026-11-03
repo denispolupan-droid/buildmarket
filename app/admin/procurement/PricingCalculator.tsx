@@ -61,7 +61,7 @@ export default function PricingCalculator({ markupRetail, markupWholesale, marku
         disabled={!hasAny}
         style={{
           height: '30px', padding: '0 16px', borderRadius: '7px', border: 'none',
-          background: hasAny ? '#1E3A5F' : '#CBD5E1',
+          background: hasAny ? 'var(--navy)' : '#CBD5E1',
           color: '#fff', fontSize: '12px', fontWeight: 700,
           cursor: hasAny ? 'pointer' : 'default',
           flexShrink: 0, transition: 'background 0.15s',

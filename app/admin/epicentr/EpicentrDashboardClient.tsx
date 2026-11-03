@@ -19,7 +19,7 @@ interface Props {
 
 const btn = (disabled: boolean): React.CSSProperties => ({
   display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9',
-  border: '1px solid #E2E8F0', borderRadius: 7, fontSize: 12, color: disabled ? '#CBD5E1' : '#475569',
+  border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: disabled ? '#CBD5E1' : 'var(--text-secondary)',
   cursor: disabled ? 'not-allowed' : 'pointer', textDecoration: 'none',
 });
 
@@ -130,10 +130,10 @@ export default function EpicentrDashboardClient({
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               <Icon size={13} color={ok ? '#059669' : '#DC2626'} />
-              <span style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
-              {clickable && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#94A3B8' }}>{tokenOpen ? '▲' : '▼'}</span>}
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
+              {clickable && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>{tokenOpen ? '▲' : '▼'}</span>}
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#059669' : '#DC2626' }}>{value}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#059669' : 'var(--color-danger)' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -142,10 +142,10 @@ export default function EpicentrDashboardClient({
         <div style={{ background: '#fff', border: '1.5px solid #D1FAE5', borderTop: 'none', borderRadius: '0 10px 10px 10px', padding: '16px 18px', marginBottom: 24 }}>
           {hasToken && maskedToken && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: '#6B7280' }}>Поточний:</span>
+              <span style={{ fontSize: 13, color: 'var(--text-gray)' }}>Поточний:</span>
               <code style={{ fontSize: 13, background: '#F3F4F6', padding: '3px 10px', borderRadius: 6, letterSpacing: 2 }}>{maskedToken}</code>
               <button onClick={deleteToken}
-                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: '#DC2626', fontSize: 12, cursor: 'pointer' }}>
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: 'var(--color-danger)', fontSize: 12, cursor: 'pointer' }}>
                 <Trash2 size={12} /> Видалити
               </button>
             </div>
@@ -157,17 +157,17 @@ export default function EpicentrDashboardClient({
                 placeholder={hasToken ? 'Новий ключ для заміни…' : 'Вставте ключ mp_… з кабінету (Налаштування компанії → API)'}
                 style={{ width: '100%', boxSizing: 'border-box', padding: '8px 36px 8px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontFamily: tokenInput ? 'monospace' : 'inherit', outline: 'none' }} />
               <button onClick={() => setShowToken(v => !v)}
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 2 }}>
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray-light)', padding: 2 }}>
                 {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
             <button onClick={saveToken} disabled={savingToken || !tokenInput.trim()}
-              style={{ padding: '8px 18px', background: tokenInput.trim() ? '#1D4ED8' : '#E5E7EB', color: tokenInput.trim() ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'not-allowed' }}>
+              style={{ padding: '8px 18px', background: tokenInput.trim() ? 'var(--color-info)' : '#E5E7EB', color: tokenInput.trim() ? '#fff' : 'var(--text-gray-light)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'not-allowed' }}>
               {savingToken ? 'Перевіряємо…' : 'Зберегти'}
             </button>
           </div>
-          {tokenMsg && <div style={{ marginTop: 8, fontSize: 13, color: tokenMsg.ok ? '#065F46' : '#DC2626' }}>{tokenMsg.text}</div>}
-          <div style={{ marginTop: 10, fontSize: 12, color: '#64748B', lineHeight: 1.6 }}>
+          {tokenMsg && <div style={{ marginTop: 8, fontSize: 13, color: tokenMsg.ok ? '#065F46' : 'var(--color-danger)' }}>{tokenMsg.text}</div>}
+          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.6 }}>
             Ключ генерує лише адміністратор компанії в кабінеті продавця: <b>Налаштування → Налаштування компанії → вкладка API → Згенерувати</b>.
             Термін дії необмежений. Документація: <a href="https://supportm.epicentrk.ua/robotazapi" target="_blank" rel="noreferrer">робота з API</a>,{' '}
             <a href="https://merchant-api.epicentrm.com.ua/swagger/" target="_blank" rel="noreferrer">Swagger</a>.
@@ -177,27 +177,27 @@ export default function EpicentrDashboardClient({
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
         <Link href="/admin/epicentr/products" style={{ textDecoration: 'none' }}>
-          <div style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', border: '1px solid var(--border)', cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#F97316' }} />
               <span style={{ fontWeight: 600, fontSize: 14, color: '#1E293B' }}>Товари та категорії</span>
               <ExternalLink size={11} color="#CBD5E1" style={{ marginLeft: 'auto' }} />
             </div>
-            <div style={{ fontSize: 12, color: '#64748B' }}>Увімкнути товари, націнки, комісії й коди категорій Епіцентру</div>
+            <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>Увімкнути товари, націнки, комісії й коди категорій Епіцентру</div>
           </div>
         </Link>
-        <div style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', border: '1px solid #E2E8F0' }}>
+        <div style={{ background: '#fff', borderRadius: 10, padding: '16px 18px', border: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 600, fontSize: 14, color: '#1E293B', marginBottom: 6 }}>Базова комісія, %</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input value={fallbackPct} onChange={e => setFallbackPct(e.target.value)} inputMode="decimal"
               style={{ width: 80, padding: '6px 10px', border: '1px solid #E5E7EB', borderRadius: 7, fontSize: 13 }} />
             <button onClick={saveFallbackPct} disabled={savingPct} style={btn(savingPct)}>Зберегти</button>
-            <span style={{ fontSize: 11.5, color: '#64748B' }}>для категорій без своєї ставки</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-soft)' }}>для категорій без своєї ставки</span>
           </div>
         </div>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #E2E8F0' }}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', margin: 0 }}>XML-фід товарів</h2>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -218,7 +218,7 @@ export default function EpicentrDashboardClient({
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '10px 14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '10px 14px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 8, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {feedUrl}
           </div>
           <button onClick={copyFeed}
@@ -229,17 +229,17 @@ export default function EpicentrDashboardClient({
         </div>
 
         {msg && (
-          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: msg.ok ? '#ECFDF5' : '#FEF2F2', color: msg.ok ? '#059669' : '#DC2626' }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: msg.ok ? '#ECFDF5' : 'var(--bg-danger)', color: msg.ok ? '#059669' : 'var(--color-danger)' }}>
             {msg.ok ? '✓ ' : '✗ '}{msg.text}
           </div>
         )}
         {feedOk !== null && (
-          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: feedOk ? '#ECFDF5' : '#FEF2F2', color: feedOk ? '#059669' : '#DC2626' }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: feedOk ? '#ECFDF5' : 'var(--bg-danger)', color: feedOk ? '#059669' : 'var(--color-danger)' }}>
             {feedOk ? '✓ Фід доступний і повертає валідний XML' : '✗ Фід недоступний або повертає помилку'}
           </div>
         )}
 
-        <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, border: '1px solid #FED7AA', fontSize: 12, color: '#92400E', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, border: '1px solid #FED7AA', fontSize: 12, color: 'var(--text-warn-dark)', lineHeight: 1.6 }}>
           Кабінет продавця: <b>Товари → Імпорт товарів → за посиланням</b> (перший імпорт карток — вони проходять модерацію),
           далі те саме посилання в <b>Автооновлення цін і наявності</b> (перечитується раз на добу).
           <code>offer id</code> = наш артикул = поле «Артикул» картки — за ним працює і автооновлення, і пуш через API.

@@ -157,7 +157,7 @@ export default function ReceiptLandedCostButton({
                     <label key={m.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)' }}>
                       <input type="radio" name="method" value={m.value} checked={method === m.value}
                         onChange={() => setMethod(m.value as typeof method)}
-                        style={{ accentColor: '#1E3A5F' }} />
+                        style={{ accentColor: 'var(--navy)' }} />
                       {m.label}
                     </label>
                   ))}
@@ -174,7 +174,7 @@ export default function ReceiptLandedCostButton({
                     <label key={pm.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: paymentMethod === pm.value ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: paymentMethod === pm.value ? 700 : 400 }}>
                       <input type="radio" name="paymentMethod" value={pm.value} checked={paymentMethod === pm.value}
                         onChange={() => setPaymentMethod(pm.value as 'cash' | 'bank')}
-                        style={{ accentColor: '#1E3A5F' }} />
+                        style={{ accentColor: 'var(--navy)' }} />
                       {pm.label}
                     </label>
                   ))}
@@ -188,8 +188,8 @@ export default function ReceiptLandedCostButton({
                 </div>
               )}
 
-              {done  && <div style={{ padding: '10px 14px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 600 }}>{done}</div>}
-              {error && <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', fontSize: '13px', color: '#DC2626' }}>{error}</div>}
+              {done  && <div style={{ padding: '10px 14px', background: 'var(--bg-success)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>{done}</div>}
+              {error && <div style={{ padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-danger)' }}>{error}</div>}
             </div>
 
             {/* Footer */}

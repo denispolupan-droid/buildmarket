@@ -48,7 +48,7 @@ function Toggle({ value, onChange, labelOn, labelOff }: { value: boolean; onChan
       <div onClick={() => onChange(!value)} style={{ width: '44px', height: '24px', borderRadius: '12px', position: 'relative', cursor: 'pointer', background: value ? '#22C55E' : '#CBD5E1', transition: 'background 0.2s', flexShrink: 0 }}>
         <div style={{ position: 'absolute', top: '3px', left: value ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
-      <span style={{ fontSize: '13px', fontWeight: 600, color: value ? '#16A34A' : 'var(--text-muted)' }}>
+      <span style={{ fontSize: '13px', fontWeight: 600, color: value ? 'var(--status-instock)' : 'var(--text-muted)' }}>
         {value ? labelOn : labelOff}
       </span>
     </label>
@@ -63,7 +63,7 @@ function EndsAtField({ value, onChange }: { value?: string; onChange: (v: string
       <label style={lbl}>Дата завершення акції</label>
       <input type="date" style={inp} value={value ?? ''} onChange={e => onChange(e.target.value)} />
       {ended
-        ? <p style={{ ...hint, color: '#DC2626', fontWeight: 600 }}>Акція завершена — блок автоматично сховано</p>
+        ? <p style={{ ...hint, color: 'var(--color-danger)', fontWeight: 600 }}>Акція завершена — блок автоматично сховано</p>
         : <p style={hint}>Показується до цієї дати включно; порожньо — без обмеження</p>}
     </div>
   );
@@ -83,7 +83,7 @@ function SizeSelector({ value, onChange }: { value: string; onChange: (v: 'compa
       <div style={{ display: 'flex', gap: '8px' }}>
         {SIZES.map(s => (
           <button key={s.value} onClick={() => onChange(s.value)}
-            style={{ flex: 1, padding: '10px 8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', border: value === s.value ? '2px solid #4880B8' : '2px solid var(--border)', background: value === s.value ? '#EFF6FF' : 'var(--bg-card)', color: value === s.value ? '#4880B8' : 'var(--text-secondary)' }}>
+            style={{ flex: 1, padding: '10px 8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', border: value === s.value ? '2px solid #4880B8' : '2px solid var(--border)', background: value === s.value ? 'var(--brand-blue-light)' : 'var(--bg-card)', color: value === s.value ? '#4880B8' : 'var(--text-secondary)' }}>
             <div style={{ fontSize: '13px', fontWeight: 700 }}>{s.label}</div>
             <div style={{ fontSize: '11px', marginTop: '2px', opacity: 0.7 }}>{s.desc}</div>
           </button>
@@ -141,8 +141,8 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
 
         {/* Live preview */}
         {topBar.visible && (
-          <div style={{ background: topBar.bgColor, borderRadius: '8px', padding: '6px 16px', textAlign: 'center', marginBottom: '16px', fontSize: '12px', fontWeight: 700, color: '#E2E8F0' }}>
-            {topBar.emoji} {topBar.label} <span style={{ color: '#FCD34D' }}>{topBar.discount}</span> {topBar.text} {topBar.detail} {topBar.emoji}
+          <div style={{ background: topBar.bgColor, borderRadius: '8px', padding: '6px 16px', textAlign: 'center', marginBottom: '16px', fontSize: '12px', fontWeight: 700, color: 'var(--border)' }}>
+            {topBar.emoji} {topBar.label} <span style={{ color: 'var(--border-warn)' }}>{topBar.discount}</span> {topBar.text} {topBar.detail} {topBar.emoji}
           </div>
         )}
 
@@ -341,7 +341,7 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
       </div>
 
       {/* Save */}
-      <button onClick={save} disabled={saving} style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer', background: saved ? '#16A34A' : '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }}>
+      <button onClick={save} disabled={saving} style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer', background: saved ? 'var(--status-instock)' : '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }}>
         {saving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : saved ? <Check size={16} /> : null}
         {saving ? 'Зберігаємо...' : saved ? 'Збережено!' : 'Зберегти зміни'}
       </button>

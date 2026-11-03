@@ -312,7 +312,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                   <td style={{ ...moneyCell, color: 'var(--text-secondary)' }}>
                     {p.stock?.price_drop ? `${p.stock.price_drop} ₴` : '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', color: p.stock?.stock_status === 'out_of_stock' ? '#EF4444' : p.stock?.stock_status === 'in_stock' ? '#475569' : '#94A3B8' }}>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', color: p.stock?.stock_status === 'out_of_stock' ? '#EF4444' : p.stock?.stock_status === 'in_stock' ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
                     {(p.stock?.stock_qty ?? 0) > 0 ? p.stock!.stock_qty : p.stock?.stock_status === 'in_stock' ? 'є' : p.stock?.stock_status === 'out_of_stock' ? 'нема' : '—'}
                   </td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>
@@ -524,8 +524,8 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
             disabled={!someSelected}
             style={{
               height: 34, padding: '0 16px', borderRadius: 8, border: 'none',
-              background: someSelected ? '#3DBFB8' : '#E2E8F0',
-              color: someSelected ? '#fff' : '#94A3B8',
+              background: someSelected ? '#3DBFB8' : 'var(--border)',
+              color: someSelected ? '#fff' : 'var(--text-muted)',
               fontSize: 13, fontWeight: 600,
               cursor: someSelected ? 'pointer' : 'not-allowed',
               display: 'flex', alignItems: 'center', gap: 6,

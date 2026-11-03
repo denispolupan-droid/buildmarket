@@ -47,7 +47,7 @@ export default async function SeoReportPage({
               textDecoration: 'none',
               border: `1px solid ${days === p ? 'var(--brand-blue)' : 'var(--border)'}`,
               background: days === p ? '#EAF1F8' : 'var(--bg-card)',
-              color: days === p ? '#1E3A5F' : 'var(--text-secondary)',
+              color: days === p ? 'var(--navy)' : 'var(--text-secondary)',
             }}
           >
             {p} днів

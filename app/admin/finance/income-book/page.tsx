@@ -3,6 +3,7 @@ import { requireStaffPage } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
 import { buildIncomeBook, INCOME_METHODS, METHOD_LABEL, SOURCE_LABEL, type IncomeRow } from '../../../../lib/accounting/income-book';
+import { fmtMoney as fmt } from '../../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Книга доходів — Фінанси' };
@@ -11,7 +12,6 @@ export const metadata = { title: 'Книга доходів — Фінанси' 
 // надходження — касовий метод. Визначення й звірка — міграція 142. До аудиту
 // 31.10.2026 цього звіту не було взагалі, хоча дані в леджері є.
 
-const fmt = (n: number) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const MONTHS = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'];
 const monthLabel = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
 const dayLabel = (ymd: string) => `${ymd.slice(8, 10)}.${ymd.slice(5, 7)}.${ymd.slice(0, 4)}`;
@@ -55,12 +55,12 @@ export default async function IncomeBookPage({ searchParams }: { searchParams: P
         </a>
       </form>
 
-      {error && <div className="fin-card" style={{ color: '#DC2626', fontSize: 13, marginBottom: 16 }}>Помилка: {error.message}</div>}
+      {error && <div className="fin-card" style={{ color: 'var(--color-danger)', fontSize: 13, marginBottom: 16 }}>Помилка: {error.message}</div>}
 
       <div className="fin-kpi-row" style={{ marginBottom: 20 }}>
         <div className="fin-card">
           <div className="fin-kpi-label">Дохід за період</div>
-          <div className="fin-money-val" style={{ color: '#15803D' }}>{fmt(book.total)} ₴</div>
+          <div className="fin-money-val" style={{ color: 'var(--color-success)' }}>{fmt(book.total)} ₴</div>
           <div className="fin-money-sub">{book.txns} надходжень</div>
         </div>
         {INCOME_METHODS.map(m => (

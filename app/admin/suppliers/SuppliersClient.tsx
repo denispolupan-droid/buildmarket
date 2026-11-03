@@ -336,7 +336,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                   ...prev,
                   contacts: [...(prev?.contacts ?? []), { name: '', email: '', note: '' }],
                 }))}
-                style={{ fontSize: '12px', fontWeight: 700, color: '#1E3A5F', background: 'none', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}
+                style={{ fontSize: '12px', fontWeight: 700, color: 'var(--navy)', background: 'none', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}
               >
                 + Додати контакт
               </button>
@@ -365,7 +365,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                 <div>
                   {i === 0 && <span style={label}>Email *</span>}
                   <input
-                    style={{ ...input, borderColor: c.email && !c.email.includes('@') ? '#FCA5A5' : undefined }}
+                    style={{ ...input, borderColor: c.email && !c.email.includes('@') ? 'var(--border-danger)' : undefined }}
                     type="email"
                     value={c.email}
                     placeholder="orders@supplier.com"
@@ -393,7 +393,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                     ...prev,
                     contacts: (prev?.contacts ?? []).filter((_, xi) => xi !== i),
                   }))}
-                  style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', alignSelf: i === 0 ? 'flex-end' : 'center' }}
+                  style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: 'var(--color-danger)', alignSelf: i === 0 ? 'flex-end' : 'center' }}
                 >
                   ✕
                 </button>
@@ -472,7 +472,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           <div style={{ background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <Layers size={15} color="#3B82F6" />
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#1D4ED8' }}>Аркуш Excel</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-info)' }}>Аркуш Excel</span>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
               Якщо файл містить кілька аркушів — вкажіть назву того, де знаходиться весь асортимент.
@@ -500,33 +500,33 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             </div>
 
             {sheetsError && (
-              <p style={{ fontSize: '12px', color: '#DC2626', margin: '4px 0 0' }}>{sheetsError}</p>
+              <p style={{ fontSize: '12px', color: 'var(--color-danger)', margin: '4px 0 0' }}>{sheetsError}</p>
             )}
 
             {sheets && (
               <div style={{ border: '1px solid #BFDBFE', borderRadius: '7px', overflow: 'hidden', background: 'var(--bg-card)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
-                    <tr style={{ background: '#EFF6FF' }}>
-                      <th style={{ padding: '7px 10px', textAlign: 'left', color: '#1D4ED8', fontWeight: 700 }}>Аркуш</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'left', color: '#1D4ED8', fontWeight: 700 }}>Видимість</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'right', color: '#1D4ED8', fontWeight: 700 }}>Рядків з товарами</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'right', color: '#1D4ED8', fontWeight: 700 }}>Всього рядків</th>
+                    <tr style={{ background: 'var(--brand-blue-light)' }}>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', color: 'var(--color-info)', fontWeight: 700 }}>Аркуш</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left', color: 'var(--color-info)', fontWeight: 700 }}>Видимість</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--color-info)', fontWeight: 700 }}>Рядків з товарами</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--color-info)', fontWeight: 700 }}>Всього рядків</th>
                       <th style={{ padding: '7px 10px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {sheets.map(s => (
-                      <tr key={s.name} style={{ borderTop: '1px solid #DBEAFE', background: e.sheet_name === s.name ? '#EFF6FF' : '#fff' }}>
+                      <tr key={s.name} style={{ borderTop: '1px solid #DBEAFE', background: e.sheet_name === s.name ? 'var(--brand-blue-light)' : '#fff' }}>
                         <td style={{ padding: '7px 10px', fontWeight: e.sheet_name === s.name ? 700 : 400, color: 'var(--text-primary)' }}>
                           {s.name}
                         </td>
                         <td style={{ padding: '7px 10px' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: s.hidden ? '#94A3B8' : '#16A34A' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: s.hidden ? 'var(--text-muted)' : 'var(--status-instock)' }}>
                             {s.hidden ? <><EyeOff size={11} /> Прихований</> : <><Eye size={11} /> Видимий</>}
                           </span>
                         </td>
-                        <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: s.skuRows > 0 ? '#1D4ED8' : '#94A3B8' }}>
+                        <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: s.skuRows > 0 ? 'var(--color-info)' : 'var(--text-muted)' }}>
                           {s.skuRows > 0 ? s.skuRows : '—'}
                         </td>
                         <td style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-secondary)' }}>
@@ -538,8 +538,8 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                             onClick={() => set('sheet_name', e.sheet_name === s.name ? null : s.name)}
                             style={{
                               padding: '3px 10px', borderRadius: '5px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600,
-                              background: e.sheet_name === s.name ? '#DCFCE7' : '#EFF6FF',
-                              color: e.sheet_name === s.name ? '#16A34A' : '#3B82F6',
+                              background: e.sheet_name === s.name ? '#DCFCE7' : 'var(--brand-blue-light)',
+                              color: e.sheet_name === s.name ? 'var(--status-instock)' : '#3B82F6',
                             }}
                           >
                             {e.sheet_name === s.name ? '✓ Обрано' : 'Обрати'}
@@ -556,8 +556,8 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
 
         {/* Column mapping — for XLS and CSV */}
         {(e.file_format === 'xls' || e.file_format === 'csv') && (
-          <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: '#92400E', marginBottom: '4px' }}>Маппінг колонок</p>
+          <div style={{ background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-warn-dark)', marginBottom: '4px' }}>Маппінг колонок</p>
             <p style={{ fontSize: '12px', color: '#78350F', marginBottom: '12px' }}>
               Вкажіть точні назви колонок з файлу постачальника. Залиште порожнім — система спробує знайти автоматично за стандартними словами.
             </p>
@@ -568,7 +568,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               const hdrs = activeSheet?.headers ?? [];
               return hdrs.length > 0 ? (
                 <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', marginBottom: '5px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-warn-dark)', marginBottom: '5px' }}>
                     Колонки у файлі ({activeSheet?.name}):
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
@@ -654,7 +654,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
               <input style={{ ...input, textAlign: 'center' }} type="number" step="0.1" placeholder="глоб." value={d.markup_drop ?? ''} onChange={ev => updateDiscount(i, 'markup_drop', ev.target.value)} />
               <label
                 title="Ціна продажу рахується від оригінальної вхідної ціни (без знижки). Знижка зменшує лише собівартість — маржа зростає, клієнт ціни не бачить."
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', color: d.keep_price ? '#15803D' : 'var(--text-muted)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', color: d.keep_price ? 'var(--color-success)' : 'var(--text-muted)' }}
               >
                 <input
                   type="checkbox"
@@ -663,7 +663,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                 />
                 {d.keep_price ? '✓ Активно' : 'Вимкнено'}
               </label>
-              <button onClick={() => removeDiscount(i)} style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626' }}>✕</button>
+              <button onClick={() => removeDiscount(i)} style={{ padding: '7px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: 'var(--color-danger)' }}>✕</button>
             </div>
           ))}
           {!(e.brand_discounts ?? []).length && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Немає налаштувань — використовуються глобальні наценки</p>}
@@ -722,7 +722,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                   {(['fixed_retail','fixed_wholesale','fixed_drop'] as const).map(f => (
                     <input key={f} style={{ ...input, textAlign: 'center', padding: '5px 6px', fontSize: '12px' }} type="number" step="0.01" placeholder="—" value={o[f] ?? ''} onChange={ev => updateProductOverride(o.our_sku, f, ev.target.value)} />
                   ))}
-                  <button onClick={() => removeProductOverride(o.our_sku)} style={{ padding: '5px', background: '#FEE2E2', border: 'none', borderRadius: '5px', cursor: 'pointer', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button onClick={() => removeProductOverride(o.our_sku)} style={{ padding: '5px', background: '#FEE2E2', border: 'none', borderRadius: '5px', cursor: 'pointer', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -784,7 +784,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                       <button onClick={() => setEditing(prev => ({
                         ...prev,
                         promotions: (prev?.promotions ?? []).filter((_, xi) => xi !== i),
-                      }))} style={{ height: '36px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' }}>
+                      }))} style={{ height: '36px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' }}>
                         ✕
                       </button>
                     </div>
@@ -819,7 +819,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                           {lbl}
                         </label>
                       ))}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto', color: p.is_active ? '#15803D' : 'var(--text-muted)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto', color: p.is_active ? 'var(--color-success)' : 'var(--text-muted)' }}>
                         <input type="checkbox" checked={p.is_active ?? true} onChange={ev => setP('is_active', ev.target.checked)} />
                         Активна
                       </label>
@@ -862,7 +862,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Постачальник вказує умовне число (10, 5...) замість реального залишку.
               При синку зберігаємо 0, наявність визначається тільки через статус {'"'}є / немає{'"'}.
-              {e.stock_always_available && <span style={{ color: '#B45309', fontWeight: 600 }}> · Неактуально при увімкненому «Всі позиції — в наявності»</span>}
+              {e.stock_always_available && <span style={{ color: 'var(--color-warn)', fontWeight: 600 }}> · Неактуально при увімкненому «Всі позиції — в наявності»</span>}
             </span>
           </span>
         </label>
@@ -892,12 +892,12 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Договори</span>
               <button onClick={() => setShowNewSCForm(v => !v)}
-                style={{ fontSize: '11px', fontWeight: 700, color: '#1E3A5F', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>
+                style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>
                 + Новий
               </button>
             </div>
             {showNewSCForm && (
-              <div style={{ background: '#F8FAFC', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px' }}>
+              <div style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '10px' }}>
                   <div>
                     <span style={label}>Умови оплати</span>
@@ -918,7 +918,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                 </div>
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                   <button onClick={() => setShowNewSCForm(false)} style={{ fontSize: '12px', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>
-                  <button onClick={addSupplierContract} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: '#0F172A', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
+                  <button onClick={addSupplierContract} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: 'var(--text-primary)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
                 </div>
               </div>
             )}
@@ -932,7 +932,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                   <div key={c.id}>
                     {editingSC === c.id ? (
                       /* ── Inline edit form ── */
-                      <div style={{ background: '#F8FAFC', border: '1px solid #BFDBFE', borderRadius: '10px', padding: '12px 14px' }}>
+                      <div style={{ background: 'var(--bg-soft)', border: '1px solid #BFDBFE', borderRadius: '10px', padding: '12px 14px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
                           <div>
                             <span style={label}>Умови оплати</span>
@@ -960,7 +960,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                           </select>
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => saveSupplierContract(c.id)} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: '#0F172A', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
+                          <button onClick={() => saveSupplierContract(c.id)} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: 'var(--text-primary)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
                           <button onClick={() => setEditingSC(null)} style={{ fontSize: '12px', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>
                         </div>
                       </div>
@@ -970,9 +970,9 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</span>
                           {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms === 'consignment' ? 'Консигнація' : c.payment_terms}</span>}
-                          {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: '#15803D', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
+                          {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: 'var(--color-success)', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
                         </div>
-                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? '#F0FDF4' : '#F1F5F9', color: c.status === 'active' ? '#15803D' : '#64748B' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? 'var(--bg-success)' : '#F1F5F9', color: c.status === 'active' ? 'var(--color-success)' : 'var(--text-soft)' }}>
                           {c.status === 'active' ? 'Активний' : c.status === 'expired' ? 'Закінчився' : 'Неактивний'}
                         </span>
                         <button
@@ -989,7 +989,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
           </div>
         )}
 
-        {error && <p style={{ color: '#DC2626', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--color-danger)', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: '10px' }}>
           <button style={btn('#0F172A')} onClick={save} disabled={saving}>{saving ? 'Збереження...' : 'Зберегти'}</button>
@@ -1069,7 +1069,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                         <>
                           <div style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{new Date(s.last_synced_at).toLocaleString('uk-UA')}</div>
                           {lastSync && (
-                            <div style={{ fontSize: '11px', color: lastSync.error_message ? '#DC2626' : '#16A34A', marginTop: '2px' }}>
+                            <div style={{ fontSize: '11px', color: lastSync.error_message ? 'var(--color-danger)' : 'var(--status-instock)', marginTop: '2px' }}>
                               {lastSync.error_message ?? `оновлено: ${lastSync.rows_updated}, немаплених: ${lastSync.rows_unmapped}`}
                             </div>
                           )}
@@ -1077,7 +1077,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                       ) : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>ніколи</span>}
                     </td>
                     <td style={cell}>
-                      <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: s.is_active ? '#DCFCE7' : '#F1F5F9', color: s.is_active ? '#16A34A' : '#64748B' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: s.is_active ? '#DCFCE7' : '#F1F5F9', color: s.is_active ? 'var(--status-instock)' : 'var(--text-soft)' }}>
                         {s.is_active ? 'активний' : 'вимкнено'}
                       </span>
                     </td>

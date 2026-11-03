@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Banknote } from 'lucide-react';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { fmtAbs as fmt } from '../../../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,10 +26,6 @@ const ACCOUNT_LABELS: Record<string, string> = {
   acquiring: 'Еквайринг', correction: 'Коригування', advance: 'Аванси',
   partner: 'Партнер (дропшип)', bad_debt: 'Списання боргів / компенсації',
 };
-
-function fmt(n: number) {
-  return Math.abs(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export default async function VoucherPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -77,7 +74,7 @@ export default async function VoucherPage({ params }: { params: Promise<{ id: st
       </div>
 
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '24px 28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '2px solid #1E3A5F', paddingBottom: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '2px solid var(--navy)', paddingBottom: '12px', marginBottom: '16px' }}>
           <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>
             {doc.doc_number}
           </div>
@@ -112,7 +109,7 @@ export default async function VoucherPage({ params }: { params: Promise<{ id: st
           <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
             {(entries ?? []).map((e, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 120px', gap: '10px', padding: '8px 14px', borderTop: i > 0 ? '1px solid var(--border-light)' : 'none', fontSize: '12.5px', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, color: Number(e.amount) >= 0 ? '#1E3A5F' : '#B45309' }}>
+                <span style={{ fontWeight: 700, color: Number(e.amount) >= 0 ? 'var(--navy)' : 'var(--color-warn)' }}>
                   {Number(e.amount) >= 0 ? 'Дт' : 'Кт'} · {ACCOUNT_LABELS[e.account_type] ?? e.account_type}
                 </span>
                 <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.description ?? ''}</span>

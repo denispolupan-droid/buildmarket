@@ -108,7 +108,7 @@ export default function ReturnOrderModal({
         </div>
 
         <div style={{ padding: '16px 20px' }}>
-          {loadErr && <div style={{ fontSize: '13px', color: '#DC2626', padding: '12px 0' }}>{loadErr}</div>}
+          {loadErr && <div style={{ fontSize: '13px', color: 'var(--color-danger)', padding: '12px 0' }}>{loadErr}</div>}
           {!items && !loadErr && <div style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '12px 0' }}>Завантаження…</div>}
 
           {existing.length > 0 && (
@@ -116,7 +116,7 @@ export default function ReturnOrderModal({
               <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Уже є повернення по замовленню:</span>
               {existing.map(e => (
                 <a key={e.id} href={`/admin/finance/returns?id=${e.id}`} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1E3A5F', textDecoration: 'none' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--navy)', textDecoration: 'none' }}>
                   <ExternalLink size={12} /> {e.doc_number} — {e.status === 'cancelled' ? 'скасовано' : STAGE_LABEL[e.stage]}
                 </a>
               ))}
@@ -198,10 +198,10 @@ export default function ReturnOrderModal({
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '14px', marginTop: '4px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                  До повернення: <span style={{ color: '#B45309' }}>{total.toFixed(2)} ₴</span>
+                  До повернення: <span style={{ color: 'var(--color-warn)' }}>{total.toFixed(2)} ₴</span>
                 </div>
                 <button onClick={submit} disabled={saving || !selected.length}
-                  style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: '#B45309', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving || !selected.length ? 'default' : 'pointer', opacity: saving || !selected.length ? 0.6 : 1 }}>
+                  style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: 'var(--color-warn)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving || !selected.length ? 'default' : 'pointer', opacity: saving || !selected.length ? 0.6 : 1 }}>
                   {saving ? 'Створюємо…' : 'Створити заявку на повернення'}
                 </button>
               </div>

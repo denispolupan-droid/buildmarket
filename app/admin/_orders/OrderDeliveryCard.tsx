@@ -96,7 +96,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
               <button
                 onClick={() => saveDelivery(order.id)}
                 disabled={savingDelivery}
-                style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                 {savingDelivery ? '...' : 'Зберегти'}
               </button>
               <button
@@ -124,7 +124,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                 <span title={byCarrier
                   ? `Час видачі за даними перевізника: ${at.toLocaleString('uk-UA')}`
                   : `Перевізник часу видачі не дав — це наш час, коли доставку зафіксовано: ${at.toLocaleString('uk-UA')}`}
-                  style={{ flexBasis: '100%', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#15803D' }}>
+                  style={{ flexBasis: '100%', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--color-success)' }}>
                   <Check size={12} />
                   Отримано {at.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   {!byCarrier && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>· за нашими даними</span>}
@@ -171,7 +171,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   <button onClick={() => copyTtn(order.tracking_number!)} title="Копіювати ТТН"
                     style={{ width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-                      color: copiedTtn === order.tracking_number ? '#15803D' : 'var(--text-muted)' }}>
+                      color: copiedTtn === order.tracking_number ? 'var(--color-success)' : 'var(--text-muted)' }}>
                     {copiedTtn === order.tracking_number ? <Check size={13} /> : <Copy size={13} />}
                   </button>
                 </div>
@@ -190,7 +190,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
               return (
                 <button onClick={() => (isReplace ? replaceTTN(order.id) : saveTTN(order.id))} disabled={disabled}
                   title={isReplace ? 'Замінити ТТН на нову' : 'Зберегти ТТН'} className="oc-ttn-save"
-                  style={{ height: '32px', width: '32px', borderRadius: '7px', background: isReplace ? '#B45309' : '#1E3A5F', color: '#fff', border: 'none', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  style={{ height: '32px', width: '32px', borderRadius: '7px', background: isReplace ? 'var(--color-warn)' : 'var(--navy)', color: '#fff', border: 'none', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {busy ? '…' : <Save size={14} />}
                 </button>
               );
@@ -222,8 +222,8 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   className="oc-ttn-reg"
                   title={inReg ? 'Вже в реєстрі НП' : 'Додати в реєстр НП'}
                   style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
-                    background: inReg ? '#DCFCE7' : '#F0FDF4', color: '#15803D',
-                    border: '1.5px solid #86EFAC', cursor: inReg ? 'default' : 'pointer',
+                    background: inReg ? '#DCFCE7' : 'var(--bg-success)', color: 'var(--color-success)',
+                    border: '1.5px solid var(--border-success)', cursor: inReg ? 'default' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {isAddingReg ? '…' : inReg ? <Check size={14} /> : <ClipboardList size={14} />}
                 </button>
@@ -249,9 +249,9 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   ? `Заявка на повернення НП ${order.np_return_number ?? ''} — відкрити`.replace('  ', ' ')
                   : 'Повернути посилку: заявка в кабінеті НП, посилка поїде назад на наше відділення'}
                 style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0,
-                  background: order.np_return_ref ? '#F0FDF4' : '#FFFBEB',
-                  color: order.np_return_ref ? '#15803D' : '#B45309',
-                  border: `1.5px solid ${order.np_return_ref ? '#86EFAC' : '#FDE68A'}`,
+                  background: order.np_return_ref ? 'var(--bg-success)' : 'var(--bg-warn)',
+                  color: order.np_return_ref ? 'var(--color-success)' : 'var(--color-warn)',
+                  border: `1.5px solid ${order.np_return_ref ? 'var(--border-success)' : '#FDE68A'}`,
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <RotateCcw size={14} />
               </button>
@@ -259,7 +259,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
             {order.tracking_number && (
               <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
                 title="Видалити ТТН з бази та з НП"
-                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                style={{ height: '32px', width: '32px', borderRadius: '7px', flexShrink: 0, background: 'var(--bg-danger)', color: 'var(--color-danger)', border: '1.5px solid #FECACA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
                 {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
               </button>
             )}
@@ -282,7 +282,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   <Info size={14} />
                 </button>
                 <button onClick={() => printLabel(order.id, 'rozetka-delivery-ttn')} disabled={rzLabelBusy === order.id}
-                  style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: '#15803D', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
+                  style={{ marginLeft: 'auto', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-card)', color: 'var(--color-success)', fontSize: '12px', fontWeight: 700, cursor: rzLabelBusy === order.id ? 'wait' : 'pointer' }}>
                   {rzLabelBusy === order.id ? '…' : 'Етикетка PDF'}
                 </button>
               </div>
@@ -310,7 +310,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                     <>
                       <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button onClick={() => setRzTtnModal(order)}
-                          style={{ height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                          style={{ height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                           Створити накладну Rozetka
                         </button>
                         <div style={{ position: 'relative', flex: '1 1 120px', minWidth: 0 }}>
@@ -320,16 +320,16 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                             onKeyDown={e => { if (e.key === 'Enter' && canSave) saveTTN(order.id); }}
                             placeholder="або вставте готову ЕН"
                             title="«RMP-…» накладної, виписаної в сусідньому замовленні — коли обидва їдуть однією коробкою"
-                            style={{ width: '100%', height: '34px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRmp ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '9px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                            style={{ width: '100%', height: '34px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRmp ? 'var(--border-danger)' : 'var(--border)'}`, borderRadius: '9px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                         </div>
                         <button onClick={() => saveTTN(order.id)} disabled={!canSave}
                           title={!typed ? 'Вставте номер ЕН' : !looksLikeRmp ? 'Номер точки видачі Rozetka — RMP-…' : 'Прив\'язати ЕН до замовлення'}
-                          style={{ height: '34px', width: '34px', borderRadius: '9px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          style={{ height: '34px', width: '34px', borderRadius: '9px', background: 'var(--navy)', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {busy ? '…' : <Save size={14} />}
                         </button>
                       </div>
                       {typed && !looksLikeRmp && (
-                        <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>Номер точки видачі Rozetka має вигляд RMP-161376878</div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '4px' }}>Номер точки видачі Rozetka має вигляд RMP-161376878</div>
                       )}
                     </>
                   );
@@ -379,7 +379,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   {!order.carrier_accepted_at && (
                     <button onClick={() => deleteRzTtn(order.id)} disabled={ttnDeleting === order.id}
                       title="Видалити ЕН у Rozetka і прибрати номер із замовлення"
-                      style={{ height: '28px', width: '28px', borderRadius: '7px', flexShrink: 0, background: 'transparent', color: '#DC2626', border: '1px solid var(--border-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
+                      style={{ height: '28px', width: '28px', borderRadius: '7px', flexShrink: 0, background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--border-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: ttnDeleting === order.id ? 0.5 : 1 }}>
                       {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
                     </button>
                   )}
@@ -389,7 +389,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   {order.carrier_accepted_at && order.status !== 'delivered' && (
                     <button onClick={() => returnRzTrack(order.id)} disabled={rzRegBusy === order.id}
                       title="Заборонити видачу і повернути посилку"
-                      style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #FDE68A', background: '#FFFBEB', color: '#B45309', fontSize: '12px', fontWeight: 700, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
+                      style={{ height: '32px', padding: '0 12px', borderRadius: '9px', border: '1.5px solid #FDE68A', background: 'var(--bg-warn)', color: 'var(--color-warn)', fontSize: '12px', fontWeight: 700, cursor: rzRegBusy === order.id ? 'wait' : 'pointer' }}>
                       {rzRegBusy === order.id ? '…' : 'Повернення'}
                     </button>
                   )}
@@ -423,7 +423,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                     <>
                       <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button onClick={() => setRzOwnTtnModal(order)}
-                          style={{ height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                          style={{ height: '34px', padding: '0 14px', borderRadius: '9px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                           Створити ЕН ROZETKA
                         </button>
                         <div style={{ position: 'relative', flex: '1 1 120px', minWidth: 0 }}>
@@ -433,16 +433,16 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                             onKeyDown={e => { if (e.key === 'Enter' && canSave) saveTTN(order.id); }}
                             placeholder="або вставте готову ЕН"
                             title="ЕН, створена в кабінеті Prom (PRM-…) чи на відділенні (12 цифр)"
-                            style={{ width: '100%', height: '34px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRz ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '9px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                            style={{ width: '100%', height: '34px', paddingLeft: '26px', paddingRight: '8px', border: `1px solid ${typed && !looksLikeRz ? 'var(--border-danger)' : 'var(--border)'}`, borderRadius: '9px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                         </div>
                         <button onClick={() => saveTTN(order.id)} disabled={!canSave}
                           title={!typed ? 'Вставте номер ЕН' : !looksLikeRz ? 'Номер ЕН ROZETKA — 12 цифр або PRM-…' : 'Прив\'язати ЕН до замовлення'}
-                          style={{ height: '34px', width: '34px', borderRadius: '9px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          style={{ height: '34px', width: '34px', borderRadius: '9px', background: 'var(--navy)', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {busy ? '…' : <Save size={14} />}
                         </button>
                       </div>
                       {typed && !looksLikeRz && (
-                        <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>Номер ЕН ROZETKA — 12 цифр або з префіксом, як PRM-376729644</div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '4px' }}>Номер ЕН ROZETKA — 12 цифр або з префіксом, як PRM-376729644</div>
                       )}
                     </>
                   );
@@ -475,12 +475,12 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                     onKeyDown={e => { if (e.key === 'Enter' && canSave) saveTTN(order.id); }}
                     placeholder={`Номер накладної ${label}`}
                     title={`Накладну ${label} створіть у кабінеті перевізника або маркетплейсу і вставте номер`}
-                    style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: order.tracking_number ? '30px' : '8px', border: `1px solid ${typed && !valid && !order.tracking_number ? '#FCA5A5' : 'var(--border)'}`, borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', height: '32px', paddingLeft: '26px', paddingRight: order.tracking_number ? '30px' : '8px', border: `1px solid ${typed && !valid && !order.tracking_number ? 'var(--border-danger)' : 'var(--border)'}`, borderRadius: '7px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                   {order.tracking_number && (
                     <button onClick={() => copyTtn(order.tracking_number!)} title="Копіювати номер"
                       style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', width: '22px', height: '22px', border: 'none', background: 'none', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-                        color: copiedTtn === order.tracking_number ? '#15803D' : 'var(--text-muted)' }}>
+                        color: copiedTtn === order.tracking_number ? 'var(--color-success)' : 'var(--text-muted)' }}>
                       {copiedTtn === order.tracking_number ? <Check size={13} /> : <Copy size={13} />}
                     </button>
                   )}
@@ -488,7 +488,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                 {!order.tracking_number ? (
                   <button onClick={() => saveTTN(order.id)} disabled={!canSave}
                     title={!typed ? 'Вставте номер накладної' : !valid ? 'Номер не схожий на накладну ' + label : 'Прив\'язати накладну до замовлення'}
-                    style={{ height: '32px', width: '32px', borderRadius: '7px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    style={{ height: '32px', width: '32px', borderRadius: '7px', background: 'var(--navy)', color: '#fff', border: 'none', cursor: canSave ? 'pointer' : 'default', opacity: canSave ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {busy ? '…' : <Save size={14} />}
                   </button>
                 ) : (
@@ -502,7 +502,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                     {!order.carrier_accepted_at && order.status !== 'delivered' && (
                       <button onClick={() => deleteTTN(order.id)} disabled={ttnDeleting === order.id}
                         title={`Відв'язати номер від замовлення (саму накладну видаліть у кабінеті ${label})`}
-                        style={{ height: '32px', width: '32px', borderRadius: '7px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        style={{ height: '32px', width: '32px', borderRadius: '7px', border: '1px solid #FECACA', background: 'var(--bg-danger)', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {ttnDeleting === order.id ? '…' : <Trash2 size={14} />}
                       </button>
                     )}
@@ -510,7 +510,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                 )}
               </div>
               {typed && !valid && !order.tracking_number && (
-                <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '4px' }}>
                   {carrier === 'ukrposhta' ? 'Штрихкод Укрпошти — 13 цифр (або RR123456789UA)' : 'Номер Meest — латиниця, цифри й дефіс'}
                 </div>
               )}

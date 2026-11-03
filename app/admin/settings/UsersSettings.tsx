@@ -95,7 +95,7 @@ export default function UsersSettings() {
           }}>
             <div style={{
               width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-              background: u.role === 'admin' ? '#DBEAFE' : '#F0FDF4',
+              background: u.role === 'admin' ? '#DBEAFE' : 'var(--bg-success)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {u.role === 'admin'
@@ -110,7 +110,7 @@ export default function UsersSettings() {
                 </span>
                 <span style={{
                   fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px',
-                  color: u.role === 'admin' ? '#1D4ED8' : '#15803D',
+                  color: u.role === 'admin' ? 'var(--color-info)' : 'var(--color-success)',
                   background: u.role === 'admin' ? '#DBEAFE' : '#DCFCE7',
                   flexShrink: 0,
                 }}>
@@ -135,7 +135,7 @@ export default function UsersSettings() {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: '30px', height: '30px', borderRadius: '7px',
-                  border: '1px solid #FCA5A5', background: 'none',
+                  border: '1px solid var(--border-danger)', background: 'none',
                   color: '#EF4444', cursor: deleting === u.id ? 'default' : 'pointer',
                   opacity: deleting === u.id ? 0.5 : 1, flexShrink: 0,
                 }}
@@ -176,7 +176,7 @@ export default function UsersSettings() {
               display: 'flex', alignItems: 'center', gap: '6px',
               height: '36px', padding: '0 16px', borderRadius: '8px',
               border: 'none', fontSize: '13px', fontWeight: 700,
-              background: email.includes('@') ? '#1E3A5F' : '#94A3B8',
+              background: email.includes('@') ? 'var(--navy)' : 'var(--text-muted)',
               color: '#fff', cursor: sending || !email.includes('@') ? 'default' : 'pointer',
             }}
           >

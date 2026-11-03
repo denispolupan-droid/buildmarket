@@ -61,7 +61,7 @@ export default function ReservationSettings({ initialTtlDays }: Props) {
             onKeyDown={e => e.key === 'Enter' && handleSave()}
             style={{
               width: '72px', height: '34px', padding: '0 10px',
-              border: `1.5px solid ${error ? '#DC2626' : 'var(--border)'}`,
+              border: `1.5px solid ${error ? 'var(--color-danger)' : 'var(--border)'}`,
               borderRadius: '8px', fontSize: '14px', fontWeight: 600,
               background: 'var(--bg-card)', color: 'var(--text-primary)',
               textAlign: 'center',
@@ -77,7 +77,7 @@ export default function ReservationSettings({ initialTtlDays }: Props) {
           disabled={saving}
           style={{
             height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none',
-            background: saved ? '#15803D' : 'var(--brand-blue)',
+            background: saved ? 'var(--color-success)' : 'var(--brand-blue)',
             color: '#fff', fontSize: '13px', fontWeight: 600,
             cursor: saving ? 'wait' : 'pointer',
             transition: 'background 0.2s',

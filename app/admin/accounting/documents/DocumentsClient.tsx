@@ -150,7 +150,7 @@ function ActionsMenu({
               style={{
                 width: '100%', textAlign: 'left', padding: '8px 12px',
                 borderRadius: '7px', border: 'none', background: 'none',
-                fontSize: '13px', fontWeight: 500, color: '#1E3A5F',
+                fontSize: '13px', fontWeight: 500, color: 'var(--navy)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = '#EFF4FF')}
@@ -170,7 +170,7 @@ function ActionsMenu({
             style={{
               width: '100%', textAlign: 'left', padding: '8px 12px',
               borderRadius: '7px', border: 'none', background: 'none',
-              fontSize: '13px', fontWeight: 500, color: '#DC2626',
+              fontSize: '13px', fontWeight: 500, color: 'var(--color-danger)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
@@ -245,7 +245,7 @@ export default function DocumentsClient({
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-stockdoc-draft', { detail: { docType: 'write_off' } }))}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 8, border: '1.5px solid #FECACA', background: 'var(--bg-card)', color: '#DC2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 8, border: '1.5px solid #FECACA', background: 'var(--bg-card)', color: 'var(--color-danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
             <Trash2 size={14} /> Списання
           </button>
@@ -260,7 +260,7 @@ export default function DocumentsClient({
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '7px',
               height: '36px', padding: '0 16px', borderRadius: '8px',
-              background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700,
+              background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700,
               textDecoration: 'none',
             }}
           >
@@ -270,7 +270,7 @@ export default function DocumentsClient({
       </div>
 
       {error && (
-        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: '#FEE2E2', color: '#DC2626', fontSize: '13px' }}>
+        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: '#FEE2E2', color: 'var(--color-danger)', fontSize: '13px' }}>
           {error}
         </div>
       )}
@@ -296,8 +296,8 @@ export default function DocumentsClient({
             onClick={() => setStatFilter(s)}
             style={{
               height: '34px', padding: '0 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-              border: `1.5px solid ${statFilter === s ? '#1E3A5F' : 'var(--border)'}`,
-              background: statFilter === s ? '#1E3A5F' : 'var(--bg-card)',
+              border: `1.5px solid ${statFilter === s ? 'var(--navy)' : 'var(--border)'}`,
+              background: statFilter === s ? 'var(--navy)' : 'var(--bg-card)',
               color: statFilter === s ? '#fff' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}
@@ -376,7 +376,7 @@ export default function DocumentsClient({
                       {doc.doc_number}
                     </span>
                     {doc.reversal_of && (
-                      <span style={{ fontSize: '10px', fontWeight: 600, color: '#6B7280', background: 'var(--bg-soft)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-gray)', background: 'var(--bg-soft)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: '4px' }}>
                         скасування
                       </span>
                     )}
@@ -419,7 +419,7 @@ export default function DocumentsClient({
                     {doc.total_cost > 0 ? `${doc.total_cost.toFixed(0)} ₴` : '—'}
                   </div>
                   {doc.total_amount > 0 && doc.total_cost > 0 && doc.doc_type === 'sale' && (
-                    <div style={{ fontSize: '11px', color: margin >= 0 ? '#15803D' : '#DC2626', fontWeight: 600 }}>
+                    <div style={{ fontSize: '11px', color: margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
                       {margin >= 0 ? '+' : ''}{margin.toFixed(0)} ₴
                     </div>
                   )}
@@ -449,7 +449,7 @@ export default function DocumentsClient({
                         disabled={loading === doc.id + 'confirm'}
                         style={{
                           height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
-                          border: 'none', background: '#15803D', color: '#fff', cursor: 'pointer',
+                          border: 'none', background: 'var(--color-success)', color: '#fff', cursor: 'pointer',
                           opacity: loading === doc.id + 'confirm' ? 0.5 : 1,
                         }}
                       >

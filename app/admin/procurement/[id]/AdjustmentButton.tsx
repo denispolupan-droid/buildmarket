@@ -191,7 +191,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                       borderRadius: '6px',
                     }}>
                       <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {line.isNew && <span style={{ color: '#15803D', marginRight: '3px' }}>+</span>}
+                        {line.isNew && <span style={{ color: 'var(--color-success)', marginRight: '3px' }}>+</span>}
                         {line.sku}
                       </span>
                       <div style={{ overflow: 'hidden', minWidth: 0 }}
@@ -214,7 +214,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                       />
                       <button onClick={() => toggleDelete(line.sku)}
                         title={line.deleted ? 'Відновити' : 'Видалити позицію'}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${line.deleted ? '#15803D' : '#FCA5A5'}`, background: 'none', cursor: 'pointer', color: line.deleted ? '#15803D' : '#EF4444', flexShrink: 0 }}>
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${line.deleted ? 'var(--color-success)' : 'var(--border-danger)'}`, background: 'none', cursor: 'pointer', color: line.deleted ? 'var(--color-success)' : '#EF4444', flexShrink: 0 }}>
                         {line.deleted ? <Plus size={12} /> : <Trash2 size={12} />}
                       </button>
                     </div>
@@ -260,7 +260,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                                 onMouseEnter={() => setActiveIdx(i)}
                                 style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', background: i === activeIdx ? '#EFF4FF' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                                 <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
-                                <span style={{ fontWeight: 700, color: '#1E3A5F', flexShrink: 0 }}>{s.brand}</span>
+                                <span style={{ fontWeight: 700, color: 'var(--navy)', flexShrink: 0 }}>{s.brand}</span>
                                 <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
                               </div>
                             ))}
@@ -274,7 +274,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                     <input style={inp} type="number" min="0" step="0.01" placeholder="Ціна ₴" value={newPrice || ''}
                       onChange={e => setNewPrice(parseFloat(e.target.value) || 0)} />
                     <button onClick={addLine} disabled={!newSku.trim()}
-                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 12px', borderRadius: '6px', border: 'none', background: newSku.trim() ? '#1E3A5F' : '#E2E8F0', color: newSku.trim() ? '#fff' : '#94A3B8', fontSize: '12px', fontWeight: 700, cursor: newSku.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 12px', borderRadius: '6px', border: 'none', background: newSku.trim() ? 'var(--navy)' : 'var(--border)', color: newSku.trim() ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: newSku.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
                       <Plus size={12} /> Додати
                     </button>
                   </div>
@@ -293,8 +293,8 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                 </div>
               )}
 
-              {done  && <div style={{ padding: '10px 14px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 600 }}>{done}</div>}
-              {error && <div style={{ padding: '10px 14px', background: '#FEF2F2', borderRadius: '8px', fontSize: '13px', color: '#DC2626' }}>{error}</div>}
+              {done  && <div style={{ padding: '10px 14px', background: 'var(--bg-success)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>{done}</div>}
+              {error && <div style={{ padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-danger)' }}>{error}</div>}
             </div>
 
             {/* Footer */}

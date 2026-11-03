@@ -69,12 +69,12 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', color: '#6B7280', textDecoration: 'none' }}>
+          <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-gray)', textDecoration: 'none' }}>
             <ArrowLeft size={18} />
           </Link>
           <div>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Замовлення Prom.ua</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>Всього: {totalOrders}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-gray)' }}>Всього: {totalOrders}</p>
           </div>
         </div>
         <button
@@ -83,8 +83,8 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '10px 18px', borderRadius: 10,
-            background: syncing ? '#E5E7EB' : '#1D4ED8',
-            color: syncing ? '#9CA3AF' : '#fff',
+            background: syncing ? '#E5E7EB' : 'var(--color-info)',
+            color: syncing ? 'var(--text-gray-light)' : '#fff',
             border: 'none', cursor: syncing ? 'not-allowed' : 'pointer',
             fontWeight: 600, fontSize: 14,
           }}
@@ -97,9 +97,9 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
       {syncMsg && (
         <div style={{
           marginBottom: 20, padding: '12px 16px', borderRadius: 10,
-          background: syncMsg.startsWith('Помилка') ? '#FEF2F2' : '#F0FDF4',
-          border: `1px solid ${syncMsg.startsWith('Помилка') ? '#FCA5A5' : '#BBF7D0'}`,
-          color: syncMsg.startsWith('Помилка') ? '#991B1B' : '#15803D',
+          background: syncMsg.startsWith('Помилка') ? 'var(--bg-danger)' : 'var(--bg-success)',
+          border: `1px solid ${syncMsg.startsWith('Помилка') ? 'var(--border-danger)' : '#BBF7D0'}`,
+          color: syncMsg.startsWith('Помилка') ? '#991B1B' : 'var(--color-success)',
           fontSize: 14, fontWeight: 600,
         }}>
           {syncMsg}
@@ -109,9 +109,9 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, marginBottom: 28 }}>
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', padding: '16px 18px' }}>
-          <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 6 }}>Всього замовлень</div>
+          <div style={{ fontSize: 12, color: 'var(--text-gray)', fontWeight: 600, marginBottom: 6 }}>Всього замовлень</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#111' }}>{totalOrders}</div>
-          <div style={{ fontSize: 13, color: '#15803D', fontWeight: 600, marginTop: 4 }}>{fmt(totalRevenue)}</div>
+          <div style={{ fontSize: 13, color: 'var(--color-success)', fontWeight: 600, marginTop: 4 }}>{fmt(totalRevenue)}</div>
         </div>
         {stats.map(s => {
           const cfg = STATUS_LABELS[s.status] ?? { label: s.status, color: '#6B7280', bg: '#F9FAFB' };
@@ -122,7 +122,7 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
                 {cfg.label}
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: '#111' }}>{s.count}</div>
-              {s.amount > 0 && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{fmt(s.amount)}</div>}
+              {s.amount > 0 && <div style={{ fontSize: 12, color: 'var(--text-gray)', marginTop: 4 }}>{fmt(s.amount)}</div>}
             </div>
           );
         })}
@@ -133,13 +133,13 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid #E5E7EB' }}>
           <ShoppingBag size={18} color="#6B7280" />
           <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Останні замовлення</h2>
-          <Link href="/admin?channel=prom" style={{ marginLeft: 'auto', fontSize: 13, color: '#1D4ED8', textDecoration: 'none', fontWeight: 600 }}>
+          <Link href="/admin?channel=prom" style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-info)', textDecoration: 'none', fontWeight: 600 }}>
             Всі в адмін →
           </Link>
         </div>
 
         {orders.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-gray-light)' }}>
             Замовлень з Prom.ua ще немає. Натисніть «Синхронізувати».
           </div>
         ) : (
@@ -147,7 +147,7 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
             <thead>
               <tr style={{ background: '#F9FAFB' }}>
                 {['№', 'Клієнт', 'Статус', 'Сума', 'Prom ID', 'Час'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -157,13 +157,13 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
                 return (
                   <tr key={order.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
                     <td style={{ padding: '10px 16px', fontWeight: 700, fontSize: 13 }}>
-                      <Link href={`/admin?expand=${order.id}`} style={{ color: '#1D4ED8', textDecoration: 'none' }}>
+                      <Link href={`/admin?expand=${order.id}`} style={{ color: 'var(--color-info)', textDecoration: 'none' }}>
                         #{order.order_number}
                       </Link>
                     </td>
                     <td style={{ padding: '10px 16px', fontSize: 13 }}>
                       <div style={{ fontWeight: 600 }}>{order.contact}</div>
-                      <div style={{ color: '#6B7280', fontSize: 12 }}>{order.phone}</div>
+                      <div style={{ color: 'var(--text-gray)', fontSize: 12 }}>{order.phone}</div>
                     </td>
                     <td style={{ padding: '10px 16px' }}>
                       <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 20, fontSize: 12, fontWeight: 600, color: cfg.color, background: cfg.bg }}>
@@ -173,7 +173,7 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
                     <td style={{ padding: '10px 16px', fontWeight: 700, fontSize: 13 }}>
                       {fmt(Number(order.total_price))}
                     </td>
-                    <td style={{ padding: '10px 16px', fontSize: 12, color: '#6B7280' }}>
+                    <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-gray)' }}>
                       {order.prom_order_id ? (
                         <a href={`https://my.prom.ua/orders/${order.prom_order_id}`} target="_blank" rel="noreferrer"
                           style={{ color: '#C2410C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -181,7 +181,7 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
                         </a>
                       ) : '—'}
                     </td>
-                    <td style={{ padding: '10px 16px', fontSize: 12, color: '#9CA3AF' }}>
+                    <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-gray-light)' }}>
                       {relTime(order.created_at)}
                     </td>
                   </tr>

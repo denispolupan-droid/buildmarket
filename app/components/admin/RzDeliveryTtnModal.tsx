@@ -142,7 +142,7 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
                     Здаємо з: <strong>{sender.point}</strong>{sender.city ? `, ${sender.city}` : ''}
                     {sender.limitKg != null && <> · ліміт <strong>{sender.limitKg} кг</strong></>}
                   </div>
-                : <div style={{ marginTop: '6px', color: '#B45309' }}>Відправника не налаштовано — Налаштування → ROZETKA Доставка.</div>}
+                : <div style={{ marginTop: '6px', color: 'var(--color-warn)' }}>Відправника не налаштовано — Налаштування → ROZETKA Доставка.</div>}
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -165,7 +165,7 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
                 </button>
               )}
             </div>
-            <div style={{ fontSize: '11.5px', marginTop: '5px', lineHeight: 1.45, color: codInvalid ? '#DC2626' : codChanged ? '#B45309' : 'var(--text-muted)' }}>
+            <div style={{ fontSize: '11.5px', marginTop: '5px', lineHeight: 1.45, color: codInvalid ? 'var(--color-danger)' : codChanged ? 'var(--color-warn)' : 'var(--text-muted)' }}>
               {codInvalid
                 ? 'Вкажіть суму (0 — без післяплати)'
                 : codChanged
@@ -189,9 +189,9 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
                   style={{
                     flex: 1, height: '38px', borderRadius: '9px', cursor: 'pointer', fontSize: '13px',
                     fontWeight: payer === o.key ? 700 : 600,
-                    border: `1.5px solid ${payer === o.key ? '#15803D' : 'var(--border)'}`,
+                    border: `1.5px solid ${payer === o.key ? 'var(--color-success)' : 'var(--border)'}`,
                     background: payer === o.key ? 'rgba(21,128,61,0.08)' : 'var(--bg-card)',
-                    color: payer === o.key ? '#15803D' : 'var(--text-secondary)',
+                    color: payer === o.key ? 'var(--color-success)' : 'var(--text-secondary)',
                   }}>
                   {o.label}
                 </button>
@@ -214,13 +214,13 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
           </div>
 
           {overLimit && (
-            <div style={{ fontSize: '12px', color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '9px', padding: '9px 11px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-warn)', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '9px', padding: '9px 11px' }}>
               ⚠ Точка здачі приймає до {sender?.limitKg} кг — цю посилку доведеться відправити Новою Поштою.
             </div>
           )}
 
           {error && (
-            <div style={{ fontSize: '12px', color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>
           )}
         </div>
 
@@ -230,7 +230,7 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
             Скасувати
           </button>
           <button onClick={submit} disabled={blocked}
-            style={{ flex: 2, height: '42px', borderRadius: '10px', border: 'none', background: blocked ? '#94A3B8' : '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: blocked ? 'default' : 'pointer' }}>
+            style={{ flex: 2, height: '42px', borderRadius: '10px', border: 'none', background: blocked ? 'var(--text-muted)' : 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: blocked ? 'default' : 'pointer' }}>
             {busy ? 'Створюємо…' : 'Створити накладну'}
           </button>
         </div>

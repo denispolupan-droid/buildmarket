@@ -76,11 +76,11 @@ export default async function SuppliersStockPage() {
                       <Clock size={13} /> Не синхронізовано
                     </div>
                   ) : hasError ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#DC2626', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--color-danger)', fontSize: '12px' }}>
                       <AlertCircle size={13} /> Помилка синхронізації
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#15803D', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--color-success)', fontSize: '12px' }}>
                       <CheckCircle size={13} /> {sync.rows_updated} оновлено
                     </div>
                   )}

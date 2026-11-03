@@ -191,7 +191,7 @@ export default function NewStockDocModal({
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
           {error && (
-            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 8, background: '#FEE2E2', color: '#DC2626', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 8, background: '#FEE2E2', color: 'var(--color-danger)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
               <AlertCircle size={14} /> {error}
             </div>
           )}
@@ -209,7 +209,7 @@ export default function NewStockDocModal({
                 <select
                   value={toWarehouseId ?? ''}
                   onChange={e => setToWarehouseId(e.target.value ? Number(e.target.value) : null)}
-                  style={{ ...inp, borderColor: !toWarehouseId ? '#FCA5A5' : undefined }}
+                  style={{ ...inp, borderColor: !toWarehouseId ? 'var(--border-danger)' : undefined }}
                 >
                   <option value="">— Оберіть —</option>
                   {toWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -292,7 +292,7 @@ export default function NewStockDocModal({
               {!isTransfer && totalCost > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 14px', background: 'var(--bg-soft)', borderTop: '1px solid var(--border)', fontSize: 13 }}>
                   <span style={{ color: 'var(--text-secondary)' }}>
-                    Сума списання: <strong style={{ color: '#DC2626' }}>{totalCost.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong>
+                    Сума списання: <strong style={{ color: 'var(--color-danger)' }}>{totalCost.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong>
                   </span>
                 </div>
               )}

@@ -9,6 +9,7 @@ import PrintButton from '../../../components/PrintButton';
 import LinesEditor from '../../../../components/admin/LinesEditor';
 import PrintDocMenu from '../PrintDocMenu';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { fmtMoney as fmt } from '../../../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +33,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   confirmed: { label: 'Проведено', color: '#15803D', bg: '#F0FDF4' },
   cancelled: { label: 'Скасовано', color: '#DC2626', bg: '#FEF2F2' },
 };
-
-function fmt(n: number) { return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 export default async function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createSupabaseServer();
@@ -170,7 +169,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         )}
         {['return_in', 'supplier_return', 'return_out'].includes(doc.doc_type) && (
           <Link href={`/admin/finance/returns?id=${id}`}
-            style={{ fontSize: '12px', color: '#B45309', textDecoration: 'none', background: '#FFFBEB', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #FDE68A' }}>
+            style={{ fontSize: '12px', color: 'var(--color-warn)', textDecoration: 'none', background: 'var(--bg-warn)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #FDE68A' }}>
             ↩ Журнал повернень
           </Link>
         )}
@@ -181,13 +180,13 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 ? `/admin/procurement/${doc.parent_doc_id}`
                 : `/admin/accounting/documents/${doc.parent_doc_id}`
             }
-            style={{ fontSize: '12px', color: '#1E3A5F', textDecoration: 'none', background: '#EFF4FF', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
+            style={{ fontSize: '12px', color: 'var(--navy)', textDecoration: 'none', background: '#EFF4FF', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
             ↑ {['receipt','stock_in'].includes(doc.doc_type) ? 'Замовлення' : 'Підстава'}
           </Link>
         )}
         {(childDocs ?? []).map((child: { id: string; doc_number: string; doc_type: string; status: string }) => (
           <Link key={child.id} href={`/admin/accounting/documents/${child.id}`}
-            style={{ fontSize: '12px', color: '#15803D', textDecoration: 'none', background: '#F0FDF4', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #BBF7D0' }}>
+            style={{ fontSize: '12px', color: 'var(--color-success)', textDecoration: 'none', background: 'var(--bg-success)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #BBF7D0' }}>
             ↓ {child.doc_number}
           </Link>
         ))}
@@ -212,13 +211,13 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
       </div>
 
       {doc.status === 'cancelled' && (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 18px', marginBottom: '16px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 18px', marginBottom: '16px', background: 'var(--bg-danger)', border: '1.5px solid var(--border-danger)', borderRadius: '10px' }}>
           <span style={{ fontSize: '18px', flexShrink: 0 }}>🚫</span>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>Документ скасовано</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-danger)' }}>Документ скасовано</div>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {typeof (doc.meta as any)?.cancel_reason === 'string' && (
-              <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '4px', fontStyle: 'italic' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-danger)', marginTop: '4px', fontStyle: 'italic' }}>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 Причина: {(doc.meta as any).cancel_reason}
               </div>
@@ -246,11 +245,11 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {log ? `${TYPE_LABEL[log.type] ?? log.type}: ${log.type === 'increase_pct' ? (log.value >= 0 ? `+${log.value}%` : `${log.value}%`) : log.type === 'multiply_cost' ? `×${log.value}` : log.type === 'supplier_discount' ? `−${log.value}%` : `${log.value} ₴`}` : 'Переоцінка'}
               </span>
-              {log && <span style={{ fontSize: 12, color: '#6B7280', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5 }}>{TARGET_LABEL[target] ?? target}</span>}
+              {log && <span style={{ fontSize: 12, color: 'var(--text-gray)', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5 }}>{TARGET_LABEL[target] ?? target}</span>}
               {log?.is_promo && <span style={{ fontSize: 12, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '2px 8px', borderRadius: 5 }}>🏷 Акція</span>}
-              {log?.revert_at && <span style={{ fontSize: 12, color: '#6B7280' }}>↩ Відкат: {new Date(log.revert_at).toLocaleDateString('uk-UA')}</span>}
-              {log?.reverted_at && <span style={{ fontSize: 12, color: '#9CA3AF' }}>✓ Скасовано {new Date(log.reverted_at).toLocaleDateString('uk-UA')}</span>}
-              <span style={{ marginLeft: 'auto', fontSize: 12, color: '#6B7280' }}>{log?.count ?? snapshot.length} позицій</span>
+              {log?.revert_at && <span style={{ fontSize: 12, color: 'var(--text-gray)' }}>↩ Відкат: {new Date(log.revert_at).toLocaleDateString('uk-UA')}</span>}
+              {log?.reverted_at && <span style={{ fontSize: 12, color: 'var(--text-gray-light)' }}>✓ Скасовано {new Date(log.reverted_at).toLocaleDateString('uk-UA')}</span>}
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-gray)' }}>{log?.count ?? snapshot.length} позицій</span>
             </div>
             {/* Snapshot table */}
             <div style={{ overflowX: 'auto' }}>
@@ -274,7 +273,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                         <td style={{ padding: '8px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>{bv != null ? `${fmt(bv as number)} ₴` : '—'}</td>
                         <td style={{ padding: '8px 14px', textAlign: 'right', fontWeight: 600 }}>{av != null ? `${fmt(av as number)} ₴` : '—'}</td>
                         <td style={{ padding: '8px 14px', textAlign: 'right', fontWeight: 700,
-                          color: diff == null ? 'var(--text-muted)' : diff > 0 ? '#15803D' : diff < 0 ? '#DC2626' : 'var(--text-secondary)' }}>
+                          color: diff == null ? 'var(--text-muted)' : diff > 0 ? 'var(--color-success)' : diff < 0 ? 'var(--color-danger)' : 'var(--text-secondary)' }}>
                           {diff == null ? '—' : diff > 0 ? `+${fmt(diff)} ₴` : `${fmt(diff)} ₴`}
                         </td>
                       </tr>
@@ -338,13 +337,13 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           const lcAdded       = finalPrice - originalPrice;
           const displayPrice  = isSale ? salePrice : costPrice;
           return (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLandedCost ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? '#FFFBEB' : undefined }}>
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: hasLandedCost ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '9px 16px', alignItems: 'center', borderTop: '1px solid var(--border-light)', columnGap: '16px', background: line.is_bonus ? 'var(--bg-warn)' : undefined }}>
               <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>{line.sku}</span>
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {nameMap.get(line.sku) || line.sku}
                   {line.is_bonus && (
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
                   )}
                 </div>
               </div>
@@ -398,7 +397,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             <div key={lc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 16px', borderTop: '1px solid var(--border-light)' }}>
               <div>
                 <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{lc.description ?? lc.cost_type}</span>
-                {lc.distributed && <span style={{ marginLeft: '8px', fontSize: '11px', color: '#15803D', fontWeight: 600 }}>✓ Розподілено</span>}
+                {lc.distributed && <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--color-success)', fontWeight: 600 }}>✓ Розподілено</span>}
               </div>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#7C3AED' }}>+{fmt(lc.amount)} ₴</span>
             </div>

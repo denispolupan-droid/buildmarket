@@ -70,7 +70,7 @@ export default function PrintDocMenu({ docId, orderId, orderNumber, diverged }: 
           </a>
 
           {diverged && (
-            <div style={{ padding: '9px 12px', borderTop: '1px solid var(--border-light)', background: '#FFFBEB', fontSize: '11.5px', lineHeight: 1.45, color: '#B45309' }}>
+            <div style={{ padding: '9px 12px', borderTop: '1px solid var(--border-light)', background: 'var(--bg-warn)', fontSize: '11.5px', lineHeight: 1.45, color: 'var(--color-warn)' }}>
               <b>Документи розійшлися.</b> Склад накладної відрізняється від замовлення —
               рахунок надрукується зі старими позиціями. Перевірте, який із двох віддаєте клієнту.
             </div>

@@ -44,11 +44,11 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
           {/* Зауваження обліку після правки складу: правку збережено,
               але менеджер має побачити наслідки до друку документів. */}
           {editWarnings[order.id]?.length > 0 && (
-            <div style={{ margin: '0 0 8px', fontSize: '12px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 10px' }}>
+            <div style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--text-warn-dark)', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '3px' }}>
                 Збережено, але зверніть увагу:
                 <button onClick={() => setEditWarnings(prev => { const n = { ...prev }; delete n[order.id]; return n; })}
-                  title="Приховати" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#92400E', lineHeight: 1 }}>
+                  title="Приховати" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-warn-dark)', lineHeight: 1 }}>
                   <X size={12} />
                 </button>
               </div>
@@ -63,14 +63,14 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                   <span style={{ flex: 1, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     <span style={{ color: 'var(--text-muted)', marginRight: '2px' }}>{item.sku}</span>
                     <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px 0 0', color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px 0 0', color: copiedSku === item.sku ? 'var(--color-success)' : 'var(--text-muted)', lineHeight: 1, fontSize: '11px' }}>
                       {copiedSku === item.sku ? '✓' : '⎘'}
                     </button>{item.name}
                   </span>
                   <input type="number" min={1} value={item.qty}
                     onChange={e => setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, parseInt(e.target.value) || 1) } : it))}
                     style={{ width: '46px', height: '26px', border: '1px solid var(--border)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
-                  <span style={{ color: item.is_bonus ? '#15803D' : 'var(--text-secondary)', width: '70px', textAlign: 'right', flexShrink: 0, fontWeight: item.is_bonus ? 600 : 400 }}>
+                  <span style={{ color: item.is_bonus ? 'var(--color-success)' : 'var(--text-secondary)', width: '70px', textAlign: 'right', flexShrink: 0, fontWeight: item.is_bonus ? 600 : 400 }}>
                     {item.is_bonus ? '🎁 0 ₴' : `${(item.price * item.qty).toFixed(0)} грн`}
                   </span>
                   <button onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
@@ -107,7 +107,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                     style={{ height: '28px', padding: '0 6px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', textAlign: 'center', outline: 'none' }} />
                   <input placeholder="Ціна" type="number" min={0} value={addPrice} onChange={e => setAddPrice(e.target.value)}
                     style={{ height: '28px', padding: '0 6px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-                  <button onClick={addItem} style={{ height: '28px', width: '28px', borderRadius: '6px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button onClick={addItem} style={{ height: '28px', width: '28px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Plus size={13} />
                   </button>
                 </div>
@@ -117,7 +117,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                   Разом: {editItems.reduce((s, i) => s + i.price * i.qty, 0).toFixed(2)} грн
                 </span>
                 <button onClick={() => saveEdit(order.id)} disabled={editSaving}
-                  style={{ height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', opacity: editSaving ? 0.6 : 1 }}>
+                  style={{ height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', opacity: editSaving ? 0.6 : 1 }}>
                   {editSaving ? '...' : <><Check size={12} /> Зберегти</>}
                 </button>
               </div>
@@ -216,7 +216,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{item.sku}</span>
                               <button onClick={() => { navigator.clipboard.writeText(item.sku); setCopiedSku(item.sku); setTimeout(() => setCopiedSku(null), 1500); }} title="Копіювати артикул"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? '#15803D' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copiedSku === item.sku ? 'var(--color-success)' : 'var(--text-muted)', lineHeight: 1, display: 'inline-flex' }}>
                                 {copiedSku === item.sku ? <Check size={12} /> : <Copy size={12} />}
                               </button>
                             </div>
@@ -249,7 +249,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                                     setCopiedSupplierSku(`${order.id}:${item.sku}`);
                                     setTimeout(() => setCopiedSupplierSku(null), 1500);
                                   }} title="Копіювати код постачальника"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copied ? '#15803D' : 'var(--text-muted)', opacity: copied ? 1 : 0.6, lineHeight: 1, display: 'inline-flex' }}>
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copied ? 'var(--color-success)' : 'var(--text-muted)', opacity: copied ? 1 : 0.6, lineHeight: 1, display: 'inline-flex' }}>
                                     {copied ? <Check size={10} /> : <Copy size={10} />}
                                   </button>
                                 </div>
@@ -262,7 +262,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                           </td>
                           <td className="oc-col-sum" style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'middle' }}>
                             {item.is_bonus
-                              ? <span style={{ color: '#15803D', fontSize: '11px', fontWeight: 700, background: '#F0FDF4', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
+                              ? <span style={{ color: 'var(--color-success)', fontSize: '11px', fontWeight: 700, background: 'var(--bg-success)', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
                               : <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
                             }
                           </td>
@@ -285,7 +285,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                                   <span
                                     title="Зафіксовано при відвантаженні — за цим рядком видаткової поїхав товар"
                                     style={{ fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap',
-                                      color: own ? '#15803D' : 'var(--brand-blue)' }}>
+                                      color: own ? 'var(--color-success)' : 'var(--brand-blue)' }}>
                                     {own ? 'Наш склад' : (supplierName ?? 'Постач.')}
                                   </span>
                                 );
@@ -318,7 +318,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                                 style={{ fontSize: '11px', fontWeight: 600, border: '1px solid var(--border)', borderRadius: '6px', padding: '3px 6px', background: 'var(--bg-soft)',
                                   cursor: srcEditable && !busy ? 'pointer' : 'default',
                                   maxWidth: '90px', opacity: srcEditable && !busy ? 1 : 0.7,
-                                  color: effectiveSrc === 'own' ? '#15803D' : 'var(--brand-blue)' }}
+                                  color: effectiveSrc === 'own' ? 'var(--color-success)' : 'var(--brand-blue)' }}
                               >
                                 <option value="dropship">{supplierName ?? 'Постач.'}</option>
                                 {/* Варіант «наш» показуємо і тоді, коли залишку вже

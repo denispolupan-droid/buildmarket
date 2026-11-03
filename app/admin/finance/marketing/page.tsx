@@ -184,7 +184,7 @@ export default async function MarketingPage({
               style={{ height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)' }} />
           </div>
         ))}
-        <button type="submit" style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+        <button type="submit" style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           Показати
         </button>
       </form>
@@ -200,7 +200,7 @@ export default async function MarketingPage({
         </div>
         <div className="fin-card" style={{ padding: '14px 18px' }}>
           <div className="fin-kpi-label">Валовий прибуток</div>
-          <div className="fin-money-val" style={{ color: '#15803D' }}>{fmt(totals.profit)} ₴</div>
+          <div className="fin-money-val" style={{ color: 'var(--color-success)' }}>{fmt(totals.profit)} ₴</div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
             з {totals.posted} проведених РН{live > totals.posted && ` · ${live - totals.posted} ще в дорозі`}
           </div>
@@ -246,7 +246,7 @@ export default async function MarketingPage({
                   {r.cancelled > 0 && <span style={{ color: 'var(--text-muted)' }}> (−{r.cancelled})</span>}
                 </span>
                 <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(r.revenue)} ₴</span>
-                <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: r.posted ? '#15803D' : 'var(--text-muted)' }}>
+                <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: r.posted ? 'var(--color-success)' : 'var(--text-muted)' }}>
                   {r.posted ? `${fmt(r.profit)} ₴` : '—'}
                 </span>
                 <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>
@@ -285,7 +285,7 @@ export default async function MarketingPage({
             </div>
             <div className="fin-card" style={{ padding: '14px 18px' }}>
               <div className="fin-kpi-label">Прибуток − витрати</div>
-              <div className="fin-money-val" style={{ color: gProfit - adsSpendTotal >= 0 ? '#15803D' : '#B91C1C' }}>{fmt(gProfit - adsSpendTotal)} ₴</div>
+              <div className="fin-money-val" style={{ color: gProfit - adsSpendTotal >= 0 ? 'var(--color-success)' : '#B91C1C' }}>{fmt(gProfit - adsSpendTotal)} ₴</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 валовий {fmt(gProfit)} ₴ з {gPosted} проведених{gLive.length > gPosted && ` · ${gLive.length - gPosted} ще в дорозі`}
               </div>
@@ -313,7 +313,7 @@ export default async function MarketingPage({
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? ours.orders : '—'}</span>
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? `${fmt(ours.revenue)} ₴` : '—'}</span>
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? `${fmt(ours.profit)} ₴` : '—'}</span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? 'var(--text-muted)' : net >= 0 ? '#15803D' : '#B91C1C' }}>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? 'var(--text-muted)' : net >= 0 ? 'var(--color-success)' : '#B91C1C' }}>
                     {net == null ? 'без мітки' : `${net >= 0 ? '+' : ''}${fmt(net)} ₴`}
                   </span>
                 </div>

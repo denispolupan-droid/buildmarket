@@ -105,7 +105,7 @@ function StatusBadge({ status }: { status: string }) {
 
 /* ── Results drawer ───────────────────────────────────────────────────── */
 function ResultsDrawer({ results }: { results: MarketPrice[] }) {
-  if (results.length === 0) return <span style={{ color: '#9CA3AF', fontSize: 13 }}>Результати відсутні</span>;
+  if (results.length === 0) return <span style={{ color: 'var(--text-gray-light)', fontSize: 13 }}>Результати відсутні</span>;
 
   const sorted = [...results].sort((a, b) => a.price - b.price);
 
@@ -115,17 +115,17 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '6px 10px', borderRadius: 8,
-          background: i === 0 ? '#F0FDF4' : '#F9FAFB',
+          background: i === 0 ? 'var(--bg-success)' : '#F9FAFB',
           border: `1px solid ${i === 0 ? '#BBF7D0' : '#E5E7EB'}`,
           fontSize: 13,
         }}>
           <span style={{
             padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 700,
             background: r.source === 'rozetka' ? '#EEF2FF'
-                      : r.source === 'epicentr' ? '#F0FDF4'
+                      : r.source === 'epicentr' ? 'var(--bg-success)'
                       : '#FFF7ED',
             color:      r.source === 'rozetka' ? '#4338CA'
-                      : r.source === 'epicentr' ? '#15803D'
+                      : r.source === 'epicentr' ? 'var(--color-success)'
                       : '#C2410C',
           }}>
             {r.source === 'rozetka' ? 'Rozetka'
@@ -145,10 +145,10 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
           <span style={{ fontWeight: 700, color: '#111', whiteSpace: 'nowrap' }}>
             {r.price.toLocaleString('uk-UA')} ₴
           </span>
-          <span style={{ fontSize: 11, color: '#9CA3AF' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-gray-light)' }}>
             {Math.round(r.confidence * 100)}% збіг
           </span>
-          <ExternalLink size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+          <ExternalLink size={14} style={{ color: 'var(--text-gray-light)', flexShrink: 0 }} />
         </div>
       ))}
     </div>
@@ -283,7 +283,7 @@ export default function PricingClient({ rows, categories }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Аналіз цін</h1>
-          <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: 14 }}>
+          <p style={{ margin: '4px 0 0', color: 'var(--text-gray)', fontSize: 14 }}>
             Порівняння ваших цін з Prom.ua та Epicentr
           </p>
         </div>
@@ -296,7 +296,7 @@ export default function PricingClient({ rows, categories }: Props) {
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 18px', borderRadius: 10,
                 background: isBatchRunning ? '#E5E7EB' : '#10B981',
-                color: isBatchRunning ? '#9CA3AF' : '#fff',
+                color: isBatchRunning ? 'var(--text-gray-light)' : '#fff',
                 border: 'none', cursor: isBatchRunning ? 'not-allowed' : 'pointer',
                 fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
               }}
@@ -310,8 +310,8 @@ export default function PricingClient({ rows, categories }: Props) {
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '10px 20px', borderRadius: 10,
-              background: isBatchRunning ? '#E5E7EB' : '#1D4ED8',
-              color: isBatchRunning ? '#9CA3AF' : '#fff',
+              background: isBatchRunning ? '#E5E7EB' : 'var(--color-info)',
+              color: isBatchRunning ? 'var(--text-gray-light)' : '#fff',
               border: 'none', cursor: isBatchRunning ? 'not-allowed' : 'pointer',
               fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
             }}
@@ -329,7 +329,7 @@ export default function PricingClient({ rows, categories }: Props) {
       {/* Search + category filter */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 300px' }}>
-          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-gray-light)' }} />
           <input
             type="text"
             placeholder="Пошук за назвою, SKU, брендом..."
@@ -347,7 +347,7 @@ export default function PricingClient({ rows, categories }: Props) {
           style={{
             flex: '0 1 240px', height: 44, padding: '0 16px', borderRadius: 10,
             border: '1px solid #E5E7EB', fontSize: 14,
-            background: filterCategory ? '#EFF6FF' : '#fff',
+            background: filterCategory ? 'var(--brand-blue-light)' : '#fff',
           }}
         >
           <option value="">Всі категорії</option>
@@ -359,7 +359,7 @@ export default function PricingClient({ rows, categories }: Props) {
 
       {/* Selection bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, minHeight: 28 }}>
-        <div style={{ fontSize: 13, color: '#6B7280' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-gray)' }}>
           Знайдено: {visibleRows.length} товарів
           {someSelected && (
             <span style={{ marginLeft: 8, color: '#10B981', fontWeight: 600 }}>
@@ -374,7 +374,7 @@ export default function PricingClient({ rows, categories }: Props) {
               style={{
                 height: 30, padding: '0 12px', borderRadius: 8,
                 border: '1px solid #E5E7EB', background: '#fff',
-                color: '#6B7280', fontSize: 13, cursor: 'pointer',
+                color: 'var(--text-gray)', fontSize: 13, cursor: 'pointer',
               }}
             >
               Вибрати всі {visibleRows.length}
@@ -386,7 +386,7 @@ export default function PricingClient({ rows, categories }: Props) {
               style={{
                 height: 30, padding: '0 12px', borderRadius: 8,
                 border: '1px solid #E5E7EB', background: '#fff',
-                color: '#6B7280', fontSize: 13, cursor: 'pointer',
+                color: 'var(--text-gray)', fontSize: 13, cursor: 'pointer',
               }}
             >
               Зняти вибір
@@ -416,7 +416,7 @@ export default function PricingClient({ rows, categories }: Props) {
               {cfg.icon} {cfg.label}
               <span style={{
                 marginLeft: 2, background: filter === s ? cfg.color : '#E5E7EB',
-                color: filter === s ? '#fff' : '#6B7280',
+                color: filter === s ? '#fff' : 'var(--text-gray)',
                 borderRadius: 20, padding: '1px 7px', fontSize: 12,
               }}>
                 {count}
@@ -429,7 +429,7 @@ export default function PricingClient({ rows, categories }: Props) {
             onClick={() => setFilter('all')}
             style={{
               padding: '8px 14px', borderRadius: 10, background: 'transparent',
-              border: '1.5px solid #E5E7EB', color: '#6B7280',
+              border: '1.5px solid #E5E7EB', color: 'var(--text-gray)',
               cursor: 'pointer', fontSize: 13, fontWeight: 600,
             }}
           >
@@ -449,7 +449,7 @@ export default function PricingClient({ rows, categories }: Props) {
           gridTemplateColumns: '32px 1fr 95px 95px 110px 110px 90px 110px 130px 100px',
           padding: '12px 16px',
           background: '#F9FAFB', borderBottom: '1px solid #E5E7EB',
-          fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
+          fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase',
           letterSpacing: '0.05em',
         }}>
           <input
@@ -466,7 +466,7 @@ export default function PricingClient({ rows, categories }: Props) {
             onClick={() => setSortByDemand(v => !v)}
             style={{
               textAlign: 'center', background: 'none', border: 'none', padding: 0,
-              cursor: 'pointer', fontWeight: 700, fontSize: 12, color: sortByDemand ? '#F59E0B' : '#6B7280',
+              cursor: 'pointer', fontWeight: 700, fontSize: 12, color: sortByDemand ? '#F59E0B' : 'var(--text-gray)',
               textTransform: 'uppercase', letterSpacing: '0.05em',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
             }}
@@ -482,7 +482,7 @@ export default function PricingClient({ rows, categories }: Props) {
 
         {/* Rows */}
         {visibleRows.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-gray-light)' }}>
             Немає товарів для показу
           </div>
         ) : visibleRows.map(row => {
@@ -517,11 +517,11 @@ export default function PricingClient({ rows, categories }: Props) {
                     {row.brand && <span style={{ color: '#4B5563', marginRight: 4 }}>{row.brand}</span>}
                     {row.name.split('—')[0].trim()}
                   </div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-gray-light)', marginTop: 2 }}>
                     {row.sku}{row.volume ? ` · ${row.volume}` : ''}
                   </div>
                   <div style={{
-                    fontSize: 11, color: '#94A3B8', marginTop: 3,
+                    fontSize: 11, color: 'var(--text-muted)', marginTop: 3,
                     display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
                   }}>
                     <span style={{ opacity: 0.6 }}>🔍</span>
@@ -531,7 +531,7 @@ export default function PricingClient({ rows, categories }: Props) {
                       style={{
                         fontFamily: 'monospace', background: '#F1F5F9',
                         padding: '1px 5px', borderRadius: 4,
-                        color: '#64748B', textDecoration: 'none',
+                        color: 'var(--text-soft)', textDecoration: 'none',
                       }}
                       title="Пошук на Prom.ua"
                     >
@@ -544,7 +544,7 @@ export default function PricingClient({ rows, categories }: Props) {
                         display: 'inline-flex', alignItems: 'center', gap: 3,
                         padding: '1px 6px', borderRadius: 4,
                         background: '#FFF8F0', border: '1px solid #FBBF24',
-                        color: '#92400E', textDecoration: 'none',
+                        color: 'var(--text-warn-dark)', textDecoration: 'none',
                         fontFamily: 'sans-serif', fontWeight: 600, fontSize: 10,
                         whiteSpace: 'nowrap',
                       }}
@@ -560,7 +560,7 @@ export default function PricingClient({ rows, categories }: Props) {
                 </div>
 
                 {/* Prices */}
-                <span style={{ textAlign: 'right', fontWeight: 700, fontSize: 13, color: '#1E3A5F' }}>{fmt(row.our_price_retail)}</span>
+                <span style={{ textAlign: 'right', fontWeight: 700, fontSize: 13, color: 'var(--navy)' }}>{fmt(row.our_price_retail)}</span>
                 <span style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: '#374151' }}>{fmt(row.our_price)}</span>
                 <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.market_min ?? null)}</span>
 
@@ -590,7 +590,7 @@ export default function PricingClient({ rows, categories }: Props) {
                 {/* Delta */}
                 <span style={{
                   textAlign: 'right', fontWeight: 700, fontSize: 13,
-                  color: delta == null ? '#9CA3AF'
+                  color: delta == null ? 'var(--text-gray-light)'
                        : delta > 10   ? '#EF4444'
                        : delta > 0    ? '#F59E0B'
                        : delta < -10  ? '#3B82F6'
@@ -605,7 +605,7 @@ export default function PricingClient({ rows, categories }: Props) {
                 </div>
 
                 {/* Checked at */}
-                <div style={{ textAlign: 'center', fontSize: 12, color: '#9CA3AF' }}>
+                <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-gray-light)' }}>
                   {c?.checked_at ? relTime(c.checked_at) : '—'}
                 </div>
 
@@ -619,7 +619,7 @@ export default function PricingClient({ rows, categories }: Props) {
                       padding: '5px 8px', borderRadius: 7,
                       background: 'transparent', border: '1.5px solid #E5E7EB',
                       cursor: isLoading ? 'not-allowed' : 'pointer',
-                      color: '#6B7280', display: 'flex', alignItems: 'center',
+                      color: 'var(--text-gray)', display: 'flex', alignItems: 'center',
                     }}
                   >
                     <RefreshCw size={14} style={isLoading ? { animation: 'spin 1s linear infinite' } : {}} />
@@ -631,7 +631,7 @@ export default function PricingClient({ rows, categories }: Props) {
                       style={{
                         padding: '5px 8px', borderRadius: 7,
                         background: 'transparent', border: '1.5px solid #E5E7EB',
-                        cursor: 'pointer', color: '#6B7280',
+                        cursor: 'pointer', color: 'var(--text-gray)',
                         display: 'flex', alignItems: 'center',
                       }}
                     >
@@ -660,7 +660,7 @@ export default function PricingClient({ rows, categories }: Props) {
       {batchProgress && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24,
-          background: '#1D4ED8', color: '#fff',
+          background: 'var(--color-info)', color: '#fff',
           padding: '12px 20px', borderRadius: 12,
           fontSize: 14, fontWeight: 600,
           boxShadow: '0 4px 24px rgba(0,0,0,0.2)',

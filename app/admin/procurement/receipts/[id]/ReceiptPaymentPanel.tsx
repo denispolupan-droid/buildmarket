@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { CheckCircle, Banknote, Loader2, X, Clock } from 'lucide-react';
 import { showToast } from '../../../../../lib/toast';
 import { Modal } from '../../../../components/admin/ui/Modal';
+import { fmtMoney as fmt } from '../../../../../lib/format';
 
 type PaymentMode = 'transfer' | 'deferred' | 'cash';
 type PaymentEntry = { created_at: string; amount: number; payment_mode: string | null };
@@ -18,9 +19,6 @@ const lbl: React.CSSProperties = {
   display: 'block', marginBottom: '4px', textTransform: 'uppercase',
 };
 
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 function payModeLabel(mode: string | null) {
   if (mode === 'cash')     return '💵 Готівка';
   if (mode === 'transfer') return '🏦 Переказ';
@@ -143,7 +141,7 @@ export default function ReceiptPaymentPanel({
               style={{
                 flex: 1, height: '34px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                 border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
-                background: payMode === m.key ? '#1E3A5F' : 'var(--bg-soft)',
+                background: payMode === m.key ? 'var(--navy)' : 'var(--bg-soft)',
                 color:      payMode === m.key ? '#fff'    : 'var(--text-secondary)',
                 transition: 'all 0.15s',
               }}>
@@ -160,13 +158,13 @@ export default function ReceiptPaymentPanel({
             <label style={lbl}>Оплатити до</label>
             <input style={inp} type="date" value={deferDate} onChange={e => setDeferDate(e.target.value)} />
           </div>
-          <div style={{ padding: '8px 12px', background: '#FFF7ED', borderRadius: '8px', fontSize: '12px', color: '#92400E' }}>
+          <div style={{ padding: '8px 12px', background: '#FFF7ED', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
             📌 Товар оприходовано. Оплату буде зроблено до {deferDate ? new Date(deferDate).toLocaleDateString('uk-UA') : '—'}.
             Проводки в леджері будуть записані при фактичній оплаті.
           </div>
           <button
             onClick={handlePay} disabled={paying}
-            style={{ height: '40px', borderRadius: '8px', border: 'none', background: '#B45309', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            style={{ height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-warn)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
             {paying ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Clock size={14} />}
             {paying ? 'Зберігаємо...' : 'Зберегти відстрочку'}
           </button>
@@ -191,8 +189,8 @@ export default function ReceiptPaymentPanel({
             disabled={paying || !payAmount || parseFloat(payAmount) <= 0}
             style={{
               height: '40px', borderRadius: '8px', border: 'none',
-              background: !payAmount || parseFloat(payAmount) <= 0 ? '#E2E8F0' : '#15803D',
-              color:      !payAmount || parseFloat(payAmount) <= 0 ? '#94A3B8' : '#fff',
+              background: !payAmount || parseFloat(payAmount) <= 0 ? 'var(--border)' : 'var(--color-success)',
+              color:      !payAmount || parseFloat(payAmount) <= 0 ? 'var(--text-muted)' : '#fff',
               fontSize: '14px', fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             }}>
@@ -207,10 +205,10 @@ export default function ReceiptPaymentPanel({
     <>
       <div style={{
         background: 'var(--bg-card)',
-        border: `1px solid ${isPaid ? '#86EFAC' : isDeferred ? '#FDE68A' : 'var(--border)'}`,
+        border: `1px solid ${isPaid ? 'var(--border-success)' : isDeferred ? '#FDE68A' : 'var(--border)'}`,
         borderRadius: '12px', padding: '16px',
       }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: isPaid ? '#15803D' : isDeferred ? '#B45309' : 'var(--text-muted)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: isPaid ? 'var(--color-success)' : isDeferred ? 'var(--color-warn)' : 'var(--text-muted)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
           <Banknote size={15} color={isPaid ? '#15803D' : isDeferred ? '#B45309' : undefined} />
           Оплата постачальнику
         </div>
@@ -218,14 +216,14 @@ export default function ReceiptPaymentPanel({
         {/* ── Повністю оплачено ── */}
         {isPaid && !editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '8px', fontSize: '13px', color: '#15803D', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '10px 12px', background: 'var(--bg-success)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckCircle size={16} /> Повністю оплачено</span>
               <span>{fmt(totalPaid)} ₴</span>
             </div>
             {history.map((p, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 10px', background: 'var(--bg-soft)', borderRadius: '6px', fontSize: '12px' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</span>
-                <span style={{ fontWeight: 700, color: '#15803D' }}>{fmt(p.amount)} ₴</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{fmt(p.amount)} ₴</span>
               </div>
             ))}
             {!showAdd && (
@@ -240,7 +238,7 @@ export default function ReceiptPaymentPanel({
                 <button onClick={() => setShowAdd(false)} style={{ marginTop: '6px', height: '28px', width: '100%', borderRadius: '7px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Скасувати</button>
               </div>
             )}
-            <button onClick={() => setShowReverse(true)} style={{ height: '28px', borderRadius: '7px', border: '1px solid #FCA5A5', background: 'none', color: '#DC2626', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setShowReverse(true)} style={{ height: '28px', borderRadius: '7px', border: '1px solid var(--border-danger)', background: 'none', color: 'var(--color-danger)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
               ↩ Скасувати оплату (Admin)
             </button>
           </div>
@@ -248,7 +246,7 @@ export default function ReceiptPaymentPanel({
         /* ── Відстрочка ── */
         ) : isDeferred && !editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '13px', color: '#92400E', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '13px', color: 'var(--text-warn-dark)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Clock size={16} /> Відстрочка
               </span>
@@ -256,10 +254,10 @@ export default function ReceiptPaymentPanel({
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', padding: '2px 4px' }}>
               <span>До сплати</span>
-              <span style={{ fontWeight: 700, color: '#B45309' }}>{fmt(totalCost)} ₴</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-warn)' }}>{fmt(totalCost)} ₴</span>
             </div>
             <button onClick={() => { setEditing(true); setPayMode('transfer'); setPayAmount(String(totalCost.toFixed(2))); }}
-              style={{ height: '36px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+              style={{ height: '36px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
               💳 Провести оплату
             </button>
             <button onClick={() => setEditing(true)}
@@ -271,25 +269,25 @@ export default function ReceiptPaymentPanel({
         /* ── Часткова оплата ── */
         ) : history.length > 0 && !editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ padding: '8px 12px', background: '#FFFBEB', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ padding: '8px 12px', background: 'var(--bg-warn)', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Оплачено</span>
-                <span style={{ fontWeight: 700, color: '#15803D' }}>{fmt(totalPaid)} ₴</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{fmt(totalPaid)} ₴</span>
               </div>
               {remaining > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Залишилось</span>
-                  <span style={{ fontWeight: 700, color: '#DC2626' }}>{fmt(remaining)} ₴</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(remaining)} ₴</span>
                 </div>
               )}
               <div style={{ marginTop: '4px', height: '4px', background: '#E5E7EB', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : '#15803D', borderRadius: '2px', width: `${Math.min(100, totalCost > 0 ? (totalPaid / totalCost) * 100 : 0)}%`, transition: 'width 0.3s' }} />
+                <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : 'var(--color-success)', borderRadius: '2px', width: `${Math.min(100, totalCost > 0 ? (totalPaid / totalCost) * 100 : 0)}%`, transition: 'width 0.3s' }} />
               </div>
             </div>
             {history.map((p, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 10px', background: 'var(--bg-soft)', borderRadius: '6px', fontSize: '11px' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</span>
-                <span style={{ fontWeight: 700, color: '#15803D' }}>{fmt(p.amount)} ₴</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{fmt(p.amount)} ₴</span>
               </div>
             ))}
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -297,7 +295,7 @@ export default function ReceiptPaymentPanel({
                 ✏️ Редагувати
               </button>
               {remaining > 0 && (
-                <button onClick={() => setEditing(true)} style={{ flex: 1, height: '32px', borderRadius: '8px', border: 'none', background: '#15803D', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => setEditing(true)} style={{ flex: 1, height: '32px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                   + Ще оплату
                 </button>
               )}
@@ -312,13 +310,13 @@ export default function ReceiptPaymentPanel({
                 {history.map((p, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>{payModeLabel(p.payment_mode)} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</span>
-                    <span style={{ fontWeight: 700, color: '#15803D' }}>{fmt(p.amount)} ₴</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{fmt(p.amount)} ₴</span>
                   </div>
                 ))}
                 {remaining > 0 && totalCost > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px solid var(--border-light)', marginTop: '2px' }}>
-                    <span style={{ color: '#DC2626', fontWeight: 600 }}>Залишилось</span>
-                    <span style={{ fontWeight: 700, color: '#DC2626' }}>{fmt(remaining)} ₴</span>
+                    <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>Залишилось</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(remaining)} ₴</span>
                   </div>
                 )}
               </div>
@@ -337,10 +335,10 @@ export default function ReceiptPaymentPanel({
       {showReverse && (
         <Modal open onClose={() => setShowReverse(false)} width={420} padding={0} aria-label="Сторно оплати">
           <div style={{ background: 'var(--bg-card)', padding: '28px', width: '100%' }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-danger)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <X size={16} /> Скасувати оплату?
             </div>
-            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: '#92400E', marginBottom: '16px' }}>
+            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)', marginBottom: '16px' }}>
               ⚠ Буде проведено компенсуючу проводку в леджері. Дія тільки для адміністратора.
             </div>
             <div style={{ marginBottom: '16px' }}>
@@ -353,7 +351,7 @@ export default function ReceiptPaymentPanel({
                 Назад
               </button>
               <button onClick={handleReverse} disabled={reversing}
-                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#fff', cursor: reversing ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: reversing ? 0.7 : 1 }}>
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: '#fff', cursor: reversing ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: reversing ? 0.7 : 1 }}>
                 {reversing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
                 Скасувати оплату
               </button>

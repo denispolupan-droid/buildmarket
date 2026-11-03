@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { fmtAbs as fmt } from '../../../../lib/format';
 
 export type CashflowEntry = {
   id:           string;
@@ -30,10 +31,6 @@ function docHref(e: CashflowEntry): string | null {
   if (e.doc_type === 'receipt' || e.doc_type === 'stock_in') return `/admin/procurement/receipts/${e.doc_id}`;
   if (e.doc_type === 'sale' || e.doc_type === 'payment') return `/admin/accounting/documents/${e.doc_id}`;
   return null;
-}
-
-function fmt(n: number) {
-  return Math.abs(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtBalance(n: number) {
@@ -283,9 +280,9 @@ export default function CashflowClient({ entries, openingByAccount, defaultFrom,
               }}>
                 <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>{dayLabel}</span>
                 <span style={{ fontSize: '11.5px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
-                  {g.dayIn > 0 && <span style={{ color: '#15803D', fontWeight: 600 }}>+{fmt0(g.dayIn)} ₴</span>}
+                  {g.dayIn > 0 && <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>+{fmt0(g.dayIn)} ₴</span>}
                   {g.dayIn > 0 && g.dayOut < 0 && ' · '}
-                  {g.dayOut < 0 && <span style={{ color: '#DC2626', fontWeight: 600 }}>−{fmt0(g.dayOut)} ₴</span>}
+                  {g.dayOut < 0 && <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>−{fmt0(g.dayOut)} ₴</span>}
                 </span>
               </div>
 
@@ -332,7 +329,7 @@ export default function CashflowClient({ entries, openingByAccount, defaultFrom,
                           : <ArrowUpRight  size={13} color="#DC2626" />}
                         <span style={{
                           fontSize: '14px', fontWeight: 700,
-                          color: isIn ? '#15803D' : '#DC2626',
+                          color: isIn ? 'var(--color-success)' : 'var(--color-danger)',
                           fontVariantNumeric: 'tabular-nums',
                         }}>
                           {isIn ? '+' : '−'}{fmt(e.amount)} ₴
@@ -345,7 +342,7 @@ export default function CashflowClient({ entries, openingByAccount, defaultFrom,
                       <div style={{ textAlign: 'right' }}>
                         <span style={{
                           fontSize: '13px', fontWeight: 600,
-                          color: e.balance >= 0 ? 'var(--text-primary)' : '#DC2626',
+                          color: e.balance >= 0 ? 'var(--text-primary)' : 'var(--color-danger)',
                           fontVariantNumeric: 'tabular-nums',
                         }}>
                           {fmtBalance(e.balance)} ₴

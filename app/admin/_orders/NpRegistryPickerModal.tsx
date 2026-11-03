@@ -17,10 +17,10 @@ export function NpRegistryPickerModal() {
         // Світлий фон як і раніше: кольори тексту всередині задані під білу картку.
         <Modal open onClose={() => setRegistryPick(null)} width={420} padding={24} style={{ background: '#fff' }} aria-label="Реєстр НП">
           <div>
-            <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>
+            <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: 'var(--navy)' }}>
               Реєстр НП · {registryPick.items.length} ТТН
             </div>
-            <div style={{ fontSize: '12.5px', color: '#6B7280', marginBottom: '16px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '12.5px', color: 'var(--text-gray)', marginBottom: '16px', lineHeight: 1.5 }}>
               За сьогодні вже є {registryPick.sheets.length === 1 ? 'відкритий реєстр' : 'відкриті реєстри'} — додати туди чи створити новий?
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
@@ -67,8 +67,8 @@ export function NpRegistryPickerModal() {
         return (
           <Modal open onClose={() => setShipModal(null)} dismissible={false} width={480} padding="28px 28px 24px" style={{ background: '#fff' }} aria-label="Відвантаження">
             <div>
-              <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: '#1E3A5F' }}>Відвантаження</div>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '20px' }}>
+              <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: 'var(--navy)' }}>Відвантаження</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-gray)', marginBottom: '20px' }}>
                 Вкажіть кількість для відвантаження (можна змінити для часткового відвантаження)
               </div>
               {/* TTN field for Prom orders */}
@@ -82,16 +82,16 @@ export function NpRegistryPickerModal() {
                     placeholder="Номер відправлення..."
                     value={shipModal.ttn}
                     onChange={e => setShipModal(prev => prev ? { ...prev, ttn: e.target.value } : null)}
-                    style={{ width: '100%', height: '36px', padding: '0 10px', border: '1.5px solid #FED7AA', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box', outline: 'none', color: '#92400E', background: '#FFFBEB' }}
+                    style={{ width: '100%', height: '36px', padding: '0 10px', border: '1.5px solid #FED7AA', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box', outline: 'none', color: 'var(--text-warn-dark)', background: 'var(--bg-warn)' }}
                   />
                 </div>
               )}
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '20px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
-                    <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Товар</th>
-                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: '#6B7280', fontSize: '11px', whiteSpace: 'nowrap' }}>Замовл.</th>
-                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: '#6B7280', fontSize: '11px', whiteSpace: 'nowrap' }}>Відвант.</th>
+                    <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px' }}>Товар</th>
+                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Замовл.</th>
+                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Відвант.</th>
                     <th style={{ textAlign: 'center', padding: '4px 0', fontWeight: 600, color: '#166534', fontSize: '11px', whiteSpace: 'nowrap' }}>Зараз</th>
                   </tr>
                 </thead>
@@ -100,10 +100,10 @@ export function NpRegistryPickerModal() {
                     <tr key={item.sku} style={{ borderBottom: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '8px 0' }}>
                         <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{itemTitle(item)}</div>
-                        <div style={{ fontSize: '10px', color: '#9CA3AF', fontFamily: 'monospace' }}>{item.sku}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-gray-light)', fontFamily: 'monospace' }}>{item.sku}</div>
                       </td>
                       <td style={{ textAlign: 'center', padding: '8px', color: '#374151' }}>{item.orderQty}</td>
-                      <td style={{ textAlign: 'center', padding: '8px', color: item.shippedQty > 0 ? '#059669' : '#9CA3AF' }}>
+                      <td style={{ textAlign: 'center', padding: '8px', color: item.shippedQty > 0 ? '#059669' : 'var(--text-gray-light)' }}>
                         {item.shippedQty > 0 ? item.shippedQty : '—'}
                       </td>
                       <td style={{ textAlign: 'center', padding: '8px 0' }}>
@@ -111,7 +111,7 @@ export function NpRegistryPickerModal() {
                           type="number" min={0} max={item.orderQty - item.shippedQty}
                           value={item.shipQty}
                           onChange={e => updateQty(item.sku, parseInt(e.target.value) || 0)}
-                          style={{ width: '60px', textAlign: 'center', border: '1.5px solid #86EFAC', borderRadius: '6px', padding: '4px 6px', fontSize: '13px', fontWeight: 700, color: '#166534' }}
+                          style={{ width: '60px', textAlign: 'center', border: '1.5px solid var(--border-success)', borderRadius: '6px', padding: '4px 6px', fontSize: '13px', fontWeight: 700, color: '#166534' }}
                         />
                       </td>
                     </tr>
@@ -119,7 +119,7 @@ export function NpRegistryPickerModal() {
                 </tbody>
               </table>
               {isPartial && (
-                <div style={{ fontSize: '11px', color: '#92400E', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-warn-dark)', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px' }}>
                   ⚠ Часткове відвантаження — буде створена окрема ВН. Залишок можна відвантажити пізніше.
                 </div>
               )}
@@ -135,7 +135,7 @@ export function NpRegistryPickerModal() {
                     shipModal.isProm && shipModal.ttn ? shipModal.ttn : undefined,
                   )}
                   disabled={!hasAny || shipping === shipModal.orderId}
-                  style={{ height: '38px', padding: '0 24px', borderRadius: '9px', border: 'none', background: hasAny ? '#166534' : '#9CA3AF', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: hasAny ? 'pointer' : 'not-allowed' }}>
+                  style={{ height: '38px', padding: '0 24px', borderRadius: '9px', border: 'none', background: hasAny ? '#166534' : 'var(--text-gray-light)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: hasAny ? 'pointer' : 'not-allowed' }}>
                   <Truck size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
                   {isPartial ? 'Відвантажити частково' : 'Відвантажити'}
                 </button>

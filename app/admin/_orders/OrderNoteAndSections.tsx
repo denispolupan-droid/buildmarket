@@ -148,7 +148,7 @@ export function OrderNoteAndSections({ order }: {
                           ? `Цифри з бухгалтерських проводок (проведено РН: ${fact.posted_docs}). Враховано FIFO-собівартість, усі збори маркетплейсу та повернення.`
                           : 'Попередня оцінка до проведення продажу: собівартість за поточними цінами закупівлі, комісія — розрахунок за ставками маркетплейсу.'}
                         style={{ fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '999px', letterSpacing: '0.03em', textTransform: 'uppercase',
-                          color: isFact ? '#15803D' : '#B45309', background: isFact ? '#DCFCE7' : '#FEF3C7' }}>
+                          color: isFact ? 'var(--color-success)' : 'var(--color-warn)', background: isFact ? '#DCFCE7' : '#FEF3C7' }}>
                         {isFact ? 'Факт' : 'Оцінка'}
                       </span>
                     </div>
@@ -175,8 +175,8 @@ export function OrderNoteAndSections({ order }: {
                 const hasAny = order.items.some(i => (received[i.sku] ?? 0) > 0);
                 if (!hasAny) return null;
                 return (
-                  <div style={{ marginTop: '10px', padding: '10px 12px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                  <div style={{ marginTop: '10px', padding: '10px 12px', background: 'var(--bg-success)', border: '1px solid #BBF7D0', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
                       📥 Отримано на склад
                     </div>
                     {order.items.map(item => {
@@ -190,12 +190,12 @@ export function OrderNoteAndSections({ order }: {
                             <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
                               {item.name}
                             </span>
-                            <span style={{ fontWeight: 700, color: full ? '#15803D' : '#B45309', flexShrink: 0 }}>
+                            <span style={{ fontWeight: 700, color: full ? 'var(--color-success)' : 'var(--color-warn)', flexShrink: 0 }}>
                               {rcv} / {item.qty} шт {full ? '✓' : ''}
                             </span>
                           </div>
                           <div style={{ height: '4px', background: '#D1FAE5', borderRadius: '2px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: full ? '#15803D' : '#F59E0B', borderRadius: '2px', transition: 'width 0.3s' }} />
+                            <div style={{ height: '100%', width: `${pct}%`, background: full ? 'var(--color-success)' : '#F59E0B', borderRadius: '2px', transition: 'width 0.3s' }} />
                           </div>
                         </div>
                       );
@@ -222,7 +222,7 @@ export function OrderNoteAndSections({ order }: {
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong></span>
                         {activePct > 0
-                          ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', background: '#FEF3C7', borderRadius: '5px', padding: '1px 7px' }}>−{activePct}%</span>
+                          ? <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', borderRadius: '5px', padding: '1px 7px' }}>−{activePct}%</span>
                           : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+ знижка</span>}
                       </span>
                       <span style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
@@ -258,7 +258,7 @@ export function OrderNoteAndSections({ order }: {
                           return (
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
-                              <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#B45309', background: '#FFFBEB' }}>
+                              <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--color-warn)', background: 'var(--bg-warn)' }}>
                                 −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
                               </div>
                             </div>
@@ -290,7 +290,7 @@ export function OrderNoteAndSections({ order }: {
                             />
                             <button
                               onClick={() => applyDiscount(order.id, mode, parseFloat(discInput[order.id] ?? ''))}
-                              style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: '#EFF6FF', color: '#1E3A5F', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              style={{ height: '30px', padding: '0 10px', border: '1px solid #93C5FD', background: 'var(--brand-blue-light)', color: 'var(--navy)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                             >OK</button>
                           </div>
                           {activePct > 0 && (
@@ -326,8 +326,8 @@ export function OrderNoteAndSections({ order }: {
                             title={disabled ? 'Немає товару на власному складі' : undefined}
                             style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', textAlign: 'center',
                               cursor: disabled ? 'not-allowed' : 'pointer',
-                              border: `1.5px solid ${active ? '#1E3A5F' : 'var(--border)'}`,
-                              background: disabled ? 'var(--bg-soft)' : active ? '#1E3A5F' : 'var(--bg-card)',
+                              border: `1.5px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
+                              background: disabled ? 'var(--bg-soft)' : active ? 'var(--navy)' : 'var(--bg-card)',
                               color: disabled ? 'var(--text-muted)' : active ? '#fff' : 'var(--text-secondary)',
                               opacity: disabled ? 0.5 : 1 }}>
                             {label}
@@ -353,7 +353,7 @@ export function OrderNoteAndSections({ order }: {
                     {suppliersList.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
                   </select>
                   {order.status === 'shipped' && !order.shipping_supplier_id && (
-                    <div style={{ fontSize: '10px', color: '#B45309', marginTop: '4px', lineHeight: 1.3 }}>⚠ Постачальника не підтверджено — борг віднесено за мапінгом</div>
+                    <div style={{ fontSize: '10px', color: 'var(--color-warn)', marginTop: '4px', lineHeight: 1.3 }}>⚠ Постачальника не підтверджено — борг віднесено за мапінгом</div>
                   )}
                 </div>
               )}
@@ -396,7 +396,7 @@ export function OrderNoteAndSections({ order }: {
                         деталізація по поставщику. Показуємо тільки резерв (його немає вгорі). */}
                     {activeReservations.length > 0 && (
                       <div style={{ display: 'flex', padding: '7px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
-                        <span style={{ background: '#DCFCE7', color: '#15803D', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
+                        <span style={{ background: '#DCFCE7', color: 'var(--color-success)', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
                           ✓ Зарезервовано: {activeReservations.length} поз.
                         </span>
                       </div>
@@ -413,7 +413,7 @@ export function OrderNoteAndSections({ order }: {
                         <div title={`Валовий прибуток ${group.total_margin.toFixed(0)}${groupComm > 0 ? ` − комісія ${groupComm.toFixed(0)}` : ''}${groupFee > 0 ? ` − ${mpFee!.label.toLowerCase()} ${groupFee.toFixed(0)}` : ''} = ${groupNet.toFixed(0)} ₴`}
                           style={{ padding: '7px 12px', background: 'var(--bg-soft)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                           <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
-                          <span style={{ color: groupNet >= 0 ? '#15803D' : '#DC2626' }}>
+                          <span style={{ color: groupNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                             {groupNet >= 0 ? '+' : ''}{groupNet.toFixed(0)} грн{(hasComm || groupFee > 0) ? ' чистими' : ''}
                           </span>
                         </div>
@@ -429,7 +429,7 @@ export function OrderNoteAndSections({ order }: {
                                 title={hasComm && c ? `Валовий прибуток ${item.margin.toFixed(0)} − комісія ${c.amt.toFixed(0)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
                                 {item.cost_price.toFixed(0)}→{item.sale_price.toFixed(0)}{hasComm && c ? ` −${c.amt.toFixed(0)}к` : ''}
                               </span>
-                              <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: net >= 0 ? '#15803D' : '#DC2626' }}>
+                              <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                                 {net >= 0 ? '+' : ''}{net.toFixed(0)} грн
                               </span>
                             </div>

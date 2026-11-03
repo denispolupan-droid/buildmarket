@@ -46,7 +46,7 @@ export default function PeriodBar({ dateFrom, dateTo }: { dateFrom: string; date
       <span style={{ color: 'var(--text-muted)' }}>—</span>
       <input type="date" value={to} onChange={e => setTo(e.target.value)} style={inp} aria-label="Кінець періоду" />
       <button type="button" onClick={() => go(from, to)} disabled={!from || !to || from > to}
-        style={{ height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        style={{ height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
         <RefreshCw size={13} /> Показати
       </button>
       <span style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />

@@ -29,7 +29,7 @@ export default function SyncButton({ supplierId }: { supplierId: number }) {
       <button onClick={handleSync} disabled={syncing} style={{
         display: 'flex', alignItems: 'center', gap: '7px',
         height: '36px', padding: '0 16px', borderRadius: '8px',
-        border: 'none', background: '#1E3A5F', color: '#fff',
+        border: 'none', background: 'var(--navy)', color: '#fff',
         fontSize: '13px', fontWeight: 700, cursor: syncing ? 'wait' : 'pointer',
         opacity: syncing ? 0.7 : 1,
       }}>
@@ -37,12 +37,12 @@ export default function SyncButton({ supplierId }: { supplierId: number }) {
         {syncing ? 'Синхронізація...' : 'Синхронізувати зараз'}
       </button>
       {result && !result.error && (
-        <span style={{ fontSize: '13px', color: '#15803D', fontWeight: 600 }}>
+        <span style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>
           ✓ Оновлено {result.rows_updated} позицій
         </span>
       )}
       {result?.error && (
-        <span style={{ fontSize: '13px', color: '#DC2626' }}>{result.error}</span>
+        <span style={{ fontSize: '13px', color: 'var(--color-danger)' }}>{result.error}</span>
       )}
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>

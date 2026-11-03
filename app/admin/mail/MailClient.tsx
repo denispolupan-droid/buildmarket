@@ -186,7 +186,7 @@ function ComposeModal({ onClose, replyTo, senders }: {
           <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-secondary)' }}>
             Скасувати
           </button>
-          <button onClick={send} disabled={sending} style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', cursor: sending ? 'default' : 'pointer', fontSize: '14px', fontWeight: 600, opacity: sending ? 0.7 : 1 }}>
+          <button onClick={send} disabled={sending} style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', cursor: sending ? 'default' : 'pointer', fontSize: '14px', fontWeight: 600, opacity: sending ? 0.7 : 1 }}>
             {sending ? 'Відправка...' : 'Відправити'}
           </button>
         </div>
@@ -302,14 +302,14 @@ export default function MailClient() {
 
   if (!connected) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
-      <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'var(--brand-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Mail size={28} color="#1E3A5F" />
       </div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>Пошта не підключена</div>
         <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Підключіть Zoho Mail для роботи з поштою</div>
       </div>
-      <a href="/api/admin/mail/oauth/authorize" style={{ padding: '10px 24px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
+      <a href="/api/admin/mail/oauth/authorize" style={{ padding: '10px 24px', borderRadius: '10px', background: 'var(--navy)', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
         Підключити Zoho Mail
       </a>
     </div>
@@ -324,7 +324,7 @@ export default function MailClient() {
       <div className="mail-folders" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', padding: '16px 0' }}>
         <button
           onClick={() => { setCompose(true); setReplyData(undefined); }}
-          style={{ margin: '0 12px 16px', padding: '9px 14px', borderRadius: '10px', background: '#1E3A5F', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          style={{ margin: '0 12px 16px', padding: '9px 14px', borderRadius: '10px', background: 'var(--navy)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
         >
           <Pencil size={14} /> Написати
         </button>

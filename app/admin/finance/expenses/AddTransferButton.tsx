@@ -83,7 +83,7 @@ export default function AddTransferButton() {
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} />
           </div>
           <button onClick={submit} disabled={saving}
-            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Зберігаємо…' : 'Провести переказ'}
           </button>
         </div>

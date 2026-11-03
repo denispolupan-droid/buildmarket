@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { fmtInt as fmt } from '../../../../lib/format';
 
 type ReorderRow = {
   sku: string;
@@ -15,10 +16,6 @@ type ReorderRow = {
   demand: { orders: number; qty: number } | null;
   warehouse_id: number;
 };
-
-function fmt(n: number) {
-  return n.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
-}
 
 export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -61,18 +58,18 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
       {/* Toolbar */}
       {selected.size > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '10px 14px', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '10px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3A5F' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>
             Вибрано: {selected.size} позицій
           </span>
           <button
             onClick={openPO}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: '#1E3A5F', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
           >
             <ShoppingCart size={13} /> Створити ЗП
           </button>
           <button
             onClick={() => setSelected(new Set())}
-            style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: '12px', color: 'var(--text-soft)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             Скасувати
           </button>
@@ -108,9 +105,9 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
                 display: 'grid', gridTemplateColumns: col, gap: '8px',
                 padding: '10px 16px', alignItems: 'center',
                 borderBottom: !isLast ? '1px solid var(--border-light)' : 'none',
-                background: isSel ? '#EFF6FF' : 'transparent',
+                background: isSel ? 'var(--brand-blue-light)' : 'transparent',
                 cursor: 'pointer',
-                borderLeft: `3px solid ${row.qty_total === 0 ? '#DC2626' : '#F59E0B'}`,
+                borderLeft: `3px solid ${row.qty_total === 0 ? 'var(--color-danger)' : '#F59E0B'}`,
               }}
               onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-soft)'; }}
               onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
@@ -133,27 +130,27 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
                   {row.name}
                 </div>
                 {/* Mini progress bar */}
-                <div style={{ height: '3px', background: '#E2E8F0', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: row.qty_total === 0 ? '#DC2626' : '#F59E0B', borderRadius: '2px' }} />
+                <div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: row.qty_total === 0 ? 'var(--color-danger)' : '#F59E0B', borderRadius: '2px' }} />
                 </div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '14px', fontWeight: 800, color: row.qty_total === 0 ? '#DC2626' : '#B45309' }}>
+                <span style={{ fontSize: '14px', fontWeight: 800, color: row.qty_total === 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>
                   {row.qty_total} шт
                 </span>
               </div>
 
               <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 {row.min_reorder_qty} шт
-                <div style={{ fontSize: '10px', color: '#DC2626', fontWeight: 600 }}>
+                <div style={{ fontSize: '10px', color: 'var(--color-danger)', fontWeight: 600 }}>
                   −{shortage} шт
                 </div>
               </div>
 
               <div style={{ textAlign: 'right', fontSize: '12px' }}>
                 {row.ordered_qty > 0 ? (
-                  <span style={{ fontWeight: 700, color: fullyOrdered ? '#15803D' : '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px' }}>
+                  <span style={{ fontWeight: 700, color: fullyOrdered ? 'var(--color-success)' : 'var(--color-warn)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px' }}>
                     {fullyOrdered && <CheckCircle2 size={11} />}
                     {row.ordered_qty} шт
                   </span>
@@ -169,10 +166,10 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
               <div style={{ textAlign: 'center' }}>
                 {row.demand ? (
                   <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#92400E' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-warn-dark)' }}>
                       🛒 {row.demand.orders} зам.
                     </span>
-                    <span style={{ fontSize: '10px', color: '#B45309' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--color-warn)' }}>
                       {row.demand.qty} шт
                     </span>
                   </div>
@@ -184,7 +181,7 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
               <button
                 onClick={e => { e.stopPropagation(); setSelected(new Set([row.sku])); openPO(); }}
                 title="Створити ЗП"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', color: '#1E3A5F' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--navy)' }}
               >
                 <ShoppingCart size={13} />
               </button>

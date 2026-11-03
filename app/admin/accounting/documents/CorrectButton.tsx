@@ -36,8 +36,8 @@ export default function CorrectButton({ documentId, docNumber }: { documentId: s
         style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           height: '34px', padding: '0 14px', borderRadius: '8px',
-          border: '1.5px solid #93C5FD', background: '#EFF6FF',
-          color: '#1D4ED8', fontSize: '12px', fontWeight: 700,
+          border: '1.5px solid #93C5FD', background: 'var(--brand-blue-light)',
+          color: 'var(--color-info)', fontSize: '12px', fontWeight: 700,
           cursor: loading ? 'not-allowed' : 'pointer',
           opacity: loading ? 0.6 : 1,
         }}
@@ -45,7 +45,7 @@ export default function CorrectButton({ documentId, docNumber }: { documentId: s
         <Pencil size={13} /> {loading ? 'Виправлення...' : 'Виправити'}
       </button>
       {error && (
-        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', color: '#DC2626', fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: 'var(--bg-danger)', border: '1.5px solid var(--border-danger)', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', color: 'var(--color-danger)', fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
           {error}
         </div>
       )}
