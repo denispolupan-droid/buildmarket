@@ -2674,11 +2674,12 @@ export type Database = {
           external_order_num: string | null
           id: string
           imported_at: string
-          marketplace_id: number
+          marketplace: string
           our_order_id: string | null
           processed_at: string | null
           processing_error: string | null
           raw_payload: Json
+          result: string
           status_external: string
           status_mapped: string | null
           total_amount: number | null
@@ -2696,12 +2697,13 @@ export type Database = {
           external_order_num?: string | null
           id?: string
           imported_at?: string
-          marketplace_id: number
+          marketplace: string
           our_order_id?: string | null
           processed_at?: string | null
           processing_error?: string | null
           raw_payload?: Json
-          status_external: string
+          result?: string
+          status_external?: string
           status_mapped?: string | null
           total_amount?: number | null
           tracking_number?: string | null
@@ -2718,7 +2720,8 @@ export type Database = {
           external_order_num?: string | null
           id?: string
           imported_at?: string
-          marketplace_id?: number
+          marketplace?: string
+          result?: string
           our_order_id?: string | null
           processed_at?: string | null
           processing_error?: string | null
@@ -2730,10 +2733,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "marketplace_orders_marketplace_id_fkey"
-            columns: ["marketplace_id"]
+            foreignKeyName: "marketplace_orders_our_order_id_fkey"
+            columns: ["our_order_id"]
             isOneToOne: false
-            referencedRelation: "marketplace_accounts"
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]

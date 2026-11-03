@@ -2,6 +2,7 @@ import { findCustomerIdByPhone } from '../customers';
 import { createServiceClient, asJson, type TableInsert } from '../supabase-service';
 import { log } from '../log';
 import type { MarketplaceAdapter } from './adapter';
+import { stageMarketplaceImport } from './staging';
 
 type Db = ReturnType<typeof createServiceClient>;
 
@@ -18,9 +19,17 @@ export type ImportResult =
  *     unique-індекси на *_order_id і так не пустять дубль, але так не буде
  *     помилки в логах і зайвого клієнта);
  *  2. клієнт — за нормалізованим телефоном (lib/customers), інакше новий retail;
- *  3. вставляємо замовлення зі статусом new, знімком payload і _commission.
+ *  3. вставляємо замовлення зі статусом new, знімком payload і _commission;
+ *  4. перша зустріч (created/skipped/error) лягає в staging marketplace_orders
+ *     із сирим payload — слід для розбору й повторного імпорту (міграція 153).
  */
 export async function importMarketplaceOrder<Raw>(db: Db, adapter: MarketplaceAdapter<Raw>, raw: Raw): Promise<ImportResult> {
+  const result = await importOnce(db, adapter, raw);
+  await stageMarketplaceImport(db, adapter, raw, result);
+  return result;
+}
+
+async function importOnce<Raw>(db: Db, adapter: MarketplaceAdapter<Raw>, raw: Raw): Promise<ImportResult> {
   const externalId = adapter.externalId(raw);
   const { data: existing } = await db.from('orders').select('id').eq(adapter.idColumn, externalId as never).maybeSingle();
   if (existing) return { status: 'exists', orderId: existing.id };
