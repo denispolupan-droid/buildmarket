@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
+import { readSetting } from '../../../../lib/secrets';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -25,7 +26,9 @@ async function _GET() {
   const cfg: Record<string, string> = {};
   (rows ?? []).forEach(r => { cfg[r.key] = r.value; });
 
-  const apiKey    = cfg.np_api_key || process.env.NOVA_POSHTA_API_KEY || '';
+  // Ключ НП — лише з Vault (lib/secrets): у app_settings його більше немає, а
+  // запасний ключ з env — інший кабінет НП, його відправник не підходить до ТТН
+  const apiKey    = (await readSetting(serviceClient, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
   const senderRef = cfg.np_sender_ref || process.env.NP_SENDER_REF || '';
 
   if (!apiKey) return NextResponse.json({ error: 'API ключ НП не налаштовано' }, { status: 404 });

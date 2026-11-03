@@ -125,12 +125,23 @@ describe('архітектурні межі (AGENTS.md)', () => {
     // `.from('app_settings')…eq('key', '<секрет>')` повертає відкритий текст у таблицю.
     const secrets = ['np_api_key', 'prom_api_token', 'rozetka_password', 'rozetka_token', 'rozetka_api_token', 'rozetkapay_api_password', 'epicentr_api_token', 'rz_delivery_token', 'mono_personal_token', 'mono_webhook_secret', 'novapay_refresh_token', 'novapay_certificate', 'novapay_jwt', 'google_ads_client_secret', 'google_ads_developer_token', 'google_ads_refresh_token', 'EPICENTR_TOKEN_KEY', 'RZ_TOKEN_KEY', 'JWT_KEY', 'RZPAY_PASSWORD_KEY'];
     const re = new RegExp("app_settings['\"]\\)[^;]{0,120}(" + secrets.join('|') + ')');
+    // 03.11.2026, інцидент з ТТН: np-sender читав усю таблицю (`select('key, value')`)
+    // і брав `cfg.np_api_key` — перший патерн це не ловив. Після purge ключ порожній,
+    // роут упав на env-ключ іншого кабінету → «Sender does not belong to this User».
+    const dumpRe = /from\(\s*['"]app_settings['"]\s*\)\s*\.select\(\s*['"]key,\s*value['"]\s*\)(?![\s\S]{0,80}\.in\()/;
+    const propRe = new RegExp('\\.(' + secrets.join('|') + ')\\b');
     const offenders: string[] = [];
     for (const f of files) {
       if (rel(f) === 'lib/secrets.ts') continue;
       const src = read(f);
       const m = src.match(re);
       if (m) offenders.push(`${rel(f)}:${src.slice(0, m.index).split('\n').length}`);
+      // Дамп усієї таблиці + звернення до секретного ключа як до властивості —
+      // дозволено лише loadSettings (settings-data), який домішує секрети з Vault
+      if (rel(f) !== 'app/admin/settings/settings-data.ts' && dumpRe.test(src)) {
+        const p = src.match(propRe);
+        if (p) offenders.push(`${rel(f)}:${src.slice(0, p.index).split('\n').length} (дамп app_settings + .${p[1]})`);
+      }
     }
     expect(offenders, 'читай/пиши секрет через readSetting/writeSetting з lib/secrets:\n' + offenders.join('\n')).toEqual([]);
   });

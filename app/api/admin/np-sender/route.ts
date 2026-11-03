@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../lib/auth-guard';
 import { withNpRetry } from '../../../../lib/np-retry';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
+import { readSetting } from '../../../../lib/secrets';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -30,7 +31,9 @@ async function _GET() {
   (rows ?? []).forEach(r => { cfg[r.key] = r.value; });
 
   // API key: app_settings takes priority over env var
-  const apiKey      = cfg.np_api_key || process.env.NOVA_POSHTA_API_KEY || '';
+  // Ключ НП — лише з Vault (lib/secrets): у app_settings його більше немає, а
+  // запасний ключ з env — інший кабінет НП, його відправник не підходить до ТТН
+  const apiKey      = (await readSetting(serviceClient, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
   const cityRef     = cfg.np_sender_city_ref     || process.env.NP_SENDER_CITY_REF     || '';
   const senderType  = (cfg.np_sender_type as 'warehouse' | 'address') ?? 'warehouse';
   const warehouseRef  = cfg.np_sender_warehouse_ref  || process.env.NP_SENDER_WAREHOUSE_REF  || '';
