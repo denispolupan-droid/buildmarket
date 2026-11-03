@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 import { useCart, type CartItem } from '../../lib/cart';
 import { fmtMoney as fmt } from '../../lib/format';
@@ -76,7 +77,9 @@ export default function CartPeek({ items, total, lang, placement }: {
             <div className="cart-peek-side">
               <div className="cart-peek-sum">{fmt(i.price * i.qty)} ₴</div>
               <button type="button" className="cart-peek-del" onClick={() => { dropDraft(i.sku); removeItem(i.sku); }}
-                aria-label={t('Видалити', 'Удалить')} title={t('Видалити', 'Удалить')}>✕</button>
+                aria-label={t('Видалити', 'Удалить')} title={t('Видалити з кошика', 'Удалить из корзины')}>
+                <Trash2 size={12} strokeWidth={2} aria-hidden /><span aria-hidden>✕</span>
+              </button>
             </div>
           </li>
         ))}
