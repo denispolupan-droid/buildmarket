@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRzToken, getRzSender, isRzDeliveryEnabled } from '../../../../lib/rz-delivery-api';
+import { withApi } from '../../../../lib/api-handler';
 
 // Чи показувати «ROZETKA Доставку» в чекауті і до якої ваги.
 //
@@ -9,7 +10,7 @@ import { getRzToken, getRzSender, isRzDeliveryEnabled } from '../../../../lib/rz
 //
 // Токен звідси не витікає: віддаємо лише прапорець «налаштовано».
 
-export async function GET() {
+async function _GET() {
   const [token, sender, on] = await Promise.all([getRzToken(), getRzSender(), isRzDeliveryEnabled()]);
   return NextResponse.json({
     enabled:     Boolean(on && token && sender),
@@ -17,3 +18,5 @@ export async function GET() {
     senderPoint: sender?.department_label ?? null,
   });
 }
+
+export const GET = withApi('rz-delivery/config', _GET);

@@ -7,6 +7,7 @@ import {
   getReservationTtlDays, computeExpiresAt,
 } from '../../../../../../lib/accounting/reservations';
 import { createDocument } from '../../../../../../lib/accounting/documents';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /**
  * Зміна джерела відвантаження ПІСЛЯ проведення.
@@ -29,7 +30,7 @@ import { createDocument } from '../../../../../../lib/accounting/documents';
 
 const EDITABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock'];
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireStaff('admin');
   if (!guard.ok) return guard.response;
 
@@ -159,3 +160,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     purchase_order_id: purchaseOrderId ?? null,
   });
 }
+
+export const POST = withApi('admin/orders/[id]/fulfillment-source', _POST);

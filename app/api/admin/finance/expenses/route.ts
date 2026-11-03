@@ -5,6 +5,7 @@ import { createServiceClient } from '../../../../../lib/supabase-service';
 import { recordTxn, type AccountType } from '../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
 import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/validate';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Ручне додавання операційної витрати (бэклог аудиту: раніше витрати потрапляли
 // лише автоматично — landed cost при прийманні та касові РКО).
@@ -16,7 +17,7 @@ const EXPENSE_ACCOUNTS: AccountType[] = [
   'rent', 'salary', 'marketing', 'opex',
 ];
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -93,3 +94,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, txn_id: txnId, voucher: voucher?.doc_number ?? null });
 }
+
+export const POST = withApi('admin/finance/expenses', _POST);

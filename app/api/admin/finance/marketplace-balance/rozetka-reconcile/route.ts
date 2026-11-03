@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { reconcileRozetka } from '../../../../../../lib/recon/rozetka';
+import { withApi } from '../../../../../../lib/api-handler';
 
 export type { ReconcileRow } from '../../../../../../lib/recon/rozetka';
 
 // Побудкова звірка з кабінетом Rozetka для екрана «Маркетплейси». Логіка — у
 // lib/recon/rozetka (нею ж користується тижневий агент звірки). Нічого не пише в БД;
 // проведення різниці — вручну через «Операцію» (route /adjust).
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -25,3 +26,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/finance/marketplace-balance/rozetka-reconcile', _GET);

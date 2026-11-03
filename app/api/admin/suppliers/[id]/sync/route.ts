@@ -3,12 +3,13 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { syncSupplier } from '../../../../../../lib/supplier-sync';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
+import { withApi } from '../../../../../../lib/api-handler';
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
@@ -44,3 +45,5 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/suppliers/[id]/sync', _POST);

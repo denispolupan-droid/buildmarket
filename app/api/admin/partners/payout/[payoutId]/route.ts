@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ payoutId: string }> }) {
+async function _PATCH(req: NextRequest, { params }: { params: Promise<{ payoutId: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const user = auth.user;
@@ -32,3 +33,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pa
 
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/partners/payout/[payoutId]', _PATCH);

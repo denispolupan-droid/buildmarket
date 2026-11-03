@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -8,7 +9,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { slug, commission_pct, markup_pct, rozetka_category_id, rozetka_category_name, rozetka_commission_rz_id, rozetka_commission_label } = await req.json();
@@ -26,3 +27,5 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/rozetka/commission', _PATCH);

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdmin } from '../../../lib/supabase-server';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
+import { withApi } from '../../../lib/api-handler';
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!rateLimit(`notify:${getClientIp(req)}`, 20, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'Забагато запитів' }, { status: 429 });
   }
@@ -28,3 +29,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('notify-stock', _POST);

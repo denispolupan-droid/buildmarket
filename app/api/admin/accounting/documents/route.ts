@@ -5,8 +5,9 @@ import type { CreateDocumentInput } from '../../../../../lib/accounting/types';
 import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';
 import { checkSaleEdit, recordSaleEdit } from '../../../../../lib/accounting/edit-journal';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -240,3 +241,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+export const POST = withApi('admin/accounting/documents', _POST);

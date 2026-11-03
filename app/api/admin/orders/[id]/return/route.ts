@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createCustomerReturn, getReturnableItems } from '../../../../../../lib/accounting/returns';
 import { isReturnReason, type RefundMethod } from '../../../../../../lib/accounting/returns-rules';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Повернення від покупця по замовленню: GET — що можна повернути, POST — заявка
 // (чернетка ПВ «очікуємо товар»). Проводки робляться в журналі повернень
 // кнопкою «Товар отримано» (lib/accounting/returns → receiveCustomerReturn).
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -20,7 +21,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withApi('admin/orders/[id]/return', _GET);
+
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -51,3 +54,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+export const POST = withApi('admin/orders/[id]/return', _POST);

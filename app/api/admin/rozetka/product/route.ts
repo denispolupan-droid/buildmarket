@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -8,7 +9,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { sku, on_rozetka, rozetka_markup_pct, rozetka_name, rozetka_smart } = await req.json();
@@ -25,8 +26,10 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+export const PATCH = withApi('admin/rozetka/product', _PATCH);
+
 // Bulk update: by category slug, or all active products if no category_slug
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { category_slug, on_rozetka } = await req.json();
@@ -38,3 +41,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('admin/rozetka/product', _POST);

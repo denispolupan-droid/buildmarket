@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { listReturns } from '../../../../../lib/accounting/returns';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Журнал повернень: ПВ (від покупця) і ПП (постачальнику) одним списком
 // із показниками «очікуємо товар» / «в дорозі до постачальника».
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const p = req.nextUrl.searchParams;
@@ -21,3 +22,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/finance/returns', _GET);

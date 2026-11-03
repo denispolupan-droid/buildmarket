@@ -4,12 +4,13 @@ import { escapeOrTerm } from '../../../../lib/pg-filter';
 import { loadDropshipCatalog } from '../../../../lib/dropship-order-create';
 import { dropshipOrderable, dropshipItemName } from '../../../../lib/dropship-order';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
 const RESULTS = 12;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   // price_drop — це дроп-ціна для партнерів; віддаємо лише dropship-акаунтам,
   // інакше будь-який зареєстрований роздрібний покупець бачив би опт по всіх SKU.
   const auth = await requireCustomer('dropship');
@@ -41,3 +42,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ results });
 }
+
+export const GET = withApi('cabinet/products', _GET);

@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { npScanSheetPdf } from '../../../../../lib/np-api';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 
@@ -106,7 +107,7 @@ async function generatePdf(
   });
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -193,3 +194,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('admin/registers/send', _POST);

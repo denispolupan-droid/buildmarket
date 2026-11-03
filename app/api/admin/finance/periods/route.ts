@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Закриття облікових періодів («дата заборони редагування»).
 // GET — список місяців з оборотами і станом; POST — закрити/відкрити місяць.
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -52,7 +53,9 @@ export async function GET() {
   });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/finance/periods', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -68,3 +71,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, result: data });
 }
+
+export const POST = withApi('admin/finance/periods', _POST);

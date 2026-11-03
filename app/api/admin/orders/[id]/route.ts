@@ -24,13 +24,14 @@ import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';
 import { checkSaleEdit, recordSaleEdit } from '../../../../../lib/accounting/edit-journal';
 import { manualStatusWithoutSaleError } from '../../../../../lib/orders/ship-guards';
 import { isOrderStatus, transitionVerdict, buildStatusPatch } from '../../../../../lib/orders/status';
+import { withApi } from '../../../../../lib/api-handler';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // РН — кінцевий фінансовий документ виконаного замовлення. Ідемпотентно фіксує
 // продаж (документ + виручка + COGS + борг постачальнику), якщо підтвердженої
 // РН по замовленню ще немає. Викликається і на shipped, і на delivered.
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const user = auth.user;
@@ -658,3 +659,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       : {}),
   });
 }
+
+export const PATCH = withApi('admin/orders/[id]', _PATCH);

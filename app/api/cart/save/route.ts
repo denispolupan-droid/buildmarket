@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdmin } from '../../../../lib/supabase-server';
 import { rateLimit, getClientIp } from '../../../../lib/rate-limit';
 import { cartSkus, normalizeCartItems, type CatalogRow } from '../../../../lib/abandoned-cart-save';
+import { withApi } from '../../../../lib/api-handler';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!rateLimit(`cartsave:${getClientIp(req)}`, 30, 60 * 60 * 1000)) {
     return NextResponse.json({ ok: false }, { status: 429 });
   }
@@ -62,3 +63,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('cart/save', _POST);

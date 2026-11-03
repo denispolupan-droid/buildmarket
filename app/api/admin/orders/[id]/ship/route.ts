@@ -16,8 +16,9 @@ import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/
 import { pickupWithTtnError, ttnReuseError } from '../../../../../../lib/orders/ship-guards';
 import { redirectTransit } from '../../../../../../lib/accounting/transit';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function POST(
+async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -473,3 +474,5 @@ export async function POST(
     }
   }
 }
+
+export const POST = withApi('admin/orders/[id]/ship', _POST);

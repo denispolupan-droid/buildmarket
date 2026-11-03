@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCustomer } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireCustomer('dropship');
   if (!auth.ok) return auth.response;
 
@@ -35,3 +36,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('cabinet/payout', _POST);

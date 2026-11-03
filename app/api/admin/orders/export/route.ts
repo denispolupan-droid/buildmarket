@@ -4,6 +4,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { kyivDayBounds } from '../../../../../lib/kyiv-date';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -18,7 +19,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   liqpay: 'LiqPay', mono: 'Monobank', cod: 'Накладений платіж', online: 'Онлайн',
 };
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -87,3 +88,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('admin/orders/export', _GET);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isWatchEnabled, runMetricWatch } from '../../../../lib/metric-watch';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { withApi } from '../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export const maxDuration = 120;
  * Search Console (gsc-snapshot 06:40 UTC), ?scope=hourly — доступність сайту.
  * Пише в Telegram лише про зміни. Вимкнути: app_settings.metric_watch = 'off'.
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -31,3 +32,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
+export const GET = withApi('cron/metric-watch', _GET);

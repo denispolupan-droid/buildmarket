@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 /**
  * Порядок кореневих категорій. Зберігаємо в categories.sort_order — тому самому
@@ -47,13 +48,15 @@ async function loadRoots(): Promise<Row[]> {
     .map(c => ({ slug: c.slug, name: c.name, sortOrder: c.sort_order, products: counts[c.slug] ?? 0 }));
 }
 
-export async function GET() {
+async function _GET() {
   const gate = await requireStaff('admin', 'manager');
   if (!gate.ok) return gate.response;
   return NextResponse.json({ categories: await loadRoots() });
 }
 
-export async function PUT(req: NextRequest) {
+export const GET = withApi('admin/categories/order', _GET);
+
+async function _PUT(req: NextRequest) {
   const gate = await requireStaff('admin');
   if (!gate.ok) return gate.response;
 
@@ -93,3 +96,5 @@ export async function PUT(req: NextRequest) {
   revalidateTag('categories', 'max');
   return NextResponse.json({ ok: true, categories: await loadRoots() });
 }
+
+export const PUT = withApi('admin/categories/order', _PUT);

@@ -3,6 +3,7 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -74,7 +75,7 @@ function parsePdf(text: string): { commissions: Map<string, number>; refs: RefEn
 }
 
 // GET: fetch all refs for the dropdown
-export async function GET() {
+async function _GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { data, error } = await db
@@ -85,8 +86,10 @@ export async function GET() {
   return NextResponse.json(data ?? []);
 }
 
+export const GET = withApi('admin/rozetka/import-commissions', _GET);
+
 // PATCH: apply pre-parsed changes (second step — no re-upload needed)
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { changes } = await req.json() as { changes: Array<{ slug: string; new_pct: number; new_label?: string | null; new_category_name?: string | null }> };
@@ -102,7 +105,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ applied: true, count: changes.length });
 }
 
-export async function POST(req: NextRequest) {
+export const PATCH = withApi('admin/rozetka/import-commissions', _PATCH);
+
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const form = await req.formData();
@@ -202,3 +207,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ pdfCategories: pdfMap.size, refsUpdated: refs.length, changes, unchangedCount, unmatched });
 }
+
+export const POST = withApi('admin/rozetka/import-commissions', _POST);

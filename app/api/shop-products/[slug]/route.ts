@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getProductsCached, getCategoriesCached } from '../../../../lib/supabase';
 import { subtreeSlugs } from '../../../../lib/facets';
+import { withApi } from '../../../../lib/api-handler';
 
 /**
  * Товари піддерева категорії — для клієнтського перемикання в магазині
@@ -13,7 +14,7 @@ import { subtreeSlugs } from '../../../../lib/facets';
  */
 export const revalidate = 300;
 
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+async function _GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [products, categories] = await Promise.all([getProductsCached(), getCategoriesCached()]);
   const family = slug === 'all' ? null : new Set(subtreeSlugs(categories, slug));
@@ -22,3 +23,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' },
   });
 }
+
+export const GET = withApi('shop-products/[slug]', _GET);

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { zohoFetch, getAccountId, getSendAddresses } from '../../../../../lib/zoho-mail';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   try {
@@ -43,3 +44,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/mail/send', _POST);

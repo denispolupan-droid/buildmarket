@@ -5,6 +5,7 @@ import { alertMarketplaceChatDrafts } from '../../../../lib/marketplace-chat-tel
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { withCronLock } from '../../../../lib/cron-lock';
+import { withApi } from '../../../../lib/api-handler';
 
 async function run(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -45,7 +46,7 @@ async function run(req: NextRequest) {
 // аудит 31.10.2026). Зайнятий лок — це не збій: відповідаємо 200 без алерту.
 export const maxDuration = 120;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -53,6 +54,8 @@ export async function GET(req: NextRequest) {
   if (locked.skipped) return NextResponse.json({ ok: true, skipped: 'locked' });
   return locked.result;
 }
+
+export const GET = withApi('cron/prom-orders', _GET);
 
 // pg_cron дзвонить через net.http_post (POST). Без цього POST давав би 405 і синк
 // не виконувався (як і в sync-suppliers). Vercel cron шле GET — обидва методи ок.

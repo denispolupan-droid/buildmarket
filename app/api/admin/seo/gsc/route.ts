@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { dateWindow, getPages, getQueries, type GscPageRow, type GscQueryRow } from '../../../../../lib/gsc';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -20,7 +21,7 @@ const norm = (page: string) => page.replace(/^https?:\/\/[^/]+/i, '').replace(/[
 
 const queryKey = (query: string, path: string) => JSON.stringify([query, path]);
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -65,6 +66,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/seo/gsc', _GET);
 
 function toPrev(row?: { clicks: number; impressions: number; position: number }): Prev {
   return row ? { clicks: row.clicks, impressions: row.impressions, position: row.position } : null;

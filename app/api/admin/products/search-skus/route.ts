@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -79,3 +80,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ products: result });
 }
+
+export const POST = withApi('admin/products/search-skus', _POST);

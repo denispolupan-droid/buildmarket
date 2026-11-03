@@ -5,6 +5,7 @@ import { getRozetkaContentChanges, getRozetkaGoods, buildContentSummary } from '
 import { diffModeration, buildWatchAlert, type StoredState } from '../../../../lib/rozetka-moderation-watch';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -19,7 +20,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua';
  * сотня відхилених правок місяцями лишалась би непоміченою (саме так і сталося
  * з відмовою від 17.07, яку ми знайшли випадково).
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -70,3 +71,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 }
+
+export const GET = withApi('cron/rozetka-moderation-watch', _GET);

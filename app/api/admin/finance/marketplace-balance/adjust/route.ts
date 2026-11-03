@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { recordMarketplaceManualEntry } from '../../../../../../lib/accounting/money';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Ручна операція по балансу маркетплейсу: списання збору (доставка/реклама/інше)
 // АБО нарахування (компенсація від площадки). Проводить пару
@@ -13,7 +14,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   other:        'Інше',
 };
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -78,3 +79,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/finance/marketplace-balance/adjust', _POST);

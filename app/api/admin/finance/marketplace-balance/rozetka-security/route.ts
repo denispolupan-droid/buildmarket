@@ -6,12 +6,13 @@ import { rozetkaFeeKind } from '../../../../../../lib/rozetka-fee-kind';
 import { getSmartTariff } from '../../../../../../lib/rozetka-smart';
 import { compareSmart, isSmartRow, type SecurityRow } from '../../../../../../lib/rozetka-security';
 import { recordTxn } from '../../../../../../lib/accounting/money';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Smart Rozetka за історією гарантійного платежу (xlsx розбирає браузер, сюди —
 // лише рядки) проти нашого обліку. Без post — тільки порівняння; з post: true —
 // проводить різницю як Smart без замовлення (кнопка з підтвердженням).
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -53,3 +54,5 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ ...cmp, posted: { txnId, amount: cmp.delta } });
 }
+
+export const POST = withApi('admin/finance/marketplace-balance/rozetka-security', _POST);

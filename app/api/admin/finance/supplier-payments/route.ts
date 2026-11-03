@@ -6,10 +6,11 @@ import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
 import { supplierCharges } from '../../../../../lib/accounting/supplier-debts';
 import { planAllocation, validateManual } from '../../../../../lib/accounting/allocation';
 import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/validate';
+import { withApi } from '../../../../../lib/api-handler';
 
 // GET — що саме винні цьому постачальнику: список боргів із залишками.
 // Потрібен вікну оплати, щоб показати, на що ляже сума.
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -21,10 +22,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ charges: await supplierCharges(supplierId) });
 }
 
+export const GET = withApi('admin/finance/supplier-payments', _GET);
+
 // Фіксація оплати постачальнику зі сторінки взаєморозрахунків (/admin/finance/mutual, кнопка «Оплатити»).
 // На відміну від /api/admin/procurement/[id]/add-payment, не прив'язана до конкретного
 // приходу — закриває загальний борг (у т.ч. дропшип-борг, який виникає без PO).
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -130,3 +133,5 @@ export async function POST(req: NextRequest) {
     unallocated: planned.plan.unallocated,
   });
 }
+
+export const POST = withApi('admin/finance/supplier-payments', _POST);

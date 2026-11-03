@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { zohoFetch, getAccountId, getTokenRow } from '../../../../../lib/zoho-mail';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -34,7 +35,7 @@ async function zohoUnreadIds(): Promise<string[]> {
   return ids;
 }
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   try {
@@ -54,3 +55,5 @@ export async function GET() {
     return NextResponse.json({ count: 0 });
   }
 }
+
+export const GET = withApi('admin/mail/unread', _GET);

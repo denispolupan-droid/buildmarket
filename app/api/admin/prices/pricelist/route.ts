@@ -11,12 +11,13 @@ import { loadFactorMap } from '../../../../../lib/price-adjustments-db';
 import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 type StockRow = { sku: string; price_unit: number | null; price_retail: number | null; price_drop: number | null; price_cost: number | null; price_promo?: number | null; price_wholesale: number | null; stock_status: string | null };
 
 const db = createServiceClient();
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -276,3 +277,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('admin/prices/pricelist', _GET);

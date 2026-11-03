@@ -5,6 +5,7 @@ import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { generateProductSlug } from '../../../../../lib/seo/slug';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableInsert } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -68,7 +69,7 @@ function parseChars(row: Record<string, unknown>) {
   return chars;
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -247,7 +248,9 @@ export async function GET(req: NextRequest) {
   });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/products/import', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -420,3 +423,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(results);
 }
+
+export const POST = withApi('admin/products/import', _POST);

@@ -4,12 +4,13 @@ import { reviseDraft } from '../../../../../../lib/marketplace-chat-assistant';
 import { normalizeInstruction } from '../../../../../../lib/marketplace-chat-draft-rules';
 import { reportAiFailure } from '../../../../../../lib/ai-health';
 import { aiFailureShort } from '../../../../../../lib/ai-health-rules';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // «Направити» відповідь: переписати поточну чернетку за вказівкою менеджера.
 // На площадку нічого не пише — повертає нову чернетку.
 export const maxDuration = 120;
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -29,3 +30,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 409 });
   }
 }
+
+export const POST = withApi('admin/marketplace-chats/draft/revise', _POST);

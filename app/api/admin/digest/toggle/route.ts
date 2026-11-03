@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Вимикач крона ранкового дайджесту: app_settings.ops_digest = 'on' | 'off'.
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => ({})) as { enabled?: boolean };
@@ -12,3 +13,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, enabled: body.enabled !== false });
 }
+
+export const POST = withApi('admin/digest/toggle', _POST);

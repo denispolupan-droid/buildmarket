@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { applyRzPayRegisterFile } from '../../../../../lib/rozetkapay-register-apply';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Імпорт виплат RozetkaPay з кабінету (реєстр XLSX або експорт транзакцій CSV) —
 // склад виплат за фактом. Файл не зберігається: розбирається в пам'яті й одразу
 // розноситься по замовленнях.
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -25,3 +26,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+export const POST = withApi('admin/finance/rzpay-register', _POST);

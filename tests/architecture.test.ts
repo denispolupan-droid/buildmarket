@@ -97,4 +97,15 @@ describe('архітектурні межі (AGENTS.md)', () => {
     expect(fresh, 'новий роут повз requireStaff:\n' + fresh.join('\n')).toEqual([]);
     expect(fixed, 'ці роути вже на requireStaff — прибери їх із tests/architecture-baseline.json:\n' + fixed.join('\n')).toEqual([]);
   });
+
+  it('обробники app/api експортуються через withApi (lib/api-handler): request-id, лог, алерт, 500', () => {
+    // 03.11.2026: 146 із 291 роутів були без catch — необроблена помилка давала
+    // порожній 500 без сліду в логах. Прямий `export async function GET` повз обгортку
+    // повертає цю дірку; re-export (`export { GET } from …`) — допустимий.
+    const re = /^export (async )?function (GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\(/m;
+    const offenders = files.map(rel)
+      .filter(r => r.startsWith('app/api/') && r.endsWith('/route.ts'))
+      .filter(r => re.test(read(path.join(ROOT, r))));
+    expect(offenders, 'обгорни обробник: export const GET = withApi(\'<route>\', _GET):\n' + offenders.join('\n')).toEqual([]);
+  });
 });

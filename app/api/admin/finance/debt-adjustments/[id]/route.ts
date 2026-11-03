@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { cancelDebtAdjustment, listDebtAdjustments } from '../../../../../../lib/accounting/debt-adjustment';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -12,9 +13,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ document: doc });
 }
 
+export const GET = withApi('admin/finance/debt-adjustments/[id]', _GET);
+
 // Скасування: зворотні проводки по кожному рядку + зворотні рядки оплат на
 // замовленнях; сам документ → 'cancelled'. Повторний виклик безпечний.
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -27,3 +30,5 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: message }, { status: /не знайдено|уже скасовано/.test(message) ? 400 : 500 });
   }
 }
+
+export const DELETE = withApi('admin/finance/debt-adjustments/[id]', _DELETE);

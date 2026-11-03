@@ -3,6 +3,7 @@ import { recoverPaidCardOrders } from '../../../../lib/card-order-recovery';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { withCronLock } from '../../../../lib/cron-lock';
+import { withApi } from '../../../../lib/api-handler';
 
 // Страховка на карткові оплати: якщо вебхук Monobank не створив замовлення, це
 // зробить звірка з випискою мерчанта. Основний шлях лишається вебхуком (замовлення
@@ -34,7 +35,7 @@ async function run(req: NextRequest) {
 // аудит 31.10.2026). Зайнятий лок — це не збій: відповідаємо 200 без алерту.
 export const maxDuration = 120;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -42,3 +43,5 @@ export async function GET(req: NextRequest) {
   if (locked.skipped) return NextResponse.json({ ok: true, skipped: 'locked' });
   return locked.result;
 }
+
+export const GET = withApi('cron/card-orders-reconcile', _GET);

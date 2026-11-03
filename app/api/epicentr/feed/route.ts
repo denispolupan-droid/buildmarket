@@ -10,6 +10,7 @@ import { resolveCountry } from '../../../../lib/brand-country';
 import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
 import { readEpicentrManifest, ensureEpicentrJpegs, webpRelFromImage, staticJpegUrl, dynamicJpegUrl } from '../../../../lib/epicentr-images';
 import { feedVendor } from '../../../../lib/brand-feed';
+import { withApi } from '../../../../lib/api-handler';
 
 /**
  * XML-фід для маркетплейсу Епіцентр (кабінет → «Імпорт товарів» / «Автооновлення»).
@@ -49,7 +50,7 @@ function x(str: string | null | undefined): string {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get('key');
   if (!process.env.FEED_SECRET_KEY || key !== process.env.FEED_SECRET_KEY) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -202,3 +203,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('epicentr/feed', _GET);

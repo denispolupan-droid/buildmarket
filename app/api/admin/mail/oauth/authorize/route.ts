@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const SCOPES = [
   'ZohoMail.messages.ALL',
@@ -7,7 +8,7 @@ const SCOPES = [
   'ZohoMail.accounts.READ',
 ].join(',');
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -30,3 +31,5 @@ export async function GET() {
   });
   return res;
 }
+
+export const GET = withApi('admin/mail/oauth/authorize', _GET);

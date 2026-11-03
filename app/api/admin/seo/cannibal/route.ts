@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { getQueries } from '../../../../../lib/gsc';
 import { toLangNeutralPath } from '../../../../../lib/seo/history';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -19,7 +20,7 @@ export const maxDuration = 60;
 const MIN_TOTAL_IMPRESSIONS = 5;
 const MIN_PAGE_IMPRESSIONS = 2;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -64,3 +65,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/seo/cannibal', _GET);

@@ -5,10 +5,11 @@ import { createPaymentVoucher, maybeAutoClose } from '../../../../../../lib/acco
 import { procurementPaymentOr, netPaidToSupplier } from '../../../../../../lib/accounting/procurement-payments';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../../lib/validate';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -103,3 +104,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true, total_paid: totalPaid, is_fully_paid: isFullyPaid });
 }
+
+export const POST = withApi('admin/procurement/[id]/add-payment', _POST);

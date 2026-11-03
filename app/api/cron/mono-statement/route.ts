@@ -5,6 +5,7 @@ import { allocateRzPayPayouts } from '../../../../lib/rozetkapay-allocate';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { withCronLock } from '../../../../lib/cron-lock';
+import { withApi } from '../../../../lib/api-handler';
 
 // Крон-реконсиляція виписки ФОП Monobank — страховка на випадок пропущеного/
 // вимкненого вебхука. Тягне виписку за останні ~2 доби і прогоняє через той самий
@@ -41,7 +42,7 @@ async function run(req: NextRequest) {
 // аудит 31.10.2026). Зайнятий лок — це не збій: відповідаємо 200 без алерту.
 export const maxDuration = 120;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -49,6 +50,8 @@ export async function GET(req: NextRequest) {
   if (locked.skipped) return NextResponse.json({ ok: true, skipped: 'locked' });
   return locked.result;
 }
+
+export const GET = withApi('cron/mono-statement', _GET);
 
 // pg_cron дзвонить через net.http_post (POST) — потрібен той самий метод.
 export const POST = GET;

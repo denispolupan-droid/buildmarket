@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { createDocument, confirmDocument } from '../../../../../lib/accounting/documents';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Інвентаризація складу (документ doc_type='inventory').
 // GET  ?warehouse_id= — планові залишки складу для перерахунку (план = qty_total).
@@ -11,7 +12,7 @@ import { createDocument, confirmDocument } from '../../../../../lib/accounting/d
 //        оприбутковується новою партією; гроші йдуть на рахунок «Відхилення».
 //        Відомість (план/факт/різниця) зберігається в meta документа.
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -55,7 +56,9 @@ export async function GET(req: NextRequest) {
   });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/accounting/inventory', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -137,3 +140,5 @@ export async function POST(req: NextRequest) {
     shortage_cost: Math.round(shortage * 100) / 100,
   });
 }
+
+export const POST = withApi('admin/accounting/inventory', _POST);

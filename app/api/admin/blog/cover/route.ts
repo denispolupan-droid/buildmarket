@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { buildCovers } from '../../../../../lib/blog-cover';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -14,7 +15,7 @@ const serviceClient = createServiceClient();
  * Заголовок у картинку вшитий, тож після зміни назви (напр. при дожимі під
  * запит) стара обкладинка розходиться зі статтею.
  */
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -42,3 +43,5 @@ export async function POST(req: NextRequest) {
   revalidateTag('blog', 'max');
   return NextResponse.json({ ok: true, ...covers });
 }
+
+export const POST = withApi('admin/blog/cover', _POST);

@@ -3,11 +3,12 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { createDebtAdjustment, listDebtAdjustments } from '../../../../../lib/accounting/debt-adjustment';
 import type { AdjustmentLineInput } from '../../../../../lib/accounting/debt-adjustment-rules';
+import { withApi } from '../../../../../lib/api-handler';
 
 // «Коригування боргу» (КБ): список і проведення. Документ проводиться одразу —
 // як платіжні ваучери; чернеток немає, помилка валідації = нічого не записано.
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const limit = Math.min(300, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? 100) || 100));
@@ -18,7 +19,9 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/finance/debt-adjustments', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -45,3 +48,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+export const POST = withApi('admin/finance/debt-adjustments', _POST);

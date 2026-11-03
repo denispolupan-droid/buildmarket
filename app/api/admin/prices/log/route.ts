@@ -4,13 +4,14 @@ import { createServiceClient } from '../../../../../lib/supabase-service';
 import { cancelAdjustments } from '../../../../../lib/price-adjustments-db';
 import { insertPriceChangeLog } from '../../../../../lib/price-change-log';
 import { revertMpEntry, type MpLogEntry } from '../../../../../lib/mp-reprice';
+import { withApi } from '../../../../../lib/api-handler';
 
 async function getAdmin() {
   const auth = await requireStaff('admin', 'manager');
   return auth.ok ? auth.user : null;
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const user = await getAdmin();
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -21,7 +22,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: res.id });
 }
 
-export async function PATCH(req: NextRequest) {
+export const POST = withApi('admin/prices/log', _POST);
+
+async function _PATCH(req: NextRequest) {
   const user = await getAdmin();
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -69,7 +72,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 }
 
-export async function GET() {
+export const PATCH = withApi('admin/prices/log', _PATCH);
+
+async function _GET() {
   const user = await getAdmin();
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -83,3 +88,5 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);
 }
+
+export const GET = withApi('admin/prices/log', _GET);

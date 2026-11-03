@@ -5,6 +5,7 @@ import { fetchAllRows } from '../../../lib/db-paginate';
 import { googleProductCategoryId } from '../../../lib/google-product-category';
 import { shippingWeightKg } from '../../../lib/shipping-weight';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { withApi } from '../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -38,7 +39,7 @@ function truncate(s: string, max: number): string {
   return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut) + '…';
 }
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key');
   if (!key || key !== process.env.FEED_SECRET_KEY) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -188,6 +189,8 @@ ${items}
     },
   });
 }
+
+export const GET = withApi('google-merchant-feed', _GET);
 
 // Пороги під ціль «заробляти»: на рекламу йде не більше половини валового
 // прибутку. Стеля ставки = прибуток × конверсія × (1 − частка відмов). За фактом

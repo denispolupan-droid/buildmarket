@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -52,3 +53,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
+
+export const POST = withApi('admin/partners', _POST);

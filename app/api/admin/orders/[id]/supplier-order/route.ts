@@ -3,6 +3,7 @@ import { createServiceClient, type TableUpdate } from '../../../../../../lib/sup
 import { resolveSender } from '../../../../../../lib/email-sender';
 import { orderItemSources } from '../../../../../../lib/orders/item-sources';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -46,7 +47,7 @@ async function resolveSkuMapping(
   return result;
 }
 
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -89,7 +90,9 @@ export async function GET(
   });
 }
 
-export async function POST(
+export const GET = withApi('admin/orders/[id]/supplier-order', _GET);
+
+async function _POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -222,6 +225,8 @@ export async function POST(
 
   return NextResponse.json({ ok: true, results });
 }
+
+export const POST = withApi('admin/orders/[id]/supplier-order', _POST);
 
 function extractEmail(text: string): string | null {
   const m = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);

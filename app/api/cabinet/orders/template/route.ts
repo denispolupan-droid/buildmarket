@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { requireCustomer } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function GET() {
+async function _GET() {
   const auth = await requireCustomer('dropship');
   if (!auth.ok) return auth.response;
 
@@ -49,3 +50,5 @@ export async function GET() {
     },
   });
 }
+
+export const GET = withApi('cabinet/orders/template', _GET);

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient, asJson } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const BUCKET = 'procurement-docs';
 
-export async function POST(
+async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -79,7 +80,9 @@ export async function POST(
   });
 }
 
-export async function DELETE(
+export const POST = withApi('admin/procurement/[id]/upload-invoice', _POST);
+
+async function _DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -105,8 +108,10 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
+export const DELETE = withApi('admin/procurement/[id]/upload-invoice', _DELETE);
+
 // GET — повертає підписане посилання для перегляду/завантаження
-export async function GET(
+async function _GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -132,3 +137,5 @@ export async function GET(
     name: meta.invoice_file_name ?? path.split('/').pop(),
   });
 }
+
+export const GET = withApi('admin/procurement/[id]/upload-invoice', _GET);

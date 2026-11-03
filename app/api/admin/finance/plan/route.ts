@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 // План виручки на поточний місяць для віджета «План на місяць» в «Огляді»
 // фінансів. Значення одне (app_settings.finance_month_plan): план задається
 // на місяць вперед і переписується руками — історія планів тут не потрібна.
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff();
   if (!auth.ok) return auth.response;
 
@@ -20,3 +21,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, value: Math.round(value) });
 }
+
+export const POST = withApi('admin/finance/plan', _POST);

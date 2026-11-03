@@ -6,6 +6,7 @@ import {
   ROZETKA_DELIVERY_TARIFF_KEY,
   type RozetkaDeliveryTariff,
 } from '../../../../../lib/rozetka-delivery-fee';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Тариф доставки в точки видачі Rozetka (адмінка → Товари Rozetka → «Умови Smart»).
 // Дзеркало smart-tariff: діє з моменту збереження і застосовується до НОВИХ відгрузок.
@@ -15,13 +16,15 @@ import {
 // варіант. Якщо в накладній є фактична сума, беремо її; для Smart-замовлень збір
 // не нараховується взагалі, бо Rozetka бере компенсацію Smart ЗАМІСТЬ нього.
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   return NextResponse.json(await getRozetkaDeliveryTariff());
 }
 
-export async function PUT(req: NextRequest) {
+export const GET = withApi('admin/rozetka/delivery-tariff', _GET);
+
+async function _PUT(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -48,3 +51,5 @@ export async function PUT(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, ...tariff });
 }
+
+export const PUT = withApi('admin/rozetka/delivery-tariff', _PUT);

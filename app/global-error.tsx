@@ -6,7 +6,7 @@
 // тож рендеримо власні <html>/<body> з інлайновими стилями.
 
 import { useEffect } from 'react';
-import { monitoring } from '../lib/monitoring';
+import { reportClientError } from '../lib/client-error';
 
 export default function GlobalError({
   error,
@@ -15,11 +15,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    monitoring.captureException(error, {
-      tags: { digest: error.digest ?? 'unknown', scope: 'global-error' },
-    });
-  }, [error]);
+  useEffect(() => { reportClientError(error, 'global-error'); }, [error]);
 
   return (
     <html lang="uk">

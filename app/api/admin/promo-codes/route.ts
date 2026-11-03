@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 function db() {
   return createServiceClient();
@@ -11,7 +12,7 @@ async function assertAdmin() {
   return auth.ok ? auth.user : null;
 }
 
-export async function GET() {
+async function _GET() {
   if (!await assertAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { data, error } = await db()
     .from('promo_codes')
@@ -21,7 +22,9 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/promo-codes', _GET);
+
+async function _POST(req: NextRequest) {
   if (!await assertAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { code, discount_type, discount_value, max_discount_amount, min_order_amount, max_uses, valid_from, valid_until, description } = await req.json();
   if (!code?.trim() || !discount_type || !discount_value)
@@ -42,7 +45,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-export async function PATCH(req: NextRequest) {
+export const POST = withApi('admin/promo-codes', _POST);
+
+async function _PATCH(req: NextRequest) {
   if (!await assertAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id, ...fields } = await req.json();
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
@@ -67,7 +72,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(req: NextRequest) {
+export const PATCH = withApi('admin/promo-codes', _PATCH);
+
+async function _DELETE(req: NextRequest) {
   if (!await assertAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
@@ -75,3 +82,5 @@ export async function DELETE(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/promo-codes', _DELETE);

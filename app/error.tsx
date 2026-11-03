@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { monitoring } from '../lib/monitoring';
+import { reportClientError } from '../lib/client-error';
 
 export default function Error({
   error,
@@ -11,11 +11,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    monitoring.captureException(error, {
-      tags: { digest: error.digest ?? 'unknown' },
-    });
-  }, [error]);
+  useEffect(() => { reportClientError(error, 'error'); }, [error]);
 
   return (
     <div style={{

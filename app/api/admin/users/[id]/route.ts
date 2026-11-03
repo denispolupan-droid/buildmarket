@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 function adminClient() {
   return createServiceClient();
@@ -12,7 +13,7 @@ async function assertAdmin() {
 }
 
 // DELETE — видалення менеджера (не можна видаляти адмінів)
-export async function DELETE(
+async function _DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -39,8 +40,10 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
+export const DELETE = withApi('admin/users/[id]', _DELETE);
+
 // PATCH — оновлення імені менеджера
-export async function PATCH(
+async function _PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -57,3 +60,5 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/users/[id]', _PATCH);

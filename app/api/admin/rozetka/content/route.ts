@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { getRozetkaContentChanges, getRozetkaGoods, buildContentSummary } from '../../../../../lib/rozetka-content';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * Дані живі (кабінет — джерело правди), тому нічого не кешуємо: розділ
  * відкривають саме тоді, коли хочуть побачити поточний стан.
  */
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -20,3 +21,5 @@ export async function GET() {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
 }
+
+export const GET = withApi('admin/rozetka/content', _GET);

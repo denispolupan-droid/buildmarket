@@ -3,6 +3,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 import { ingestMonoTxn } from '../../../../lib/mono-ingest';
 import { getMonoWebhookSecret, getMonoFopAccount } from '../../../../lib/mono-config';
 import { safeEqual } from '../../../../lib/safe-equal';
+import { withApi } from '../../../../lib/api-handler';
 
 // Вебхук Monobank Personal API: банк шле POST на кожну нову транзакцію у форматі
 // { type: "StatementItem", data: { account, statementItem } }. Перед активацією
@@ -19,14 +20,16 @@ async function secretOk(req: NextRequest, db: ReturnType<typeof createServiceCli
   return safeEqual(new URL(req.url).searchParams.get('t'), secret);
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   // Валідаційний GET від Monobank. 200 лише для нашого URL із правильним секретом.
   const db = createServiceClient();
   if (!(await secretOk(req, db))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   return NextResponse.json({ ok: true });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('webhooks/mono-statement', _GET);
+
+async function _POST(req: NextRequest) {
   const db = createServiceClient();
   if (!(await secretOk(req, db))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
@@ -52,3 +55,5 @@ export async function POST(req: NextRequest) {
   // Завжди 200 — щоб банк не вимкнув вебхук; пропущене добере реконсиляція.
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('webhooks/mono-statement', _POST);

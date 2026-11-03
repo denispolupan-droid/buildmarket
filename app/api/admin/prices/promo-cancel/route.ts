@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ const db = createServiceClient();
 // Знімає price_promo одразу (роздріб повертається сам — він не змінювався),
 // закриває відповідні записи журналу і пише окремий запис «Завершення акції».
 // POST { skus?: string[] } → { ok, cancelled: number }
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -74,3 +75,5 @@ export async function POST(req: NextRequest) {
   revalidateTag('products', 'max');
   return NextResponse.json({ ok: true, cancelled: cancelledSkus.length });
 }
+
+export const POST = withApi('admin/prices/promo-cancel', _POST);

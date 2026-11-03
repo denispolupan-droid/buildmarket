@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { enrichCatalog } from '../../../../../lib/catalog-enricher';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime    = 'nodejs';
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -43,3 +44,5 @@ export async function POST(req: NextRequest) {
     },
   });
 }
+
+export const POST = withApi('admin/catalog/enrich', _POST);

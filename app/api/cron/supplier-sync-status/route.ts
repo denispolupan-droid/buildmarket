@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 // «Dead man's switch» для синку постачальників: перевіряє, що ціни/залишки нещодавно
 // оновлювались. Синк ходить кожні 2 години (sync-suppliers.yml); якщо останній запуск
@@ -13,7 +14,7 @@ const serviceClient = createServiceClient();
 
 const STALE_HOURS = 6;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -52,5 +53,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, lastSync: data.started_at, ageHours: Number(ageHours.toFixed(1)) });
 }
+
+export const GET = withApi('cron/supplier-sync-status', _GET);
 
 export const POST = GET;

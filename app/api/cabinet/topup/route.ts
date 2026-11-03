@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCustomer } from '../../../../lib/auth-guard';
 import { getMonoAcquiringToken } from '../../../../lib/mono-config';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   try {
     // Поповнення балансу є лише в кабінеті дропшипера — оптовику баланс не потрібен.
     const auth = await requireCustomer('dropship');
@@ -73,3 +74,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Внутрішня помилка: ${e}` }, { status: 500 });
   }
 }
+
+export const POST = withApi('cabinet/topup', _POST);

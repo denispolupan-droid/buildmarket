@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { escapeOrTerm } from '../../../../../lib/pg-filter';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -55,3 +56,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ categories: categories ?? [], products: enriched });
 }
+
+export const GET = withApi('admin/products/catalog', _GET);

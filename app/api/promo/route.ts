@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { PROMO } from '../../promo.config';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { withApi } from '../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
-export async function GET() {
+async function _GET() {
   const { data } = await serviceClient
     .from('app_settings')
     .select('value')
@@ -18,3 +19,5 @@ export async function GET() {
   }
   return NextResponse.json(PROMO);
 }
+
+export const GET = withApi('promo', _GET);

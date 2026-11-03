@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { saveProductMarkups, type ProductMarkup } from '../../../../../lib/price-overrides';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -18,7 +19,7 @@ async function checkAdmin() {
 // від прайса за наценкою постачальника й перезаписує product_stock. Тепер
 // переоцінка змінює саме наценку, і синк відтворює ту саму ціну від нової
 // собівартості (пріоритет у синку: товар > бренд > постачальник).
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
@@ -94,3 +95,5 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
 }
+
+export const PATCH = withApi('admin/prices/bulk', _PATCH);

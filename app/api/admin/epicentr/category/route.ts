@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const num = (v: unknown): number | null => (v === '' || v == null ? null : Number(v));
 
 // PATCH: комісія / націнка / код категорії Епіцентру для категорії
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -34,3 +35,5 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/epicentr/category', _PATCH);

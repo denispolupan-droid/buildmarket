@@ -7,6 +7,7 @@ import { rzLabel } from '../../../../../lib/rz-delivery-api';
 import { getRozetkaDeliveryTtnPdf } from '../../../../../lib/rozetka-delivery-ttn';
 import { RZ_DELIVERY_TYPE } from '../../../../../lib/rz-delivery';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../lib/rozetka-delivery';
+import { withApi } from '../../../../../lib/api-handler';
 
 /**
  * Групова печатка етикеток по вибраних замовленнях — ОДИН PDF на всі.
@@ -27,7 +28,7 @@ const chunk = <T,>(arr: T[], n: number): T[][] => {
   return out;
 };
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff();
   if (!auth.ok) return auth.response;
 
@@ -102,3 +103,5 @@ export async function POST(req: NextRequest) {
     errors,
   });
 }
+
+export const POST = withApi('admin/orders/print-labels', _POST);

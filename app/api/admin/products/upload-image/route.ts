@@ -4,8 +4,9 @@ import { normalizeProductImage } from '../../../../../lib/product-image';
 import { uploadToR2 } from '../../../../../lib/r2';
 import { brandFolder } from '../../../../../lib/seo/slug';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -56,3 +57,5 @@ export async function POST(req: NextRequest) {
   // на нього не посилається інший товар (lib/product-image-cleanup).
   return NextResponse.json({ imageUrl });
 }
+
+export const POST = withApi('admin/products/upload-image', _POST);

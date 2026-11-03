@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonoAcquiringToken } from '../../../../../lib/mono-config';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -10,7 +11,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // за unguessable UUID замовлення, як і сама сторінка рахунку. Створює mono-інвойс
 // на НЕДОПЛАЧЕНИЙ залишок; зарахування робить вебхук /api/webhooks/monobank
 // (reference-схема `invoice_<orderId>_<ts>`).
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!UUID_RE.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -60,3 +61,5 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Не вдалось ініціювати оплату. Спробуйте пізніше.' }, { status: 502 });
   }
 }
+
+export const POST = withApi('invoice/[id]/pay', _POST);

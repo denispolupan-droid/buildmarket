@@ -8,8 +8,9 @@ import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../
 import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../../lib/prom-api';
 import { transitionOrder } from '../../../../../../lib/orders/status';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function POST(
+async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -217,3 +218,5 @@ export async function POST(
     purchase_order_id: purchaseOrderId,
   });
 }
+
+export const POST = withApi('admin/orders/[id]/confirm', _POST);

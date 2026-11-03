@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { parseBody, z } from '../../../../lib/validate';
 import { ensurePartnerCustomer, roleForAccountType } from '../../../../lib/partner-customer';
+import { withApi } from '../../../../lib/api-handler';
 
 // Заявки на B2B-доступ (опт / дропшип) — міграція 146. Новий партнер після
 // реєстрації бачить роздріб, доки адмін не схвалить заявку тут.
@@ -23,7 +24,7 @@ async function listAllUsers(db: ReturnType<typeof createServiceClient>): Promise
   return out;
 }
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -53,7 +54,9 @@ export async function GET() {
   return NextResponse.json({ requests });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/b2b-requests', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -96,3 +99,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, status: 'approved' });
 }
+
+export const POST = withApi('admin/b2b-requests', _POST);

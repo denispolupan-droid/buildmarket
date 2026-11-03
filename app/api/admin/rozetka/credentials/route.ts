@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -11,7 +12,7 @@ async function checkAdmin() {
 // Separate from /api/admin/rozetka/token (that one stores a bare API token, unused by any
 // current feature). Order sync needs the seller's login/password because Rozetka's access
 // token expires every 24h — see lib/rozetka-api.ts.
-export async function GET() {
+async function _GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { data } = await db.from('app_settings').select('key, value').in('key', ['rozetka_login']);
@@ -19,7 +20,9 @@ export async function GET() {
   return NextResponse.json({ hasCredentials: !!login, login });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/rozetka/credentials', _GET);
+
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { login, password } = await req.json() as { login?: string; password?: string };
@@ -39,7 +42,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE() {
+export const POST = withApi('admin/rozetka/credentials', _POST);
+
+async function _DELETE() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   await db.from('app_settings').delete().in('key', [
@@ -47,3 +52,5 @@ export async function DELETE() {
   ]);
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/rozetka/credentials', _DELETE);

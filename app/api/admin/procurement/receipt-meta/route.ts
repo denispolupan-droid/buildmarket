@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -15,3 +16,5 @@ export async function GET() {
 
   return NextResponse.json({ warehouses: warehouses ?? [], suppliers: suppliers ?? [] });
 }
+
+export const GET = withApi('admin/procurement/receipt-meta', _GET);

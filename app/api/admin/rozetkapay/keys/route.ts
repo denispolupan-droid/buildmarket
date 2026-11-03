@@ -2,20 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { RZPAY_LOGIN_KEY, RZPAY_PASSWORD_KEY, getRzPayCreds, validateRzPayKeys } from '../../../../../lib/rozetkapay-api';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Ключі RozetkaPay Reports API — як токен Prom: зберігаються в app_settings,
 // перед збереженням перевіряються живим запитом /api/merchants/v1/me.
 
 const mask = (s: string) => (s.length > 4 ? `••••••${s.slice(-4)}` : '••••');
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const creds = await getRzPayCreds();
   return NextResponse.json({ hasKeys: !!creds, login: creds ? mask(creds.login) : null });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/rozetkapay/keys', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { login, password } = (await req.json()) as { login?: string; password?: string };
@@ -37,10 +40,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, login: mask(login.trim()), merchant: me });
 }
 
-export async function DELETE() {
+export const POST = withApi('admin/rozetkapay/keys', _POST);
+
+async function _DELETE() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
   await db.from('app_settings').delete().in('key', [RZPAY_LOGIN_KEY, RZPAY_PASSWORD_KEY]);
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/rozetkapay/keys', _DELETE);

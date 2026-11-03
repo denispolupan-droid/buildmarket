@@ -3,13 +3,14 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { fillProducts } from '../../../../../lib/product-ai-filler';
 import { logSeoAction } from '../../../../../lib/seo-actions';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
 export const runtime     = 'nodejs';
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -67,3 +68,5 @@ export async function POST(req: NextRequest) {
     },
   });
 }
+
+export const POST = withApi('admin/products/ai-fill', _POST);

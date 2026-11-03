@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 import { buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { requireStaff } from '../../../../lib/auth-guard';
+import { withApi } from '../../../../lib/api-handler';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -111,7 +112,7 @@ async function resolveCustomer(db: ReturnType<typeof createServiceClient>, opts:
   return { customerId: created.id, contractId };
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -228,3 +229,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: data.id, orderNumber: data.order_number, siteUrl });
 }
+
+export const POST = withApi('admin/orders', _POST);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -61,7 +62,7 @@ async function resolveTtnRef(apiKey: string, ttnNumber: string): Promise<string 
 }
 
 // GET — list of scan sheets, or details of a specific one
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -109,8 +110,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ sheets: res.data ?? [] });
 }
 
+export const GET = withApi('admin/registers', _GET);
+
 // DELETE — remove TTN from register OR delete entire scan sheet
-export async function DELETE(req: NextRequest) {
+async function _DELETE(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -179,8 +182,10 @@ export async function DELETE(req: NextRequest) {
   return NextResponse.json({ ok: true, deleted: 'ttn' });
 }
 
+export const DELETE = withApi('admin/registers', _DELETE);
+
 // POST — add TTN to register (creates new if no ref provided)
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -235,3 +240,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ref: sheet?.Ref || null, number: sheet?.Number || null });
 }
+
+export const POST = withApi('admin/registers', _POST);

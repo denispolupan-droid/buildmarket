@@ -6,6 +6,7 @@ import {
   prepareCourierAddress, resolveCityRef,
   type RozetkaDelivery, type PromProviderData, type CourierAddressResult,
 } from '../../../../lib/np-address';
+import { withApi } from '../../../../lib/api-handler';
 
 /**
  * Підказка для модалки «Створити ТТН» (кур'єр): яку вулицю НП підставить за
@@ -14,7 +15,7 @@ import {
  * менеджер бачить саме те, що піде в накладну, ще до натискання кнопки.
  * Лише довідникові читання НП, нічого не створює.
  */
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -51,3 +52,5 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json(result);
 }
+
+export const POST = withApi('admin/np-street-resolve', _POST);

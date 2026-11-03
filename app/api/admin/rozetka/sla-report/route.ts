@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { getRozetkaSlaReport } from '../../../../../lib/rozetka-sla';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Звіт живий: ходить у Rozetka по всіх товарах (≈40 сторінок), тож ніякого кешу
 // сторінки. Викликається кнопкою, а не при кожному відкритті екрана.
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-export async function GET() {
+async function _GET() {
   const gate = await requireStaff('admin', 'manager');
   if (!gate.ok) return gate.response;
 
@@ -21,3 +22,5 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withApi('admin/rozetka/sla-report', _GET);

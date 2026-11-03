@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { AI_BOTS } from '../../../../../lib/ai-crawlers';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ function groupSum<T extends { hits: number }>(rows: T[], key: (r: T) => string) 
   return map;
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -139,3 +140,5 @@ export async function GET(req: NextRequest) {
     series,
   });
 }
+
+export const GET = withApi('admin/seo/ai', _GET);

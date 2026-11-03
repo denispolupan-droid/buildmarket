@@ -8,6 +8,7 @@ import {
   hasLinksBlock, countProductLinks, productLabel, type LinkProduct,
 } from '../../../../../lib/blog-product-links';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 
@@ -125,12 +126,14 @@ async function buildPlans(): Promise<{ plans: Plan[]; posts: Map<number, PostRow
 }
 
 /** GET — попередній перегляд: що і куди буде вставлено. Нічого не пише. */
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { plans } = await buildPlans();
   return NextResponse.json(plans);
 }
+
+export const GET = withApi('admin/blog/link-products', _GET);
 
 /**
  * PATCH { id, skus } — ручний набір товарів статті.
@@ -138,7 +141,7 @@ export async function GET() {
  * із «Інструментів» витягувало відрізний диск), тому склад блоку має бути
  * редагованим. Порядок артикулів = порядок карток на сторінці.
  */
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -180,8 +183,10 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true, count: clean.length });
 }
 
+export const PATCH = withApi('admin/blog/link-products', _PATCH);
+
 /** POST { ids } — автопідбір: перерахувати товари для вказаних статей. */
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -229,3 +234,5 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ ok: true, updated, skipped });
 }
+
+export const POST = withApi('admin/blog/link-products', _POST);

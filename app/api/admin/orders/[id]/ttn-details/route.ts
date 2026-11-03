@@ -9,6 +9,7 @@ import { getRozetkaDeliveryTtns } from '../../../../../../lib/rozetka-delivery-t
 import { isManualPostalCarrier, MANUAL_CARRIER_LABEL } from '../../../../../../lib/carriers';
 import { snapshotFor, type TtnCarrier, type TtnSnapshot } from '../../../../../../lib/ttn-snapshot';
 import { buildTtnDetails, type NpLiveDoc, type RozetkaLiveTtn, type RzLiveStatus } from '../../../../../../lib/ttn-details';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /**
  * «Деталі ЕН»: що вписано в накладну замовлення — знімок при створенні
@@ -17,7 +18,7 @@ import { buildTtnDetails, type NpLiveDoc, type RozetkaLiveTtn, type RzLiveStatus
  * Збій перевізника не валить відповідь: показуємо знімок і пишемо, чого не
  * вдалося отримати.
  */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff();
   if (!auth.ok) return auth.response;
 
@@ -99,5 +100,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ...details, notes: [...liveErrors, ...details.notes] });
 }
+
+export const GET = withApi('admin/orders/[id]/ttn-details', _GET);
 
 type TtnDetailsDelivery = { recipient_title?: string | null; recipient_phone?: string | null; city?: { title?: string; city_name?: string } | null };

@@ -4,6 +4,7 @@ import { resolveCategoryMeta } from '../../../../../lib/category-content';
 import { categoryFamilySlugs, duplicateOfParent } from '../../../../../lib/seo/meta';
 import { categoryMarkdown, type MdCategoryInput } from '../../../../../lib/llms-md';
 import { SITE_URL } from '../../../../../lib/site';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Markdown-версія листингу категорії. Публічна адреса — /shop/<slug>.md
 // (rewrite у next.config), пояснення до заголовків — у сусідньому роуті товару.
@@ -20,7 +21,7 @@ const md = (body: string, canonical: string, status = 200) =>
     },
   });
 
-export async function GET(_req: Request, { params }: { params: Promise<{ category: string }> }) {
+async function _GET(_req: Request, { params }: { params: Promise<{ category: string }> }) {
   const { category: raw } = await params;
   const slug = decodeURIComponent(raw);
 
@@ -91,3 +92,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ categor
 
   return md(categoryMarkdown(input), canonical);
 }
+
+export const GET = withApi('md/shop/[category]', _GET);

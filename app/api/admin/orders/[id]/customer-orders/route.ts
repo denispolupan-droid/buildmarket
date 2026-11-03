@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../../lib/db-paginate';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Історія клієнта для картки замовлення: скільки замовлень + сумарно (бейдж біля
 // імені), список попередніх (розкривається з бейджа) і що з поточного складу
@@ -12,7 +13,7 @@ const LIST_LIMIT = 20;
 type Item = { sku: string; name: string; qty: number };
 type Row = { id: string; order_number: number; created_at: string; channel_code: string | null; status: string; total_price: number | null; items: Item[] | null };
 
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -73,3 +74,5 @@ export async function GET(
     bought,
   });
 }
+
+export const GET = withApi('admin/orders/[id]/customer-orders', _GET);

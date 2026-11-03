@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { applyMpMarkups, normalizeMpItems } from '../../../../../lib/mp-reprice';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Переоцінка маркетплейсів з розділу «Ціни»: пише товарні націнки
 // products.rozetka_markup_pct / prom_markup_pct пакетом. Самі ціни фіди
@@ -9,7 +10,7 @@ import { applyMpMarkups, normalizeMpItems } from '../../../../../lib/mp-reprice'
 // не змінюється; журнал і відкат — /api/admin/prices/log.
 //
 // PATCH { items: [{ sku, rozetka_markup_pct?: number|null, prom_markup_pct?: number|null }] }
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -26,3 +27,5 @@ export async function PATCH(req: NextRequest) {
   // Фід Rozetka живе на CDN до 5 хв, Prom читає без кешу.
   return NextResponse.json({ ok: true, updated: items.length });
 }
+
+export const PATCH = withApi('admin/prices/mp-markup', _PATCH);

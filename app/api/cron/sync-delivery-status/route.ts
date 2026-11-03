@@ -4,6 +4,7 @@ import { checkRzBalanceAlert } from '../../../../lib/rz-delivery-api';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { withCronLock } from '../../../../lib/cron-lock';
+import { withApi } from '../../../../lib/api-handler';
 
 // Щогодинний синк руху посилок. Сама логіка — у lib/delivery-sync (її ж викликає
 // кнопка «Синхронізувати НП» в адмінці), тут лишається тільки авторизація крона
@@ -43,7 +44,7 @@ async function run(req: NextRequest) {
 // аудит 31.10.2026). Зайнятий лок — це не збій: відповідаємо 200 без алерту.
 export const maxDuration = 120;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -51,3 +52,5 @@ export async function GET(req: NextRequest) {
   if (locked.skipped) return NextResponse.json({ ok: true, skipped: 'locked' });
   return locked.result;
 }
+
+export const GET = withApi('cron/sync-delivery-status', _GET);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { computeProductGaps, hasAnyGap, type SeoStateRow } from '../../../../../lib/seo/product-gaps';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +15,7 @@ const db = createServiceClient();
  *
  * GET /api/admin/seo/lookup?skus=1001-002,1001-003
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -42,3 +43,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ found, unknown: skus.filter(s => !foundSet.has(s)) });
 }
+
+export const GET = withApi('admin/seo/lookup', _GET);

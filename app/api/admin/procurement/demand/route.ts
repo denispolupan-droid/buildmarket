@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
 // GET /api/admin/procurement/demand?skus=SKU1,SKU2
 // Повертає кількість замовлень і потрібну кількість по кожному SKU
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -34,3 +35,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ demand });
 }
+
+export const GET = withApi('admin/procurement/demand', _GET);

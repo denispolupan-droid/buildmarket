@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadCharDictionary, facetSpecsFor } from '../../../../../lib/characteristics';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -146,3 +147,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(result);
 }
+
+export const GET = withApi('admin/products/defaults', _GET);

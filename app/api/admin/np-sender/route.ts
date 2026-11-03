@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { withNpRetry } from '../../../../lib/np-retry';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -20,7 +21,7 @@ async function npCall(apiKey: string, modelName: string, calledMethod: string, m
   });
 }
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -67,3 +68,5 @@ export async function GET() {
     }] : [],
   });
 }
+
+export const GET = withApi('admin/np-sender', _GET);

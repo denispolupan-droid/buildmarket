@@ -3,6 +3,7 @@ import { createServiceClient, type TableUpdate } from '../../../../../lib/supaba
 import { resolveSender } from '../../../../../lib/email-sender';
 import { orderItemSources } from '../../../../../lib/orders/item-sources';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -56,7 +57,7 @@ function extractEmail(text: string): string | null {
  * своїми замовленнями (кожне окремим блоком із ТТН). Одна кнопка замість
  * поштучної розсилки.
  */
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -260,3 +261,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, results, sent_order_ids: sentOrders.map(o => o.id) });
 }
+
+export const POST = withApi('admin/supplier-orders/bulk', _POST);

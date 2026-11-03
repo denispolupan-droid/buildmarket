@@ -4,6 +4,7 @@ import { getCategoryNameRu } from '../../../lib/ru';
 import { fetchAllRows } from '../../../lib/db-paginate';
 import { SITE_URL } from '../../../lib/site';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { withApi } from '../../../lib/api-handler';
 
 /**
  * Фід товарів за специфікацією OpenAI Product Feed (Agentic Commerce, версія
@@ -20,7 +21,7 @@ const serviceClient = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key');
   if (!key || key !== process.env.FEED_SECRET_KEY) return new NextResponse('Unauthorized', { status: 401 });
   const lang: 'uk' | 'ru' = request.nextUrl.searchParams.get('lang') === 'ru' ? 'ru' : 'uk';
@@ -84,3 +85,5 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('openai-product-feed', _GET);

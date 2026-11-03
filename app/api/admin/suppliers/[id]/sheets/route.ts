@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { assertPublicUrl } from '../../../../../../lib/safe-fetch-url';
 import * as XLSX from 'xlsx';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -10,7 +11,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const id = Number((await params).id);
@@ -59,3 +60,5 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ sheets });
 }
+
+export const GET = withApi('admin/suppliers/[id]/sheets', _GET);

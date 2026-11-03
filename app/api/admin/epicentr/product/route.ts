@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const num = (v: unknown): number | null => (v === '' || v == null ? null : Number(v));
 
 // PATCH: on_epicentr / epicentr_markup_pct одного товару
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -26,8 +27,10 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+export const PATCH = withApi('admin/epicentr/product', _PATCH);
+
 // POST: масово on_epicentr — усі активні або одна категорія
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -40,3 +43,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('admin/epicentr/product', _POST);

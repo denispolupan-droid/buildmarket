@@ -6,6 +6,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 import { loadNpCodOrders, unsettledNpCod, formatUnsettledAlert } from '../../../../lib/novapay-cod-watch';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { withApi } from '../../../../lib/api-handler';
 
 // Оновлення кешу живого балансу NovaPay. Окремим кроном, бо їхній SOAP
 // відповідає по 8–30+ с на виклик — сторінки читають лише кеш.
@@ -27,7 +28,7 @@ export const maxDuration = 300;
 
 const STALE_ALERT_MS = 15 * 60 * 60 * 1000;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -74,5 +75,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: balance !== null, balance, registers: registers ? { lastDate: registers.lastDate, count: registers.payouts.length } : null, ingest, payouts, autopost });
 }
+
+export const GET = withApi('cron/novapay-balance', _GET);
 
 export const POST = GET;

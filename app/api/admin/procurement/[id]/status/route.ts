@@ -3,10 +3,11 @@ import { createServiceClient, type TableUpdate } from '../../../../../../lib/sup
 import { recordTxn } from '../../../../../../lib/accounting/money';
 import { maybeAutoClose } from '../../../../../../lib/accounting/documents';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -96,3 +97,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/procurement/[id]/status', _PATCH);

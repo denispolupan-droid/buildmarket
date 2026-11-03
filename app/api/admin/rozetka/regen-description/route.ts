@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { isMpDescriptionClean, languageSlips } from '../../../../../lib/marketplace-description';
 import { generateMpUA, translateMpRU } from '../../../../../lib/marketplace-description-gen';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -23,7 +24,7 @@ type Result = { sku: string; ok: boolean; length?: number; error?: string; ua?: 
  *
  * Фото цією кнопкою не лікується: там потрібне інше зображення, а не інші слова.
  */
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -82,3 +83,5 @@ export async function POST(request: NextRequest) {
     results: [...results, ...missing.map(sku => ({ sku, ok: false, error: 'товар не знайдено' }))],
   });
 }
+
+export const POST = withApi('admin/rozetka/regen-description', _POST);

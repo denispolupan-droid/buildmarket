@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccountId, getAccessToken } from '../../../../../lib/zoho-mail';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const messageId = req.nextUrl.searchParams.get('messageId');
@@ -27,3 +28,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: String(e) });
   }
 }
+
+export const GET = withApi('admin/mail/test-read', _GET);

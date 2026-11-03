@@ -3,6 +3,7 @@ import { alertAdmin } from '../../../../lib/alert';
 import { findSaleDivergences, type SaleDivergence } from '../../../../lib/accounting/reconcile-sale-docs';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 // Перевірка інваріантів обліку на БОЙОВІЙ базі (той самий check_invariants, що ганяється
 // в тестах). Виконується на проді, де вже є service-role креденшели — не потрібно класти
@@ -11,7 +12,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 
 const serviceClient = createServiceClient();
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -56,5 +57,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, checked: rows.length, divergences });
 }
+
+export const GET = withApi('cron/check-invariants', _GET);
 
 export const POST = GET;

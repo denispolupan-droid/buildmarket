@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { requireStaff } from '../../../../lib/auth-guard';
+import { withApi } from '../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
   return auth.ok ? auth.user : null;
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const supplierId = new URL(req.url).searchParams.get('supplier_id');
@@ -22,7 +23,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? []);
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/supplier-contracts', _GET);
+
+async function _POST(req: NextRequest) {
   const user = await checkAdmin();
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -54,3 +57,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });
 }
+
+export const POST = withApi('admin/supplier-contracts', _POST);

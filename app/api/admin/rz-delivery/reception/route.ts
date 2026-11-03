@@ -3,6 +3,7 @@ import { createServiceClient } from '../../../../../lib/supabase-service';
 import { RZ_DELIVERY_TYPE } from '../../../../../lib/rz-delivery';
 import { getRzSender, rzAddToReception, rzReceptionsToday, rzReceptionPrint } from '../../../../../lib/rz-delivery-api';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 /**
  * Реєстр ЕН «ROZETKA Доставки» — пачка накладних, яку віддають на точці одним
@@ -20,7 +21,7 @@ async function requireAdmin() {
   return auth.ok ? auth.user : null;
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const printId = req.nextUrl.searchParams.get('print');
@@ -38,7 +39,9 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/rz-delivery/reception', _GET);
+
+async function _POST(req: NextRequest) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { orderIds } = await req.json().catch(() => ({})) as { orderIds?: string[] };
@@ -76,3 +79,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/rz-delivery/reception', _POST);

@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { getMarketplaceBalance } from '../../../../../../lib/accounting/money';
 import { parsePromStatement, summarizePromStatement, type PromStatementRow } from '../../../../../../lib/prom-statement';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Звірка з Prom. На відміну від Rozetka, «їхній» бік автоматично не дістати:
 // /balance/list, /payments/list, /finance/list дають 404 — у Prom API є лише
@@ -23,7 +24,7 @@ type Row = {
   status: 'ok' | 'diff' | 'missing_ours' | 'missing_theirs' | 'pending_delivery';
 };
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -193,3 +194,5 @@ export async function POST(req: NextRequest) {
     },
   });
 }
+
+export const POST = withApi('admin/finance/marketplace-balance/prom-reconcile', _POST);

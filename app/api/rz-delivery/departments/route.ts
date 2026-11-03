@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rzDepartments } from '../../../../lib/rz-delivery-api';
 import { rzFitsWeight, rzWeightLimitKg, rzDepartmentLabel } from '../../../../lib/rz-delivery';
+import { withApi } from '../../../../lib/api-handler';
 
 // Точки видачі міста для чекауту, вже відфільтровані під вагу замовлення.
 //
@@ -9,7 +10,7 @@ import { rzFitsWeight, rzWeightLimitKg, rzDepartmentLabel } from '../../../../li
 // відправлення вже після оплати. Вага з клієнта тут не «гроші» і підробка їй
 // нічого не дає — при створенні накладної ми все одно рахуємо вагу з БД.
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const cityId = req.nextUrl.searchParams.get('city') ?? '';
   const weight = parseFloat(req.nextUrl.searchParams.get('weight') ?? '0') || 0;
   if (!cityId) return NextResponse.json({ departments: [] });
@@ -30,3 +31,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ departments: [], error: 'Довідник відділень недоступний' }, { status: 502 });
   }
 }
+
+export const GET = withApi('rz-delivery/departments', _GET);

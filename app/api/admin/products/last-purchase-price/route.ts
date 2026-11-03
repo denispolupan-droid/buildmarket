@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
 // GET /api/admin/products/last-purchase-price?skus=sku1,sku2
 // Повертає останню закупівельну ціну по кожному SKU
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -33,3 +34,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(result);
 }
+
+export const GET = withApi('admin/products/last-purchase-price', _GET);

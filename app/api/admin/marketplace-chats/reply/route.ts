@@ -4,10 +4,11 @@ import { replyRozetkaChat } from '../../../../../lib/rozetka-api';
 import { sendPromChatMessage } from '../../../../../lib/prom-api';
 import { recordDraftOutcome } from '../../../../../lib/marketplace-chat-assistant';
 import { invalidateMarketplaceInboxCache } from '../../../../../lib/marketplace-chat-inbox';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Відповідь покупцю в чаті маркетплейсу від імені магазину.
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -42,3 +43,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/marketplace-chats/reply', _POST);

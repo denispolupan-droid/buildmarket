@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { pushEpicentrOffers } from '../../../../../lib/epicentr-offers-push';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Ручний пуш цін і наявності в Епіцентр через /v1/offers (кнопка на дашборді).
-export async function POST() {
+async function _POST() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   try {
@@ -13,3 +14,5 @@ export async function POST() {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/epicentr/push-offers', _POST);

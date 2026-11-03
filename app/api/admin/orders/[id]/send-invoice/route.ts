@@ -9,10 +9,11 @@ import { SITE_URL } from '../../../../../../lib/site';
 import { formatDocDate } from '../../../../../../lib/doc-format';
 import { invoiceDate } from '../../../../../../lib/invoice-doc';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -71,3 +72,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true, to: toEmail });
 }
+
+export const POST = withApi('admin/orders/[id]/send-invoice', _POST);

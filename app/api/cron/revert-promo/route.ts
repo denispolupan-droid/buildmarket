@@ -5,6 +5,7 @@ import { alertAdmin } from '../../../../lib/alert';
 import { MP_TARGETS, revertMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { processAdjustmentBoundaries } from '../../../../lib/price-adjustments-db';
+import { withApi } from '../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -104,7 +105,7 @@ async function run(req: NextRequest) {
 
 // Збій крона раніше бачили лише в логах Vercel (аудит 31.10.2026): тепер і
 // виняток, і відповідь 5xx ідуть алертом у Telegram (з тротлінгом, lib/alert).
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   try {
     const res = await run(req);
     if (res.status >= 500) alertAdmin('Cron: відкат промо — збій', `HTTP ${res.status}`);
@@ -114,3 +115,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const GET = withApi('cron/revert-promo', _GET);

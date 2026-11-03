@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { recordTxn } from '../../../../../lib/accounting/money';
 import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/validate';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Переказ між власними грошовими рахунками (напр. NovaPay → Монобанк, або внесення/зняття
 // готівки). Проводка: DR <куди> / CR <звідки>. Обидві сторони — грошові рахунки, тому в
@@ -10,7 +11,7 @@ import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../lib/v
 const MONEY_ACCOUNTS = ['bank', 'acquiring', 'novapay', 'cash'] as const;
 type MoneyAccount = typeof MONEY_ACCOUNTS[number];
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -52,3 +53,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, txn_id: txnId });
 }
+
+export const POST = withApi('admin/finance/transfer', _POST);

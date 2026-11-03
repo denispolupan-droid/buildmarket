@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getProductsCached, getCategoriesCached } from '../../../../lib/supabase';
 import { resolveCategoryMeta } from '../../../../lib/category-content';
+import { withApi } from '../../../../lib/api-handler';
 
 /**
  * Опис, FAQ і гайд категорії для клієнтського перемикання в магазині та
@@ -21,7 +22,7 @@ import { resolveCategoryMeta } from '../../../../lib/category-content';
  */
 export const revalidate = 60;
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const lang = req.nextUrl.searchParams.get('lang') === 'ru' ? 'ru' : 'uk';
   // Ціни підставляються з каталогу — тому кеш хвилина, як у листингу, а не година
@@ -31,3 +32,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=3600' },
   });
 }
+
+export const GET = withApi('category-meta/[slug]', _GET);

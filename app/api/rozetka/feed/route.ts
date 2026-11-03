@@ -8,6 +8,7 @@ import { factorOf, hasPromo, totalFactor } from '../../../../lib/price-adjustmen
 import { loadFactorMap } from '../../../../lib/price-adjustments-db';
 import { mpDescription, mpDescriptionRu } from '../../../../lib/marketplace-description';
 import { feedVendor } from '../../../../lib/brand-feed';
+import { withApi } from '../../../../lib/api-handler';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://fixline.com.ua';
 const SHOP_NAME = 'Fixline';
@@ -29,7 +30,7 @@ function x(str: string | null | undefined): string {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
 
-export async function GET() {
+async function _GET() {
   const db = createServiceClient();
 
   type Cat = { id: number; slug: string; name: string; rozetka_category_id: string | null; rozetka_commission_pct: number | null; rozetka_markup_pct: number | null };
@@ -230,3 +231,5 @@ export async function GET() {
     },
   });
 }
+
+export const GET = withApi('rozetka/feed', _GET);

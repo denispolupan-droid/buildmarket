@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { normalizeBrandDiscounts } from '../../../../../lib/supplier-brand-discounts';
 import { createServiceClient, type TableInsert } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -11,7 +12,7 @@ async function checkAdmin() {
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+async function _GET(_req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const id = Number((await params).id);
 
@@ -42,7 +43,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return NextResponse.json({ ...supplier, sync_logs: syncLogs ?? [], product_overrides: productOverrides ?? [], promotions: promotions ?? [] });
 }
 
-export async function PUT(req: NextRequest, { params }: Params) {
+export const GET = withApi('admin/suppliers/[id]', _GET);
+
+async function _PUT(req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const id = Number((await params).id);
   const body = await req.json();
@@ -121,7 +124,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export const PUT = withApi('admin/suppliers/[id]', _PUT);
+
+async function _DELETE(_req: NextRequest, { params }: Params) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const id = Number((await params).id);
 
@@ -129,3 +134,5 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/suppliers/[id]', _DELETE);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { recentSeoActions, type SeoActionKind, type SeoActionRow } from '../../../../../lib/seo-actions';
 import { pageEffects, toLangNeutralPath } from '../../../../../lib/seo/history';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -21,7 +22,7 @@ type PageSummary = {
  * GET                    — зведення по сторінках (позначки «що робили» в таблицях)
  * GET ?view=log&limit=N  — журнал дій із заміряним ефектом до/після за gsc_daily
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -54,6 +55,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json([...byPage.values()]);
 }
+
+export const GET = withApi('admin/seo/actions', _GET);
 
 /**
  * Журнал із відповіддю на головне питання розділу — чи спрацювало.

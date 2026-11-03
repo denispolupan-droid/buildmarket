@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '../../../../lib/rate-limit';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const ip = getClientIp(req);
   if (!rateLimit(`promo:${ip}`, 20, 5 * 60 * 1000))
     return NextResponse.json({ error: 'Занадто багато спроб. Спробуйте пізніше.' }, { status: 429 });
@@ -53,3 +54,5 @@ export async function POST(req: NextRequest) {
     finalTotal:    Math.max(0, cartTotal - discountAmount),
   });
 }
+
+export const POST = withApi('promo/validate', _POST);

@@ -8,8 +8,9 @@ import { computePromCommission } from '../../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commission';
 import { computeEpicentrCommission, getEpicentrFallbackPct } from '../../../../../../lib/epicentr-commission';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -159,6 +160,8 @@ export async function GET(
     source_fixed: allFixed,
   });
 }
+
+export const GET = withApi('admin/orders/[id]/fulfillment', _GET);
 
 /** План із зафіксованих рядків — той самий формат, що віддає роутер. */
 function planFromFixed(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
 }
 
 // POST — зберегти маппінг і видалити з немаплених
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { supplier_id, supplier_sku, our_sku } = await req.json();
@@ -33,8 +34,10 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+export const POST = withApi('admin/suppliers/map-sku', _POST);
+
 // DELETE — ігнорувати артикул (просто видалити з черги без маппінгу)
-export async function DELETE(req: NextRequest) {
+async function _DELETE(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { supplier_id, supplier_sku } = await req.json();
@@ -47,3 +50,5 @@ export async function DELETE(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/suppliers/map-sku', _DELETE);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { buildVidatkovaPdf } from '../../../../../lib/vidatkova-pdf';
 import { loadVidatkova, vidatkovaRenderParams } from '../../../../../lib/vidatkova-doc';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -10,7 +11,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Публічне завантаження PDF видаткової накладної. Доступ за unguessable UUID —
 // та сама модель, що й сторінка /vidatkova/[id], яку клієнт відкриває за
 // посиланням; нових даних понад те, що вже на сторінці, роут не розкриває.
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!UUID_RE.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -35,3 +36,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 }
+
+export const GET = withApi('vidatkova/[id]/pdf', _GET);

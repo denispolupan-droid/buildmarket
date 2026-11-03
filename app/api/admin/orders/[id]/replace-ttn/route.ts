@@ -6,6 +6,7 @@ import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { setPromTTN } from '../../../../../../lib/prom-api';
 import { setEpicentrTTN } from '../../../../../../lib/epicentr-api';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /**
  * Заміна ТТН у вже відвантаженому замовленні.
@@ -21,7 +22,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
  * замовлення лишається відвантаженим. Єдине, що треба, — переписати номер у
  * непроведеній РН, інакше документ посилатиметься на неіснуючу накладну.
  */
-export async function POST(
+async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -118,3 +119,5 @@ export async function POST(
     pushErrors,
   });
 }
+
+export const POST = withApi('admin/orders/[id]/replace-ttn', _POST);

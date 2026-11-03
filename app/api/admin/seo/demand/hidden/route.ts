@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../../lib/db-paginate';
 import { getCategoryNameRu } from '../../../../../../lib/ru';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
+import { withApi } from '../../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export type HiddenCluster = {
 const INFO = /^(як|який|яка|які|яку|скільки|чим|чи|чому|навіщо|коли|как|какой|какая|какие|какую|сколько|чем|можно ли|почему|зачем|когда)(?!\p{L})|(?<!\p{L})(як|как|скільки|сколько|чим|чем|відгук|отзыв|різниц|отлич|витрат|расход|сохне|сохнет|пропорц|нанос|вибрат|выбрать|краще|лучше|своїми|своими|чому|почему|навіщо|зачем|можна|можно)/iu;
 const BUY = /(?<!\p{L})(купити|купить|ціна|цена|вартість|стоимость|оптом|недорого|дешево|прайс|магазин)(?!\p{L})/iu;
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -60,3 +61,5 @@ export async function GET() {
   const totals = { phrases: rows.length, uncovered: rows.filter(r => !r.covered_path).length, invisible: rows.filter(r => !r.covered_path && r.gsc_impressions == null).length, info: rows.filter(r => INFO.test(r.phrase)).length };
   return NextResponse.json({ clusters, totals, lastCrawl: (last.data as { last_seen: string } | null)?.last_seen ?? null });
 }
+
+export const GET = withApi('admin/seo/demand/hidden', _GET);

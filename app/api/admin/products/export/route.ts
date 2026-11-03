@@ -3,10 +3,11 @@ import * as XLSX from 'xlsx';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -155,3 +156,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('admin/products/export', _GET);

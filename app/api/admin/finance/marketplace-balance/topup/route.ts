@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recordMarketplaceTopup } from '../../../../../../lib/accounting/money';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -34,3 +35,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/finance/marketplace-balance/topup', _POST);

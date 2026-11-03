@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdmin } from '../../../../../lib/supabase-server';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
@@ -24,3 +25,5 @@ export async function GET(
 
   return NextResponse.json({ items: data.items, totalPrice: data.total_price });
 }
+
+export const GET = withApi('cart/restore/[token]', _GET);

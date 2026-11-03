@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { asJson, createServiceClient } from '../../../../../../lib/supabase-service';
 import { applyOrderDiscount, type DiscountItem } from '../../../../../../lib/pricing';
 import { parseBody, zMoney, zYmd, zText, z } from '../../../../../../lib/validate';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Ручна знижка по замовленню (Варіант A): знижку «зашиваємо» в построчну ціну
 // items[].price. Оскільки вся облікова гілка (РН, виручка, дебіторка, рахунок)
@@ -20,7 +21,7 @@ import { parseBody, zMoney, zYmd, zText, z } from '../../../../../../lib/validat
 const DISCOUNTABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock', 'picking'];
 const LOCKED_CHANNELS = ['dropship'];
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -65,3 +66,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     items: result.items,
   });
 }
+
+export const POST = withApi('admin/orders/[id]/discount', _POST);

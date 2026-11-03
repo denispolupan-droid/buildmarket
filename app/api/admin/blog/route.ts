@@ -8,6 +8,7 @@ import { buildCovers } from '../../../../lib/blog-cover';
 import { logSeoAction } from '../../../../lib/seo-actions';
 import { refreshCoverage } from '../../../../lib/seo/demand-crawl';
 import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -18,7 +19,7 @@ function bustBlogCache() {
   revalidateTag('blog', 'max');
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const id = req.nextUrl.searchParams.get('id');
@@ -35,9 +36,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? []);
 }
 
+export const GET = withApi('admin/blog', _GET);
+
 // Генерація нової статті (чернетка) — єдине місце витрат API, тільки по кнопці.
 // manual: true — порожня чернетка без AI (ручне написання).
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { topic, focusQuery, mustLink, manual } = await req.json() as {
@@ -83,7 +86,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest) {
+export const POST = withApi('admin/blog', _POST);
+
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const body = await req.json() as {
@@ -128,7 +133,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(req: NextRequest) {
+export const PATCH = withApi('admin/blog', _PATCH);
+
+async function _DELETE(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const id = Number(req.nextUrl.searchParams.get('id'));
@@ -138,3 +145,5 @@ export async function DELETE(req: NextRequest) {
   bustBlogCache();
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/blog', _DELETE);

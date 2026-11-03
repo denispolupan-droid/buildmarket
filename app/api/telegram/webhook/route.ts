@@ -4,6 +4,7 @@ import { parseDraftCallback } from '../../../../lib/marketplace-chat-telegram-ru
 import { sendDraftFromTelegram, discardDraftFromTelegram, reviseDraftFromTelegram } from '../../../../lib/marketplace-chat-telegram';
 import { normalizeInstruction } from '../../../../lib/marketplace-chat-draft-rules';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 // Переписування чернетки (агент з інструментами) займає 10–40 с — виконуємо
 // в after(), щоб Telegram отримав 200 одразу і не повторював запит.
@@ -16,7 +17,7 @@ const PAYMENT_UA: Record<string, string> = {
   invoice: 'Безготівковий розрахунок',
 };
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const secret = req.headers.get('x-telegram-bot-api-secret-token');
   if (secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
     return NextResponse.json({ ok: false }, { status: 403 });
@@ -108,3 +109,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('telegram/webhook', _POST);

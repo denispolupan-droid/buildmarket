@@ -6,6 +6,7 @@ import {
   isShowcaseSurface, normalizeShowcaseSkus, isShowcaseVisible,
   SHOWCASE_MAX_ITEMS, SHOWCASE_SURFACES, type ShowcaseSurface,
 } from '../../../../lib/showcase';
+import { withApi } from '../../../../lib/api-handler';
 
 // Вітрина головної: набір і порядок товарів для роздрібу й опту.
 
@@ -63,7 +64,7 @@ async function loadSurface(surface: ShowcaseSurface): Promise<Item[]> {
   });
 }
 
-export async function GET() {
+async function _GET() {
   const gate = await requireStaff('admin', 'manager');
   if (!gate.ok) return gate.response;
 
@@ -71,7 +72,9 @@ export async function GET() {
   return NextResponse.json({ shop, catalog, max: SHOWCASE_MAX_ITEMS });
 }
 
-export async function PUT(req: NextRequest) {
+export const GET = withApi('admin/showcase', _GET);
+
+async function _PUT(req: NextRequest) {
   const gate = await requireStaff('admin');
   if (!gate.ok) return gate.response;
 
@@ -108,3 +111,5 @@ export async function PUT(req: NextRequest) {
   revalidateTag('showcase', 'max');
   return NextResponse.json({ ok: true, count: clean.length, items: await loadSurface(surface) });
 }
+
+export const PUT = withApi('admin/showcase', _PUT);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { npCall, getNpApiKey, npError, sanitizeNpNote } from '../../../../../../lib/np-api';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Заявка на повернення в Новій Пошті прямо з журналу замовлень: клієнт не забрав
 // посилку — повертаємо її на наше відділення, не чекаючи, поки НП поверне сама
@@ -40,7 +41,7 @@ async function loadOrder(id: string) {
   return { db, order: data };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -92,7 +93,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withApi('admin/orders/[id]/np-return', _GET);
+
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -172,7 +175,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withApi('admin/orders/[id]/np-return', _POST);
+
+async function _DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -201,3 +206,5 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/orders/[id]/np-return', _DELETE);

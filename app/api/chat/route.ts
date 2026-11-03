@@ -5,6 +5,7 @@ import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 import { FIXLINE_FACTS } from '../../../lib/fixline-facts';
 import { searchProductsText, productDetailsText } from '../../../lib/product-lookup';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { withApi } from '../../../lib/api-handler';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -115,7 +116,7 @@ async function runAgent(messages: Anthropic.MessageParam[]): Promise<string> {
 
 // ── Route handlers ────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const ip = getClientIp(req);
   if (!rateLimit(`chat:${ip}`, 20, 10 * 60 * 1000)) {
     return NextResponse.json({ error: 'Занадто багато запитів. Спробуйте пізніше.' }, { status: 429 });
@@ -220,7 +221,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
+export const POST = withApi('chat', _POST);
+
+async function _GET(req: NextRequest) {
   const sessionId = req.nextUrl.searchParams.get('sessionId');
   if (!sessionId) return NextResponse.json({ messages: [] });
 
@@ -232,3 +235,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ messages: messages ?? [] });
 }
+
+export const GET = withApi('chat', _GET);

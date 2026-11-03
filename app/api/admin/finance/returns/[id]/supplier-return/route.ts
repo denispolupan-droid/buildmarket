@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../../lib/auth-guard';
 import { createSupplierReturn } from '../../../../../../../lib/accounting/returns';
 import { isReturnReason } from '../../../../../../../lib/accounting/returns-rules';
+import { withApi } from '../../../../../../../lib/api-handler';
 
 // ПП на підставі ПВ: повернений покупцем товар їде постачальнику.
 // Межа — рядки ПВ мінус уже відправлене; склад має фізично мати товар.
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -31,3 +32,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+export const POST = withApi('admin/finance/returns/[id]/supplier-return', _POST);

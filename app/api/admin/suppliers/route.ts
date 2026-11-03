@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { normalizeBrandDiscounts } from '../../../../lib/supplier-brand-discounts';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function GET() {
+async function _GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const [{ data: suppliers, error }, { data: syncLogs }] = await Promise.all([
@@ -39,7 +40,9 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/suppliers', _GET);
+
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await req.json();
@@ -65,3 +68,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(data, { status: 201 });
 }
+
+export const POST = withApi('admin/suppliers', _POST);

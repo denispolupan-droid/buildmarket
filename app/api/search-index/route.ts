@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
 import { getSupabase } from '../../../lib/supabase';
 import { fetchAllRows } from '../../../lib/db-paginate';
+import { withApi } from '../../../lib/api-handler';
 
 export const dynamic = 'force-static';
 export const revalidate = 300;
@@ -32,6 +33,8 @@ const getIndex = unstable_cache(
   { revalidate: 300, tags: ['products'] },
 );
 
-export async function GET() {
+async function _GET() {
   return NextResponse.json(await getIndex());
 }
+
+export const GET = withApi('search-index', _GET);

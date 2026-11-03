@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -44,3 +45,5 @@ export async function GET(
 
   return NextResponse.json({ pos: pos ?? [], receipts: receipts ?? [], receiptLines: receiptLines ?? [] });
 }
+
+export const GET = withApi('admin/orders/[id]/purchase-orders', _GET);

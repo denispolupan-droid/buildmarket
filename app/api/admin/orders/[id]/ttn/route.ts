@@ -5,6 +5,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { npMarkingPdf } from '../../../../../../lib/np-api';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { isManualPostalCarrier } from '../../../../../../lib/carriers';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -44,7 +45,7 @@ async function resolveRef(apiKey: string, ttnNumber: string): Promise<string | n
  * в браузері. На чужу/неіснуючу ТТН НП віддає HTML-сторінку, а не PDF — ловимо
  * по магічних байтах.
  */
-export async function GET(
+async function _GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -77,7 +78,9 @@ export async function GET(
   }
 }
 
-export async function DELETE(
+export const GET = withApi('admin/orders/[id]/ttn', _GET);
+
+async function _DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -132,3 +135,5 @@ export async function DELETE(
 
   return NextResponse.json({ ok: true, np_deleted: !npError, np_error: npError });
 }
+
+export const DELETE = withApi('admin/orders/[id]/ttn', _DELETE);

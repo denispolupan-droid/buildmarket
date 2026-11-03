@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
 }
 
 // PATCH: toggle on_prom or update prom_markup_pct for a single product
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { sku, on_prom, prom_markup_pct } = await req.json();
@@ -24,8 +25,10 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+export const PATCH = withApi('admin/prom/product', _PATCH);
+
 // POST: bulk toggle on_prom — for all active products, or a specific category
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { category_slug, on_prom } = await req.json();
@@ -38,3 +41,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('admin/prom/product', _POST);

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveTokens } from '../../../../../../lib/zoho-mail';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const site = process.env.NEXT_PUBLIC_SITE_URL;
 
   // Require an admin session (the callback carries first-party cookies) …
@@ -51,3 +52,5 @@ export async function GET(req: NextRequest) {
   await saveTokens(data.access_token, data.refresh_token, data.expires_in ?? 3600);
   return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/admin/mail?connected=1`);
 }
+
+export const GET = withApi('admin/mail/oauth/callback', _GET);

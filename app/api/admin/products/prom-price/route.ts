@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { sku, prom_markup_pct, price_wholesale } = await req.json() as {
@@ -37,3 +38,5 @@ export async function PATCH(req: NextRequest) {
   revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/products/prom-price', _PATCH);

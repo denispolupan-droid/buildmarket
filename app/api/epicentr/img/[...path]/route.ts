@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchSourceWebp, toEpicentrJpeg } from '../../../../../lib/epicentr-images';
+import { withApi } from '../../../../../lib/api-handler';
 
 /**
  * Запасний шлях для фото Епіцентру: конвертація WebP → JPEG на льоту.
@@ -14,12 +15,14 @@ import { fetchSourceWebp, toEpicentrJpeg } from '../../../../../lib/epicentr-ima
 const SEGMENT_RX = /^[\p{L}\p{N}_-]{1,120}$/u;
 type Ctx = { params: Promise<{ path: string[] }> };
 
-export async function HEAD(req: NextRequest, ctx: Ctx) {
+async function _HEAD(req: NextRequest, ctx: Ctx) {
   const res = await GET(req, ctx);
   return new NextResponse(null, { status: res.status, headers: res.headers });
 }
 
-export async function GET(_req: NextRequest, { params }: Ctx) {
+export const HEAD = withApi('epicentr/img/[...path]', _HEAD);
+
+async function _GET(_req: NextRequest, { params }: Ctx) {
   const { path } = await params;
   const segs = (path ?? []).map(s => decodeURIComponent(s));
   const last = segs.at(-1) ?? '';
@@ -39,6 +42,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     },
   });
 }
+
+export const GET = withApi('epicentr/img/[...path]', _GET);
 
 function notFound() {
   return new NextResponse('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });

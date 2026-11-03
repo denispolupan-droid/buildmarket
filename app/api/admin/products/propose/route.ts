@@ -4,6 +4,7 @@ import { applyCardFollowUps, proposeProductCard } from '../../../../../lib/produ
 import { markAgentRunOutcome } from '../../../../../lib/ai-agent-runs';
 import { reportAiFailure } from '../../../../../lib/ai-health';
 import { aiFailureShort } from '../../../../../lib/ai-health-rules';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Чернетка картки товару від ШІ-агента за назвою з прайсу постачальника.
 // У БД нічого не пише: форма нового товару заповнюється пропозицією, зберігає
@@ -12,7 +13,7 @@ import { aiFailureShort } from '../../../../../lib/ai-health-rules';
 // Агент шукає технічний лист виробника в вебі — живий прогін 03.10: 48–71 с.
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -40,9 +41,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export const POST = withApi('admin/products/propose', _POST);
+
 // Після збереження картки з чернетки: лінійка сусіда, маппінг коду
 // постачальника, журнал агента. Або «відкинуто» — лише журнал.
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => ({})) as {
@@ -69,3 +72,5 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const PATCH = withApi('admin/products/propose', _PATCH);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
   return auth.ok ? auth.user : null;
 }
 
-export async function GET() {
+async function _GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { data, error } = await db
@@ -19,3 +20,5 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);
 }
+
+export const GET = withApi('admin/rozetka/category-tree', _GET);

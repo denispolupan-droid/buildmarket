@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { zohoFetch, getAccountId, getAccessToken } from '../../../../../../lib/zoho-mail';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   try {
@@ -24,7 +25,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withApi('admin/mail/messages/[id]', _GET);
+
+async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   let step = 'init';
@@ -56,7 +59,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withApi('admin/mail/messages/[id]', _PATCH);
+
+async function _DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   try {
@@ -68,3 +73,5 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+export const DELETE = withApi('admin/mail/messages/[id]', _DELETE);

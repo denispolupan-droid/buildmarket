@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ async function assertAdmin() {
   if (!auth.ok) throw new Error('Unauthorized');
 }
 
-export async function GET() {
+async function _GET() {
   try {
     await assertAdmin();
     const { data } = await db.from('app_settings').select('value').eq('key', 'rozetka_api_token').maybeSingle();
@@ -24,7 +25,9 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/rozetka/token', _GET);
+
+async function _POST(req: NextRequest) {
   try {
     await assertAdmin();
     const { token } = await req.json() as { token: string };
@@ -42,7 +45,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export const POST = withApi('admin/rozetka/token', _POST);
+
+async function _DELETE() {
   try {
     await assertAdmin();
     await db.from('app_settings').delete().eq('key', 'rozetka_api_token');
@@ -51,3 +56,5 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }
+
+export const DELETE = withApi('admin/rozetka/token', _DELETE);

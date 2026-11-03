@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { loadCharDictionary, normalizeChars } from '../../../../../lib/characteristics';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -11,7 +12,7 @@ export const maxDuration = 120;
 // Детермінована нормалізація характеристик (без AI, безкоштовно):
 // канонізація лейблів за словником + злиття дублів + порядок sort_order.
 // POST { skus: string[] } → { ok, changed: string[] }
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff();
   if (!auth.ok) return auth.response;
 
@@ -61,3 +62,5 @@ export async function POST(req: NextRequest) {
   if (changed.length) revalidateTag('products', 'max');
   return NextResponse.json({ ok: true, changed });
 }
+
+export const POST = withApi('admin/characteristics/normalize', _POST);

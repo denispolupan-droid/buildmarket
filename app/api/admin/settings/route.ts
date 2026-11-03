@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -8,7 +9,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function GET() {
+async function _GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { data, error } = await serviceClient.from('app_settings').select('key, value');
@@ -19,7 +20,9 @@ export async function GET() {
   return NextResponse.json(settings);
 }
 
-export async function PUT(req: NextRequest) {
+export const GET = withApi('admin/settings', _GET);
+
+async function _PUT(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const updates: Record<string, string> = await req.json();
@@ -37,3 +40,5 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const PUT = withApi('admin/settings', _PUT);

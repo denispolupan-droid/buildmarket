@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient, asJson } from '../../../../../../lib/supabase-service';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Зміна типу цін замовлення (роздріб / опт / дроп) з перерахунком позицій
 // за відповідним прайсом із product_stock. Дозволено лише ДО відгрузки
@@ -11,7 +12,7 @@ import { createServiceClient, asJson } from '../../../../../../lib/supabase-serv
 const PRICEABLE_STATUSES = ['new', 'confirmed', 'awaiting_stock', 'picking'];
 const LOCKED_CHANNELS: string[] = [];
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -101,3 +102,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true, price_type: priceType, total_price: newTotal, discount_amount: discountAmount, items: newItems });
 }
+
+export const POST = withApi('admin/orders/[id]/reprice', _POST);

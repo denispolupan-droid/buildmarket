@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -20,7 +21,7 @@ function effectiveUnitCost(qty: number, cost_price: number, batch_cost: number |
   return cost_price;
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -93,3 +94,5 @@ export async function GET(req: NextRequest) {
     closing_value,   // from stock_batches — single source of truth for inventory value
   });
 }
+
+export const GET = withApi('admin/stock/movements', _GET);

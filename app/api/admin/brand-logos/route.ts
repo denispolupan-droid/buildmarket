@@ -6,6 +6,7 @@ import { uploadToR2, deleteFromR2 } from '../../../../lib/r2';
 import { brandFolder } from '../../../../lib/seo/slug';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -13,7 +14,7 @@ async function requireAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const formData = await req.formData();
@@ -68,7 +69,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ logoUrl });
 }
 
-export async function PATCH(req: NextRequest) {
+export const POST = withApi('admin/brand-logos', _POST);
+
+async function _PATCH(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { brand, showOnHome } = await req.json() as { brand?: string; showOnHome?: boolean };
@@ -85,7 +88,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(req: NextRequest) {
+export const PATCH = withApi('admin/brand-logos', _PATCH);
+
+async function _DELETE(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { brand } = await req.json() as { brand?: string };
@@ -111,3 +116,5 @@ export async function DELETE(req: NextRequest) {
   revalidateTag('brand-logos', 'max');
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/brand-logos', _DELETE);

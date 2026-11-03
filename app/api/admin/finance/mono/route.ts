@@ -7,6 +7,7 @@ import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';
 import { allocateRzPayPayouts } from '../../../../../lib/rozetkapay-allocate';
 import { recordPartnerBankTopup, recordPartnerBankPayout } from '../../../../../lib/accounting/partner-ledger';
 import { parseIncomeCategory, incomePartyFor } from '../../../../../lib/mono-income-rules';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Виписка Mono: документи (списання і незіставлені надходження) і категоризація людиною.
 // Списання = DR <витрата | novapay | cash | supplier | owner | taxes> / CR bank;
@@ -16,7 +17,7 @@ import { parseIncomeCategory, incomePartyFor } from '../../../../../lib/mono-inc
 const EXPENSE_ACCOUNTS: AccountType[] = ['logistics', 'loading', 'customs', 'packaging', 'rent', 'salary', 'marketing', 'opex', 'taxes'];
 const TRANSFER_TARGETS = { 'transfer:novapay': 'novapay', 'transfer:cash': 'cash' } as const;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -30,7 +31,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ rows: data ?? [] });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/finance/mono', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -149,3 +152,5 @@ export async function POST(req: NextRequest) {
   await db.from('mono_bank_txns').update({ status: 'posted', category: category === 'supplier' ? `supplier:${body.supplierId}` : category, txn_id: txnId, note: body.note ?? null, posted_at: new Date().toISOString(), posted_by: by }).eq('id', row.id);
   return NextResponse.json({ ok: true, txnId });
 }
+
+export const POST = withApi('admin/finance/mono', _POST);

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createReservation, releaseReservation, getReservationTtlDays, computeExpiresAt } from '../../../../../../lib/accounting/reservations';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function POST(
+async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -49,3 +50,5 @@ export async function POST(
 
   return NextResponse.json({ ok: true, reserved: totalReserved, insufficient });
 }
+
+export const POST = withApi('admin/orders/[id]/reserve', _POST);

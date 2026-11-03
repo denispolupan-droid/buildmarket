@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createServiceClient } from '../../../lib/supabase-service';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
+import { withApi } from '../../../lib/api-handler';
 
 // Журнал пошуку по сайту: що люди шукали і скільки знайшли.
 //
@@ -10,7 +11,7 @@ import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 // за весь час таблиця лишилась порожньою. Помилку роут не перевіряв, тому це
 // ніде не спливло. Пишемо сервісним ключем; читати таблицю сторонні як не
 // могли, так і не можуть — політика лишається закритою.
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   // Rate limit: 60 search logs per IP per minute
   const ip = getClientIp(req);
   if (!rateLimit(`search-log:${ip}`, 60, 60 * 1000)) {
@@ -43,3 +44,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('search-log', _POST);

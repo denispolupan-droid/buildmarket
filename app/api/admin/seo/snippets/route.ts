@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { ctrLosses, findDuplicates } from '../../../../../lib/seo/snippets';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -10,7 +11,7 @@ export const maxDuration = 120;
  * title/description зі сторінки. Читання чужих даних тут немає: ходимо лише
  * по власних адресах з нашої ж властивості Search Console.
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -27,3 +28,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/seo/snippets', _GET);

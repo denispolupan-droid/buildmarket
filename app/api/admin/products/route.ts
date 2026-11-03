@@ -7,6 +7,7 @@ import { generateSku } from '../../../../lib/product-sku';
 import { cleanupReplacedImage } from '../../../../lib/product-image-cleanup';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -14,7 +15,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -86,7 +87,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, sku: product.sku });
 }
 
-export async function PUT(req: NextRequest) {
+export const POST = withApi('admin/products', _POST);
+
+async function _PUT(req: NextRequest) {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -150,7 +153,9 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function PATCH(req: NextRequest) {
+export const PUT = withApi('admin/products', _PUT);
+
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -173,7 +178,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(req: NextRequest) {
+export const PATCH = withApi('admin/products', _PATCH);
+
+async function _DELETE(req: NextRequest) {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -196,3 +203,5 @@ export async function DELETE(req: NextRequest) {
   revalidateTag('products', 'max');
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/products', _DELETE);

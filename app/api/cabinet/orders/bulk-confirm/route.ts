@@ -3,6 +3,7 @@ import { requireCustomer } from '../../../../../lib/auth-guard';
 import { createDropshipOrder, getDropshipCustomer } from '../../../../../lib/dropship-order-create';
 import { dropshipParcelKey } from '../../../../../lib/dropship-order';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -20,7 +21,7 @@ type Row = {
  * платіж партнеру не нараховувався ніколи. Тепер це звичайне замовлення, ТТН
  * створює менеджер стандартним вікном після підтвердження наявності.
  */
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireCustomer('dropship');
   if (!auth.ok) return auth.response;
 
@@ -57,3 +58,5 @@ export async function POST(req: NextRequest) {
       : { row_nums: rowNums, status: 'error', error: res.error }],
   });
 }
+
+export const POST = withApi('cabinet/orders/bulk-confirm', _POST);

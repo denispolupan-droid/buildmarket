@@ -6,6 +6,7 @@ import {
   replyRozetkaMarketReview, replyRozetkaItemComment,
   markRozetkaMarketReviewRead, markRozetkaItemCommentRead,
 } from '../../../../lib/rozetka-api';
+import { withApi } from '../../../../lib/api-handler';
 
 // Відгуки Rozetka в адмінці (живі дані): про магазин (з привʼязкою до нашого
 // замовлення) і про товари (коментарі та питання). Відповідь і позначення
@@ -31,7 +32,7 @@ export type RozetkaReviewRow = {
   replies: Array<{ author: string | null; text: string | null; at: string | null }>;
 };
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -111,8 +112,10 @@ export async function GET() {
   }
 }
 
+export const GET = withApi('admin/rozetka-reviews', _GET);
+
 // Відповідь на відгук
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -139,8 +142,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export const POST = withApi('admin/rozetka-reviews', _POST);
+
 // Позначити прочитаним
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -157,3 +162,5 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const PATCH = withApi('admin/rozetka-reviews', _PATCH);

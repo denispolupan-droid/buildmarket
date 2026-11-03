@@ -4,6 +4,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { boostBlogPost } from '../../../../../lib/blog-generator';
 import { logSeoAction } from '../../../../../lib/seo-actions';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -24,7 +25,7 @@ function keyWords(query: string): string[] {
  * Потрібно ДО генерації нової: дві сторінки під один запит канібалізують одна одну,
  * тому наявну статтю треба дожимати, а не дублювати.
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -63,8 +64,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(scored);
 }
 
+export const GET = withApi('admin/blog/boost', _GET);
+
 /** POST { postId, focusQuery, skus? } — дожати наявну статтю під запит. */
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -93,3 +96,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/blog/boost', _POST);

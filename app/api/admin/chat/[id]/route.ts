@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Тред чату сайту для правої панелі розділу «Чати». Відкриття — це перегляд:
 // лічильник непрочитаних обнуляємо тут, як робила колишня окрема сторінка.
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -21,3 +22,5 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ session, messages: messages ?? [] });
 }
+
+export const GET = withApi('admin/chat/[id]', _GET);

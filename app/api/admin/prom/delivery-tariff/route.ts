@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { getPromDeliveryTariff, PROM_DELIVERY_TARIFF_KEY, type PromDeliveryBracket } from '../../../../../lib/prom-delivery';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Тариф «дешевої доставки» Prom (адмінка → Prom → Комісії → «Дешева доставка»).
 // Діє з моменту збереження: застосовується до НОВИХ доставок; вже проведені
 // списання не перераховуються (проводка робиться при доставці за чинним тарифом).
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   return NextResponse.json({ brackets: await getPromDeliveryTariff() });
 }
 
-export async function PUT(req: NextRequest) {
+export const GET = withApi('admin/prom/delivery-tariff', _GET);
+
+async function _PUT(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -47,3 +50,5 @@ export async function PUT(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, brackets });
 }
+
+export const PUT = withApi('admin/prom/delivery-tariff', _PUT);

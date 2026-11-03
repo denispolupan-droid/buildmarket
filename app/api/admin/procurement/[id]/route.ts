@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 // GET /api/admin/procurement/[id] — повертає PO з лініями (для відкриття чернетки в модалі)
-export async function GET(
+async function _GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -46,8 +47,10 @@ export async function GET(
   });
 }
 
+export const GET = withApi('admin/procurement/[id]', _GET);
+
 // DELETE /api/admin/procurement/[id] — видаляє чернетку PO
-export async function DELETE(
+async function _DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -91,8 +94,10 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
+export const DELETE = withApi('admin/procurement/[id]', _DELETE);
+
 // PUT /api/admin/procurement/[id] — оновлює існуючу чернетку PO
-export async function PUT(
+async function _PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -177,3 +182,5 @@ export async function PUT(
 
   return NextResponse.json({ id, doc_number: doc.id });
 }
+
+export const PUT = withApi('admin/procurement/[id]', _PUT);

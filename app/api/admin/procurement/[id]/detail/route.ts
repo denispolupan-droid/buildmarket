@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
 // GET /api/admin/procurement/[id]/detail — повні дані ПО для drawer
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -115,3 +116,5 @@ export async function GET(
 
   return NextResponse.json(po);
 }
+
+export const GET = withApi('admin/procurement/[id]/detail', _GET);

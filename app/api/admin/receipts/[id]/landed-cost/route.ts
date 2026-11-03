@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
 // POST /api/admin/receipts/[id]/landed-cost
 // Додає витрати (Landed Cost) безпосередньо до приходного ордера,
 // без прив'язки до ЗП — для приходів створених без замовлення.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -111,8 +112,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ ok: true, receiptId, totalDistributed });
 }
 
+export const POST = withApi('admin/receipts/[id]/landed-cost', _POST);
+
 // GET /api/admin/receipts/[id]/landed-cost — поточні LC для прихідного ордера
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -126,3 +129,5 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ costs: costs ?? [] });
 }
+
+export const GET = withApi('admin/receipts/[id]/landed-cost', _GET);

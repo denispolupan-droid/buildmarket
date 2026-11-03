@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { rozetkaFetchRaw } from '../../../../../lib/rozetka-api';
 import { fetchPromChatFile } from '../../../../../lib/prom-api';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Фото/файли покупців із чатів маркетплейсів. Площадки віддають їх лише з
 // нашим токеном, тож браузер менеджера ходить сюди, а ми — на площадку.
@@ -11,7 +12,7 @@ import { fetchPromChatFile } from '../../../../../lib/prom-api';
 const UID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BYTES = 15 * 1024 * 1024;
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -61,3 +62,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('admin/marketplace-chats/file', _GET);

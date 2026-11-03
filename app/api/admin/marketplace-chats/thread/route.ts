@@ -5,13 +5,14 @@ import { markPromMessageRead } from '../../../../../lib/prom-api';
 import { markChatSeen } from '../../../../../lib/marketplace-chat-seen';
 import { loadMarketplaceThread } from '../../../../../lib/marketplace-chat-thread';
 import { invalidateMarketplaceInboxCache } from '../../../../../lib/marketplace-chat-inbox';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Тред одного чату (живі дані). Відкриття треда одразу позначає вхідні
 // повідомлення прочитаними на площадці — щоб лічильники не «висіли».
 
 export type { MarketplaceChatMessage } from '../../../../../lib/marketplace-chat-thread';
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -50,3 +51,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/marketplace-chats/thread', _GET);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createDocument } from '../../../../lib/accounting/documents';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { requireStaff } from '../../../../lib/auth-guard';
+import { withApi } from '../../../../lib/api-handler';
 
 async function getOrCreateSupplierContract(db: ReturnType<typeof createServiceClient>, supplierId: number): Promise<string | null> {
   const { data: existing } = await db
@@ -28,7 +29,7 @@ async function getOrCreateSupplierContract(db: ReturnType<typeof createServiceCl
   return created?.id ?? null;
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -155,3 +156,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: doc.id, doc_number: doc.doc_number }, { status: 201 });
 }
+
+export const POST = withApi('admin/procurement', _POST);

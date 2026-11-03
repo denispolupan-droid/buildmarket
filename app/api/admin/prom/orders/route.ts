@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -8,7 +9,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -28,3 +29,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ orders: data ?? [], total: count ?? 0 });
 }
+
+export const GET = withApi('admin/prom/orders', _GET);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 // Щоденний гейт: чи є публічні SECURITY DEFINER функції, доступні anon/authenticated
 // через /rest/v1/rpc (тобто новостворені функції без REVOKE — саме так у прод потрапили
@@ -10,7 +11,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 
 const serviceClient = createServiceClient();
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!cronAuthorized(authHeader)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -33,5 +34,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, exposed: [] });
 }
+
+export const GET = withApi('cron/secdef-guard', _GET);
 
 export const POST = GET;

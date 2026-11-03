@@ -3,6 +3,7 @@ import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { RZ_DELIVERY_TYPE } from '../../../../../../lib/rz-delivery';
 import { rzReturnTrack } from '../../../../../../lib/rz-delivery-api';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /**
  * Повернення відправлення «ROZETKA Доставки» (заборона видачі).
@@ -15,7 +16,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
  * (фаза 'returning'), і дублювати його рішення руками — вірний шлях до
  * розбіжності між тим, що в базі, і тим, що з посилкою насправді.
  */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -46,3 +47,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/orders/[id]/rz-return', _POST);

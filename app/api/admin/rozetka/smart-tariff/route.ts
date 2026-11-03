@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { getSmartTariff, SMART_TARIFF_KEY, type SmartBracket } from '../../../../../lib/rozetka-smart';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Тариф компенсації Rozetka Smart (адмінка → Товари Rozetka → «Умови Smart»).
 // Діє з моменту збереження: застосовується до НОВИХ відгрузок; вже проведені
 // списання не перераховуються (проводка робиться в момент відгрузки за чинним тарифом).
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   return NextResponse.json({ brackets: await getSmartTariff() });
 }
 
-export async function PUT(req: NextRequest) {
+export const GET = withApi('admin/rozetka/smart-tariff', _GET);
+
+async function _PUT(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -51,3 +54,5 @@ export async function PUT(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, brackets });
 }
+
+export const PUT = withApi('admin/rozetka/smart-tariff', _PUT);

@@ -3,11 +3,12 @@ import { requireStaff } from '../../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../../lib/supabase-service';
 import { loadReturnPrint, type ReturnPrintForm } from '../../../../../../../lib/return-doc';
 import { buildReturnPdf } from '../../../../../../../lib/return-pdf';
+import { withApi } from '../../../../../../../lib/api-handler';
 
 // PDF форми повернення: ?form=nakladna (ПВ і ПП) | akt (лише ПВ).
 // ?inline=1 — відкрити у вкладці (для друку), інакше завантаження.
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -31,3 +32,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 }
+
+export const GET = withApi('admin/finance/returns/[id]/pdf', _GET);

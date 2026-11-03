@@ -11,6 +11,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 **Авторизація роутів.** Кожен новий API-роут перевіряє права через `lib/auth-guard`:
 `requireStaff('admin'[, 'manager'])` для `/api/admin/*`, `requireCustomer('dropship'|'wholesale')` для кабінету. Ніколи не роби ad-hoc `getUser()` + перевірку ролі вручну. Приклад: `app/api/cabinet/products/route.ts`.
 
+**Обробники роутів і логи.** Кожен обробник `app/api/**/route.ts` експортується через `withApi('<шлях>', _GET)` з `lib/api-handler` (request-id, лог необробленої помилки, алерт, відповідь 500 з `rid`); прямий `export async function GET` ловить архітектурний тест. Логи — `log.info/warn/error('domain.event', { … })` з `lib/log` (один рядок JSON з `rid`), не `console.log` з довільним текстом. Алерти адміну — лише `alertAdmin` (`lib/alert`, Telegram з тротлінгом); окремих каналів (email тощо) не заводити.
+
 **Читання даних.** Будь-яка вибірка списку — через `fetchAllRows` (`lib/db-paginate`) або з явним `.limit()`. Без цього PostgREST мовчки обрізає на 1000 рядків. Будь-який `.range()` — ТІЛЬКИ з `.order(<унікальна колонка>)` перед ним (зазвичай `.order('id')`): без ORDER BY сторінки віддаються в нестабільному порядку, рядки дублюються й губляться. Вибирай тільки потрібні колонки (`select('a, b')`, не `select('*')`).
 
 **Статус замовлення.** Ніколи не пиши `orders.status` напряму. Лише `transitionOrder(...)` або `buildStatusPatch(...)` з `lib/orders/status` (мітки часу, `status_history` з джерелом `via`, правила переходів). Нові статуси/переходи — туди ж + `docs/ORDER-LIFECYCLE.md`. Крон/вебхук перед `delivered` перевіряє `allOrderSalesPosted`.

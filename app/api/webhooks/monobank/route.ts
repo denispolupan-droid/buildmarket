@@ -13,6 +13,7 @@ import { notifyPaidCardOrder } from '../../../../lib/card-order-notify';
 import { recordCardOrderPayment } from '../../../../lib/card-order-ledger';
 import { buildStatusPatch } from '../../../../lib/orders/status';
 import { createServiceClient, type TableInsert, type TableUpdate } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -49,7 +50,7 @@ async function verifySignature(body: string, signature: string | null): Promise<
   return verifyMonoSignature(body, signature, pubKeyB64);
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const rawBody  = await req.text();
   const signature = req.headers.get('x-sign');
 
@@ -395,6 +396,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('webhooks/monobank', _POST);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

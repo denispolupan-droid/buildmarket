@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Вимикач автопілота чернеток (lib/blog-autodraft, крон 1-го і 15-го):
 // app_settings.blog_autodraft_per_run — 0 = на паузі, 1 = одна чернетка за прогін.
 const KEY = 'blog_autodraft_per_run';
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -24,7 +25,9 @@ export async function GET() {
   });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/blog/autopilot', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => ({})) as { enabled?: boolean };
@@ -34,3 +37,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, enabled });
 }
+
+export const POST = withApi('admin/blog/autopilot', _POST);

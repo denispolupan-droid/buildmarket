@@ -3,6 +3,7 @@ import { createServiceClient } from '../../../../../../../lib/supabase-service';
 import { recordTxn } from '../../../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../../../lib/accounting/documents';
 import { requireStaff } from '../../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../../lib/api-handler';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> = {
   cash:      'cash',
@@ -12,7 +13,7 @@ const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'bank' | 'acquiring'> = {
 };
 
 // DELETE — сторнування окремого платежу (тільки admin)
-export async function DELETE(
+async function _DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; paymentId: string }> },
 ) {
@@ -94,3 +95,5 @@ export async function DELETE(
 
   return NextResponse.json({ ok: true, amount_paid: newAmountPaid, is_fully_paid: isFullyPaid });
 }
+
+export const DELETE = withApi('admin/orders/[id]/payments/[paymentId]', _DELETE);

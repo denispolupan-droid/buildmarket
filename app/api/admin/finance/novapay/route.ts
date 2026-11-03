@@ -4,11 +4,12 @@ import { createServiceClient } from '../../../../../lib/supabase-service';
 import { ingestNovapayStatement, postNpPayouts } from '../../../../../lib/novapay-ingest';
 import { postNovapayAutoTopups } from '../../../../../lib/novapay-autopost';
 import { postNovapayRow, NovapayPostError } from '../../../../../lib/novapay-post';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Виписка NovaPay: список документів і категоризація списань людиною.
 // Саме проведення — lib/novapay-post (спільне з виправленнями агента звірки).
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -22,7 +23,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ rows: data ?? [] });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/finance/novapay', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -58,3 +61,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: err instanceof NovapayPostError ? 400 : 500 });
   }
 }
+
+export const POST = withApi('admin/finance/novapay', _POST);

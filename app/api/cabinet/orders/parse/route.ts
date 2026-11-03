@@ -5,6 +5,7 @@ import { DROPSHIP_MIN } from '../../../../../lib/site';
 import { getDropshipCustomer, loadDropshipCatalog } from '../../../../../lib/dropship-order-create';
 import { validateDropshipLine, dropshipParcelKey } from '../../../../../lib/dropship-order';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 // xlsx (SheetJS 0.18.x) має відомі CVE при парсингу недовірених файлів; обмежуємо розмір,
 // щоб зняти вектор zip-bomb / OOM від завантажень партнерів.
@@ -78,7 +79,7 @@ type ParsedRow = {
   errors:         string[];
 };
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireCustomer('dropship');
   if (!auth.ok) return auth.response;
 
@@ -245,3 +246,5 @@ export async function POST(req: NextRequest) {
     can_submit:    totalCost <= balanceAvail,
   });
 }
+
+export const POST = withApi('cabinet/orders/parse', _POST);

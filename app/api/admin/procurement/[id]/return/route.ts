@@ -3,12 +3,13 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { createSupplierReturn } from '../../../../../../lib/accounting/returns';
 import { isReturnReason } from '../../../../../../lib/accounting/returns-rules';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Повернення постачальнику по приходу: документ ПП одразу проводиться
 // (склад OUT + борг постачальнику менше), стадія «відправлено». Межа —
 // кількість цього приходу мінус попередні повернення по ньому.
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -44,3 +45,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+export const POST = withApi('admin/procurement/[id]/return', _POST);

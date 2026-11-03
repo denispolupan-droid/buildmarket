@@ -6,6 +6,7 @@ import { RZ_DELIVERY_TYPE, RZ_TRACK_TYPE_DEPT, rzPhone, rzSplitName } from '../.
 import { getRzSender, getRzBox, rzCreateTrack, rzLabel, rzDeleteTrack, rzSearchCities, rzDepartments, RzError } from '../../../../../../lib/rz-delivery-api';
 import { mergedDescription } from '../../../../../../lib/orders/merge-ttn';
 import type { TtnSnapshot } from '../../../../../../lib/ttn-snapshot';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /**
  * Знайти city_ref за назвою міста і UUID точки видачі. Потрібно для замовлень
@@ -56,7 +57,7 @@ function defaultCod(orders: { payment_type: unknown; payment_confirmed: unknown;
  * післяплата з БД; `?merged=id1,id2` — для об'єднаної посилки).
  * З `?label=1` — PDF-етикетка вже створеної накладної, base64.
  */
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
@@ -93,7 +94,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withApi('admin/orders/[id]/rz-ttn', _GET);
+
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -295,6 +298,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
+export const POST = withApi('admin/orders/[id]/rz-ttn', _POST);
+
 /**
  * Видалення помилково створеної накладної.
  *
@@ -304,7 +309,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
  * із замовленням — ані трекінгу, ані проведення продажу. Тому номер прибираємо
  * лише тоді, коли накладної в Rozetka справді більше немає.
  */
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
@@ -346,3 +351,5 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/orders/[id]/rz-ttn', _DELETE);

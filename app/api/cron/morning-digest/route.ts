@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isDigestEnabled, runOpsDigest } from '../../../../lib/ops-digest';
 import { alertAdmin } from '../../../../lib/alert';
 import { cronAuthorized } from '../../../../lib/cron-auth';
+import { withApi } from '../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export const maxDuration = 120;
  * 07:30 Київ улітку / 06:30 узимку). Цифри рахує код, модель пише текст.
  * Вимкнути: app_settings.ops_digest = 'off'.
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!cronAuthorized(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -27,3 +28,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
+export const GET = withApi('cron/morning-digest', _GET);

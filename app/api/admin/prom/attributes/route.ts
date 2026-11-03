@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { XMLParser } from 'fast-xml-parser';
 import { normCharKey } from '../../../../../lib/characteristics';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 // ── Inference maps — keep in sync with fill-prom-chars.mjs ─────────────────
 const CATEGORY_USAGE_TYPE: Record<string, string> = {
@@ -297,7 +298,7 @@ async function assertAdmin() {
 
 // GET /api/admin/prom/attributes?category=<prom_category_id>
 // Returns attributes + values for the product form
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   try {
     await assertAdmin();
     const catId = req.nextUrl.searchParams.get('category');
@@ -346,9 +347,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export const GET = withApi('admin/prom/attributes', _GET);
+
 // POST /api/admin/prom/attributes  { xml: string }
 // Parses Prom category XML and upserts attributes + values
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   try {
     await assertAdmin();
     const { xml } = await req.json() as { xml: string };
@@ -473,9 +476,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export const POST = withApi('admin/prom/attributes', _POST);
+
 // PUT /api/admin/prom/attributes
 // Re-runs fill for ALL imported categories (no XML needed — reads from DB)
-export async function PUT(_req: NextRequest) {
+async function _PUT(_req: NextRequest) {
   try {
     await assertAdmin();
 
@@ -515,8 +520,10 @@ export async function PUT(_req: NextRequest) {
   }
 }
 
+export const PUT = withApi('admin/prom/attributes', _PUT);
+
 // DELETE /api/admin/prom/attributes?category=<prom_category_id>
-export async function DELETE(req: NextRequest) {
+async function _DELETE(req: NextRequest) {
   try {
     await assertAdmin();
     const catId = req.nextUrl.searchParams.get('category');
@@ -528,3 +535,5 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }
+
+export const DELETE = withApi('admin/prom/attributes', _DELETE);

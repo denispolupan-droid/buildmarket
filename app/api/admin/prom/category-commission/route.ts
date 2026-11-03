@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { slug, single, econom, more_sales, turbo, prom_section_url, prom_section_id, prom_section_name, prom_markup_pct } = await req.json() as {
@@ -44,3 +45,5 @@ export async function PATCH(req: NextRequest) {
   if ('prom_section_url' in update || 'prom_section_id' in update) revalidateTag('categories', 'max');
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/prom/category-commission', _PATCH);

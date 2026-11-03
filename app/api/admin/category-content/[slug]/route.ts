@@ -6,6 +6,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { saveCategoryContent, CATEGORY_CONTENT_TAG, type CategoryContentInput } from '../../../../../lib/category-content';
 import { buildGenContext, validateContent } from '../../../../../lib/category-content-gen';
 import { logSeoAction } from '../../../../../lib/seo-actions';
+import { withApi } from '../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
  * стандарту (validateContent) повертаються, але не блокують: рішення, що
  * саме довести до норми, — за власником.
  */
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function _PUT(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { slug } = await params;
@@ -46,3 +47,5 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
   });
   return NextResponse.json({ ok: true, warnings });
 }
+
+export const PUT = withApi('admin/category-content/[slug]', _PUT);

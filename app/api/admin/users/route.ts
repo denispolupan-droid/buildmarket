@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 function adminClient() {
   return createServiceClient();
@@ -12,7 +13,7 @@ async function assertAdmin() {
 }
 
 // GET — список всіх адмінів і менеджерів
-export async function GET() {
+async function _GET() {
   if (!await assertAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const db = adminClient();
@@ -34,8 +35,10 @@ export async function GET() {
   return NextResponse.json({ users: filtered });
 }
 
+export const GET = withApi('admin/users', _GET);
+
 // POST — запрошення нового менеджера
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!await assertAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { email, name } = await req.json() as { email: string; name?: string };
@@ -64,3 +67,5 @@ export async function POST(req: NextRequest) {
     user: { id: data.user.id, email: data.user.email },
   });
 }
+
+export const POST = withApi('admin/users', _POST);

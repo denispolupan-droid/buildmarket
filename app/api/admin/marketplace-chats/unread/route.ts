@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { getMarketplaceInboxCached } from '../../../../../lib/marketplace-chat-inbox';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Лічильники для бейджа «Чати» в сайдбарі: маркетплейси — за правилом
 // lib/marketplace-chat-inbox (той самий список, що й у вкладці), сайт —
@@ -9,7 +10,7 @@ import { getMarketplaceInboxCached } from '../../../../../lib/marketplace-chat-i
 // admin-unread-refresh (відкрили чат, відповіли), тож бейдж гасне без
 // переходу між сторінками.
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -22,3 +23,5 @@ export async function GET() {
   const mp = inbox.items.filter(i => i.unread > 0).length;
   return NextResponse.json({ count: mp, mp, site: site ?? 0 });
 }
+
+export const GET = withApi('admin/marketplace-chats/unread', _GET);

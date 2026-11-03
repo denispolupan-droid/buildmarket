@@ -3,11 +3,12 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { sideState, openItems } from '../../../../../../lib/accounting/debt-adjustment';
 import { isDebtAccount, type DebtSide } from '../../../../../../lib/accounting/debt-adjustment-rules';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Стан однієї сторони для форми: сальдо контрагента (партнер — ще й баланс
 // кабінету), а клієнту без замовлення — ще й його замовлення з розкладом
 // «продаж / отримано / відкрито», щоб вибрати.
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -30,3 +31,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/finance/debt-adjustments/side', _GET);

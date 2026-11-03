@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { cancelReturn, getReturnCard, updateReturnDetails } from '../../../../../../lib/accounting/returns';
 import { isReturnReason } from '../../../../../../lib/accounting/returns-rules';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const USER_ERR = /не знайдено|не є поверненням|уже скасовано|Спочатку скасуйте|Неможливо|недостатньо|Період .* закрито/;
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -14,8 +15,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json(card);
 }
 
+export const GET = withApi('admin/finance/returns/[id]', _GET);
+
 /** Реквізити, що не впливають на проводки: ТТН, причина, коментар. */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -33,7 +36,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withApi('admin/finance/returns/[id]', _PATCH);
+
+async function _DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -46,3 +51,5 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: message }, { status: USER_ERR.test(message) ? 400 : 500 });
   }
 }
+
+export const DELETE = withApi('admin/finance/returns/[id]', _DELETE);

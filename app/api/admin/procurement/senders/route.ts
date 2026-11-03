@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Список дозволених відправників для вибору при надсиланні замовлень постачальникам:
 // основний (orders_from_*) + додаткові (extra_senders, JSON [{name,email}]).
@@ -9,7 +10,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 // перша (основна), і потрібну адресу доводилось перемикати руками щоразу.
 // Обирається в Налаштуваннях → Пошта; порожньо означає основну.
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -33,3 +34,5 @@ export async function GET() {
 
   return NextResponse.json({ senders, defaultSender });
 }
+
+export const GET = withApi('admin/procurement/senders', _GET);

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { importMailRegisters } from '../../../../../lib/mail-registers';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Ручний запуск імпорту реєстрів з пошти (кнопка на «Банк»/«НоваПей»). Крон робить
 // те саме щоранку; тут можна взяти глибше — до 60 днів.
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => ({})) as { days?: number; dryRun?: boolean };
@@ -17,3 +18,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/finance/mail-registers', _POST);

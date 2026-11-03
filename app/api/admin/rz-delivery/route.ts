@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rzSenderDepartments, rzVerify, rzBalance } from '../../../../lib/rz-delivery-api';
 import { rzDepartmentLabel, rzWeightLimitKg } from '../../../../lib/rz-delivery';
 import { requireStaff } from '../../../../lib/auth-guard';
+import { withApi } from '../../../../lib/api-handler';
 
 // Службові дані для екрана «Налаштування → ROZETKA Доставка».
 //
@@ -13,7 +14,7 @@ import { requireStaff } from '../../../../lib/auth-guard';
 // видачі покупцю (can_give_out_tracks) і по вазі замовлення, а нам потрібні
 // приймаючі (can_receive_tracks) і разом з лімітами.
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -56,3 +57,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ error: 'Невідома дія' }, { status: 400 });
 }
+
+export const GET = withApi('admin/rz-delivery', _GET);

@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { createDocument, confirmDocument, maybeAutoClose } from '../../../../../../lib/accounting/documents';
 import { transitionOrder } from '../../../../../../lib/orders/status';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 type OrderRow = { id: string; items: { sku: string; qty: number }[]; status_history: { status: string; at: string; by: string }[] | null };
 
@@ -51,7 +52,7 @@ async function autoPromoteAwaitingOrders(
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -267,3 +268,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true, receiptId: receipt.id, draft: false });
 }
+
+export const POST = withApi('admin/procurement/[id]/receive', _POST);

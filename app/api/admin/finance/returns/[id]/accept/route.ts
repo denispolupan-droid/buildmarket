@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../../lib/auth-guard';
 import { acceptSupplierReturn } from '../../../../../../../lib/accounting/returns';
+import { withApi } from '../../../../../../../lib/api-handler';
 
 // ПП: «Прийнято постачальником» — лише дата, проводки зроблено при відправці.
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
   const { id } = await params;
@@ -17,3 +18,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: message }, { status: /Це не|не проведено/.test(message) ? 400 : 500 });
   }
 }
+
+export const POST = withApi('admin/finance/returns/[id]/accept', _POST);

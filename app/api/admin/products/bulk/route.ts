@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { deleteProducts } from '../../../../../lib/product-delete';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -28,7 +29,7 @@ type BulkBody = {
   patch?: Record<string, unknown>;
 };
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -92,3 +93,5 @@ export async function POST(req: NextRequest) {
   revalidateTag('products', 'max');
   return NextResponse.json({ ok: true, count: skus.length, fields: Object.keys(update) });
 }
+
+export const POST = withApi('admin/products/bulk', _POST);

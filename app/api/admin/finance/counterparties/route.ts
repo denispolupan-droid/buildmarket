@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { SPECIAL_DEBTOR_LABEL } from '../../../../../lib/accounting/sale-party';
 import { escapeOrTerm, personSearchOr } from '../../../../../lib/pg-filter';
+import { withApi } from '../../../../../lib/api-handler';
 
 export type CounterpartyOption = {
   /** Посилання для URL «Взаєморозрахунків»: c:<id> / s:<id> (lib/accounting/mutual-settlements) */
@@ -26,7 +27,7 @@ const customerLabel = (c: CustomerRow) => c.company?.trim() || c.legal_name?.tri
 // Пошук контрагента для «Взаєморозрахунків»: клієнти/партнери, постачальники,
 // службові дебітори. Без запиту — усі з ненульовим сальдо, найбільші зверху.
 // Сальдо — з кешу counterparty_balances (інваріант I3 тримає його рівним леджеру).
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -108,3 +109,5 @@ export async function GET(req: NextRequest) {
   const withSpecials = q ? [...specials, ...options] : [...options, ...specials.filter(s => Math.abs(s.balance) > 0.01)];
   return NextResponse.json({ options: withSpecials.slice(0, 60) });
 }
+
+export const GET = withApi('admin/finance/counterparties', _GET);

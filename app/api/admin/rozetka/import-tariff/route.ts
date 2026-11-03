@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -81,7 +82,7 @@ async function parseTariff(data: ArrayBuffer): Promise<BracketRow[]> {
   return out;
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -154,3 +155,5 @@ export async function POST(req: NextRequest) {
   const { count } = await db.from('rozetka_commission_brackets').select('id', { count: 'exact', head: true });
   return NextResponse.json({ applied: true, categories: summary.categories, brackets: summary.brackets, totalInTable: count ?? null });
 }
+
+export const POST = withApi('admin/rozetka/import-tariff', _POST);

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../lib/supabase-server';
+import { withApi } from '../../../lib/api-handler';
 
-export async function GET() {
+async function _GET() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ skus: [], authenticated: false });
@@ -14,7 +15,9 @@ export async function GET() {
   return NextResponse.json({ skus: (data ?? []).map(r => r.product_sku), authenticated: true });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('wishlist', _GET);
+
+async function _POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false }, { status: 401 });
@@ -37,3 +40,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, action: 'added' });
   }
 }
+
+export const POST = withApi('wishlist', _POST);

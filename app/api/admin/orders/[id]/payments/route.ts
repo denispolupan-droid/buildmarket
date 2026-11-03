@@ -3,8 +3,9 @@ import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { applyOrderPayment } from '../../../../../../lib/accounting/order-payment';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { parseBody, zMoney, zYmd, zYmdOpt, zText, z } from '../../../../../../lib/validate';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -24,7 +25,9 @@ export async function GET(
   return NextResponse.json(data ?? []);
 }
 
-export async function POST(
+export const GET = withApi('admin/orders/[id]/payments', _GET);
+
+async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -63,3 +66,5 @@ export async function POST(
     is_fully_paid: res.isFullyPaid,
   });
 }
+
+export const POST = withApi('admin/orders/[id]/payments', _POST);

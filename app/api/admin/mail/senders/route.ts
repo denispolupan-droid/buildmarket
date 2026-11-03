@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { getSendAddresses } from '../../../../../lib/zoho-mail';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Дозволені адреси відправника + підпис для кожної (app_settings.mail_signatures,
 // JSON {email: текст}). Віддаємо разом, щоб вікно листа робило один запит.
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   try {
@@ -27,3 +28,5 @@ export async function GET() {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+export const GET = withApi('admin/mail/senders', _GET);

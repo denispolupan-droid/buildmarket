@@ -7,6 +7,7 @@ import { getSmartTariff } from '../../../../lib/rozetka-smart';
 import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 import { factorOf, totalFactor } from '../../../../lib/price-adjustments';
 import { loadFactorMap } from '../../../../lib/price-adjustments-db';
+import { withApi } from '../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 
@@ -18,7 +19,7 @@ type Marketplace = 'rozetka' | 'prom';
  * GET ?marketplace=rozetka — попередній перегляд: що станеться з кожною ціною.
  * НІЧОГО не змінює: фіди досі рахують ціну по-старому, поки модель не увімкнена.
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -138,8 +139,10 @@ export async function GET(req: NextRequest) {
   });
 }
 
+export const GET = withApi('admin/pricing-rules', _GET);
+
 /** PATCH — редагування правила (лише поля моделі, ключі правила не міняємо). */
-export async function PATCH(req: NextRequest) {
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -166,3 +169,5 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withApi('admin/pricing-rules', _PATCH);

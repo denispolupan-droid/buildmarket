@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { runMarketplaceRecon } from '../../../../lib/recon/run';
+import { withApi } from '../../../../lib/api-handler';
 
 export const maxDuration = 300;
 
 // Звірка з маркетплейсами вручну: перегляд (send=false) або з відправкою в Telegram.
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => ({})) as { send?: boolean };
@@ -18,3 +19,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/recon', _POST);

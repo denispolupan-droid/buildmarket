@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { syncPromOrders } from '../../../../../lib/prom-sync';
 import { requireStaff } from '../../../../../lib/auth-guard';
+import { withApi } from '../../../../../lib/api-handler';
 
 async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function POST() {
+async function _POST() {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -19,3 +20,5 @@ export async function POST() {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/prom/sync', _POST);

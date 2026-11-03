@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { pushPromStock } from '../../../../../lib/prom-stock-push';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Ручний пуш залишків у Prom через API (кнопка на дашборді Prom).
-export async function POST() {
+async function _POST() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -15,3 +16,5 @@ export async function POST() {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/prom/push-stock', _POST);

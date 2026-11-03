@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { EPICENTR_BASE, EPICENTR_TOKEN_KEY } from '../../../../../lib/epicentr-api';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Ключ Merchant API Епіцентру: app_settings.epicentr_api_token (fallback — env).
 const mask = (t: string) => `••••••••${t.slice(-4)}`;
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
@@ -19,7 +20,9 @@ export async function GET() {
   });
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('admin/epicentr/token', _GET);
+
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { token } = await req.json() as { token?: string };
@@ -42,10 +45,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, maskedToken: mask(clean) });
 }
 
-export async function DELETE() {
+export const POST = withApi('admin/epicentr/token', _POST);
+
+async function _DELETE() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
   await db.from('app_settings').delete().eq('key', EPICENTR_TOKEN_KEY);
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/epicentr/token', _DELETE);

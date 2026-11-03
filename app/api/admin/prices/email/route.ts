@@ -5,11 +5,12 @@ import { fetchProductsInCatalogOrder } from '../_catalog-order';
 import { pricelistCategoryMatch } from '../../../../../lib/pricelist-rules';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db     = createServiceClient();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   try {
     const auth = await requireStaff('admin', 'manager');
     if (!auth.ok) return auth.response;
@@ -131,3 +132,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/prices/email', _POST);

@@ -6,6 +6,7 @@ import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { isMpTarget, applyScheduledMpEntry, type MpLogEntry } from '../../../../lib/mp-reprice';
 import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -119,7 +120,7 @@ async function run(req: NextRequest) {
 
 // Збій крона раніше бачили лише в логах Vercel (аудит 31.10.2026): тепер і
 // виняток, і відповідь 5xx ідуть алертом у Telegram (з тротлінгом, lib/alert).
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   try {
     const res = await run(req);
     if (res.status >= 500) alertAdmin('Cron: заплановані ціни — збій', `HTTP ${res.status}`);
@@ -129,3 +130,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const GET = withApi('cron/apply-scheduled-prices', _GET);

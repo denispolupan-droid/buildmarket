@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const service = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const status = req.nextUrl.searchParams.get('status'); // 'pending' | 'approved' | 'all'
@@ -27,7 +28,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? []);
 }
 
-export async function PATCH(req: NextRequest) {
+export const GET = withApi('admin/reviews', _GET);
+
+async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id, is_approved } = await req.json();
@@ -45,7 +48,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(req: NextRequest) {
+export const PATCH = withApi('admin/reviews', _PATCH);
+
+async function _DELETE(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const id = req.nextUrl.searchParams.get('id');
@@ -56,3 +61,5 @@ export async function DELETE(req: NextRequest) {
   revalidateTag('review-stats', 'max');
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withApi('admin/reviews', _DELETE);

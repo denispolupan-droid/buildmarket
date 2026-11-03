@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../lib/supabase';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { ADJ_CHANNELS, adjState, kyivToday, type AdjChannel } from '../../../../../lib/price-adjustments';
 import { cancelAdjustments, createAdjustments, targetToChannels } from '../../../../../lib/price-adjustments-db';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Корекції цін маркетплейсів (міграція 147): акції й зміни «до дати» поверх
 // наценки. Ціни МП рахуються на льоту, тож тут лише записи — без перерахунку
@@ -17,7 +18,7 @@ import { cancelAdjustments, createAdjustments, targetToChannels } from '../../..
 
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -60,7 +61,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(res);
 }
 
-export async function PATCH(req: NextRequest) {
+export const POST = withApi('admin/prices/adjustments', _POST);
+
+async function _PATCH(req: NextRequest) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -83,6 +86,8 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(res);
 }
 
+export const PATCH = withApi('admin/prices/adjustments', _PATCH);
+
 type Group = {
   log_id: number | null;
   created_at: string | null;
@@ -100,7 +105,7 @@ type Group = {
   pct_max: number;
 };
 
-export async function GET() {
+async function _GET() {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -142,3 +147,5 @@ export async function GET() {
     .sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
   return NextResponse.json(out);
 }
+
+export const GET = withApi('admin/prices/adjustments', _GET);

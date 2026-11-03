@@ -8,6 +8,7 @@ import { feedVendor } from '../../../lib/brand-feed';
 import { createServiceClient } from '../../../lib/supabase-service';
 import { factorOf, hasPromo, totalFactor } from '../../../lib/price-adjustments';
 import { loadFactorMap } from '../../../lib/price-adjustments-db';
+import { withApi } from '../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -240,7 +241,7 @@ function dedup(parts: (string | null | undefined)[]): string {
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key');
   if (!key || key !== process.env.FEED_SECRET_KEY) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -704,3 +705,5 @@ ${offersXml}
     },
   });
 }
+
+export const GET = withApi('prom-feed', _GET);

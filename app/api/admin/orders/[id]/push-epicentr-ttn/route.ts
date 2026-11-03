@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
+import { withApi } from '../../../../../../lib/api-handler';
 
 // Ручний пуш ТТН в Епіцентр (кнопка в журналі, дзеркало push-prom-ttn). Після
 // ТТН одразу переводимо у «Відправлено», якщо у нас замовлення вже відвантажене.
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -38,3 +39,5 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/orders/[id]/push-epicentr-ttn', _POST);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseWeightKg } from '../../../../lib/parcel-weight';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 // Розбір фасування живе в lib/parcel-weight: ту саму вагу тепер рахує і чекаут
 // (ліміт точки видачі ROZETKA), і серверна перевірка замовлення. Дві копії
@@ -9,7 +10,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 
 const serviceClient = createServiceClient();
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -35,3 +36,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ totalWeightKg, lines });
 }
+
+export const POST = withApi('admin/order-weight', _POST);

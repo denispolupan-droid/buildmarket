@@ -4,6 +4,7 @@ import { buildAbandonedCartEmail, getAbandonedCartSubject } from '../../../../li
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const admin = createServiceClient();
 
@@ -133,7 +134,7 @@ async function run(req: NextRequest) {
 
 // Збій крона раніше бачили лише в логах Vercel (аудит 31.10.2026): тепер і
 // виняток, і відповідь 5xx ідуть алертом у Telegram (з тротлінгом, lib/alert).
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   try {
     const res = await run(req);
     if (res.status >= 500) alertAdmin('Cron: покинуті кошики — збій', `HTTP ${res.status}`);
@@ -143,3 +144,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
+
+export const GET = withApi('cron/abandoned-cart', _GET);

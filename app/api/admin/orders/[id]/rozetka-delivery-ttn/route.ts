@@ -8,6 +8,7 @@ import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../..
 import { mergedDescription } from '../../../../../../lib/orders/merge-ttn';
 import { numOrNull, type TtnSnapshot } from '../../../../../../lib/ttn-snapshot';
 import type { RozetkaOrder } from '../../../../../../lib/rozetka-api';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /**
  * Створення накладної для доставки в точку видачі Rozetka.
@@ -19,7 +20,7 @@ import type { RozetkaOrder } from '../../../../../../lib/rozetka-api';
 /** Хто буде відправником — ДО створення накладної. contact — ПІБ/телефон з
  *  Налаштувань, щоб обрати відділення можна було і без жодної накладної в історії.
  *  ?label=1 — PDF етикетки вже створеної накладної (base64). */
-export async function GET(
+async function _GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -59,6 +60,8 @@ export async function GET(
   return NextResponse.json({ sender, contact, settingsDepartment: settings?.department ?? null, cod: defaultCod(orders ?? []) });
 }
 
+export const GET = withApi('admin/orders/[id]/rozetka-delivery-ttn', _GET);
+
 /** Післяплата за замовчуванням: лише неоплачені замовлення з оплатою при отриманні.
  *  total_price — уже без 49 ₴ доставки покупця (їх Rozetka бере собі). */
 function defaultCod(orders: { payment_type: unknown; payment_confirmed: unknown; total_price: unknown }[]): number {
@@ -75,7 +78,7 @@ function defaultCod(orders: { payment_type: unknown; payment_confirmed: unknown;
  *  Якщо з цього відділення вже відправляли, city/address беремо з тієї накладної:
  *  кабінет пише в sender.city uuid з іншого довідника, ніж find-pickup-cities
  *  (d12cbd6b… проти e1d394d7… для Харкова), і перевірений варіант надійніший. */
-export async function PUT(req: NextRequest) {
+async function _PUT(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const body = await req.json().catch(() => ({})) as { sender?: RozetkaSender };
@@ -111,7 +114,9 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ ok: true, mode: 'override', sender });
 }
 
-export async function POST(
+export const PUT = withApi('admin/orders/[id]/rozetka-delivery-ttn', _PUT);
+
+async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -280,3 +285,5 @@ export async function POST(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/orders/[id]/rozetka-delivery-ttn', _POST);

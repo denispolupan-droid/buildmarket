@@ -4,13 +4,14 @@ import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { SPECIAL_DEBTOR_LABEL } from '../../../../../../lib/accounting/sale-party';
 import { isDebtAccount } from '../../../../../../lib/accounting/debt-adjustment-rules';
 import { personSearchOr } from '../../../../../../lib/pg-filter';
+import { withApi } from '../../../../../../lib/api-handler';
 
 export type PartyOption = { id: string; label: string; sub: string | null; balance: number; cabinet?: number };
 
 // Пошук сторони для форми КБ: клієнти (з сальдо), службові дебітори (np:cod,
 // mp:*), постачальники, дропшип-партнери (сальдо леджера + баланс кабінету).
 // Сальдо — з кешу counterparty_balances (інваріант I3 гарантує рівність леджеру).
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -74,3 +75,5 @@ export async function GET(req: NextRequest) {
   ];
   return NextResponse.json({ options });
 }
+
+export const GET = withApi('admin/finance/debt-adjustments/parties', _GET);

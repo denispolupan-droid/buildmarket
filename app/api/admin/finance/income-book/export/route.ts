@@ -4,9 +4,10 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { kyivMonthStart, kyivYmd } from '../../../../../../lib/kyiv-date';
 import { buildIncomeBook, INCOME_METHODS, METHOD_LABEL, SOURCE_LABEL, type IncomeRow } from '../../../../../../lib/accounting/income-book';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /** XLSX «Книги обліку доходів» за період — для бухгалтера (дані — fop_income_book, міграція 142). */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -57,3 +58,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('admin/finance/income-book/export', _GET);

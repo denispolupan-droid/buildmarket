@@ -5,6 +5,7 @@ import { createServiceClient } from '../../../../../lib/supabase-service';
 import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { kyivDayBounds, kyivMonthStart, kyivYmd } from '../../../../../lib/kyiv-date';
 import { summarizePL } from '../../../../../lib/accounting/profit-rules';
+import { withApi } from '../../../../../lib/api-handler';
 
 /**
  * Excel-експорт прибутку по угодах (ФАКТ): доставлені замовлення періоду з цифрами
@@ -15,7 +16,7 @@ import { summarizePL } from '../../../../../lib/accounting/profit-rules';
  * результат «чистим прибутком», хоча OPEX/податки не віднімав (аудит 31.10.2026, R1).
  * GET ?from=YYYY-MM-DD&to=YYYY-MM-DD (за замовчуванням — поточний київський місяць).
  */
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -127,3 +128,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApi('admin/finance/profit-export', _GET);

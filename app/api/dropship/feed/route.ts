@@ -3,6 +3,7 @@ import { escapeOrTerm } from '../../../../lib/pg-filter';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { feedVendor } from '../../../../lib/brand-feed';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
@@ -14,7 +15,7 @@ const SHOP_NAME = 'FIXLINE';
 // випав з фіда. Номер завідомо вищий за будь-який id з таблиці категорій.
 const OTHER_CATEGORY_ID = 999999;
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const token = searchParams.get('token');
 
@@ -121,6 +122,8 @@ ${offers}
     },
   });
 }
+
+export const GET = withApi('dropship/feed', _GET);
 
 function x(s: string | null | undefined): string {
   return (s ?? '')

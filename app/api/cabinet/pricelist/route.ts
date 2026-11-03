@@ -4,13 +4,14 @@ import { requireCustomer } from '../../../../lib/auth-guard';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { dropshipOrderable, dropshipItemName } from '../../../../lib/dropship-order';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const serviceClient = createServiceClient();
 
 type ProductRow = { sku: string; name: string; brand: string; category_slug: string | null; volume: string | null; min_order: number | null; is_active: boolean };
 type StockRow   = { sku: string; price_drop: number | null; price_retail: number | null; stock_status: string | null };
 
-export async function GET() {
+async function _GET() {
   const auth = await requireCustomer('dropship');
   if (!auth.ok) return auth.response;
 
@@ -83,3 +84,5 @@ export async function GET() {
     },
   });
 }
+
+export const GET = withApi('cabinet/pricelist', _GET);

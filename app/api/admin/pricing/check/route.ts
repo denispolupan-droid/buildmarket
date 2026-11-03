@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkProductPrices } from '../../../../../lib/price-checker';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, asJson } from '../../../../../lib/supabase-service';
+import { withApi } from '../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -9,7 +10,7 @@ async function checkAdmin() {
   return (await requireStaff('admin')).ok;
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -66,8 +67,10 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(result);
 }
 
+export const POST = withApi('admin/pricing/check', _POST);
+
 // GET — list all stored checks (for initial page load)
-export async function GET() {
+async function _GET() {
   if (!await checkAdmin()) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -79,3 +82,5 @@ export async function GET() {
 
   return NextResponse.json(data ?? []);
 }
+
+export const GET = withApi('admin/pricing/check', _GET);

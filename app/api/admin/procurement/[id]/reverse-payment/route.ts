@@ -3,10 +3,11 @@ import { createServiceClient, type TableUpdate } from '../../../../../../lib/sup
 import { recordTxn } from '../../../../../../lib/accounting/money';
 import { procurementPaymentOr } from '../../../../../../lib/accounting/procurement-payments';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -84,3 +85,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('admin/procurement/[id]/reverse-payment', _POST);

@@ -3,8 +3,9 @@ import { recordTxn } from '../../../../../lib/accounting/money';
 import { createPaymentVoucher } from '../../../../../lib/accounting/documents';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { parseBody, zMoney, zYmd, zText, z } from '../../../../../lib/validate';
+import { withApi } from '../../../../../lib/api-handler';
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
@@ -49,3 +50,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/finance/cash', _POST);

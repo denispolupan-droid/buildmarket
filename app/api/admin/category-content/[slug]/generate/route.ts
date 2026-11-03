@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { getCategoryContentRows, rowToMeta } from '../../../../../../lib/category-content';
 import { buildGenContext, generateCategoryContent } from '../../../../../../lib/category-content-gen';
 import { CostSink } from '../../../../../../lib/ai-cost';
+import { withApi } from '../../../../../../lib/api-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,7 @@ export const maxDuration = 300;
  * власник вичитує і тисне «Зберегти» сам. Один виклик = одна мова; для ru
  * українська версія (якщо є) іде моделі джерелом фактів.
  */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { slug } = await params;
@@ -35,3 +36,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/category-content/[slug]/generate', _POST);

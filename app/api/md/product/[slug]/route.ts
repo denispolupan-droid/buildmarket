@@ -5,6 +5,7 @@ import {
 } from '../../../../../lib/supabase';
 import { productMarkdown, mdPrice, type MdProductInput } from '../../../../../lib/llms-md';
 import { SITE_URL } from '../../../../../lib/site';
+import { withApi } from '../../../../../lib/api-handler';
 
 // Markdown-версія картки товару. Публічна адреса — /product/<slug>.md,
 // сюди веде rewrite з next.config: розширення в кінці URL моделі шукають
@@ -33,7 +34,7 @@ const md = (body: string, canonical: string, status = 200) =>
     },
   });
 
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+async function _GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug: raw } = await params;
   const slug = decodeURIComponent(raw);
 
@@ -99,3 +100,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   return md(productMarkdown(input), `${SITE_URL}/product/${product.slug ?? product.sku}`);
 }
+
+export const GET = withApi('md/product/[slug]', _GET);

@@ -13,10 +13,11 @@ import { getMonoAcquiringToken } from '../../../lib/mono-config';
 import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
 import { getRzSender, isRzDeliveryEnabled } from '../../../lib/rz-delivery-api';
 import { cartWeightKg } from '../../../lib/parcel-weight';
+import { withApi } from '../../../lib/api-handler';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   // Rate limit: 10 order submissions per IP per hour (prevents cart-spam / payment link flood)
   const ip = getClientIp(req);
   if (!rateLimit(`orders:${ip}`, 10, 60 * 60 * 1000)) {
@@ -341,3 +342,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: data.id, orderNumber: data.order_number });
 }
+
+export const POST = withApi('orders', _POST);

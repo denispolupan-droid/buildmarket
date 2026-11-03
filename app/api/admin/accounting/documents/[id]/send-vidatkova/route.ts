@@ -7,11 +7,12 @@ import { loadVidatkova, vidatkovaRenderParams } from '../../../../../../../lib/v
 import { formatDocDate } from '../../../../../../../lib/doc-format';
 import { requireStaff } from '../../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../../lib/supabase-service';
+import { withApi } from '../../../../../../../lib/api-handler';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const db = createServiceClient();
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
 
@@ -48,3 +49,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (sendErr) return NextResponse.json({ error: String(sendErr) }, { status: 500 });
   return NextResponse.json({ ok: true, to: toEmail });
 }
+
+export const POST = withApi('admin/accounting/documents/[id]/send-vidatkova', _POST);

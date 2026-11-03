@@ -9,6 +9,7 @@ import {
 import { legalRecipientFromCustomer, taxNumberLabel } from '../../../../lib/np-legal-recipient';
 import { withNpRetry } from '../../../../lib/np-retry';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { withApi } from '../../../../lib/api-handler';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -40,7 +41,7 @@ function todayStr(): string {
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') {
@@ -362,3 +363,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ttn, ref });
 }
+
+export const POST = withApi('admin/create-ttn', _POST);

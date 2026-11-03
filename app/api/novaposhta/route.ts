@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withNpRetry } from '../../../lib/np-retry';
 import { requireStaff } from '../../../lib/auth-guard';
+import { withApi } from '../../../lib/api-handler';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -12,7 +13,7 @@ const PUBLIC_METHODS = new Set([
   'Address.getWarehouses',
 ]);
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   let body: unknown;
   try {
     body = await req.json();
@@ -71,3 +72,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withApi('novaposhta', _POST);

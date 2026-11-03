@@ -6,6 +6,7 @@ import { SELLER } from '../../../../../../lib/company';
 import { loadInvoiceView } from '../../../../../../lib/invoice-buyer';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import type { InvoiceOrderRow } from '../../../../../../lib/invoice-doc';
+import { withApi } from '../../../../../../lib/api-handler';
 
 const db = createServiceClient();
 
@@ -17,7 +18,7 @@ function formatIban(raw: string) {
 }
 
 // UUID is the auth — anyone with the link can download
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
@@ -382,3 +383,5 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 }
+
+export const GET = withApi('admin/orders/[id]/invoice-excel', _GET);

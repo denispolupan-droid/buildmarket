@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { withApi } from '../../../lib/api-handler';
 
 const service = createServiceClient();
 
-export async function GET(req: NextRequest) {
+async function _GET(req: NextRequest) {
   const sku = req.nextUrl.searchParams.get('sku');
   if (!sku) return NextResponse.json({ error: 'sku required' }, { status: 400 });
 
@@ -19,7 +20,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? []);
 }
 
-export async function POST(req: NextRequest) {
+export const GET = withApi('reviews', _GET);
+
+async function _POST(req: NextRequest) {
   // Rate limit: 5 reviews per IP per hour
   const ip = getClientIp(req);
   if (!rateLimit(`reviews:${ip}`, 5, 60 * 60 * 1000)) {
@@ -84,3 +87,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withApi('reviews', _POST);

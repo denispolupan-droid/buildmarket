@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../../lib/rozetka-api';
 import { requireStaff } from '../../../../../../lib/auth-guard';
+import { withApi } from '../../../../../../lib/api-handler';
 
-export async function POST(
+async function _POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -56,3 +57,5 @@ export async function POST(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withApi('admin/orders/[id]/push-rozetka-ttn', _POST);

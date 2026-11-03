@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { getNpApiKey, npCall, npScanSheetPdf } from '../../../../../../lib/np-api';
+import { withApi } from '../../../../../../lib/api-handler';
 
 /**
  * Друк реєстру НП — офіційна форма з my.novaposhta.ua, та сама, що друкує кабінет
@@ -11,7 +12,7 @@ import { getNpApiKey, npCall, npScanSheetPdf } from '../../../../../../lib/np-ap
  * Побічний ефект той самий, що і в кабінеті: після друку НП ставить реєстру Printed=1
  * і нові ЕН у нього вже не додати — тому кнопка друку йде ПІСЛЯ «Додати в реєстр».
  */
-export async function GET(
+async function _GET(
   _req: NextRequest,
   { params }: { params: Promise<{ ref: string }> },
 ) {
@@ -44,3 +45,5 @@ export async function GET(
     return new NextResponse(message, { status: 502, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
 }
+
+export const GET = withApi('admin/registers/[ref]/pdf', _GET);
