@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { npMarkingPdf, getNpApiKey } from '../../../../../../lib/np-api';
+import { npMarkingPdf, getNpApiKey, npErrorText } from '../../../../../../lib/np-api';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { isManualPostalCarrier } from '../../../../../../lib/carriers';
 import { withApi } from '../../../../../../lib/api-handler';
@@ -120,7 +120,7 @@ async function _DELETE(
     npError = 'API ключ НП не налаштовано';
   } else if (ref) {
     const data = await npCall(apiKey, 'InternetDocument', 'delete', { DocumentRefs: [ref] });
-    if (!data.success) npError = data.errors?.join('; ') ?? 'Помилка видалення в НП';
+    if (!data.success) npError = npErrorText(data, 'Помилка видалення в НП');
   } else {
     npError = 'Не вдалося знайти ТТН в кабінеті НП';
   }

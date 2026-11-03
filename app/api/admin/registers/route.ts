@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
-import { getNpApiKey } from '../../../../lib/np-api';
+import { getNpApiKey, npErrorText } from '../../../../lib/np-api';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -152,7 +152,7 @@ async function _DELETE(req: NextRequest) {
       });
       if (!removeRes.success) {
         return NextResponse.json({
-          error: removeRes.errors?.join('; ') ?? 'Помилка видалення ТТН з реєстру',
+          error: npErrorText(removeRes, 'Помилка видалення ТТН з реєстру'),
         }, { status: 400 });
       }
     }
@@ -170,7 +170,7 @@ async function _DELETE(req: NextRequest) {
   });
 
   if (!res.success) {
-    return NextResponse.json({ error: res.errors?.join('; ') ?? 'Помилка НП' }, { status: 400 });
+    return NextResponse.json({ error: npErrorText(res, 'Помилка НП') }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true, deleted: 'ttn' });
@@ -199,7 +199,7 @@ async function _POST(req: NextRequest) {
   const res = await npCall(apiKey, 'ScanSheet', 'insertDocuments', payload);
 
   if (!res.success) {
-    return NextResponse.json({ error: res.errors?.join('; ') ?? 'Помилка НП' }, { status: 400 });
+    return NextResponse.json({ error: npErrorText(res, 'Помилка НП') }, { status: 400 });
   }
 
   // УВАГА: НП повертає success:true на рівні виклику, але РЕАЛЬНИЙ поштучний результат —

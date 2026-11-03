@@ -97,3 +97,16 @@ export async function npScanSheetPdf(apiKey: string, refs: string[]): Promise<Bu
   }
   return buf;
 }
+
+/**
+ * Текст помилки з відповіді НП. `errors` буває масивом рядків, а буває
+ * обʼєктом { поле: 'текст' } (03.11.2026: видалення вже видаленої ЕН дало
+ * `e.errors?.join is not a function` і 500 замість відповіді менеджеру).
+ */
+export function npErrorText(res: unknown, fallback: string): string {
+  const e = (res as { errors?: unknown } | null)?.errors;
+  if (Array.isArray(e)) return e.map(String).join('; ') || fallback;
+  if (e && typeof e === 'object') return Object.values(e as Record<string, unknown>).flat().map(String).join('; ') || fallback;
+  if (typeof e === 'string' && e) return e;
+  return fallback;
+}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
-import { npCall, getNpApiKey } from '../../../../../../lib/np-api';
+import { npCall, getNpApiKey, npErrorText } from '../../../../../../lib/np-api';
 import { rzTrackStatuses } from '../../../../../../lib/rz-delivery-api';
 import { RZ_DELIVERY_TYPE } from '../../../../../../lib/rz-delivery';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
@@ -64,7 +64,7 @@ async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: strin
         Documents: [{ DocumentNumber: ttn, ...(phone ? { Phone: phone } : {}) }],
       });
       np = res.data?.[0] ?? null;
-      if (!res.success && !np) throw new Error(res.errors?.join('; ') || 'НП не відповіла');
+      if (!res.success && !np) throw new Error(npErrorText(res, 'НП не відповіла'));
       // StatusCode 3 — «номер не знайдено»: інших полів тоді немає
       if (np?.StatusCode === '3') { liveErrors.push('Нова Пошта не знайшла цей номер'); np = null; }
     } else if (carrier === 'rz_delivery') {

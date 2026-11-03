@@ -10,7 +10,7 @@ import { legalRecipientFromCustomer, taxNumberLabel } from '../../../../lib/np-l
 import { withNpRetry } from '../../../../lib/np-retry';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
-import { getNpApiKey } from '../../../../lib/np-api';
+import { getNpApiKey, npErrorText } from '../../../../lib/np-api';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -314,7 +314,7 @@ async function _POST(req: NextRequest) {
 
   if (!ttnRes.success) {
     return NextResponse.json(
-      { error: ttnRes.errors?.join('; ') ?? 'Помилка створення ТТН у НП' },
+      { error: npErrorText(ttnRes, 'Помилка створення ТТН у НП') },
       { status: 400 },
     );
   }
