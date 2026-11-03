@@ -9,6 +9,7 @@ import { computeRozetkaCommission } from '../../../../../../lib/rozetka-commissi
 import { computeEpicentrCommission, getEpicentrFallbackPct } from '../../../../../../lib/epicentr-commission';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
+import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 
 async function _GET(
   _req: NextRequest,
@@ -28,7 +29,8 @@ async function _GET(
 
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const items = (order.items ?? []) as { sku: string; qty: number; price?: number }[];
+  // Позиції — з order_lines (етап B), не з jsonb items
+  const items = await loadOrderItems(db, id);
   const skus = items.map(i => i.sku);
 
   // Джерело фіксується при відвантаженні — у рядках видаткової. Якщо воно вже
@@ -39,7 +41,7 @@ async function _GET(
   const allFixed = items.length > 0 && items.every(i => fixed.has(i.sku));
 
   const [info, plan, reservations, balances, stockRows, ledgerRows, confirmedSales] = await Promise.all([
-    getOrderFulfillmentInfo((order.items ?? []) as unknown as Parameters<typeof getOrderFulfillmentInfo>[0]),
+    getOrderFulfillmentInfo(items as unknown as Parameters<typeof getOrderFulfillmentInfo>[0]),
     allFixed
       ? Promise.resolve(planFromFixed(items, fixed))
       : resolveOrderFulfillment(

@@ -9,6 +9,7 @@ import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../../lib
 import { transitionOrder } from '../../../../../../lib/orders/status';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
+import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 
 async function _POST(
   req: NextRequest,
@@ -45,7 +46,8 @@ async function _POST(
     );
   }
 
-  const items = (order.items ?? []) as { sku: string; qty: number }[];
+  // Позиції — з order_lines (етап B, docs/ORDER-LINES-PLAN.md), не з jsonb items
+  const items = await loadOrderItems(db, id);
   let newStatus = 'confirmed';
   let purchaseOrderId: string | undefined;
 
@@ -152,9 +154,7 @@ async function _POST(
       const warehouseId  = supplierItems[0]?.warehouse_id;
 
       if (supplierId && warehouseId) {
-        const orderItemMap = new Map(
-          (order.items as { sku: string; qty: number; price: number }[]).map(i => [i.sku, i]),
-        );
+        const orderItemMap = new Map(items.map(i => [i.sku, i]));
         const doc = await createDocument({
           doc_type:     'purchase_order',
           warehouse_id: warehouseId,

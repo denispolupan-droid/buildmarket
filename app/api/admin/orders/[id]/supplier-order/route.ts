@@ -4,6 +4,7 @@ import { resolveSender } from '../../../../../../lib/email-sender';
 import { orderItemSources } from '../../../../../../lib/orders/item-sources';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
+import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -56,10 +57,11 @@ async function _GET(
   const { id } = await params;
   const db = createServiceClient();
 
-  const { data: order } = await db.from('orders').select('items, tracking_number, channel_code').eq('id', id).single();
+  const { data: order } = await db.from('orders').select('tracking_number, channel_code').eq('id', id).single();
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const orderItems = (order.items ?? []) as { sku: string; name: string; brand?: string; qty: number }[];
+  // Позиції — з order_lines (етап B), не з jsonb items
+  const orderItems = await loadOrderItems(db, id);
   const skus = orderItems.map((i) => i.sku);
   const supplierMap = await resolveSkuMapping(db, skus);
 
@@ -105,7 +107,7 @@ async function _POST(
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
+    .select('id, order_number, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
     .eq('id', id)
     .single();
 
@@ -125,7 +127,7 @@ async function _POST(
   // ніде не згадувався fixline.
   const { from: FROM, fromName, fromEmail, resend, anonymize } = await resolveSender(db, senderEmail);
 
-  const allItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
+  const allItems = await loadOrderItems(db, id); // order_lines, етап B
 
   const sources = await orderItemSources(db, id, allItems, order.channel_code);
   const orderItems = scope === 'all' ? allItems : allItems.filter(i => sources.get(i.sku) !== 'own');

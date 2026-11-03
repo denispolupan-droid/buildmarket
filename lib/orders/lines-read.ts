@@ -54,3 +54,30 @@ export async function loadOrderLines(db: Db, orderIds: string[]): Promise<Map<st
 
 /** Зручно для звітів: рядки замовлення або порожній масив. */
 export const linesOf = (map: Map<string, OrderLine[]>, orderId: string): OrderLine[] => map.get(orderId) ?? [];
+
+/**
+ * Позиція у формі jsonb-елемента orders.items — для облікових читачів (резерв,
+ * планування виконання, відгрузка), які досі очікують { sku, qty, price, name,
+ * brand, cost_price?, … }. Допоміжні ключі (cost_price, volume, imageUrl …)
+ * повертаються з meta, як і лежали в jsonb.
+ */
+export type OrderItem = Record<string, unknown> & {
+  sku: string; name: string; brand: string; qty: number; price: number;
+  price_base: number | null; is_promo: boolean; is_bonus: boolean; cost_price?: number;
+};
+
+export async function loadOrderItems(db: Db, orderId: string): Promise<OrderItem[]> {
+  const rows = await fetchAllRows((f, t) => db
+    .from('order_lines')
+    .select('sort_order, sku, name, brand, qty, price, price_base, is_promo, is_bonus, meta')
+    .eq('order_id', orderId)
+    .order('sort_order')
+    .range(f, t));
+  return rows.map(r => ({
+    ...((r.meta ?? {}) as Record<string, unknown>),
+    sku: r.sku, name: r.name, brand: r.brand,
+    qty: Number(r.qty), price: Number(r.price),
+    price_base: r.price_base == null ? null : Number(r.price_base),
+    is_promo: !!r.is_promo, is_bonus: !!r.is_bonus,
+  }));
+}

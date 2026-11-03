@@ -8,6 +8,7 @@ import {
 } from '../../../../../../lib/accounting/reservations';
 import { createDocument } from '../../../../../../lib/accounting/documents';
 import { withApi } from '../../../../../../lib/api-handler';
+import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 
 /**
  * Зміна джерела відвантаження ПІСЛЯ проведення.
@@ -73,7 +74,8 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
     );
   }
 
-  const items = (order.items ?? []) as { sku: string; qty: number; price?: number }[];
+  // Позиції — з order_lines (етап B), не з jsonb items
+  const items = await loadOrderItems(db, id);
 
   // Резерви знімаємо ДО планування: інакше власний резерв цього ж замовлення
   // зменшує qty_available і позиція виглядає недоступною сама для себе.

@@ -25,6 +25,7 @@ import {
 import { alertAdmin } from '../alert';
 import { getNpCodFeePct } from '../np-cod-fee';
 import { recordPartnerCodCollected } from './partner-ledger';
+import { loadOrderItems } from '../orders/lines-read';
 
 export async function applyCompletionEffects(docId: string, createdBy = 'system'): Promise<void> {
   const db = createServiceClient();
@@ -196,7 +197,7 @@ export async function settleLegacyCommission(orderId: string, createdBy = 'syste
   const db = createServiceClient();
   const { data: order } = await db
     .from('orders')
-    .select('order_number, channel_code, total_price, items')
+    .select('order_number, channel_code, total_price')
     .eq('id', orderId)
     .single();
   if (!order) return;
@@ -222,8 +223,8 @@ export async function settleLegacyCommission(orderId: string, createdBy = 'syste
     .is('reversal_of', null);
   if ((confCount ?? 0) === 0) return;
 
-  const items = ((order.items ?? []) as { sku: string; qty: number; price: number }[])
-    .map(i => ({ sku: i.sku, qty: Number(i.qty), price: Number(i.price) }));
+  // Позиції — з order_lines (етап B), не з jsonb items
+  const items = (await loadOrderItems(db, orderId)).map(i => ({ sku: i.sku, qty: i.qty, price: i.price }));
   if (!items.length) return;
 
   try {

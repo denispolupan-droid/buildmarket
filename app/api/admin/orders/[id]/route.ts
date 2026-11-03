@@ -25,6 +25,7 @@ import { checkSaleEdit, recordSaleEdit } from '../../../../../lib/accounting/edi
 import { manualStatusWithoutSaleError } from '../../../../../lib/orders/ship-guards';
 import { isOrderStatus, transitionVerdict, buildStatusPatch } from '../../../../../lib/orders/status';
 import { withApi } from '../../../../../lib/api-handler';
+import { loadOrderItems } from '../../../../../lib/orders/lines-read';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -415,12 +416,13 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
     try {
       const { data: order } = await db
         .from('orders')
-        .select('order_number, channel_code, partner_code, items, status')
+        .select('order_number, channel_code, partner_code, status')
         .eq('id', id)
         .single();
 
       if (order?.channel_code === 'dropship' && order.partner_code) {
-        const orderItems = (order.items ?? []) as { qty: number; cost_price?: number; price?: number }[];
+        // Рядки — з order_lines (етап B); cost_price партнера — у meta рядка
+        const orderItems = await loadOrderItems(db, id);
         const itemsCost = orderItems.reduce((s, i) => s + (i.cost_price ?? 0) * i.qty, 0);
         // Повертаємо з фактичних рухів балансу: повторне скасування раніше
         // повертало закупку вдруге, а скасування після вручення — поверх наложки.

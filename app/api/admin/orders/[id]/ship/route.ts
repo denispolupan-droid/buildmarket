@@ -17,6 +17,7 @@ import { pickupWithTtnError, ttnReuseError } from '../../../../../../lib/orders/
 import { redirectTransit } from '../../../../../../lib/accounting/transit';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
 import { withApi } from '../../../../../../lib/api-handler';
+import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 
 async function _POST(
   req: NextRequest,
@@ -116,7 +117,8 @@ async function _POST(
   }
 
   // Determine which items to ship (full or partial)
-  const allOrderItems = order.items as { sku: string; qty: number; price: number; name: string; brand: string }[];
+  // Позиції — з order_lines (етап B, крок 3, docs/ORDER-LINES-PLAN.md), не з jsonb items
+  const allOrderItems = await loadOrderItems(db, id);
   const itemsToShip = partialItems
     ? allOrderItems
         .filter(i => partialItems.some(p => p.sku === i.sku && p.qty > 0))

@@ -23,6 +23,7 @@ import { createReservation, getOrderReservations } from './reservations';
 import type { OrderItem } from '../../types';
 import { saleLinePrice } from './sale-party';
 import { postPartnerSaleOffset, reversePartnerSaleOffset } from './partner-ledger';
+import { loadOrderItems } from '../orders/lines-read';
 
 // ── Информация о выполнении заказа ────────────────────────────────────────────
 
@@ -485,12 +486,12 @@ export async function syncSaleDraftLines(
   const [{ data: warehouse }, { data: stockRows }, { data: order }] = await Promise.all([
     db.from('warehouses').select('id').eq('is_default', true).single(),
     db.from('product_stock').select('sku, price_cost').in('sku', skus),
-    db.from('orders').select('channel_code, items').eq('id', orderId).single(),
+    db.from('orders').select('channel_code').eq('id', orderId).single(),
   ]);
   const costMap = new Map((stockRows ?? []).map(r => [r.sku, r.price_cost ?? 0]));
-  // Дропшип: ціна рядка РН — закупка партнера з рядків замовлення (див. saleLinePrice)
-  const partnerCost = new Map(((order?.items ?? []) as { sku: string; cost_price?: number }[])
-    .map(i => [i.sku, i.cost_price]));
+  // Дропшип: ціна рядка РН — закупка партнера з рядків замовлення (див. saleLinePrice);
+  // рядки — з order_lines (етап B), cost_price лежить у meta
+  const partnerCost = new Map((await loadOrderItems(db, orderId)).map(i => [i.sku, i.cost_price]));
 
   const plan = await resolveOrderFulfillment(
     items.map(i => ({ sku: i.sku, qty: i.qty })),
