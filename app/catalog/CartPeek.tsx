@@ -55,9 +55,7 @@ export default function CartPeek({ items, total, lang, placement }: {
                 imageUrl={i.imageUrl}
               />
             </div>
-            <div className="cart-peek-info">
-              <div className="cart-peek-name">{(lang === 'ru' && i.name_ru) || i.name}</div>
-            </div>
+            <div className="cart-peek-name" title={(lang === 'ru' && i.name_ru) || i.name}>{(lang === 'ru' && i.name_ru) || i.name}</div>
             <div className="cart-peek-meta">{fmt(i.price)} ₴</div>
                 <div className="cart-peek-qty">
                   <button type="button" aria-label={t('Менше', 'Меньше')}
@@ -72,13 +70,11 @@ export default function CartPeek({ items, total, lang, placement }: {
                   />
                   <button type="button" aria-label={t('Більше', 'Больше')} onClick={() => step(i, 1)}>+</button>
                 </div>
-            <div className="cart-peek-side">
-              <div className="cart-peek-sum">{fmt(i.price * i.qty)} ₴</div>
-              <button type="button" className="cart-peek-del" onClick={() => { dropDraft(i.sku); removeItem(i.sku); }}
-                aria-label={t('Видалити', 'Удалить')} title={t('Видалити з кошика', 'Удалить из корзины')}>
-                <Trash2 size={12} strokeWidth={2} aria-hidden /><span aria-hidden>✕</span>
-              </button>
-            </div>
+            <div className="cart-peek-sum">{fmt(i.price * i.qty)} ₴</div>
+            <button type="button" className="cart-peek-del" onClick={() => { dropDraft(i.sku); removeItem(i.sku); }}
+              aria-label={t('Видалити', 'Удалить')} title={t('Видалити з кошика', 'Удалить из корзины')}>
+              <Trash2 size={11} strokeWidth={2} aria-hidden /><span aria-hidden>✕</span>
+            </button>
           </li>
         ))}
       </ul>
