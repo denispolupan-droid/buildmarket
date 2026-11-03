@@ -18,6 +18,7 @@ import { redirectTransit } from '../../../../../../lib/accounting/transit';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
 import { withApi } from '../../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
+import { ttnPushEvents, type ShipSnapshot } from '../../../../../../lib/outbox/enqueue';
 
 // Таймаут чи збій Prom при пуші ЕН — не втрата: крон prom-orders (кожні 5 хв)
 // звіряє наш номер із тим, що бачить Prom, і досилає. Алерт має це казати,
@@ -25,6 +26,19 @@ import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 function promTtnAlertDetails(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   return `${msg}. Крон Prom допушить номер протягом ≤5 хв — перевіряйте в кабінеті Prom, лише якщо його там не буде.`;
+}
+
+// Знімок полів площадок для подій outbox (lib/outbox/enqueue)
+function shipSnapshot(order: Record<string, unknown>): ShipSnapshot {
+  const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
+  return {
+    order_number:     Number(order.order_number),
+    prom_order_id:    (order.prom_order_id as number | null) ?? null,
+    rozetka_order_id: (order.rozetka_order_id as number | null) ?? null,
+    epicentr_order_id:(order.epicentr_order_id as string | null) ?? null,
+    delivery_type:    (order.delivery_type as string | null) ?? null,
+    rozetka_cabinet_status: typeof cabinet.status === 'number' ? cabinet.status : null,
+  };
 }
 
 async function _POST(
@@ -193,7 +207,10 @@ async function _POST(
     if (reIsPickup) await completeOrderDelivery(order.id, user.email ?? 'admin');
     // Самовивіз іде одразу в delivered; shipped_at ставимо явно — як і раніше, бо
     // transitionOrder для delivered проставляє лише delivered_at.
-    await transitionOrder(db, id, reStatus, user.email ?? 'admin', 'ship', { shipped_at: reNow });
+    // Фаза 1 outbox (docs/OUTBOX-PLAN.md): подія записується разом зі статусом;
+    // прямі пуші нижче поки лишаються — обробник ідемпотентний, подвійний пуш безпечний.
+    await transitionOrder(db, id, reStatus, user.email ?? 'admin', 'ship', { shipped_at: reNow },
+      ttnPushEvents(order.id, shipSnapshot(order), reTtn, reStatus, true));
 
     const rePromId = order.prom_order_id as number | null;
     // «Магазини Rozetka» (PRM-…) Prom веде сам — пуш туди він відхиляє
@@ -376,7 +393,7 @@ async function _POST(
   await transitionOrder(db, id, finalStatus as OrderStatus, user.email ?? 'admin', 'ship', {
     ...(fullyShipped ? { shipped_at: now } : {}),
     ...(orderContractId ? { contract_id: orderContractId } : {}),
-  });
+  }, ttnPushEvents(order.id, shipSnapshot(order), effectiveTtn, isPickup ? 'delivered' : 'shipped', fullyShipped));
 
   // Режим виконання за ФАКТОМ, а не за вибором менеджера при підтвердженні:
   // роутер міг перерішити (товар знайшовся на своєму складі), і тоді посилка

@@ -1,5 +1,7 @@
 {
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "crons": [
     {
       "path": "/api/cron/rozetka-orders",
@@ -84,6 +86,10 @@
     {
       "path": "/api/cron/metric-watch?scope=hourly",
       "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/outbox-sweep",
+      "schedule": "* * * * *"
     }
   ]
 }

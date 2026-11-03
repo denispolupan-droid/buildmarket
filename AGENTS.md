@@ -33,6 +33,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Секрети інтеграцій.** Токени, паролі, ключі API (список `SECRET_KEYS` у `lib/secrets`) живуть у Supabase Vault (міграція 150), не в `app_settings`. Читати/писати лише через `readSetting`/`writeSetting`/`deleteSetting` з `lib/secrets` — вони самі роутять секретні ключі у Vault, решту в `app_settings`. Новий токен — додай ключ у `SECRET_KEYS`. Пряме `.from('app_settings')…eq('key', '<секрет>')` ловить архітектурний тест.
 
+**Outbox подій.** Побічні ефекти після зміни замовлення (пуш ЕН/статусу на площадку, уведомлення) — не «вистрілив і забув» з роуту, а подія через `transitionOrder(db, id, to, actor, via, extra, events)` (`lib/outbox/enqueue`), яку доставляє крон `outbox-sweep` з повторами. У `outbox_events` з коду не писати напряму — лише `order_transition_outbox`/`outbox_claim` і оновлення статусу рядка в `lib/outbox/sweeper`. Нові обробники — у `lib/outbox/handlers`, ідемпотентні, зі звіркою стану замовлення перед викликом. План і фази: `docs/OUTBOX-PLAN.md`.
+
 **Безпека вводу.** Екрануй користувацький текст перед вставкою в HTML/`document.write`/JSON у `<script>`. Fetch за користувацьким URL — через `assertPublicUrl` (`lib/safe-fetch-url`).
 
 **UI-регресії.** Правки, які видно тільки в браузері (скрол, ховер, лейаут), перевіряй через

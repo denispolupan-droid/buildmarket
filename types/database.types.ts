@@ -2721,11 +2721,11 @@ export type Database = {
           id?: string
           imported_at?: string
           marketplace?: string
-          result?: string
           our_order_id?: string | null
           processed_at?: string | null
           processing_error?: string | null
           raw_payload?: Json
+          result?: string
           status_external?: string
           status_mapped?: string | null
           total_amount?: number | null
@@ -3764,6 +3764,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      outbox_events: {
+        Row: {
+          aggregate: string
+          aggregate_id: string
+          attempts: number
+          created_at: string
+          dedupe_key: string
+          done_at: string | null
+          event: string
+          handler: string
+          id: number
+          last_error: string | null
+          locked_until: string | null
+          next_at: string
+          payload: Json
+          status: string
+        }
+        Insert: {
+          aggregate?: string
+          aggregate_id: string
+          attempts?: number
+          created_at?: string
+          dedupe_key: string
+          done_at?: string | null
+          event: string
+          handler: string
+          id?: never
+          last_error?: string | null
+          locked_until?: string | null
+          next_at?: string
+          payload?: Json
+          status?: string
+        }
+        Update: {
+          aggregate?: string
+          aggregate_id?: string
+          attempts?: number
+          created_at?: string
+          dedupe_key?: string
+          done_at?: string | null
+          event?: string
+          handler?: string
+          id?: never
+          last_error?: string | null
+          locked_until?: string | null
+          next_at?: string
+          payload?: Json
+          status?: string
+        }
+        Relationships: []
       }
       partner_balance_transactions: {
         Row: {
@@ -6948,10 +6999,36 @@ export type Database = {
       }
       next_ar_correction_number: { Args: never; Returns: string }
       next_doc_number: { Args: { p_type: string }; Returns: string }
-      secret_delete: { Args: { p_name: string }; Returns: undefined }
-      secret_get: { Args: { p_name: string }; Returns: string }
-      secret_set: { Args: { p_name: string; p_value: string }; Returns: undefined }
       open_period: { Args: { p_by?: string; p_month: string }; Returns: string }
+      order_transition_outbox: {
+        Args: { p_events?: Json; p_order_id: string; p_patch: Json }
+        Returns: number
+      }
+      outbox_claim: {
+        Args: { p_lease_seconds?: number; p_limit?: number }
+        Returns: {
+          aggregate: string
+          aggregate_id: string
+          attempts: number
+          created_at: string
+          dedupe_key: string
+          done_at: string | null
+          event: string
+          handler: string
+          id: number
+          last_error: string | null
+          locked_until: string | null
+          next_at: string
+          payload: Json
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "outbox_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       post_document_movements: {
         Args: { p_direction: string; p_doc_id: string }
         Returns: number
@@ -7042,6 +7119,12 @@ export type Database = {
           path: string
           prom_category_id: number
         }[]
+      }
+      secret_delete: { Args: { p_name: string }; Returns: undefined }
+      secret_get: { Args: { p_name: string }; Returns: string }
+      secret_set: {
+        Args: { p_name: string; p_value: string }
+        Returns: undefined
       }
       submit_payout_request: {
         Args: {

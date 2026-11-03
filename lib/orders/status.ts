@@ -18,6 +18,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { OutboxEventInput } from '../outbox/types';
 
 export const ORDER_STATUSES = [
   'new', 'pending_payment', 'confirmed', 'awaiting_stock', 'picking', 'shipped', 'delivered', 'cancelled',
@@ -168,6 +169,7 @@ export async function transitionOrder(
   actor: string,
   via: string,
   extra: Record<string, unknown> = {},
+  events: OutboxEventInput[] = [],
 ): Promise<TransitionResult> {
   const { data: current, error } = await db
     .from('orders')
@@ -177,7 +179,16 @@ export async function transitionOrder(
   if (error || !current) throw new Error(`transitionOrder: замовлення ${orderId} не знайдено${error ? ` (${error.message})` : ''}`);
 
   const patch = { ...buildStatusPatch(current as OrderStatusState, to, actor, via), ...extra };
-  if (Object.keys(patch).length === 0) return { from: current.status, to, changed: false };
+  if (Object.keys(patch).length === 0 && events.length === 0) return { from: current.status, to, changed: false };
+
+  if (events.length > 0) {
+    // Події outbox (docs/OUTBOX-PLAN.md) — у тій самій транзакції, що й зміна
+    // замовлення: SQL-функція робить UPDATE orders + INSERT outbox_events разом.
+    // Окремим запитом було б вікно «статус змінили, подію не записали».
+    const { error: rpcErr } = await db.rpc('order_transition_outbox', { p_order_id: orderId, p_patch: patch, p_events: events });
+    if (rpcErr) throw new Error(`transitionOrder: ${orderId} → ${to} (outbox): ${rpcErr.message}`);
+    return { from: current.status, to, changed: current.status !== to };
+  }
 
   const { error: upErr } = await db.from('orders').update(patch).eq('id', orderId);
   if (upErr) throw new Error(`transitionOrder: ${orderId} → ${to}: ${upErr.message}`);
