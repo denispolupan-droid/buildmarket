@@ -283,7 +283,7 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 .cart-peek-count { font-size: 11.5px; font-weight: 500; color: var(--text-muted); }
 .cart-peek-list { list-style: none; margin: 0; padding: 4px 0; overflow-y: auto; overscroll-behavior: contain; }
 .cart-peek-item { display: flex; align-items: center; gap: 10px; padding: 6px 14px; }
-.cart-peek-thumb { width: 36px; height: 36px; flex-shrink: 0; background: #fff; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.cart-peek-thumb { width: 46px; height: 46px; flex-shrink: 0; background: #fff; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .cart-peek-info { flex: 1; min-width: 0; }
 .cart-peek-name { font-size: 12px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cart-peek-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
