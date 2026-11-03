@@ -57,7 +57,8 @@ export default function CartPeek({ items, total, lang, placement }: {
             </div>
             <div className="cart-peek-info">
               <div className="cart-peek-name">{(lang === 'ru' && i.name_ru) || i.name}</div>
-              <div className="cart-peek-row">
+              <div className="cart-peek-meta">{fmt(i.price)} ₴ / {t('шт.', 'шт.')}</div>
+            </div>
                 <div className="cart-peek-qty">
                   <button type="button" aria-label={t('Менше', 'Меньше')}
                     disabled={i.qty <= i.min_order} onClick={() => step(i, -1)}>−</button>
@@ -71,9 +72,6 @@ export default function CartPeek({ items, total, lang, placement }: {
                   />
                   <button type="button" aria-label={t('Більше', 'Больше')} onClick={() => step(i, 1)}>+</button>
                 </div>
-                <span className="cart-peek-meta">× {fmt(i.price)} ₴</span>
-              </div>
-            </div>
             <div className="cart-peek-side">
               <div className="cart-peek-sum">{fmt(i.price * i.qty)} ₴</div>
               <button type="button" className="cart-peek-del" onClick={() => { dropDraft(i.sku); removeItem(i.sku); }}

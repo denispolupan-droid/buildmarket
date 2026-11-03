@@ -255,7 +255,7 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .cart-peek {
     display: flex; flex-direction: column;
     position: absolute; z-index: 60;
-    width: 380px; max-height: min(460px, 70vh);
+    width: 480px; max-height: min(460px, 70vh);
     background: var(--bg-card); color: var(--text-primary);
     border: 1px solid var(--border); border-radius: 12px;
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
@@ -286,9 +286,8 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 .cart-peek-thumb { width: 46px; height: 46px; flex-shrink: 0; background: #fff; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .cart-peek-info { flex: 1; min-width: 0; }
 .cart-peek-name { font-size: 12px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.cart-peek-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-.cart-peek-meta { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.cart-peek-qty { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+.cart-peek-meta { font-size: 11px; color: var(--text-muted); white-space: nowrap; margin-top: 2px; }
+.cart-peek-qty { flex-shrink: 0; display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
 .cart-peek-qty button {
   width: 18px; height: 18px; padding: 0; border: none; background: var(--bg-soft); color: var(--text-secondary);
   font-size: 12px; line-height: 1; cursor: pointer;
@@ -302,8 +301,8 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 }
 .cart-peek-qty input::-webkit-outer-spin-button,
 .cart-peek-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-/* Сума й «видалити» по висоті збігаються з назвою й лічильником зліва */
-.cart-peek-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; align-self: stretch; gap: 4px; }
+/* Сума й «видалити» — стовпчиком справа; фіксована ширина, щоб лічильники стояли рівно один під одним */
+.cart-peek-side { flex-shrink: 0; width: 84px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .cart-peek-sum { font-size: 12px; font-weight: 700; white-space: nowrap; }
 .cart-peek-del {
   display: inline-flex; align-items: center; gap: 3px;
