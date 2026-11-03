@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { readSetting, writeSetting, deleteSetting } from '../../../../../lib/secrets';
 
 const db = createServiceClient();
 
@@ -13,12 +14,12 @@ async function assertAdmin() {
 async function _GET() {
   try {
     await assertAdmin();
-    const { data } = await db.from('app_settings').select('value').eq('key', 'prom_api_token').maybeSingle();
-    const token = data?.value || process.env.PROM_API_TOKEN || '';
+    const stored = await readSetting(db, 'prom_api_token');
+    const token = stored || process.env.PROM_API_TOKEN || '';
     return NextResponse.json({
       hasToken: !!token,
       maskedToken: token ? `••••••••${token.slice(-4)}` : null,
-      source: data?.value ? 'db' : (process.env.PROM_API_TOKEN ? 'env' : null),
+      source: stored ? 'db' : (process.env.PROM_API_TOKEN ? 'env' : null),
     });
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -43,10 +44,7 @@ async function _POST(req: NextRequest) {
       return NextResponse.json({ error: `Токен недійсний: Prom відповів ${testRes.status}` }, { status: 400 });
     }
 
-    await db.from('app_settings').upsert(
-      { key: 'prom_api_token', value: token.trim() },
-      { onConflict: 'key' }
-    );
+    await writeSetting(db, 'prom_api_token', token.trim());
 
     return NextResponse.json({ ok: true, maskedToken: `••••••••${token.trim().slice(-4)}` });
   } catch (e) {
@@ -60,7 +58,7 @@ export const POST = withApi('admin/prom/token', _POST);
 async function _DELETE() {
   try {
     await assertAdmin();
-    await db.from('app_settings').delete().eq('key', 'prom_api_token');
+    await deleteSetting(db, 'prom_api_token');
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

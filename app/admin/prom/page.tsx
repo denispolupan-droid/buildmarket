@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../lib/supabase-server';
 import PromDashboardClient from './PromDashboardClient';
 import { PROM_READY_TO_SHIP_KEY, readyToShipEnabled } from '../../../lib/prom-ready-to-ship';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { readSetting } from '../../../lib/secrets';
 
 const db = createServiceClient();
 
@@ -21,7 +22,7 @@ export default async function PromPage() {
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('on_prom', true),
     db.from('categories').select('prom_commission_pct, prom_markup_pct'),
-    db.from('app_settings').select('value').eq('key', 'prom_api_token').maybeSingle(),
+    readSetting(db, 'prom_api_token').then(value => ({ data: { value } })),
     db.from('app_settings').select('value').eq('key', PROM_READY_TO_SHIP_KEY).maybeSingle(),
   ]);
   const readyToShip = readyToShipEnabled(rtsSetting?.value);

@@ -31,6 +31,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Рядки замовлення.** Позиції й далі пишуться в `orders.items` (jsonb). Таблиця `order_lines` — дзеркало, яке веде тригер БД: з коду в неї **не писати** (insert/update/delete), читати можна лише в звітах і лише після етапу B (`docs/ORDER-LINES-PLAN.md`). Розходження ловлять інваріанти I9/I10.
 
+**Секрети інтеграцій.** Токени, паролі, ключі API (список `SECRET_KEYS` у `lib/secrets`) живуть у Supabase Vault (міграція 150), не в `app_settings`. Читати/писати лише через `readSetting`/`writeSetting`/`deleteSetting` з `lib/secrets` — вони самі роутять секретні ключі у Vault, решту в `app_settings`. Новий токен — додай ключ у `SECRET_KEYS`. Пряме `.from('app_settings')…eq('key', '<секрет>')` ловить архітектурний тест.
+
 **Безпека вводу.** Екрануй користувацький текст перед вставкою в HTML/`document.write`/JSON у `<script>`. Fetch за користувацьким URL — через `assertPublicUrl` (`lib/safe-fetch-url`).
 
 **UI-регресії.** Правки, які видно тільки в браузері (скрол, ховер, лейаут), перевіряй через

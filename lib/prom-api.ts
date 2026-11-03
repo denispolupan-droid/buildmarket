@@ -1,13 +1,14 @@
 import { fetchWithTimeout } from './fetch-timeout';
 import { resolveDeliverySubtype } from './np-postomat';
 import { createServiceClient } from './supabase-service';
+import { readSetting } from './secrets';
 
 const PROM_BASE = 'https://my.prom.ua/api/v1';
 
 async function getToken(): Promise<string> {
   const db = createServiceClient();
-  const { data } = await db.from('app_settings').select('value').eq('key', 'prom_api_token').maybeSingle();
-  if (data?.value) return data.value as string;
+  const stored = await readSetting(db, 'prom_api_token');
+  if (stored) return stored;
   const token = process.env.PROM_API_TOKEN;
   if (!token) throw new Error('Токен Prom не налаштований. Встановіть його на сторінці /admin/prom');
   return token;

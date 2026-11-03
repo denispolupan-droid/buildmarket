@@ -6945,6 +6945,9 @@ export type Database = {
       }
       next_ar_correction_number: { Args: never; Returns: string }
       next_doc_number: { Args: { p_type: string }; Returns: string }
+      secret_delete: { Args: { p_name: string }; Returns: undefined }
+      secret_get: { Args: { p_name: string }; Returns: string }
+      secret_set: { Args: { p_name: string; p_value: string }; Returns: undefined }
       open_period: { Args: { p_by?: string; p_month: string }; Returns: string }
       post_document_movements: {
         Args: { p_direction: string; p_doc_id: string }

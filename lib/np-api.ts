@@ -39,12 +39,8 @@ export async function getNpApiKey(): Promise<string> {
   // Динамічний імпорт: lib/supabase валідує env ще на імпорті, а цей модуль має
   // лишатися придатним для юніт-тестів чистих функцій нижче, без .env.
   const { createServiceClient } = await import('./supabase');
-  const { data } = await createServiceClient()
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'np_api_key')
-    .maybeSingle();
-  return (data?.value as string | undefined) || process.env.NOVA_POSHTA_API_KEY || '';
+  const { readSetting } = await import('./secrets');
+  return (await readSetting(createServiceClient(), 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
 }
 
 export const npError = (res: NpResponse<unknown>, fallback: string) =>

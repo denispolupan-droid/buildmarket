@@ -1,4 +1,5 @@
 import { createServiceClient } from './supabase-service';
+import { readSetting } from './secrets';
 
 // Конфіг інтеграції з Monobank Personal/ФОП API. За зразком prom_api_token /
 // rozetka-креди: значення беруться з app_settings (керовано, без редеплою),
@@ -23,11 +24,8 @@ export function getMonoAcquiringToken(): string {
     .trim();
 }
 
-async function setting(db: ReturnType<typeof createServiceClient>, key: string): Promise<string | null> {
-  const { data } = await db.from('app_settings').select('value').eq('key', key).maybeSingle();
-  const v = (data?.value ?? '').trim();
-  return v || null;
-}
+// mono_personal_token / mono_webhook_secret — у Vault (lib/secrets), решта — app_settings
+const setting = (db: ReturnType<typeof createServiceClient>, key: string) => readSetting(db, key);
 
 export async function getMonoToken(db: ReturnType<typeof createServiceClient>): Promise<string | null> {
   return (await setting(db, 'mono_personal_token')) ?? (process.env.MONOBANK_PERSONAL_TOKEN?.trim() || null);

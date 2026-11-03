@@ -4,6 +4,7 @@ import RozetkaClient from './RozetkaClient';
 import SellerRatingCard from './SellerRatingCard';
 import { getRozetkaSellerRating, type RozetkaSellerRating } from '../../../lib/rozetka-api';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { readSetting } from '../../../lib/secrets';
 
 export const metadata = { title: 'Rozetka — Адмін' };
 
@@ -26,7 +27,7 @@ export default async function RozetkaPage() {
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('on_rozetka', true),
     db.from('categories').select('rozetka_category_id, rozetka_commission_pct'),
-    db.from('app_settings').select('value').eq('key', 'rozetka_api_token').maybeSingle(),
+    readSetting(db, 'rozetka_api_token').then(value => ({ data: { value } })),
     db.from('app_settings').select('value').eq('key', 'rozetka_login').maybeSingle(),
   ]);
 

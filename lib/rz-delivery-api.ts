@@ -17,6 +17,7 @@ import {
   RZ_API_URL, RZ_CARRIER_ROZETKA, rzErrorText, rzCodAmount,
   type RzCity, type RzDepartment, type RzValidationDetail,
 } from './rz-delivery';
+import { readSetting as readSettingShared } from './secrets';
 
 export const RZ_TOKEN_KEY   = 'rz_delivery_token';
 export const RZ_SENDER_KEY  = 'rz_delivery_sender';
@@ -44,11 +45,8 @@ export type RzBox = { length: number; width: number; height: number };
 
 export const RZ_BOX_FALLBACK: RzBox = { length: 40, width: 30, height: 30 };
 
-async function readSetting(key: string): Promise<string | null> {
-  const { data } = await createServiceClient()
-    .from('app_settings').select('value').eq('key', key).maybeSingle();
-  return (data?.value as string | undefined) ?? null;
-}
+// rz_delivery_token — у Vault (lib/secrets), решта ключів — app_settings
+const readSetting = (key: string) => readSettingShared(createServiceClient(), key);
 
 export async function getRzToken(): Promise<string> {
   return (await readSetting(RZ_TOKEN_KEY)) || process.env.RZ_DELIVERY_TOKEN || '';

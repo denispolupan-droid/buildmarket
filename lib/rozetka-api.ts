@@ -8,6 +8,7 @@ import { isRozetkaBackwards } from './rozetka-status';
 export * from './rozetka-delivery';
 import { isRozetkaDelivery, rozetkaPickupAddress, rozetkaDeliveryTypeFor } from './rozetka-delivery';
 import { createServiceClient } from './supabase-service';
+import { readSetting, writeSetting } from './secrets';
 
 // Base host for the Rozetka Seller API — confirmed against the official apiDoc spec at
 // https://api-seller.rozetka.com.ua/apidoc/ (endpoints documented there, e.g. POST /sites,
@@ -19,14 +20,9 @@ function db() {
   return createServiceClient();
 }
 
-async function getSetting(key: string): Promise<string | null> {
-  const { data } = await db().from('app_settings').select('value').eq('key', key).maybeSingle();
-  return (data?.value as string | undefined) ?? null;
-}
-
-async function setSetting(key: string, value: string): Promise<void> {
-  await db().from('app_settings').upsert({ key, value }, { onConflict: 'key' });
-}
+// Секрети (пароль, токен) — у Vault через lib/secrets; решта ключів — app_settings.
+const getSetting = (key: string) => readSetting(db(), key);
+const setSetting = (key: string, value: string) => writeSetting(db(), key, value);
 
 /* ── Auth: Rozetka tokens expire after 24h (unlike Prom's static token), so we log in with the
    seller's username/password whenever the cached token is missing or close to expiring, and

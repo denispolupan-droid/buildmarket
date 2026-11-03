@@ -6,6 +6,7 @@ import { getDropshipCustomer, loadDropshipCatalog } from '../../../../../lib/dro
 import { validateDropshipLine, dropshipParcelKey } from '../../../../../lib/dropship-order';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { readSetting } from '../../../../../lib/secrets';
 
 // xlsx (SheetJS 0.18.x) має відомі CVE при парсингу недовірених файлів; обмежуємо розмір,
 // щоб зняти вектор zip-bomb / OOM від завантажень партнерів.
@@ -18,8 +19,7 @@ const serviceClient = createServiceClient();
 
 // Ключ НП — той самий пріоритет, що в адмінці: app_settings, потім env.
 async function npApiKey(): Promise<string> {
-  const { data } = await serviceClient.from('app_settings').select('value').eq('key', 'np_api_key').maybeSingle();
-  return data?.value || process.env.NOVA_POSHTA_API_KEY || '';
+  return (await readSetting(serviceClient, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
 }
 
 async function npPost(apiKey: string, modelName: string, calledMethod: string, props: object) {

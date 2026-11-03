@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Токен береться з app_settings — підміняємо клієнт Supabase цілком
+// Токен береться з Vault (lib/secrets → rpc secret_get) — підміняємо клієнт Supabase цілком
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: () => ({
@@ -8,6 +8,7 @@ vi.mock('@supabase/supabase-js', () => ({
         eq: () => ({ maybeSingle: async () => ({ data: { value: 'test-token' } }) }),
       }),
     }),
+    rpc: async () => ({ data: 'test-token', error: null }),
   }),
 }));
 

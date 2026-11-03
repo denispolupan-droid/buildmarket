@@ -23,15 +23,15 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { createServiceClient } from '../lib/supabase';
+import { readSetting, writeSetting } from '../lib/secrets';
 
 const PORT = 53682;                       // довільний вільний порт; для Desktop-клієнта
 const REDIRECT = `http://127.0.0.1:${PORT}`;  // Google дозволяє будь-який loopback
 const SCOPE = 'https://www.googleapis.com/auth/adwords';
 
 async function setting(db: ReturnType<typeof createServiceClient>, key: string): Promise<string> {
-  const { data } = await db.from('app_settings').select('value').eq('key', key).maybeSingle();
-  const v = (data?.value ?? '').trim();
-  if (!v) throw new Error(`У app_settings немає ${key}`);
+  const v = await readSetting(db, key);   // client_secret — у Vault
+  if (!v) throw new Error(`У налаштуваннях немає ${key}`);
   return v;
 }
 
@@ -135,9 +135,8 @@ async function main() {
     throw new Error(`Обмін коду не вдався: ${tok.error ?? res.status} ${tok.error_description ?? JSON.stringify(tok).slice(0, 200)}`);
   }
 
-  const { error } = await db.from('app_settings').upsert({ key: 'google_ads_refresh_token', value: tok.refresh_token });
-  if (error) throw new Error(`Не зберігся refresh-токен: ${error.message}`);
-  console.log('refresh-токен збережено в app_settings ✓');
+  await writeSetting(db, 'google_ads_refresh_token', tok.refresh_token);   // → Vault
+  console.log('refresh-токен збережено у Vault ✓');
 }
 
 main().catch(e => { console.error('ВПАЛО:', e instanceof Error ? e.message : e); process.exit(1); });

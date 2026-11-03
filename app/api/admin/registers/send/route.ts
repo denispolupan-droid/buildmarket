@@ -4,6 +4,7 @@ import { npScanSheetPdf } from '../../../../../lib/np-api';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { readSetting } from '../../../../../lib/secrets';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 
@@ -13,8 +14,7 @@ const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 const serviceClient = createServiceClient();
 
 async function getNpApiKey() {
-  const { data } = await serviceClient.from('app_settings').select('key, value').eq('key', 'np_api_key');
-  return data?.[0]?.value || process.env.NOVA_POSHTA_API_KEY || '';
+  return (await readSetting(serviceClient, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
 }
 
 async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {

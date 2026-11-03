@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { readSetting, writeSetting, deleteSetting } from '../../../../../lib/secrets';
 
 const db = createServiceClient();
 
@@ -13,12 +14,12 @@ async function assertAdmin() {
 async function _GET() {
   try {
     await assertAdmin();
-    const { data } = await db.from('app_settings').select('value').eq('key', 'rozetka_api_token').maybeSingle();
-    const token = data?.value || process.env.ROZETKA_API_KEY || '';
+    const stored = await readSetting(db, 'rozetka_api_token');
+    const token = stored || process.env.ROZETKA_API_KEY || '';
     return NextResponse.json({
       hasToken:    !!token,
       maskedToken: token ? `••••••••${token.slice(-4)}` : null,
-      source:      data?.value ? 'db' : (process.env.ROZETKA_API_KEY ? 'env' : null),
+      source:      stored ? 'db' : (process.env.ROZETKA_API_KEY ? 'env' : null),
     });
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,10 +35,7 @@ async function _POST(req: NextRequest) {
     if (!token || typeof token !== 'string' || token.trim().length < 8) {
       return NextResponse.json({ error: 'Невірний токен' }, { status: 400 });
     }
-    await db.from('app_settings').upsert(
-      { key: 'rozetka_api_token', value: token.trim() },
-      { onConflict: 'key' },
-    );
+    await writeSetting(db, 'rozetka_api_token', token.trim());
     return NextResponse.json({ ok: true, maskedToken: `••••••••${token.trim().slice(-4)}` });
   } catch (e) {
     if ((e as Error).message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,7 +48,7 @@ export const POST = withApi('admin/rozetka/token', _POST);
 async function _DELETE() {
   try {
     await assertAdmin();
-    await db.from('app_settings').delete().eq('key', 'rozetka_api_token');
+    await deleteSetting(db, 'rozetka_api_token');
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

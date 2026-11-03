@@ -22,14 +22,15 @@ import { fetchWithTimeout } from './fetch-timeout';
 import { resolveDeliverySubtype } from './np-postomat';
 import { fromEpicentrId, toEpicentrId } from './epicentr-availability';
 import { createServiceClient } from './supabase-service';
+import { readSetting } from './secrets';
 
 export const EPICENTR_BASE = 'https://merchant-api.epicentrm.com.ua';
 export const EPICENTR_TOKEN_KEY = 'epicentr_api_token';
 
 async function getToken(): Promise<string> {
   const db = createServiceClient();
-  const { data } = await db.from('app_settings').select('value').eq('key', EPICENTR_TOKEN_KEY).maybeSingle();
-  if (data?.value) return data.value as string;
+  const stored = await readSetting(db, EPICENTR_TOKEN_KEY);
+  if (stored) return stored;
   const token = process.env.EPICENTR_API_TOKEN;
   if (!token) throw new Error('Ключ API Епіцентру не налаштований. Вкажіть його на сторінці /admin/epicentr');
   return token;

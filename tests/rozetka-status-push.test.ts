@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Токен беремо з app_settings — підміняємо клієнт, щоб тест не ходив у базу.
+// Токен беремо з Vault (rozetka_token → rpc secret_get), expires_at — з app_settings;
+// підміняємо клієнт, щоб тест не ходив у базу.
 vi.mock('@supabase/supabase-js', () => {
   const settings: Record<string, string> = {
     rozetka_token: 'test-token',
@@ -16,6 +17,10 @@ vi.mock('@supabase/supabase-js', () => {
         }),
         upsert: async () => ({}),
       }),
+      rpc: async (fn: string, args: { p_name: string; p_value?: string }) => {
+        if (fn === 'secret_set') settings[args.p_name] = args.p_value ?? '';
+        return { data: fn === 'secret_get' ? settings[args.p_name] ?? null : null, error: null };
+      },
     }),
   };
 });

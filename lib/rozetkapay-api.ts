@@ -13,6 +13,7 @@
  */
 import { fetchWithTimeout } from './fetch-timeout';
 import { createServiceClient } from './supabase-service';
+import { readSettings } from './secrets';
 
 const BASE = 'https://api.rozetkapay.com';
 export const RZPAY_LOGIN_KEY    = 'rozetkapay_api_login';
@@ -22,10 +23,9 @@ export type RzPayCreds = { login: string; password: string };
 
 export async function getRzPayCreds(): Promise<RzPayCreds | null> {
   const db = createServiceClient();
-  const { data } = await db.from('app_settings').select('key, value').in('key', [RZPAY_LOGIN_KEY, RZPAY_PASSWORD_KEY]);
-  const map = new Map((data ?? []).map(r => [r.key as string, r.value as string]));
-  const login    = map.get(RZPAY_LOGIN_KEY)    || process.env.ROZETKAPAY_API_LOGIN    || '';
-  const password = map.get(RZPAY_PASSWORD_KEY) || process.env.ROZETKAPAY_API_PASSWORD || '';
+  const s = await readSettings(db, [RZPAY_LOGIN_KEY, RZPAY_PASSWORD_KEY]);   // пароль — у Vault
+  const login    = s[RZPAY_LOGIN_KEY]    || process.env.ROZETKAPAY_API_LOGIN    || '';
+  const password = s[RZPAY_PASSWORD_KEY] || process.env.ROZETKAPAY_API_PASSWORD || '';
   return login && password ? { login, password } : null;
 }
 

@@ -60,3 +60,15 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass pass:<BACKUP_PASSPHRASE> 
 `R2_BACKUP_BUCKET`, `R2_BACKUP_ENDPOINT` (`https://<account>.r2.cloudflarestorage.com`),
 `R2_BACKUP_ACCESS_KEY_ID`, `R2_BACKUP_SECRET_ACCESS_KEY`, `BACKUP_PASSPHRASE`.
 Бакет — окремий від фото товарів, без публічного доступу; пароль шифрування зберігати поза GitHub.
+
+## Секрети інтеграцій після відновлення
+
+З 03.11.2026 (міграція 150) токени й паролі інтеграцій живуть у Supabase Vault
+(`vault.secrets`), а не в `app_settings`. Дамп `public` їх НЕ містить, і ключ
+шифрування Vault прив'язаний до проєкту — у відновленому проєкті їх треба внести
+заново: через форми адмінки (НП, Prom, Rozetka, Епіцентр, RZ-доставка, RozetkaPay)
+або `writeSetting` з `lib/secrets` (список ключів — `SECRET_KEYS`). Джерела значень:
+кабінети площадок (перевипуск токена), NovaPay — `scripts/set-novapay-token.ts`,
+Google Ads — `scripts/google-ads-auth.ts`. До внесення ключів крони синків і
+створення ТТН працюватимуть з env-фолбеком, якщо він заданий, інакше впадуть з
+алертом «ключ не налаштований».

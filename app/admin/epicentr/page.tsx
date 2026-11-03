@@ -3,6 +3,7 @@ import { createServiceClient } from '../../../lib/supabase-service';
 import { EPICENTR_TOKEN_KEY } from '../../../lib/epicentr-api';
 import { EPICENTR_COMMISSION_FALLBACK_KEY, EPICENTR_COMMISSION_DEFAULT_PCT } from '../../../lib/epicentr-commission';
 import EpicentrDashboardClient from './EpicentrDashboardClient';
+import { readSetting } from '../../../lib/secrets';
 
 export const metadata = { title: 'Епіцентр — Адмін' };
 
@@ -18,7 +19,7 @@ export default async function EpicentrPage() {
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
     db.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('on_epicentr', true),
     db.from('categories').select('epicentr_commission_pct, epicentr_category_code').limit(2000),
-    db.from('app_settings').select('value').eq('key', EPICENTR_TOKEN_KEY).maybeSingle(),
+    readSetting(db, EPICENTR_TOKEN_KEY).then(value => ({ data: { value } })),
     db.from('app_settings').select('value').eq('key', EPICENTR_COMMISSION_FALLBACK_KEY).maybeSingle(),
   ]);
 

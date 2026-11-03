@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { readSettings, SECRET_KEYS } from '../../../lib/secrets';
 
 const serviceClient = createServiceClient();
 
@@ -15,5 +16,7 @@ export async function loadSettings(): Promise<Record<string, string>> {
   const { data: rows } = await serviceClient.from('app_settings').select('key, value');
   const cfg: Record<string, string> = {};
   (rows ?? []).forEach(r => { cfg[r.key] = r.value; });
+  // Секрети — з Vault (lib/secrets); сторінки налаштувань лише для адміна
+  Object.assign(cfg, await readSettings(serviceClient, [...SECRET_KEYS]));
   return cfg;
 }

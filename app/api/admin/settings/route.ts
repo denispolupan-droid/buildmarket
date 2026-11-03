@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
+import { log } from '../../../../lib/log';
+import { readSettings, writeSetting, SECRET_KEYS } from '../../../../lib/secrets';
 
 const serviceClient = createServiceClient();
 
@@ -17,6 +19,8 @@ async function _GET() {
 
   const settings: Record<string, string> = {};
   (data ?? []).forEach(r => { settings[r.key] = r.value; });
+  // Секрети живуть у Vault (lib/secrets): для форм адмінки віддаємо їх звідти — лише адміну
+  Object.assign(settings, await readSettings(serviceClient, [...SECRET_KEYS]));
   return NextResponse.json(settings);
 }
 
@@ -28,13 +32,11 @@ async function _PUT(req: NextRequest) {
   const updates: Record<string, string> = await req.json();
 
   for (const [key, value] of Object.entries(updates)) {
-    const { error } = await serviceClient
-      .from('app_settings')
-      .upsert({ key, value }, { onConflict: 'key' });
-
-    if (error) {
-      console.error('[settings] upsert failed:', key, error);
-      return NextResponse.json({ error: `Помилка збереження ${key}: ${error.message}` }, { status: 500 });
+    try {
+      await writeSetting(serviceClient, key, value);   // секретні ключі → Vault
+    } catch (err) {
+      log.error('settings.write_failed', { key, err });
+      return NextResponse.json({ error: `Помилка збереження ${key}: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
     }
   }
 

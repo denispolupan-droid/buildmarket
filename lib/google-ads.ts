@@ -1,5 +1,6 @@
 import { fetchWithTimeout } from './fetch-timeout';
 import { createServiceClient } from './supabase-service';
+import { readSettings } from './secrets';
 
 /**
  * Google Ads API: витрати кампаній по днях → таблиця ads_spend (міграція 109)
@@ -26,13 +27,8 @@ const API_VERSIONS = ['v25', 'v24', 'v23', 'v22'];
 
 const db = () => createServiceClient();
 
-async function settings(keys: string[]): Promise<Record<string, string>> {
-  const { data, error } = await db().from('app_settings').select('key, value').in('key', keys);
-  if (error) throw error;
-  const out: Record<string, string> = {};
-  for (const r of data ?? []) out[r.key] = (r.value ?? '').trim();
-  return out;
-}
+// client_secret / developer_token / refresh_token — у Vault (lib/secrets), решта — app_settings
+const settings = (keys: string[]) => readSettings(db(), keys);
 
 let tokenCache: { token: string; until: number } | null = null;
 

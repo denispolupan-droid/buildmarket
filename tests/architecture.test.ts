@@ -118,5 +118,22 @@ describe('архітектурні межі (AGENTS.md)', () => {
       .filter(r => re.test(read(path.join(ROOT, r))));
     expect(offenders, 'збори/комісії площадок — через lib/marketplace/fees:\n' + offenders.join('\n')).toEqual([]);
   });
+
+  it('секрети інтеграцій не читаються з app_settings напряму — лише lib/secrets (Vault)', () => {
+    // 03.11.2026 (аудит, п. 14): токени лежали відкритим текстом в app_settings і
+    // читались у 25 місцях. Тепер readSetting/writeSetting роутять їх у Vault; пряме
+    // `.from('app_settings')…eq('key', '<секрет>')` повертає відкритий текст у таблицю.
+    const secrets = ['np_api_key', 'prom_api_token', 'rozetka_password', 'rozetka_token', 'rozetka_api_token', 'rozetkapay_api_password', 'epicentr_api_token', 'rz_delivery_token', 'mono_personal_token', 'mono_webhook_secret', 'novapay_refresh_token', 'novapay_certificate', 'novapay_jwt', 'google_ads_client_secret', 'google_ads_developer_token', 'google_ads_refresh_token', 'EPICENTR_TOKEN_KEY', 'RZ_TOKEN_KEY', 'JWT_KEY', 'RZPAY_PASSWORD_KEY'];
+    const re = new RegExp("app_settings['\"]\\)[^;]{0,120}(" + secrets.join('|') + ')');
+    const offenders: string[] = [];
+    for (const f of files) {
+      if (rel(f) === 'lib/secrets.ts') continue;
+      const src = read(f);
+      const m = src.match(re);
+      if (m) offenders.push(`${rel(f)}:${src.slice(0, m.index).split('\n').length}`);
+    }
+    expect(offenders, 'читай/пиши секрет через readSetting/writeSetting з lib/secrets:\n' + offenders.join('\n')).toEqual([]);
+  });
 });
+
 

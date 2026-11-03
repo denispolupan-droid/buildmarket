@@ -2,6 +2,7 @@ import { createServiceClient } from './supabase-service';
 import { alertAdmin } from './alert';
 import { jwtSecondsLeft } from './novapay-jwt';
 import { parseNovapayRegisterPayouts, type NovapayRegisterPayout } from './novapay-statement';
+import { readSetting, writeSetting } from './secrets';
 
 // NovaPay Business Cabinet API v2.0 (SOAP, business.novapay.ua).
 // Автентифікація UserAuthenticationJWT з ОДНОРАЗОВОЮ РОТАЦІЄЮ: кожен виклик
@@ -83,11 +84,8 @@ function isTransportError(err: unknown): boolean {
 
 type Db = ReturnType<typeof createServiceClient>;
 
-async function setting(db: Db, key: string): Promise<string | null> {
-  const { data } = await db.from('app_settings').select('value').eq('key', key).maybeSingle();
-  const v = (data?.value ?? '').trim();
-  return v || null;
-}
+// refresh-токен, сертифікат, jwt — у Vault (lib/secrets); login/client_id/кеші — app_settings
+const setting = (db: Db, key: string) => readSetting(db, key);
 
 /**
  * Автентифікацію не обриваємо на 120 с, як звичайні виклики: 20.10.2026 НП
@@ -180,12 +178,12 @@ async function authenticate(db: Db): Promise<string> {
   // Порядок важливий: спершу запасний, потім новий. Якщо процес обірветься між
   // цими двома записами, запасний уже на місці — а не навпаки.
   if (res.newToken) {
-    await db.from('app_settings').upsert({ key: 'novapay_refresh_token_prev', value: usedToken });
-    await db.from('app_settings').upsert({ key: 'novapay_refresh_token',      value: res.newToken });
+    await writeSetting(db, 'novapay_refresh_token_prev', usedToken);
+    await writeSetting(db, 'novapay_refresh_token', res.newToken);
   }
   if (res.newCert) {
-    await db.from('app_settings').upsert({ key: 'novapay_certificate_prev', value: usedCert });
-    await db.from('app_settings').upsert({ key: 'novapay_certificate',      value: res.newCert });
+    await writeSetting(db, 'novapay_certificate_prev', usedCert);
+    await writeSetting(db, 'novapay_certificate', res.newCert);
   }
   // Доступ живий — наступна смерть токена знову має дати сповіщення
   await db.from('app_settings').delete().eq('key', DEAD_ALERT_KEY);
@@ -288,7 +286,7 @@ async function getJwt(db: Db, rejectedJwt?: string): Promise<string> {
     }
     if (!lock.acquired) throw new Error('NovaPay: інший процес автентифікується надто довго — пропускаємо прогін');
     const jwt = await authenticate(db);
-    await db.from('app_settings').upsert({ key: JWT_KEY, value: jwt });
+    await writeSetting(db, JWT_KEY, jwt);
     return jwt;
   } finally {
     if (lock.acquired) await db.from('app_settings').delete().eq('key', AUTH_LOCK_KEY);

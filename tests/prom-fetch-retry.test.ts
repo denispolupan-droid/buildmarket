@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Токен Prom лежить у app_settings — у тесті підміняємо клієнт Supabase,
-// щоб promFetch не ходив у базу.
+// Токен Prom лежить у Vault (lib/secrets → rpc secret_get) — у тесті підміняємо
+// клієнт Supabase, щоб promFetch не ходив у базу.
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: 'test-token' } }) }) }) }),
+    rpc: async () => ({ data: 'test-token', error: null }),
   }),
 }));
 

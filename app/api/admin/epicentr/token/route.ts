@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { EPICENTR_BASE, EPICENTR_TOKEN_KEY } from '../../../../../lib/epicentr-api';
 import { withApi } from '../../../../../lib/api-handler';
+import { readSetting, writeSetting, deleteSetting } from '../../../../../lib/secrets';
 
 // Ключ Merchant API Епіцентру: app_settings.epicentr_api_token (fallback — env).
 const mask = (t: string) => `••••••••${t.slice(-4)}`;
@@ -11,7 +12,7 @@ async function _GET() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
-  const { data } = await db.from('app_settings').select('value').eq('key', EPICENTR_TOKEN_KEY).maybeSingle();
+  const data = { value: await readSetting(db, EPICENTR_TOKEN_KEY) };
   const token = data?.value || process.env.EPICENTR_API_TOKEN || '';
   return NextResponse.json({
     hasToken: !!token,
@@ -40,7 +41,7 @@ async function _POST(req: NextRequest) {
   }
 
   const db = createServiceClient();
-  const { error } = await db.from('app_settings').upsert({ key: EPICENTR_TOKEN_KEY, value: clean }, { onConflict: 'key' });
+  const error = await writeSetting(db, EPICENTR_TOKEN_KEY, clean).then(() => null, (e: unknown) => ({ message: e instanceof Error ? e.message : String(e) }));
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, maskedToken: mask(clean) });
 }
@@ -51,7 +52,7 @@ async function _DELETE() {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const db = createServiceClient();
-  await db.from('app_settings').delete().eq('key', EPICENTR_TOKEN_KEY);
+  await deleteSetting(db, EPICENTR_TOKEN_KEY);
   return NextResponse.json({ ok: true });
 }
 

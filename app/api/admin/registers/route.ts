@@ -2,16 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
+import { readSetting } from '../../../../lib/secrets';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
 const serviceClient = createServiceClient();
 
 async function getNpApiKey() {
-  const { data } = await serviceClient.from('app_settings').select('key, value').in('key', ['np_api_key']);
-  const cfg: Record<string, string> = {};
-  (data ?? []).forEach(r => { cfg[r.key] = r.value; });
-  return cfg.np_api_key || process.env.NOVA_POSHTA_API_KEY || '';
+  return (await readSetting(serviceClient, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
 }
 
 async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {

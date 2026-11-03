@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { writeSetting, deleteSetting } from '../../../../../lib/secrets';
 
 const db = createServiceClient();
 
@@ -30,14 +31,15 @@ async function _POST(req: NextRequest) {
     return NextResponse.json({ error: 'Логін і пароль обов\'язкові' }, { status: 400 });
   }
 
-  const { error } = await db.from('app_settings').upsert([
-    { key: 'rozetka_login',    value: login.trim() },
-    { key: 'rozetka_password', value: password.trim() },
-  ], { onConflict: 'key' });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await writeSetting(db, 'rozetka_login', login.trim());
+    await writeSetting(db, 'rozetka_password', password.trim());   // → Vault
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
 
   // Force a fresh login on next sync rather than an old cached token for a different account.
-  await db.from('app_settings').delete().in('key', ['rozetka_token', 'rozetka_token_expires_at']);
+  for (const k of ['rozetka_token', 'rozetka_token_expires_at']) await deleteSetting(db, k);
 
   return NextResponse.json({ ok: true });
 }
@@ -47,9 +49,7 @@ export const POST = withApi('admin/rozetka/credentials', _POST);
 async function _DELETE() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  await db.from('app_settings').delete().in('key', [
-    'rozetka_login', 'rozetka_password', 'rozetka_token', 'rozetka_token_expires_at',
-  ]);
+  for (const k of ['rozetka_login', 'rozetka_password', 'rozetka_token', 'rozetka_token_expires_at']) await deleteSetting(db, k);
   return NextResponse.json({ ok: true });
 }
 
