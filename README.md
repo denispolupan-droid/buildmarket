@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FIXLINE — buildmarket
 
-## Getting Started
+Цифрова платформа будівельних матеріалів: вітрина (роздріб, опт, дропшип),
+адмінка з повним обліком (документи, леджер, склад, взаєморозрахунки, ФОП),
+інтеграції з Prom, Rozetka, Епіцентром, Новою Поштою, Monobank, NovaPay, Zoho.
 
-First, run the development server:
+Стек: Next.js 16 (App Router, ISR), React 19, TypeScript, Supabase (Postgres,
+Auth, Vault), Vercel (хостинг і крони), Cloudflare R2 (фото), Resend, Telegram.
+
+## Запуск локально
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm ci
+cp .env.example .env.local      # заповнити; токени інтеграцій — у Vault, не тут
+npm run dev                     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`next dev` сам читає `.env.local` — не підставляй його через `source`.
+Другий dev-сервер поруч потребує окремого `NEXT_DIST_DIR`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Перевірки (те саме гейтить CI, `.github/workflows/test.yml`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npx tsc --noEmit            # типи
+npm run lint                # eslint
+npm run test:run            # юніт (vitest), зокрема tests/architecture.test.ts
+npm run test:integration    # облік на тестовій базі (.env.test)
+npm run build               # next build
+npm run test:e2e            # Playwright проти npm run dev (UI-регресії)
+```
 
-## Learn More
+Інтеграційні тести пишуть у **тестовий** проєкт Supabase (`.env.test`);
+`lib/test-db-guard` не дасть запустити їх у прод.
 
-To learn more about Next.js, take a look at the following resources:
+## База даних
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Схема — лише через файли `supabase/migrations/NNN_*.sql`; після проду одразу
+  той самий файл на test. Raw SQL для схеми проду не використовуємо.
+- Щодня workflow `schema-parity` звіряє prod ↔ test (колонки, RLS, політики,
+  функції, тригери, індекси), `db-types` — дрейф `types/database.types.ts`,
+  `accounting-invariants` — інваріанти обліку I1–I10.
+- Бекапи: `backup-db-full` → R2 (object-lock); відновлення — `docs/RESTORE.md`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Правила коду
 
-## Deploy on Vercel
+`AGENTS.md` — обов'язкові конвенції (авторизація роутів через `lib/auth-guard`,
+вибірки через `fetchAllRows`/`.limit()` + `.order()`, статус замовлення лише через
+`lib/orders/status`, гроші рахує сервер, секрети через `lib/secrets`, логи через
+`withApi`/`lib/log`, площадки через `lib/marketplace`). Архітектурний тест
+(`tests/architecture.test.ts`) ловить порушення в CI.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Документація
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Файл | Про що |
+|---|---|
+| `docs/SYSTEM.md` | Огляд системи й доменних модулів |
+| `docs/ORDER-LIFECYCLE.md` | Статуси замовлення, переходи, хто й коли їх міняє |
+| `docs/ORDER-LINES-PLAN.md` | План переходу з `orders.items` (jsonb) на `order_lines` |
+| `docs/ACCOUNTING-AUDIT.md` | Модель обліку, проводки, інваріанти |
+| `docs/RETURNS.md` | Повернення (ПВ/ПП), журнал повернень |
+| `docs/RESTORE.md` | Відновлення БД з бекапу, секрети Vault після відновлення |
+| `docs/BRAND.md`, `docs/CONTENT-STANDARD.md` | Бренд і стандарт текстів |
+| `docs/audits/` | Аудити (останній — 2026-10-31) і статус пунктів |
+
+## Крони (vercel.json)
+
+Замовлення площадок (Rozetka кожні 5 хв, Prom і Епіцентр зі зсувом), звірка
+карткових оплат, статуси доставки, виписка Mono, баланс NovaPay, реєстри з
+пошти, синк постачальників кожні 2 год, ціни/акції опівночі, ранковий дайджест,
+GSC, реклама, сторож показників. Усі — через `cronAuthorized` і `withCronLock`.
+
+## Деплой
+
+`main` → Vercel production автоматично. Робота ведеться в гілках і зливається в
+`main` лише після зеленого гейту і явної команди власника.
