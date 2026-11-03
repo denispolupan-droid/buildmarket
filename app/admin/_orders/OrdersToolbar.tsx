@@ -6,6 +6,7 @@ import { PAYMENT_METHOD_HINT, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_ORDER } from 
 import { CHANNEL_LABEL } from './constants';
 import { rozetkaCabinet } from './helpers';
 import { useOrdersCtx } from './OrdersContext';
+import { SaveFilterButton, SavedFiltersMenu } from './SavedFilters';
 
 export function OrdersToolbar() {
   const {
@@ -124,6 +125,8 @@ export function OrdersToolbar() {
                   <button type="button" onClick={() => pushFilters({ dateFrom: '', dateTo: '' })} title="Скинути період" aria-label="Скинути період" className="oc-date-clear oc-period-clear">✕</button>
                 )}
               </div>
+              {/* Збережені зрізи (localStorage): меню зникає, поки нічого не збережено */}
+              <SavedFiltersMenu />
               {/* Повернення без рішення — лише на «Скасовано» (або поки зріз
                   увімкнений); на десктопі тут, бо рядок пігулок нижче мобільний */}
               {((currentStatus === 'cancelled' && pendingReturns > 0) || retFilter === 'pending') && (() => {
@@ -333,6 +336,7 @@ export function OrdersToolbar() {
                   <button type="button" onClick={c.clear} aria-label={`Зняти фільтр: ${c.label}`} title="Зняти">×</button>
                 </span>
               ))}
+              <SaveFilterButton />
               <button type="button" className="oc-active-filters-clear"
                 onClick={() => { setSearchInput(''); pushFilters({ q: '', channel: '', carrier: '', pay: '', ret: '', sent: '', dateFrom: '', dateTo: '' }); }}>
                 Очистити
