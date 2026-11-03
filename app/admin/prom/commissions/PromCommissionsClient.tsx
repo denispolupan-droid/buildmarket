@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Save, CheckCircle, List, Truck, Plus, X } from 'lucide-react';
 import { type PromDeliveryBracket } from '../../../../lib/prom-delivery-fee';
+import { Modal } from '../../../components/admin/ui/Modal';
 
 type Plan = 'single' | 'econom' | 'more_sales' | 'turbo';
 
@@ -114,11 +115,8 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
   }
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ background: '#fff', borderRadius: 14, width: '90%', maxWidth: 720, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,.3)' }}>
+    <Modal open onClose={onClose} width={720} padding={0} aria-label="Категорія Prom">
+      <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
@@ -173,7 +171,7 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
           {loading ? 'Завантаження…' : `${items.length} категорій${q.length < 2 ? ' · введи запит для звуження' : ''}`}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

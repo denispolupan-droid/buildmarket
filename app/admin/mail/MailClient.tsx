@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Mail, Send, Inbox, Trash2, FileText, RefreshCw, Pencil, X, Reply, ChevronLeft } from 'lucide-react';
+import { Modal } from '../../components/admin/ui/Modal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -131,8 +132,8 @@ function ComposeModal({ onClose, replyTo, senders }: {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: '14px', border: '1px solid var(--border)', width: '560px', maxWidth: '95vw', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+    <Modal open onClose={onClose} width={560} padding={0} dismissible={false} aria-label="Новий лист">
+      <div style={{ background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>
             {replyTo ? 'Відповісти' : 'Новий лист'}
@@ -190,7 +191,7 @@ function ComposeModal({ onClose, replyTo, senders }: {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

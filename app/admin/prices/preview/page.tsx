@@ -1,6 +1,7 @@
 'use client';
 import { Suspense, useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Modal } from '../../../components/admin/ui/Modal';
 
 const btnPrimary: React.CSSProperties = {
   background: '#1D4ED8', color: '#fff', border: 'none',
@@ -150,8 +151,8 @@ function PreviewContent() {
 
       {/* Email modal */}
       {emailModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-          <div style={{ background: '#fff', borderRadius: 14, padding: 24, width: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <Modal open onClose={() => setEmailModal(false)} width={380} padding={0} dismissible={false} aria-label="Надіслати прайс" style={{ background: '#fff' }}>
+          <div style={{ background: '#fff', padding: 24, width: '100%' }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700 }}>Відправити прайс-лист</h3>
             <input
               type="email"
@@ -172,7 +173,7 @@ function PreviewContent() {
             </div>
             {emailMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6B7280' }}>{emailMsg}</p>}
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

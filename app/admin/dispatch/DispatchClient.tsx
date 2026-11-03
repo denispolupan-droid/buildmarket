@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { FileText, Printer, Mail, X, Loader2, Check, Truck, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Modal } from '../../components/admin/ui/Modal';
 
 type Order = {
   id: string;
@@ -352,9 +353,8 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
         const candidates = orders.filter(o => o.tracking_number && !addedSet.has(o.tracking_number));
         const allChecked = candidates.every(o => bulkSelected.has(o.tracking_number));
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-            onClick={e => { if (!bulkAdding && e.target === e.currentTarget) setBulkModal(false); }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '100%', maxWidth: '620px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.22)' }}>
+          <Modal open onClose={() => { if (!bulkAdding) setBulkModal(false); }} width={620} padding={0} dismissible={!bulkAdding} aria-label="Додати в реєстр">
+            <div style={{ background: 'var(--bg-card)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
 
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid var(--border-light)' }}>
@@ -422,14 +422,14 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 
       {/* Send modal */}
       {sendModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '14px', width: '100%', maxWidth: '420px', padding: '24px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <Modal open onClose={() => setSendModal(false)} width={420} padding={0} dismissible={false} aria-label="Надіслати реєстр">
+          <div style={{ background: 'var(--bg-card)', padding: '24px', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Mail size={18} color="#1E3A5F" /> Відправити реєстр
@@ -462,7 +462,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>

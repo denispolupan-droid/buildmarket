@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { Modal } from '../../components/admin/ui/Modal';
 import { Pencil, Check, X, Lock, Unlock, FileSpreadsheet, Printer, ChevronDown, ChevronUp, RotateCcw, Tag, Image as ImageIcon } from 'lucide-react';
 // Округлення й наценка — спільні з синком постачальника (lib/price-formula):
 // прев'ю має показувати рівно ту цифру, яку синк потім відтворить із наценки.
@@ -1892,10 +1892,11 @@ async function sendEmail(){
         );
       })}
 
-      {/* Pricelist modal — rendered via portal to escape PageTransition transform context */}
-      {mounted && showPricelist && createPortal(
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: '100%', maxWidth: 480, margin: '0 12px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+      {/* Pricelist modal — <dialog> у верхньому шарі, тож transform PageTransition
+          йому не заважає (раніше для цього був портал у document.body) */}
+      {mounted && showPricelist && (
+        <Modal open onClose={() => setShowPricelist(false)} width={480} padding={0} dismissible={false} aria-label="Прайс-лист" style={{ background: '#fff' }}>
+          <div style={{ background: '#fff', padding: 32, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Прайс-лист для клієнта</h2>
               <button onClick={() => setShowPricelist(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={18} /></button>
@@ -2106,8 +2107,7 @@ async function sendEmail(){
               </div>
             </div>
           </div>
-        </div>,
-        document.body,
+        </Modal>
       )}
       </>}
     </div>

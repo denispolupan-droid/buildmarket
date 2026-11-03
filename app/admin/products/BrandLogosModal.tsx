@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { X, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
+import { Modal } from '../../components/admin/ui/Modal';
 
 type BrandLogoEntry = { logoUrl: string; showOnHome: boolean };
 
@@ -73,16 +74,8 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 1000, padding: 24,
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640,
-        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-      }}>
+    <Modal open onClose={onClose} width={640} padding={0} aria-label="Логотипи брендів" style={{ background: '#fff' }}>
+      <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #E2E8F0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ImageIcon size={20} color="#3DBFB8" />
@@ -170,6 +163,6 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
           })}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

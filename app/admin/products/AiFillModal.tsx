@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { X, Wand2 } from 'lucide-react';
+import { Modal } from '../../components/admin/ui/Modal';
 
 type FillEvent =
   | { type: 'start'; total: number }
@@ -156,16 +157,8 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 1000, padding: 24,
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580,
-        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-      }}>
+    <Modal open onClose={onClose} width={580} padding={0} dismissible={false} aria-label="Заповнення ШІ" style={{ background: '#fff' }}>
+      <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #E2E8F0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -336,6 +329,6 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

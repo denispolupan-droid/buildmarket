@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
+import { Modal } from '../../../components/admin/ui/Modal';
 
 type UnmappedRow = {
   supplier_id: number;
@@ -174,8 +175,8 @@ function BulkAddModal({ items, onClose, onDone }: {
   const isDone = progress && progress.done === progress.total;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: '16px', width: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+    <Modal open onClose={onClose} width={700} padding={0} dismissible={false} aria-label="Додати товари">
+      <div style={{ background: 'var(--bg-card)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
         {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -258,7 +259,7 @@ function BulkAddModal({ items, onClose, onDone }: {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

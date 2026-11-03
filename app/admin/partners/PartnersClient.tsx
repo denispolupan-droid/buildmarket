@@ -7,6 +7,7 @@ import {
   Users, ShoppingBag, TrendingUp, X, Edit2, Save, Eye, FileText,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Modal } from '../../components/admin/ui/Modal';
 
 /* ── Phone mask (same as cart) ──────────────────────────────────────────── */
 function getLocalDigits(formatted: string): string {
@@ -617,8 +618,8 @@ export default function PartnersClient({
         const avail    = Number(vc.balance) - Number(vc.balance_held);
         const hasBalance = vc.type === 'wholesale' || vc.type === 'dropship_partner';
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: '18px', width: '640px', maxWidth: '95vw', boxShadow: '0 32px 80px rgba(0,0,0,0.45)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <Modal open onClose={() => setViewingId(null)} width={640} padding={0} aria-label="Картка контрагента">
+            <div style={{ background: 'var(--bg-card)', overflow: 'hidden', width: '100%' }}>
 
               {/* Header */}
               <div style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #0F2040 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -777,14 +778,14 @@ export default function PartnersClient({
                 </div>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 
       {/* ── New customer modal ─────────────────────────────────────────────── */}
       {showNew && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: '16px', padding: '28px 32px', width: '620px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
+        <Modal open onClose={() => setShowNew(false)} width={620} padding={0} dismissible={false} aria-label="Новий контрагент">
+          <div style={{ background: 'var(--bg-card)', padding: '28px 32px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexShrink: 0 }}>
               <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)' }}>Новий контрагент</div>
@@ -954,7 +955,7 @@ export default function PartnersClient({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

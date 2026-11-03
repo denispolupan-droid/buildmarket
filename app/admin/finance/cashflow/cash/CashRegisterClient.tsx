@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowDownLeft, ArrowUpRight, Plus, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Modal } from '../../../../components/admin/ui/Modal';
 
 export type CashEntry = {
   id:            string;
@@ -267,15 +268,8 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
 
       {/* ── Modal ── */}
       {modal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: '16px', padding: '28px',
-            width: '420px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
-            display: 'flex', flexDirection: 'column', gap: '16px',
-          }}>
+        <Modal open onClose={() => setModal(false)} width={420} padding={0} dismissible={false} aria-label="Касова операція">
+          <div style={{ background: 'var(--bg-card)', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
             {/* Modal header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -367,7 +361,7 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
             </div>
           </div>
           <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-        </div>
+        </Modal>
       )}
     </>
   );

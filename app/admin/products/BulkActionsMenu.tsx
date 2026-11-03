@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Eye, EyeOff, Flame, Sparkles, Store, FolderInput, Tag, Percent, Trash2, X } from 'lucide-react';
 import type { Category } from '../../../types';
+import { Modal } from '../../components/admin/ui/Modal';
 
 type Props = {
   skus: string[];
@@ -204,17 +205,8 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
       )}
 
       {report && (
-        <div
-          onClick={e => { if (e.target === e.currentTarget) closeReport(); }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(15,23,42,0.45)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-          }}
-        >
-          <div className="adm-modal-box" style={{
-            background: 'var(--bg-card)', borderRadius: 14, width: 480, maxWidth: '100%',
-            padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
-          }}>
+        <Modal open onClose={closeReport} width={480} padding={0} aria-label="Звіт масової дії">
+          <div style={{ background: 'var(--bg-card)', padding: 20, width: '100%' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
               {report.deleted > 0 ? `Видалено ${report.deleted}, залишилось ${report.blocked.length}` : 'Жоден товар не видалено'}
             </div>
@@ -249,21 +241,12 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {prompt && !report && (
-        <div
-          onClick={e => { if (e.target === e.currentTarget && !busy) setPrompt(null); }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(15,23,42,0.45)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-          }}
-        >
-          <div className="adm-modal-box" style={{
-            background: 'var(--bg-card)', borderRadius: 14, width: 420, maxWidth: '100%',
-            padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
-          }}>
+        <Modal open onClose={() => { if (!busy) setPrompt(null); }} width={420} padding={0} dismissible={!busy} aria-label="Масова дія">
+          <div style={{ background: 'var(--bg-card)', padding: 20, width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: prompt === 'delete' ? '#DC2626' : 'var(--text-primary)' }}>
                 {promptTitle[prompt]}
@@ -359,7 +342,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

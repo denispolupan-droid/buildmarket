@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Modal } from '../../components/admin/ui/Modal';
 
 // Блог: генерація статей AI (тільки по кнопці, ~$0.20/стаття), чернетка →
 // перегляд/редагування → публікація. Нові статті йдуть у /blog без деплою.
@@ -586,8 +587,8 @@ export default function BlogAdminClient() {
 
       {/* Редактор */}
       {editing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !saving && setEditing(null)}>
-          <div style={{ background: '#fff', borderRadius: 14, padding: 24, width: '100%', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <Modal open onClose={() => { if (!saving) setEditing(null); }} width={900} padding={0} dismissible={!saving} aria-label="Редактор статті" style={{ background: '#fff' }}>
+          <div style={{ background: '#fff', padding: 24, maxHeight: '90vh', overflowY: 'auto', width: '100%' }}>
             <h2 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 16px' }}>Редагування: {editing.slug}</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label style={lbl}>Заголовок (укр)
@@ -617,7 +618,7 @@ export default function BlogAdminClient() {
               )}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
