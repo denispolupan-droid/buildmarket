@@ -1,4 +1,5 @@
 import { fetchAllRows } from '../../../lib/db-paginate';
+import { loadOrderLines, linesOf } from '../../../lib/orders/lines-read';
 import { getMarketplaceBalance } from '../../../lib/accounting/money';
 import { loadInTransitCommission } from '../../../lib/accounting/marketplace-transit';
 import { getMonoLiveBalance } from '../../../lib/mono-balance';
@@ -215,7 +216,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
     fetchAllRows<any>((f, t) => {
       let q = db.from('orders')
-        .select('id, status, total_price, created_at, confirmed_at, shipped_at, delivered_at, payment_confirmed, amount_paid, channel_code, customer_id, phone, company, contact, items')
+        .select('id, status, total_price, created_at, confirmed_at, shipped_at, delivered_at, payment_confirmed, amount_paid, channel_code, customer_id, phone, company, contact')
         .neq('status', 'cancelled')
         .gte('created_at', prevFrom.toISOString());
       if (periodTo) q = q.lt('created_at', periodTo.toISOString());
@@ -246,11 +247,12 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       .in('account_type', PL_ACCOUNTS)
       .gte('business_date', monthlyFromStr)
       .order('id').range(f, t)),
-    // items/channel потрібні для очікуваного прибутку по місяцях (profitEst)
+    // channel потрібен для очікуваного прибутку по місяцях (profitEst); позиції
+    // підтягуються нижче з order_lines (етап B)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
     fetchAllRows<any>((f, t) => db
       .from('orders')
-      .select('id, created_at, total_price, channel_code, items')
+      .select('id, created_at, total_price, channel_code')
       .neq('status', 'cancelled')
       .gte('created_at', monthlyFromIso)
       .order('id').range(f, t)),
@@ -529,6 +531,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const estById = new Map<string, EstOrder>();
   for (const o of [...orderRows, ...monthlyOrders] as EstOrder[]) estById.set(o.id, o);
   const estIds  = [...estById.keys()];
+  // Позиції — з order_lines (етап B, docs/ORDER-LINES-PLAN.md), а не з jsonb items
+  const estLines = await loadOrderLines(db, estIds);
+  for (const o of estById.values()) o.items = linesOf(estLines, o.id);
   const estSkus = [...new Set([...estById.values()].flatMap(o => (o.items ?? []).map(i => i.sku)))];
   const chunk = <T,>(arr: T[], n: number): T[][] => {
     const out: T[][] = [];

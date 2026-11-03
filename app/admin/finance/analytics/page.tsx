@@ -2,6 +2,7 @@ import Link from 'next/link';
 import FinanceTabs from '../FinanceTabs';
 import { DualLineChart } from '../overview-charts';
 import { fetchAllRows } from '../../../../lib/db-paginate';
+import { loadOrderLines, linesOf } from '../../../../lib/orders/lines-read';
 import { summarizePL, PL_ACCOUNTS } from '../../../../lib/accounting/profit-rules';
 import { requireStaffPage } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
@@ -64,12 +65,16 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const ordersFromDate = new Date(Math.min(sixAgo.getTime(), prevFrom.getTime()));
   const orders = await fetchAllRows<any>((f, t) => db
     .from('orders')
-    .select('id, order_number, status, total_price, created_at, channel_code, items, customer_id, phone, contact, company')
+    .select('id, order_number, status, total_price, created_at, channel_code, customer_id, phone, contact, company')
     .not('status', 'in', '(new,cancelled)')
     .gte('created_at', ordersFromDate.toISOString())
     .order('created_at', { ascending: false })
     .order('id')   // тайбрейкер: однакові created_at інакше дають нестабільні сторінки
     .range(f, t));
+  // Позиції — з таблиці order_lines (етап B, docs/ORDER-LINES-PLAN.md), не з jsonb:
+  // та сама форма { sku, qty, price }, але без payload у кожному рядку замовлення.
+  const linesByOrder = await loadOrderLines(db, orders.map(o => o.id as string));
+  for (const o of orders) o.items = linesOf(linesByOrder, o.id as string);
 
   // Підтверджені РН з реальною FIFO-собівартістю, прив'язані до замовлень
   const accDocs = await fetchAllRows((f, t) => db
