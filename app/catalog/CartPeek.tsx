@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 import { useCart, type CartItem } from '../../lib/cart';
 import { fmtMoney as fmt } from '../../lib/format';
@@ -60,8 +60,6 @@ export default function CartPeek({ items, total, lang, placement }: {
               <div className="cart-peek-meta">{fmt(i.price)} ₴ / {t('шт.', 'шт.')}</div>
             </div>
                 <div className="cart-peek-qty">
-                  <button type="button" aria-label={t('Менше', 'Меньше')}
-                    disabled={i.qty <= i.min_order} onClick={() => step(i, -1)}>−</button>
                   <input
                     type="number" inputMode="numeric" min={i.min_order} step={i.min_order}
                     aria-label={t('Кількість', 'Количество')}
@@ -70,7 +68,16 @@ export default function CartPeek({ items, total, lang, placement }: {
                     onBlur={() => commit(i)}
                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   />
-                  <button type="button" aria-label={t('Більше', 'Больше')} onClick={() => step(i, 1)}>+</button>
+                  {/* Стрілки стовпчиком праворуч від числа — компактніше за «− N +» */}
+                  <div className="cart-peek-arrows">
+                    <button type="button" aria-label={t('Більше', 'Больше')} onClick={() => step(i, 1)}>
+                      <ChevronUp size={10} strokeWidth={2.5} aria-hidden />
+                    </button>
+                    <button type="button" aria-label={t('Менше', 'Меньше')}
+                      disabled={i.qty <= i.min_order} onClick={() => step(i, -1)}>
+                      <ChevronDown size={10} strokeWidth={2.5} aria-hidden />
+                    </button>
+                  </div>
                 </div>
             <div className="cart-peek-sum">{fmt(i.price * i.qty)} ₴</div>
             <button type="button" className="cart-peek-del" onClick={() => { dropDraft(i.sku); removeItem(i.sku); }}
