@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Modal } from '../../components/admin/ui/Modal';
+import PartnerHistory from './PartnerHistory';
 
 /* ── Phone mask (same as cart) ──────────────────────────────────────────── */
 function getLocalDigits(formatted: string): string {
@@ -675,6 +676,9 @@ export default function PartnersClient({
                     ))}
                   </div>
                 </div>
+
+                {/* Історія: сальдо леджера й останні замовлення (вантажиться при відкритті картки) */}
+                <PartnerHistory customerId={vc.id} />
 
                 {/* Balance (partners) */}
                 {hasBalance && (
