@@ -1,7 +1,5 @@
 import { createServiceClient } from '../supabase-service';
-import { computePromCommission } from '../prom-commission';
-import { computeRozetkaCommission } from '../rozetka-commission';
-import { computeEpicentrCommission, EPICENTR_COMMISSION_FALLBACK_KEY, EPICENTR_COMMISSION_DEFAULT_PCT } from '../epicentr-commission';
+import { makeChannelEstimator } from '../marketplace/fees';
 
 // Комісії «в дорозі»: очікувана комісія по РН-чернетках (посилки відвантажені,
 // ще не доставлені → комісія ще НЕ проведена). Площадка спише її при доставці,
@@ -35,26 +33,15 @@ export async function loadInTransitCommission(marketplace: 'prom' | 'rozetka' | 
   const mpDocs = docs.filter(d => orderMap.has(d.order_id!));
   if (!mpDocs.length) return { total: 0, items: [] };
 
-  const settingKeys = marketplace === 'prom' ? ['prom_plan', 'prom_commission_pct']
-    : marketplace === 'epicentr' ? [EPICENTR_COMMISSION_FALLBACK_KEY]
-    : ['rozetka_commission_pct'];
-  const { data: settings } = await db.from('app_settings').select('key, value').in('key', settingKeys);
-  const sMap = new Map((settings ?? []).map(s => [s.key, s.value]));
-  const plan = (sMap.get('prom_plan') ?? 'single') as 'single' | 'econom';
-  const fallbackPct = marketplace === 'prom' ? parseFloat(sMap.get('prom_commission_pct') ?? '3')
-    : marketplace === 'epicentr' ? (parseFloat(sMap.get(EPICENTR_COMMISSION_FALLBACK_KEY) ?? '') || EPICENTR_COMMISSION_DEFAULT_PCT)
-    : parseFloat(sMap.get('rozetka_commission_pct') ?? '15');
+  // Оцінка за ставками категорій (налаштування читаються раз) — lib/marketplace/fees
+  const estimate = await makeChannelEstimator(db, marketplace);
 
   const items: InTransitItem[] = [];
   let total = 0;
   for (const d of mpDocs) {
     const { data: lines } = await db.from('acc_document_lines').select('sku, qty, price').eq('document_id', d.id);
-    const li = (lines ?? []).map(l => ({ sku: l.sku, qty: Number(l.qty), price: Number(l.price) }));
-    const commission = marketplace === 'prom'
-      ? (await computePromCommission(li, { plan, fallbackPct })).total_commission
-      : marketplace === 'epicentr'
-      ? (await computeEpicentrCommission(li, { fallbackPct })).total_commission
-      : (await computeRozetkaCommission(li, { fallbackPct })).total_commission;
+    const li = (lines ?? []).map(l => ({ sku: l.sku, name: '', brand: '', qty: Number(l.qty), price: Number(l.price) }));
+    const commission = await estimate(li);
     const o = orderMap.get(d.order_id!)!;
     total += commission;
     items.push({ docId: d.id, orderNumber: o.order_number, ttn: d.tracking_number, commission: Math.round(commission * 100) / 100 });

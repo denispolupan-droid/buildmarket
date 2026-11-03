@@ -16,13 +16,12 @@
 import { asJson, createServiceClient } from '../supabase-service';
 import { postSaleDoc } from './dropship';
 import { recordMarketplaceCommission, recordMarketplaceServiceFee } from './money';
-import { computePromCommission } from '../prom-commission';
-import { computeRozetkaCommission } from '../rozetka-commission';
-import { computeSmartFee, getSmartTariff } from '../rozetka-smart';
-import { computePromDeliveryFee, getPromDeliveryTariff, isPromCheapDelivery } from '../prom-delivery';
-import { getPromOrder } from '../prom-api';
-import { computeEpicentrCommission, getEpicentrFallbackPct } from '../epicentr-commission';
-import { getEpicentrBillingInvoice } from '../epicentr-api';
+// Збори площадок — лише через lib/marketplace/fees (ChannelFeeProvider): ядро
+// обліку не імпортує модулі каналів напряму (аудит 31.10, п. 17).
+import {
+  isMarketplace, refreshPromSnapshot, computeChannelCommission, estimateChannelCommission,
+  rozetkaSmartFee, promCheapDeliveryFee,
+} from '../marketplace/fees';
 import { alertAdmin } from '../alert';
 import { getNpCodFeePct } from '../np-cod-fee';
 import { recordPartnerCodCollected } from './partner-ledger';
@@ -45,81 +44,27 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   // 2) Комісія маркетплейсу — рахуємо по позиціях САМЕ цієї посилки.
   const { data: order } = await db
     .from('orders')
-    .select('order_number, channel_code, total_price, rozetka_data, prom_data, prom_order_id, epicentr_order_id')
+    .select('id, order_number, channel_code, total_price, rozetka_data, prom_data, prom_order_id, epicentr_order_id')
     .eq('id', doc.order_id)
     .single();
   const mp = order?.channel_code;
-  if (mp !== 'prom' && mp !== 'rozetka' && mp !== 'epicentr') return;
+  if (!order || !isMarketplace(mp)) return;
 
   const { data: lines } = await db
     .from('acc_document_lines')
     .select('sku, qty, price')
     .eq('document_id', docId);
-  const items = (lines ?? []).map(l => ({ sku: l.sku, qty: Number(l.qty), price: Number(l.price) }));
+  const items = (lines ?? []).map(l => ({ sku: l.sku, name: '', brand: '', qty: Number(l.qty), price: Number(l.price) }));
   if (items.length === 0) return;
   const docRevenue = items.reduce((s, i) => s + i.qty * i.price, 0);
 
-  // Знімок prom_data робиться при імпорті і застаріває: редагування замовлення міняє
-  // cpa_commission, а «дешева доставка» може зніматися (зміна способу оплати, порушення).
-  // Перед проводками освіжаємо payload з Prom; на збої мережі — тихий fallback на знімок.
-  let promData = (order?.prom_data ?? null) as Record<string, unknown> | null;
-  if (mp === 'prom' && order?.prom_order_id) {
-    try {
-      const fresh = await getPromOrder(Number(order.prom_order_id));
-      if (fresh) {
-        promData = { ...(promData ?? {}), ...(fresh as unknown as Record<string, unknown>) };
-        await db.from('orders').update({ prom_data: asJson(promData) }).eq('id', doc.order_id);
-      }
-    } catch (err) {
-      console.error('[completion] prom_data refresh failed, using snapshot:', order?.prom_order_id, err);
-    }
-  }
+  // Знімок prom_data робиться при імпорті і застаріває — перед проводками
+  // освіжаємо (на збої мережі — знімок). Для інших каналів повертає знімок як є.
+  const promData = await refreshPromSnapshot(db, order);
 
   try {
-    let totalCommission = 0;
-    if (mp === 'prom') {
-      // Джерело правди — ФАКТИЧНА комісія Prom із payload замовлення (cpa_commission):
-      // саме цю суму Prom списує з балансу. Розрахунок по категоріях недорахував
-      // 2026-07-29 (№26071051): план перемкнули на «Економ» між створенням і доставкою,
-      // а Prom списав повну ставку, зафіксовану при створенні. Беремо cpa лише коли
-      // РН покриває все замовлення (мультипосилку ділимо розрахунком по позиціях).
-      const cpaRaw = (promData?.cpa_commission as { amount?: unknown } | null)?.amount;
-      const cpa = Number(String(cpaRaw ?? '').replace(/\s/g, '').replace(',', '.'));
-      const wholeOrder = Math.abs(docRevenue - (Number(order?.total_price) || 0)) < 0.01;
-      if (cpa > 0 && wholeOrder) {
-        totalCommission = cpa;
-      } else {
-        const [{ data: planRow }, { data: fbRow }] = await Promise.all([
-          db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
-          db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
-        ]);
-        const plan = (planRow?.value ?? 'single') as 'single' | 'econom';
-        const fallbackPct = parseFloat(fbRow?.value ?? '3');
-        totalCommission = (await computePromCommission(items, { plan, fallbackPct })).total_commission;
-      }
-    } else if (mp === 'epicentr') {
-      // Факт — з білінгу Епіцентру (/v1/billing/orders/{id}/invoice): саме цю суму
-      // спишуть з балансу. Береться лише коли РН покриває все замовлення; інакше
-      // (мультипосилка) або коли білінг ще не порахував — оцінка за ставками категорій.
-      const wholeOrder = Math.abs(docRevenue - (Number(order?.total_price) || 0)) < 0.01;
-      let fact = 0;
-      if (wholeOrder && order?.epicentr_order_id) {
-        try {
-          const inv = await getEpicentrBillingInvoice(String(order.epicentr_order_id));
-          fact = Number(String(inv?.orderCommissionTotal ?? '').replace(',', '.')) || 0;
-        } catch (err) {
-          console.error('[completion] epicentr billing invoice failed, using estimate:', order?.epicentr_order_id, err);
-        }
-      }
-      totalCommission = fact > 0
-        ? fact
-        : (await computeEpicentrCommission(items, { fallbackPct: await getEpicentrFallbackPct(db) })).total_commission;
-    } else {
-      const { data: fbRow } = await db
-        .from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
-      const fallbackPct = parseFloat(fbRow?.value ?? '15');
-      totalCommission = (await computeRozetkaCommission(items, { fallbackPct })).total_commission;
-    }
+    // Факт із площадки (cpa Prom, білінг Епіцентру) або оцінка за ставками категорій.
+    const totalCommission = await computeChannelCommission(db, mp, order, items, docRevenue, promData);
 
     if (totalCommission > 0) {
       const avgPct = docRevenue > 0 ? Math.round((totalCommission / docRevenue) * 10000) / 100 : 0;
@@ -141,11 +86,9 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   // разово на замовлення (order-level ключ). Основне проведення — при ВІДГРУЗЦІ (ship route),
   // бо Rozetka списує збір при передачі перевізникові; тут — страховка для замовлень,
   // відвантажених до цього механізму (той самий idempotency-ключ → задвоєння немає).
-  const isSmart = mp === 'rozetka'
-    && Boolean((order?.rozetka_data as Record<string, unknown> | null)?.is_smart);
-  if (isSmart) {
+  const smartFee = await rozetkaSmartFee(order);
+  if (smartFee > 0) {
     const orderTotal = Number(order?.total_price) || 0;
-    const smartFee = computeSmartFee(orderTotal, await getSmartTariff());
     try {
       await recordMarketplaceServiceFee({
         orderId:        doc.order_id,
@@ -165,9 +108,8 @@ export async function applyCompletionEffects(docId: string, createdBy = 'system'
   // 4) «Дешева доставка» Prom — фіксована компенсація організації доставки НП.
   // Prom списує її з балансу ПІСЛЯ вручення посилки покупцю (невикуп — не списує),
   // тому проводимо саме тут, при доставці. Разово на замовлення (order-level ключ).
-  if (mp === 'prom' && isPromCheapDelivery(promData)) {
-    // Тариф — з адмінки (app_settings), НЕ константа: правки цін діють одразу
-    const fee = computePromDeliveryFee(Number(order?.total_price) || 0, await getPromDeliveryTariff());
+  {
+    const fee = await promCheapDeliveryFee(order, promData);
     if (fee > 0) {
       try {
         await recordMarketplaceServiceFee({
@@ -285,20 +227,8 @@ export async function settleLegacyCommission(orderId: string, createdBy = 'syste
   if (!items.length) return;
 
   try {
-    let commission = 0;
-    if (mp === 'prom') {
-      const [{ data: planRow }, { data: fbRow }] = await Promise.all([
-        db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle(),
-        db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle(),
-      ]);
-      commission = (await computePromCommission(items, {
-        plan: (planRow?.value ?? 'single') as 'single' | 'econom',
-        fallbackPct: parseFloat(fbRow?.value ?? '3'),
-      })).total_commission;
-    } else {
-      const { data: fbRow } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
-      commission = (await computeRozetkaCommission(items, { fallbackPct: parseFloat(fbRow?.value ?? '15') })).total_commission;
-    }
+    // Legacy-шлях знає лише оцінку за ставками (факту з площадки тут ніколи не було).
+    const commission = await estimateChannelCommission(db, mp, items.map(i => ({ ...i, name: '', brand: '' })));
     if (commission > 0) {
       const avgPct = Number(order.total_price) > 0 ? Math.round((commission / Number(order.total_price)) * 10000) / 100 : 0;
       await recordMarketplaceCommission({ orderId, amount: commission, marketplace: mp, commissionPct: avgPct, createdBy });

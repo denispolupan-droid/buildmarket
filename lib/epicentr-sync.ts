@@ -9,13 +9,14 @@
  *      підтвердженні/відвантаженні — fire-and-forget), фіксуємо пізню оплату,
  *      скасовуємо в себе те, що скасував покупець/площадка.
  */
-import { findCustomerIdByPhone } from './customers';
 import {
   getEpicentrOrders, epicentrOrderToOurFormat, ourStatusToEpicentrStatus, setEpicentrOrderStatus,
   setEpicentrTTN, hasEpicentrToken, EPICENTR_CANCELLED, EPICENTR_TERMINAL,
   type EpicentrOrder, type EpicentrOrderStatus,
 } from './epicentr-api';
-import { computeEpicentrCommission, getEpicentrFallbackPct } from './epicentr-commission';
+import { getEpicentrFallbackPct } from './epicentr-commission';
+import { importMarketplaceOrder } from './marketplace/import-order';
+import { epicentrAdapter } from './marketplace/epicentr';
 import { handleMarketplaceCancelledOrder, type CancelWatchOrder } from './marketplace-cancel-watch';
 import { createServiceClient, type TableUpdate, asJson } from './supabase-service';
 
@@ -47,7 +48,7 @@ export async function syncEpicentrOrders(): Promise<EpicentrSyncResult> {
   const orders = await getEpicentrOrders({ updatedFrom, limit: 50 });
   if (!orders.length) return empty;
 
-  const fallbackPct = await getEpicentrFallbackPct(db);
+  const adapter = epicentrAdapter({ fallbackPct: await getEpicentrFallbackPct(db) });
   const result = { ...empty, total: orders.length };
 
   for (const epi of orders) {
@@ -63,63 +64,10 @@ export async function syncEpicentrOrders(): Promise<EpicentrSyncResult> {
       continue;
     }
 
-    // Скасоване до імпорту — не заводимо
-    if (EPICENTR_CANCELLED.includes(epi.statusCode) || epi.statusCode === 'canceled_by_merchant') {
-      result.skipped++;
-      continue;
-    }
-
-    const mapped = epicentrOrderToOurFormat(epi);
-    const commission = await computeEpicentrCommission(mapped.items, { fallbackPct });
-    const enriched = { ...(mapped.epicentr_data as unknown as Record<string, unknown>), _commission: commission };
-
-    let customerId: string | null = null;
-    if (mapped.phone) {
-      // Нормалізований номер (lib/customers): «+380…» і «0…» — той самий клієнт
-      customerId = await findCustomerIdByPhone(db, mapped.phone);
-    }
-    if (!customerId) {
-      const { data: newCust } = await db
-        .from('customers')
-        .insert({
-          name: mapped.contact, phone: mapped.phone || null, email: mapped.email || null,
-          type: 'retail', price_tier: 'retail', is_active: true,
-          orders_count: 0, total_revenue: 0, balance: 0, balance_held: 0, meta: {},
-        })
-        .select('id')
-        .single();
-      customerId = newCust?.id ?? null;
-    }
-
-    const { error } = await db.from('orders').insert({
-      customer_id:       customerId,
-      contact:           mapped.contact,
-      phone:             mapped.phone,
-      email:             mapped.email,
-      delivery_type:     mapped.delivery_type,
-      delivery_subtype:  mapped.delivery_subtype,
-      delivery_address:  mapped.delivery_address,
-      delivery_city_ref:      mapped.delivery_city_ref,
-      delivery_city_name:     mapped.delivery_city_name,
-      delivery_warehouse_ref: mapped.delivery_warehouse_ref,
-      payment_type:      mapped.payment_type,
-      payment_confirmed: mapped.paid,
-      amount_paid:       mapped.paid ? mapped.total_price : 0,
-      price_type:        'retail',
-      comment:           mapped.comment,
-      items:             mapped.items,
-      total_price:       mapped.total_price,
-      status:            'new',
-      channel_code:      'epicentr',
-      epicentr_order_id: mapped.epicentr_order_id,
-      epicentr_data:     asJson(enriched),
-    });
-
-    if (error) {
-      console.error('[epicentr-sync] insert failed:', error.message, 'epicentr_id:', epi.id, 'number:', epi.number);
-    } else {
-      result.created++;
-    }
+    // Новий — спільний імпорт (скасовані до імпорту адаптер відсіває сам)
+    const res = await importMarketplaceOrder(db, adapter, epi);
+    if (res.status === 'created') result.created++;
+    else if (res.status === 'skipped' || res.status === 'exists') result.skipped++;
   }
 
   return result;

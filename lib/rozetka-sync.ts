@@ -1,6 +1,7 @@
-import { findCustomerIdByPhone } from './customers';
 import { getRozetkaOrders, rozetkaOrderToOurFormat, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, type RozetkaOrder } from './rozetka-api';
 import { computeRozetkaCommission } from './rozetka-commission';
+import { importMarketplaceOrder } from './marketplace/import-order';
+import { rozetkaAdapter, getRozetkaFallbackPct } from './marketplace/rozetka';
 import { getRozetkaDeliveryTtns } from './rozetka-delivery-ttn';
 import { ROZETKA_DELIVERY_TYPE } from './rozetka-delivery';
 import { alertAdmin } from './alert';
@@ -53,8 +54,8 @@ export async function syncRozetkaOrders() {
 
   // Read the Rozetka commission fallback once for the whole batch (per-category rate wins;
   // this covers SKUs without a category rate). Mirrors the Prom sync.
-  const { data: fallbackRow } = await db.from('app_settings').select('value').eq('key', 'rozetka_commission_pct').maybeSingle();
-  const fallbackPct = parseFloat(fallbackRow?.value ?? '15');
+  const fallbackPct = await getRozetkaFallbackPct(db);
+  const adapter = rozetkaAdapter({ fallbackPct });
 
   let created = 0;
   let skipped = 0;
@@ -289,66 +290,10 @@ export async function syncRozetkaOrders() {
     // замовлення заднім числом означало б завести його в облік як робоче.
     if (refreshOnlyIds.has(rzOrder.id)) { skipped++; continue; }
 
-    const mapped = rozetkaOrderToOurFormat(rzOrder);
-
-    // Compute per-item commission breakdown and store with the order (parity with Prom)
-    const commissionResult = await computeRozetkaCommission(mapped.items, { fallbackPct });
-    const enrichedRozetkaData = { ...mapped.rozetka_data, _commission: commissionResult };
-
-    let customerId: string | null = null;
-    if (mapped.phone) {
-      // Нормалізований номер (lib/customers): «+380…» і «0…» — той самий клієнт
-      customerId = await findCustomerIdByPhone(db, mapped.phone);
-    }
-
-    if (!customerId) {
-      const { data: newCust } = await db
-        .from('customers')
-        .insert({
-          name:          mapped.contact,
-          phone:         mapped.phone || null,
-          email:         mapped.email || null,
-          type:          'retail',
-          price_tier:    'retail',
-          is_active:     true,
-          orders_count:  0,
-          total_revenue: 0,
-          balance:       0,
-          balance_held:  0,
-          meta:          {},
-        })
-        .select('id')
-        .single();
-      customerId = newCust?.id ?? null;
-    }
-
-    const { error } = await db.from('orders').insert({
-      customer_id:      customerId,
-      contact:          mapped.contact,
-      phone:            mapped.phone,
-      email:            mapped.email,
-      delivery_type:      mapped.delivery_type,
-      delivery_address:   mapped.delivery_address,
-      delivery_city_name: mapped.delivery_city_name,
-      delivery_subtype:   mapped.delivery_subtype,
-      payment_type:      mapped.payment_type,
-      payment_confirmed: mapped.paid,
-      amount_paid:       mapped.paid ? mapped.total_price : 0,
-      price_type:       'retail',
-      comment:          mapped.comment,
-      items:            mapped.items,
-      total_price:      mapped.total_price,
-      status:           'new',
-      channel_code:     'rozetka',
-      rozetka_order_id: mapped.rozetka_order_id,
-      rozetka_data:     asJson(enrichedRozetkaData),
-    });
-
-    if (error) {
-      console.error('[rozetka-sync] insert failed:', error.message, 'rozetka_id:', rzOrder.id);
-    } else {
-      created++;
-    }
+    // Новий — спільний імпорт (клієнт за телефоном, знімок _commission, вставка)
+    const res = await importMarketplaceOrder(db, adapter, rzOrder);
+    if (res.status === 'created') created++;
+    else if (res.status === 'skipped' || res.status === 'exists') skipped++;
   }
 
   // Ціна доставки в точки видачі — з самих накладних, а не з нашої таблиці

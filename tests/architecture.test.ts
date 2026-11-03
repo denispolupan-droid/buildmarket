@@ -108,4 +108,15 @@ describe('архітектурні межі (AGENTS.md)', () => {
       .filter(r => re.test(read(path.join(ROOT, r))));
     expect(offenders, 'обгорни обробник: export const GET = withApi(\'<route>\', _GET):\n' + offenders.join('\n')).toEqual([]);
   });
+
+  it('lib/accounting не імпортує модулі каналів напряму — лише lib/marketplace (ChannelFeeProvider)', () => {
+    // 03.11.2026 (аудит, п. 17): completion.ts імпортував сім модулів Prom/Rozetka/Епіцентру —
+    // двостороння зв'язність ядро ↔ канали; четверта площадка = правки в обліку.
+    const re = /from '[./]*(prom-api|rozetka-api|epicentr-api|prom-commission|rozetka-commission|epicentr-commission|rozetka-smart|prom-delivery|prom-sync|rozetka-sync|epicentr-sync)'/;
+    const offenders = files.map(rel)
+      .filter(r => r.startsWith('lib/accounting/'))
+      .filter(r => re.test(read(path.join(ROOT, r))));
+    expect(offenders, 'збори/комісії площадок — через lib/marketplace/fees:\n' + offenders.join('\n')).toEqual([]);
+  });
 });
+

@@ -27,6 +27,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Ціни МП: наценка й акції** (міграція 147, `lib/price-adjustments*`). Постійна ціна Rozetka/Prom — лише з наценки через `lib/marketplace-pricing`. Акції й зміни «до дати» — рядки `price_adjustments`, множник `adjustFactor` з `loadFactorMap`; новий екран чи фід без множника покаже ціну, якої немає на площадці. Для акції у фід іде й стара ціна (формула без акційного множника). Записи журналу з `adjustment = true` — не акції сайту: будь-який запит до `price_change_log` по `is_promo` для цін сайту фільтруй `.eq('adjustment', false)`.
 
+**Маркетплейси.** Імпорт замовлення площадки — лише через `importMarketplaceOrder` + адаптер (`lib/marketplace/<code>.ts`, контракт `MarketplaceAdapter`); збори й комісії для обліку — лише через `lib/marketplace/fees` (`lib/accounting` не імпортує `prom-api`/`rozetka-*`/`epicentr-*` — це ловить архітектурний тест). Нова площадка = адаптер + міграція з колонками `<code>_order_id`/`<code>_data`, без правок у синках і обліку.
+
 **Рядки замовлення.** Позиції й далі пишуться в `orders.items` (jsonb). Таблиця `order_lines` — дзеркало, яке веде тригер БД: з коду в неї **не писати** (insert/update/delete), читати можна лише в звітах і лише після етапу B (`docs/ORDER-LINES-PLAN.md`). Розходження ловлять інваріанти I9/I10.
 
 **Безпека вводу.** Екрануй користувацький текст перед вставкою в HTML/`document.write`/JSON у `<script>`. Fetch за користувацьким URL — через `assertPublicUrl` (`lib/safe-fetch-url`).

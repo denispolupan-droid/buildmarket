@@ -1,6 +1,6 @@
-import { findCustomerIdByPhone } from './customers';
 import { getPromOrders, getPromOrder, promOrderToOurFormat, buildPromComment, ourStatusToPromStatus, setPromOrderStatus, setPromTTN, promAcceptsTtnFor, needsPromTtnRepush, type PromStatus, type PromOrder } from './prom-api';
-import { computePromCommission } from './prom-commission';
+import { importMarketplaceOrder } from './marketplace/import-order';
+import { promAdapter, getPromCommissionSettings } from './marketplace/prom';
 import { completeOrderDelivery, allOrderSalesPosted } from './accounting/completion';
 import { transitionOrder } from './orders/status';
 import { promDeliveryPatch, isPromLedDelivery } from './prom-delivery-state';
@@ -77,11 +77,8 @@ export async function syncPromOrders() {
   const dateFrom = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const orders   = await getPromOrders({ dateFrom, limit: 100 });
 
-  // Read plan setting once for all orders in this batch
-  const { data: planRow } = await db.from('app_settings').select('value').eq('key', 'prom_plan').maybeSingle();
-  const { data: fallbackRow } = await db.from('app_settings').select('value').eq('key', 'prom_commission_pct').maybeSingle();
-  const plan        = (planRow?.value ?? 'single') as 'single' | 'econom';
-  const fallbackPct = parseFloat(fallbackRow?.value ?? '3');
+  // Налаштування комісії — раз на прогін; адаптер несе їх у знімок _commission
+  const adapter = promAdapter(await getPromCommissionSettings(db));
 
   let created = 0;
   let skipped = 0;
@@ -168,73 +165,10 @@ export async function syncPromOrders() {
       continue;
     }
 
-    if (['declined', 'cancelled', 'cancelled_by_client'].includes(promOrder.status)) {
-      skipped++;
-      continue;
-    }
-
-    const mapped = promOrderToOurFormat(promOrder);
-
-    // Compute per-item commission breakdown and store with the order
-    const commissionResult = await computePromCommission(mapped.items, { plan, fallbackPct });
-    const enrichedPromData = { ...mapped.prom_data, _commission: commissionResult };
-
-    let customerId: string | null = null;
-    if (mapped.phone) {
-      // Нормалізований номер (lib/customers): «+380…» і «0…» — той самий клієнт
-      customerId = await findCustomerIdByPhone(db, mapped.phone);
-    }
-
-    if (!customerId) {
-      const { data: newCust } = await db
-        .from('customers')
-        .insert({
-          name:          mapped.contact,
-          phone:         mapped.phone || null,
-          email:         mapped.email || null,
-          type:          'retail',
-          price_tier:    'retail',
-          is_active:     true,
-          orders_count:  0,
-          total_revenue: 0,
-          balance:       0,
-          balance_held:  0,
-          meta:          {},
-        })
-        .select('id')
-        .single();
-      customerId = newCust?.id ?? null;
-    }
-
-    const { error } = await db.from('orders').insert({
-      customer_id:      customerId,
-      contact:          mapped.contact,
-      phone:            mapped.phone,
-      prom_data:        asJson(enrichedPromData),
-      email:            mapped.email,
-      delivery_type:    mapped.delivery_type,
-      delivery_subtype: mapped.delivery_subtype,
-      delivery_address: mapped.delivery_address,
-      delivery_city_ref:      mapped.delivery_city_ref,
-      delivery_city_name:     mapped.delivery_city_name,
-      delivery_warehouse_ref: mapped.delivery_warehouse_ref,
-      payment_type:      mapped.payment_type,
-      payment_confirmed: mapped.paid,
-      amount_paid:       mapped.paid ? mapped.total_price : 0,
-      price_type:       'retail',
-      comment:          mapped.comment,
-      items:            mapped.items,
-      total_price:      mapped.total_price,
-      status:           'new',
-      channel_code:     'prom',
-      prom_order_id:    mapped.prom_order_id,
-    });
-
-    if (error) {
-      console.error('[prom-sync] insert failed:', error.message, 'prom_id:', promOrder.id);
-    } else {
-      created++;
-    }
+    // Новий — спільний імпорт (клієнт за телефоном, знімок _commission, вставка)
+    const res = await importMarketplaceOrder(db, adapter, promOrder);
+    if (res.status === 'created') created++;
+    else if (res.status === 'skipped' || res.status === 'exists') skipped++;
   }
 
   // ── Другий прохід: відвантажені замовлення, які веде сам Prom, поза вікном ──
