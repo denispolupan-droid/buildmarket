@@ -14,6 +14,7 @@ import { PROMO } from '../promo.config';
 import SalesBanner from '../components/SalesBanner';
 import type { ProductB2B, Category, ReviewStats } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
+import CartPeek from './CartPeek';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
 import { getCategoryNameRu } from '../../lib/ru';
@@ -861,6 +862,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                 </div>
               </div>
               {isWholesale && (
+                <div className="cart-peek-host cart-peek-host--badge">
                 <a ref={badgeRef} href={lang === 'ru' ? '/ru/cart' : '/cart'} className={`wholesale-min-badge${cartMet ? ' wholesale-min-met' : ''}`}>
                   <div className="wholesale-min-row">
                     <span>{t('Мінімальне замовлення', 'Минимальный заказ')} — <strong>{WHOLESALE_MIN.toLocaleString('uk-UA')} ₴</strong></span>
@@ -877,6 +879,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                     <div className="wholesale-min-fill" style={{ width: `${cartPct}%` }} />
                   </div>
                 </a>
+                <CartPeek items={cartItems} total={cartTotal} lang={lang} placement="below" />
+                </div>
               )}
               <div className="catalog-actions">
                 {/* Mobile only: two panel buttons */}
@@ -1302,6 +1306,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
         );
       })()}
       {isWholesale && !badgeVisible && (
+        <div className="cart-peek-host cart-peek-host--float">
         <a href={lang === 'ru' ? '/ru/cart' : '/cart'} className={`wholesale-float-bar${pillEntered ? ' entered' : ''}${cartFlash ? ' flash' : ''}`}>
           <span className="wholesale-float-label">{t('мін. замовлення', 'мин. заказ')}</span>
           <div className="wholesale-float-track">
@@ -1317,6 +1322,8 @@ export default function CatalogClient({ products, categories, reviewStats, initi
             }
           </span>
         </a>
+        <CartPeek items={cartItems} total={cartTotal} lang={lang} placement="above" />
+        </div>
       )}
       <ScrollToTop />
     </>

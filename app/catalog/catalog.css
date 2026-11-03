@@ -245,6 +245,60 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 .wholesale-float-amount strong { font-weight: 800; color: var(--text-primary); }
 @media (max-width: 768px) { .wholesale-float-bar { display: none; } }
 
+/* Швидкий перегляд кошика (CartPeek) при наведенні на лічильник мін. замовлення.
+   Обгортка бейджа бере на себе роль flex-елемента ряду заголовка (раніше це був сам бейдж). */
+.cart-peek-host--badge { position: relative; align-self: center; flex-shrink: 0; display: flex; }
+/* Ряд заголовка ріже вміст (overflow:hidden під градієнт) — на час показу відпускаємо */
+.catalog-title-row:has(.cart-peek-host:hover, .cart-peek-host:focus-within) { overflow: visible; }
+.cart-peek { display: none; }
+@media (hover: hover) and (min-width: 769px) {
+  .cart-peek {
+    display: flex; flex-direction: column;
+    position: absolute; z-index: 60;
+    width: 380px; max-height: min(460px, 70vh);
+    background: var(--bg-card); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0s linear 0.15s;
+  }
+  /* Невелика затримка появи — щоб не спалахувало, коли мишу просто проводять повз */
+  .cart-peek-host:hover .cart-peek,
+  .cart-peek-host:focus-within .cart-peek {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition: opacity 0.15s ease 0.2s, visibility 0s linear 0.2s;
+  }
+  /* Місток над/під проміжком, щоб панель не зникала, поки миша переходить на неї */
+  .cart-peek::before { content: ''; position: absolute; left: 0; right: 0; height: 12px; }
+  .cart-peek--below { top: calc(100% + 8px); right: 0; }
+  .cart-peek--below::before { bottom: 100%; }
+  .cart-peek--above { position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%); z-index: 99; }
+  .cart-peek--above::before { top: 100%; }
+}
+.cart-peek-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  padding: 12px 14px 8px; font-size: 13px; font-weight: 700;
+  border-bottom: 1px solid var(--border-light);
+}
+.cart-peek-count { font-size: 11.5px; font-weight: 500; color: var(--text-muted); }
+.cart-peek-list { list-style: none; margin: 0; padding: 4px 0; overflow-y: auto; overscroll-behavior: contain; }
+.cart-peek-item { display: flex; align-items: center; gap: 10px; padding: 6px 14px; }
+.cart-peek-thumb { width: 36px; height: 36px; flex-shrink: 0; background: #fff; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.cart-peek-info { flex: 1; min-width: 0; }
+.cart-peek-name { font-size: 12.5px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cart-peek-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+.cart-peek-sum { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.cart-peek-foot {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 10px 14px; border-top: 1px solid var(--border-light); font-size: 13px;
+}
+.cart-peek-foot strong { font-weight: 800; }
+.cart-peek-go {
+  padding: 7px 12px; border-radius: 8px; background: var(--navy); color: #fff;
+  font-size: 12.5px; font-weight: 700; text-decoration: none; white-space: nowrap;
+}
+.cart-peek-go:hover { background: color-mix(in srgb, var(--navy) 85%, #fff); }
+
 
 .action-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -616,7 +670,8 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .catalog-count { display: none; }
   .catalog-title { font-size: 18px; }
   .catalog-title-row { margin-bottom: 12px; flex-wrap: wrap; }
-  .wholesale-min-badge { width: 100%; min-width: 0; order: 3; }
+  .cart-peek-host--badge { width: 100%; order: 3; }
+  .wholesale-min-badge { width: 100%; min-width: 0; }
   .wholesale-min-row { white-space: normal; flex-wrap: wrap; row-gap: 2px; }
 
   /* Table is wider than the screen on mobile — scroll it in place instead of clipping or leaking page-wide overflow */
