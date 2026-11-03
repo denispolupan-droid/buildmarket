@@ -281,11 +281,12 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   border-bottom: 1px solid var(--border-light);
 }
 .cart-peek-count { font-size: 11px; font-weight: 500; color: var(--text-muted); }
-/* Підказка, а не робоча зона: позиція — один рядок; повна назва — у title */
+/* Підказка, а не робоча зона: компактний рядок; назва переноситься повністю, решта стовпчиків — по центру висоти */
 .cart-peek-list { list-style: none; margin: 0; padding: 2px 0; overflow-y: auto; overscroll-behavior: contain; }
-.cart-peek-item { display: flex; align-items: center; gap: 8px; padding: 4px 12px; }
+.cart-peek-item { display: flex; align-items: center; gap: 8px; padding: 5px 12px; }
+.cart-peek-item + .cart-peek-item { border-top: 1px solid var(--border-light); }
 .cart-peek-thumb { width: 30px; height: 30px; flex-shrink: 0; background: #fff; border-radius: 5px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.cart-peek-name { flex: 1; min-width: 0; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cart-peek-name { flex: 1; min-width: 0; font-size: 11.5px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
 /* Фіксовані ширини стовпчиків — ціни, лічильники й суми стоять рівно один під одним */
 .cart-peek-meta { flex-shrink: 0; width: 56px; text-align: right; font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
 .cart-peek-qty { flex-shrink: 0; display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
