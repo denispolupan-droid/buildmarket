@@ -305,7 +305,8 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 .cell-photo > * { transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 8px; transform-origin: left 35%; }
 /* Вище за .catalog-sticky-bar (50), нижче за шапку сайту (98) — інакше «таблетки» зрізають збільшене фото */
 .cell-photo:hover { z-index: 60; }
-.cell-photo:hover > * { transform: scale(4); box-shadow: 0 12px 36px rgba(0,0,0,0.25); }
+/* Свій білий фон: картинка вписана (contain), і без нього крізь поля видно сусідні рядки */
+.cell-photo:hover > * { background: #fff; transform: scale(4); box-shadow: 0 12px 36px rgba(0,0,0,0.25); }
 .cell-meta { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cell-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .cell-chars { display: flex; flex-wrap: wrap; gap: 4px; }
