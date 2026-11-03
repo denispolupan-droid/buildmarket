@@ -6,12 +6,14 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
 import { factorOf, totalFactor } from '../../../../lib/price-adjustments';
 import { loadFactorMap } from '../../../../lib/price-adjustments-db';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export const metadata = { title: 'Ціни Prom.ua — Адмін' };
 
 export default async function PromPricesPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

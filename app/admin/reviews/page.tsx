@@ -3,6 +3,7 @@ import { createSupabaseServer } from '../../../lib/supabase-server';
 import ReviewsTabs from './ReviewsTabs';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 const service = createServiceClient();
 
@@ -13,6 +14,7 @@ export default async function AdminReviewsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
+  await requireStaffPage('admin', 'manager');
   const { tab } = await searchParams;
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();

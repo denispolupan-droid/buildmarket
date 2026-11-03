@@ -7,12 +7,14 @@ import { fetchAllRows } from '../../../../lib/db-paginate';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { factorOf, totalFactor } from '../../../../lib/price-adjustments';
 import { loadFactorMap } from '../../../../lib/price-adjustments-db';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 export const metadata = { title: 'Товари Rozetka — Адмін' };
 
 const db = createServiceClient();
 
 export default async function RozetkaProductsPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

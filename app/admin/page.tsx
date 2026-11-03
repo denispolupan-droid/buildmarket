@@ -17,6 +17,7 @@ import { kyivBounds, statusDateOrFilter, createdOrFilter, matchesEventDate, matc
 import { ORDER_TAB_ORDER, ORDER_TAB_LABELS } from '../../lib/orders/status';
 import { createServiceClient } from '../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../lib/auth-guard';
 
 const serviceClient = createServiceClient();
 
@@ -33,6 +34,7 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<{ page?: string; status?: string; expand?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortDir?: string; q?: string; channel?: string; carrier?: string; pay?: string; ret?: string; sent?: string }>;
 }) {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const userRole = user?.app_metadata?.role ?? '';

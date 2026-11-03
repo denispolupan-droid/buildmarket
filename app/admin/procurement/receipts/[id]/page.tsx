@@ -11,6 +11,7 @@ import ReceiptPaymentPanel from './ReceiptPaymentPanel';
 import { procurementPaymentOr } from '../../../../../lib/accounting/procurement-payments';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { fmtMoney as fmt } from '../../../../../lib/format';
+import { requireStaffPage } from '../../../../../lib/auth-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ const COST_TYPE_LABELS: Record<string, string> = {
 };
 
 export default async function ReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

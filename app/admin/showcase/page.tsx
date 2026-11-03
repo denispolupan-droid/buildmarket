@@ -1,12 +1,14 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../lib/supabase-server';
 import ShowcaseClient from './ShowcaseClient';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Вітрина' };
 
 export default async function ShowcasePage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');

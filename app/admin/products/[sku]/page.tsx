@@ -4,6 +4,7 @@ import ProductForm from './ProductForm';
 import Link from 'next/link';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const serviceClient = createServiceClient();
 
@@ -26,6 +27,7 @@ function backHref(back: string | undefined): string {
 }
 
 export default async function EditProductPage({ params, searchParams }: Props) {
+  await requireStaffPage('admin', 'manager');
   const { sku } = await params;
   const { back } = await searchParams;
 

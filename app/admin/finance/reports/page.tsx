@@ -7,6 +7,7 @@ import ReportsClient, { type PLData, type CFData } from './ReportsClient';
 import { computePL } from '../../../../lib/accounting/profit';
 import { kyivMonthStart, kyivYmd } from '../../../../lib/kyiv-date';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

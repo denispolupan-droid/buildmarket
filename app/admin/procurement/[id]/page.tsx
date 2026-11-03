@@ -8,10 +8,12 @@ import EditDraftButton from './EditDraftButton';
 import { procurementPaymentOr } from '../../../../lib/accounting/procurement-payments';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export default async function ProcurementDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import ModerationClient from './ModerationClient';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 export const metadata = { title: 'Модерація контенту Rozetka — Адмін' };
 
 export default async function RozetkaModerationPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const role = user?.app_metadata?.role;

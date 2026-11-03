@@ -2,12 +2,14 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import AttributesClient from './AttributesClient';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export const metadata = { title: 'Атрибути Прома — Адмін' };
 
 export default async function PromAttributesPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

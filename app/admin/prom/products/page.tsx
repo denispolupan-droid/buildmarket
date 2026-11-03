@@ -4,12 +4,14 @@ import PromPricesClient from '../prices/PromPricesClient';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export const metadata = { title: 'Товари Prom.ua — Адмін' };
 
 export default async function PromProductsPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

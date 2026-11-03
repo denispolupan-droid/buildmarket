@@ -7,6 +7,7 @@ import { fetchAllRows } from '../../../lib/db-paginate';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
 import { loadLiveAdjustments } from '../../../lib/price-adjustments-db';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 const db = createServiceClient();
 
@@ -15,6 +16,7 @@ export const metadata = { title: 'Ціни — Адмін' };
 const PRODUCT_SELECT = 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct, rozetka_markup_pct, rozetka_smart, image, sort_order';
 
 export default async function PricesPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !['admin', 'manager'].includes(user.app_metadata?.role ?? '')) redirect('/');

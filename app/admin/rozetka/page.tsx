@@ -5,12 +5,14 @@ import SellerRatingCard from './SellerRatingCard';
 import { getRozetkaSellerRating, type RozetkaSellerRating } from '../../../lib/rozetka-api';
 import { createServiceClient } from '../../../lib/supabase-service';
 import { readSetting } from '../../../lib/secrets';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 export const metadata = { title: 'Rozetka — Адмін' };
 
 const db = createServiceClient();
 
 export default async function RozetkaPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

@@ -3,10 +3,12 @@ import { redirect } from 'next/navigation';
 import ContractsClient from './ContractsClient';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export default async function ContractsPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

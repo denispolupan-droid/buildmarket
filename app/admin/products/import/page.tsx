@@ -5,10 +5,12 @@ import Link from 'next/link';
 import type { Category } from '../../../../types';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const serviceClient = createServiceClient();
 
 export default async function ImportProductsPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 

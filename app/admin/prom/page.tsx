@@ -4,12 +4,14 @@ import PromDashboardClient from './PromDashboardClient';
 import { PROM_READY_TO_SHIP_KEY, readyToShipEnabled } from '../../../lib/prom-ready-to-ship';
 import { createServiceClient } from '../../../lib/supabase-service';
 import { readSetting } from '../../../lib/secrets';
+import { requireStaffPage } from '../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export const metadata = { title: 'Prom.ua — Адмін' };
 
 export default async function PromPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

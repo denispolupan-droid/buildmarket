@@ -4,10 +4,12 @@ import ProductForm from '../[sku]/ProductForm';
 import Link from 'next/link';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const serviceClient = createServiceClient();
 
 export default async function NewProductPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 

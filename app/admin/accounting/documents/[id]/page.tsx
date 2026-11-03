@@ -10,6 +10,7 @@ import LinesEditor from '../../../../components/admin/LinesEditor';
 import PrintDocMenu from '../PrintDocMenu';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { fmtMoney as fmt } from '../../../../../lib/format';
+import { requireStaffPage } from '../../../../../lib/auth-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 };
 
 export default async function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

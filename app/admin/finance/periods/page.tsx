@@ -2,10 +2,12 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import FinanceTabs from '../FinanceTabs';
 import PeriodsClient from './PeriodsClient';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PeriodsPage() {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

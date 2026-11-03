@@ -98,6 +98,17 @@ describe('архітектурні межі (AGENTS.md)', () => {
     expect(fixed, 'ці роути вже на requireStaff — прибери їх із tests/architecture-baseline.json:\n' + fixed.join('\n')).toEqual([]);
   });
 
+  it('серверні сторінки app/admin викликають requireStaffPage (lib/auth-guard)', () => {
+    // 03.11.2026 (аудит, п. 14): layout адмінки пускає admin і manager, а 42 сторінки
+    // (зокрема всі «Фінанси») не звужували доступ — менеджер бачив би банк, ОСВ, виписки.
+    // Серверні компоненти тягнуть дані service-клієнтом, тож перевірка ролі має бути
+    // в самій сторінці. Клієнтські ('use client') сторінки даних не тягнуть — їх не рахуємо.
+    const offenders = files.map(rel)
+      .filter(r => r.startsWith('app/admin/') && r.endsWith('/page.tsx'))
+      .filter(r => { const src = read(path.join(ROOT, r)); return !/^\s*['"]use client['"]/.test(src) && !src.includes('requireStaffPage'); });
+    expect(offenders, "додай `await requireStaffPage('admin'[, 'manager'])` на початку сторінки:\n" + offenders.join('\n')).toEqual([]);
+  });
+
   it('обробники app/api експортуються через withApi (lib/api-handler): request-id, лог, алерт, 500', () => {
     // 03.11.2026: 146 із 291 роутів були без catch — необроблена помилка давала
     // порожній 500 без сліду в логах. Прямий `export async function GET` повз обгортку

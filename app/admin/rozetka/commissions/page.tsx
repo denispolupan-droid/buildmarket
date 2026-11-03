@@ -2,12 +2,14 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import RozetkaCommissionsClient from './RozetkaCommissionsClient';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 export const metadata = { title: 'Комісії Rozetka — Адмін' };
 
 const db = createServiceClient();
 
 export default async function RozetkaCommissionsPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

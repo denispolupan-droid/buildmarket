@@ -3,12 +3,14 @@ import { createSupabaseServer } from '../../../../lib/supabase-server';
 import { parsePromDeliveryTariff, PROM_DELIVERY_TARIFF_KEY } from '../../../../lib/prom-delivery-fee';
 import PromCommissionsClient from './PromCommissionsClient';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export const metadata = { title: 'Комісії Prom.ua — Адмін' };
 
 export default async function PromCommissionsPage() {
+  await requireStaffPage('admin', 'manager');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

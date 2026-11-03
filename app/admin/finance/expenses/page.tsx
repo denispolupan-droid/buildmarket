@@ -7,6 +7,7 @@ import AddExpenseButton from './AddExpenseButton';
 import AddTransferButton from './AddTransferButton';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { fmtMoney as fmt } from '../../../../lib/format';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
@@ -39,6 +40,7 @@ export default async function ExpensesPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

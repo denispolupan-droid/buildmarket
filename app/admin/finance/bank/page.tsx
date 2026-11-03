@@ -5,10 +5,12 @@ import BankStatementClient from './BankStatementClient';
 import MonoTxnsClient, { type MonoRow } from './MonoTxnsClient';
 import { getMonoLiveBalance } from '../../../../lib/mono-balance';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
 export default async function BankPage() {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

@@ -2,10 +2,12 @@
 import { createSupabaseServer } from '../../../../lib/supabase-server';
 import UnmappedClient from './UnmappedClient';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const serviceClient = createServiceClient();
 
 export default async function UnmappedPage() {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

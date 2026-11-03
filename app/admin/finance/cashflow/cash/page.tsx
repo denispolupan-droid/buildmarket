@@ -3,12 +3,14 @@ import { redirect } from 'next/navigation';
 import FinanceTabs from '../../FinanceTabs';
 import CashRegisterClient, { type CashEntry } from './CashRegisterClient';
 import { createServiceClient } from '../../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../../lib/auth-guard';
 
 export const dynamic = 'force-dynamic';
 
 const db = createServiceClient();
 
 export default async function CashRegisterPage() {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');

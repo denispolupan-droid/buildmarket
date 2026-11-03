@@ -6,6 +6,7 @@ import { loadInTransitCommission } from '../../../../lib/accounting/marketplace-
 import { getRzPayCreds } from '../../../../lib/rozetkapay-api';
 import RozetkaPayKeysCard from './RozetkaPayKeysCard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { requireStaffPage } from '../../../../lib/auth-guard';
 
 const db = createServiceClient();
 
@@ -42,6 +43,7 @@ async function loadMarketplace(marketplace: 'prom' | 'rozetka' | 'epicentr') {
 }
 
 export default async function MarketplaceBalancePage() {
+  await requireStaffPage('admin');
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.app_metadata?.role !== 'admin') redirect('/');
