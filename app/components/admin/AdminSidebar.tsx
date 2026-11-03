@@ -4,55 +4,9 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import {
-  ShoppingBag, Package, Truck, Store,
-  Settings, BookOpen, BarChart3, Users, Star,
-  MessageSquare, ShoppingCart, Mail, ExternalLink,
-  ChevronLeft, ChevronRight, ShoppingBasket, Sparkles, Megaphone,
-  Tags, Layers, Menu, X, Search, LayoutGrid,
-} from 'lucide-react';
-
-function SocketIcon({ size = 24, color = 'currentColor', strokeWidth = 2, style }: {
-  size?: number | string; color?: string; strokeWidth?: number | string; style?: React.CSSProperties;
-}) {
-  const s = Number(size);
-  const sw = Number(strokeWidth);
-  return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={style}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.5 9v4.5" />
-      <path d="M14.5 9v4.5" />
-      <path d="M9.5 16.5h5" />
-    </svg>
-  );
-}
-
-const NAV = [
-  { href: '/admin',                      label: 'Замовлення',     icon: ShoppingBag,    exact: true  },
-  { href: '/admin/products',             label: 'Товари',         icon: Package,        exact: false },
-  { href: '/admin/prices',               label: 'Ціни',           icon: Tags,           exact: false },
-  { href: '/admin/showcase',             label: 'Вітрина',        icon: LayoutGrid,     exact: false },
-  { href: '/admin/suppliers',            label: 'Постачальники',  icon: Truck,          exact: false },
-  { href: '/admin/partners',             label: 'Контрагенти',    icon: Users,          exact: false },
-  { href: '/admin/procurement',          label: 'Закупівля',      icon: ShoppingCart,   exact: false },
-  // Усі площадки під одним пунктом; перемикач Prom/Rozetka/Епіцентр — усередині
-  // розділу (MarketplaceTabs). Адреси лишились ті самі, тому закладки й
-  // посилання з телеграм-алертів працюють.
-  { href: '/admin/prom',                 label: 'Маркетплейси',   icon: ShoppingBasket, exact: false },
-  { href: '/admin/seo',                  label: 'SEO',            icon: Search,         exact: false },
-  { href: '/admin/blog',                 label: 'Блог',           icon: BookOpen,       exact: false },
-  { href: '/admin/finance',              label: 'Фінанси',        icon: BarChart3,      exact: false },
-  // «Залишки» переїхали вкладками у «Закупівлю» — там же, де їх поповнюють.
-  { href: '/admin/accounting/documents', label: 'Облік',          icon: BookOpen,       exact: false },
-  { href: '/admin/chat',                 label: 'Чати',           icon: MessageSquare,  exact: false },
-  { href: '/admin/digest',               label: 'Дайджест',       icon: Sparkles,       exact: false },
-  { href: '/admin/mail',                 label: 'Пошта',          icon: Mail,           exact: false },
-  { href: '/admin/reviews',              label: 'Відгуки',        icon: Star,           exact: false },
-  { href: '/admin/promo',                label: 'Акції та банери', icon: Megaphone,      exact: false },
-  { href: '/admin/promo-codes',          label: 'Промокоди',      icon: Tags,            exact: false },
-  { href: '/admin/settings',             label: 'Налаштування',   icon: Settings,       exact: false },
-];
+import { Store, ExternalLink, ChevronLeft, ChevronRight, Menu, X, Search } from 'lucide-react';
+import { NAV_GROUPS, isNavActive } from './admin-nav';
+import CommandPalette from './CommandPalette';
 
 const T = {
   textIdle:   '#CBD5E1',
@@ -87,6 +41,19 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
   // before the effect below can run.
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Ctrl+K / ⌘K на будь-якій сторінці адмінки відкриває палітру
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(v => !v);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     if (localStorage.getItem('admin_sidebar_collapsed') === '1') setCollapsed(true);
@@ -234,16 +201,26 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
       {/* ── Nav ──────────────────────────────────────────────────── */}
       <nav
         className="admin-sidebar-nav"
-        style={{ flex: 1, padding: effectiveCollapsed ? '10px 8px 0' : '10px 10px 0', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', overflowX: 'hidden' }}
+        style={{ flex: 1, padding: effectiveCollapsed ? '0 8px' : '0 10px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', overflowX: 'hidden' }}
       >
-        {NAV.map(({ href, label, icon: Icon, exact }) => {
-          const active = href === '/admin'
-            ? (pathname === '/admin' || pathname.startsWith('/admin/orders') || pathname.startsWith('/admin/dispatch'))
-            : href === '/admin/partners'
-            ? (pathname.startsWith('/admin/partners') || pathname.startsWith('/admin/contracts'))
-            : href === '/admin/prom'
-            ? (pathname.startsWith('/admin/prom') || pathname.startsWith('/admin/rozetka') || pathname.startsWith('/admin/epicentr'))
-            : exact ? pathname === href : pathname.startsWith(href);
+        <button
+          type="button"
+          className={effectiveCollapsed ? 'admin-search-btn is-collapsed' : 'admin-search-btn'}
+          title={effectiveCollapsed ? 'Пошук (Ctrl+K)' : undefined}
+          onClick={() => setPaletteOpen(true)}
+        >
+          <Search size={14} />
+          {!effectiveCollapsed && <><span>Пошук…</span><kbd className="admin-search-kbd">Ctrl K</kbd></>}
+        </button>
+
+        {NAV_GROUPS.map(group => (
+          <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div className={effectiveCollapsed ? 'admin-nav-group is-collapsed' : 'admin-nav-group'} aria-hidden={effectiveCollapsed}>
+              {!effectiveCollapsed && group.title}
+            </div>
+        {group.items.map(item => {
+          const { href, label, icon: Icon } = item;
+          const active = isNavActive(item, pathname);
 
           const badgeCount =
             href === '/admin'             && newOrdersCount > 0  ? newOrdersCount  :
@@ -304,6 +281,8 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
             </Link>
           );
         })}
+          </div>
+        ))}
       </nav>
 
       {/* ── Collapse toggle — desktop only, meaningless for a mobile drawer ── */}
@@ -344,6 +323,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
         </Link>
       </div>
       </aside>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </>
   );
 }
