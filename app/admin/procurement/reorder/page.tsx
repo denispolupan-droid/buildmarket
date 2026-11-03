@@ -70,23 +70,25 @@ export default async function ReorderPage() {
     .in('document_id', openPOIds)
   : { data: [] };
 
-  // Відкритий попит з замовлень покупців
-  const { data: waitingOrders } = await db
-    .from('orders')
-    .select('id, items')
-    .in('status', ['confirmed', 'awaiting_stock']);
+  // Відкритий попит з замовлень покупців — з order_lines по потрібних SKU
+  // (етап B order_lines, як /api/admin/procurement/demand), а не перебір jsonb
+  // items усіх відкритих замовлень без ліміту.
+  const { data: demandLines } = await db
+    .from('order_lines')
+    .select('sku, qty, order_id, orders!inner(status)')
+    .in('sku', skus)
+    .in('orders.status', ['confirmed', 'awaiting_stock'])
+    .limit(5000);
 
-  const demandMap: Record<string, { orders: number; qty: number }> = {};
-  for (const o of waitingOrders ?? []) {
-    for (const item of (o.items as { sku: string; qty: number }[] ?? [])) {
-      if (skus.includes(item.sku)) {
-        demandMap[item.sku] = {
-          orders: (demandMap[item.sku]?.orders ?? 0) + 1,
-          qty:    (demandMap[item.sku]?.qty    ?? 0) + item.qty,
-        };
-      }
-    }
+  const demandAgg = new Map<string, { orders: Set<string>; qty: number }>();
+  for (const l of demandLines ?? []) {
+    const a = demandAgg.get(l.sku) ?? { orders: new Set<string>(), qty: 0 };
+    a.orders.add(l.order_id);
+    a.qty += Number(l.qty) || 0;
+    demandAgg.set(l.sku, a);
   }
+  const demandMap: Record<string, { orders: number; qty: number }> = {};
+  for (const [sku, a] of demandAgg) demandMap[sku] = { orders: a.orders.size, qty: a.qty };
 
   // Скільки вже замовлено у відкритих ЗП
   const orderedMap: Record<string, number> = {};
