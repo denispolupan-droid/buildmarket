@@ -57,8 +57,8 @@ export default function CartPeek({ items, total, lang, placement }: {
             </div>
             <div className="cart-peek-info">
               <div className="cart-peek-name">{(lang === 'ru' && i.name_ru) || i.name}</div>
-              <div className="cart-peek-meta">{fmt(i.price)} ₴ / {t('шт.', 'шт.')}</div>
             </div>
+            <div className="cart-peek-meta">{fmt(i.price)} ₴</div>
                 <div className="cart-peek-qty">
                   <button type="button" aria-label={t('Менше', 'Меньше')}
                     disabled={i.qty <= i.min_order} onClick={() => step(i, -1)}>−</button>
