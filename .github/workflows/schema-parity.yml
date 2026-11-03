@@ -40,8 +40,9 @@ jobs:
           QFN='{"query":"SELECT p.proname || '"'"'('"'"' || pg_get_function_identity_arguments(p.oid) || '"'"')'"'"' AS fn, md5(regexp_replace(pg_get_functiondef(p.oid), '"'"'\\s+'"'"', '"'"''"'"', '"'"'g'"'"')) AS sig FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = '"'"'public'"'"' AND p.prokind IN ('"'"'f'"'"','"'"'p'"'"') ORDER BY 1"}'
           QTRG='{"query":"SELECT c.relname || '"'"'.'"'"' || t.tgname AS trg, pg_get_triggerdef(t.oid) AS def FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = '"'"'public'"'"' AND NOT t.tgisinternal ORDER BY 1"}'
           QIDX='{"query":"SELECT tablename || '"'"'.'"'"' || indexname AS idx, indexdef FROM pg_indexes WHERE schemaname = '"'"'public'"'"' ORDER BY 1"}'
+          QCON='{"query":"SELECT c.conrelid::regclass::text || '"'"'.'"'"' || c.conname AS con, pg_get_constraintdef(c.oid) AS def FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE n.nspname = '"'"'public'"'"' AND c.contype IN ('"'"'p'"'"','"'"'u'"'"','"'"'f'"'"','"'"'c'"'"','"'"'x'"'"') ORDER BY 1"}'
           for ref in "$PROD_REF" "$TEST_REF"; do
-            for pair in "QCOLS:cols" "QRLS:rls" "QPOL:pol" "QFN:fn" "QTRG:trg" "QIDX:idx"; do
+            for pair in "QCOLS:cols" "QRLS:rls" "QPOL:pol" "QFN:fn" "QTRG:trg" "QIDX:idx" "QCON:con"; do
               var="${pair%%:*}"; kind="${pair##*:}"
               curl -sf -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
                 "https://api.supabase.com/v1/projects/$ref/database/query" -d "${!var}" > "$kind-$ref.json"
@@ -75,12 +76,13 @@ jobs:
           compare('function', load('fn', P), load('fn', T), f => f.fn, f => f.sig);
           compare('trigger', load('trg', P), load('trg', T), t => t.trg, t => t.def.replace(/\s+/g, ' '));
           compare('index', load('idx', P), load('idx', T), i => i.idx, i => i.indexdef.replace(/\s+/g, ' '));
+          compare('constraint', load('con', P), load('con', T), c => c.con, c => c.def.replace(/\s+/g, ' '));
 
           if (report.length) {
             for (const r of report) console.log('::error::' + r);
             process.exit(1);
           }
-          console.log('✓ schemas, RLS, policies, functions, triggers and indexes match');
+          console.log('✓ schemas, RLS, policies, functions, triggers, indexes and constraints match');
           EOF
 
       - name: Alert on drift
