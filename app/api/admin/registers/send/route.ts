@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { npScanSheetPdf } from '../../../../../lib/np-api';
+import { npScanSheetPdf, getNpApiKey } from '../../../../../lib/np-api';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
-import { readSetting } from '../../../../../lib/secrets';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 
@@ -12,10 +11,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
 const serviceClient = createServiceClient();
-
-async function getNpApiKey() {
-  return (await readSetting(serviceClient, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
-}
 
 async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {
   const res = await fetch(NP_URL, {

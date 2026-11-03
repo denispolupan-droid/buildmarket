@@ -26,6 +26,7 @@ async function markDelivered(orderId: string, actor: string): Promise<boolean> {
 import { notifyParcelEvent } from './notify/parcel';
 import { chargeDropshipReturnFee } from './dropship-return-fee';
 import { createServiceClient, type TableUpdate } from './supabase-service';
+import { getNpApiKey } from './np-api';
 
 // Синхронізація руху посилок (НП + точки видачі Rozetka) і супутні проводки.
 // Живе в lib, а не в роуті крона, бо викликається З ДВОХ місць: щогодинний крон
@@ -157,7 +158,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        apiKey: process.env.NOVA_POSHTA_API_KEY,
+        apiKey: await getNpApiKey(),
         modelName: 'TrackingDocument',
         calledMethod: 'getStatusDocuments',
         methodProperties: {
@@ -354,7 +355,7 @@ export async function syncDeliveryStatuses(actor: string): Promise<DeliverySyncR
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            apiKey: process.env.NOVA_POSHTA_API_KEY,
+            apiKey: await getNpApiKey(),
             modelName: 'TrackingDocument',
             calledMethod: 'getStatusDocuments',
             methodProperties: { Documents: part.map(n => ({ DocumentNumber: n })) },

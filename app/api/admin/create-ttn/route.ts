@@ -10,7 +10,7 @@ import { legalRecipientFromCustomer, taxNumberLabel } from '../../../../lib/np-l
 import { withNpRetry } from '../../../../lib/np-retry';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
-import { readSetting } from '../../../../lib/secrets';
+import { getNpApiKey } from '../../../../lib/np-api';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -82,7 +82,7 @@ async function _POST(req: NextRequest) {
 
   // API key: app_settings takes priority over env var — same precedence as /api/admin/np-sender,
   // which is what resolved senderRef/senderContactRef/etc. for this same request.
-  const apiKey = (await readSetting(serviceClient, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
+  const apiKey = await getNpApiKey();
   if (!apiKey) {
     return NextResponse.json({ error: 'API ключ НП не налаштовано' }, { status: 400 });
   }

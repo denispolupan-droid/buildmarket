@@ -156,6 +156,17 @@ describe('архітектурні межі (AGENTS.md)', () => {
     }
     expect(offenders, 'читай/пиши секрет через readSetting/writeSetting з lib/secrets:\n' + offenders.join('\n')).toEqual([]);
   });
+
+  it('ключ НП — лише через getNpApiKey (lib/np-api), не через process.env напряму', () => {
+    // 03.11.2026: /api/novaposhta, delivery-sync і np-debug читали ЛИШЕ
+    // process.env.NOVA_POSHTA_API_KEY (ключ іншого кабінету). Коли змінну прибрали,
+    // модалка ТТН і вибір відділення на сайті лишились без довідника, а крон статусів
+    // доставки — без ключа. Єдине місце з env-фолбеком — lib/np-api.ts.
+    const offenders = files.map(rel)
+      .filter(r => r !== 'lib/np-api.ts')
+      .filter(r => /process\.env\.NOVA_POSHTA_API_KEY\b/.test(read(path.join(ROOT, r)).replace(/\/\/[^\n]*/g, '')));
+    expect(offenders, 'бери ключ через getNpApiKey() з lib/np-api:\n' + offenders.join('\n')).toEqual([]);
+  });
 });
 
 

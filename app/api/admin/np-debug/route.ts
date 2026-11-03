@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { withApi } from '../../../../lib/api-handler';
+import { getNpApiKey } from '../../../../lib/np-api';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -8,7 +9,7 @@ async function npCall(modelName: string, calledMethod: string, methodProperties:
   const res = await fetch(NP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey: process.env.NOVA_POSHTA_API_KEY, modelName, calledMethod, methodProperties }),
+    body: JSON.stringify({ apiKey: await getNpApiKey(), modelName, calledMethod, methodProperties }),
   });
   return res.json();
 }

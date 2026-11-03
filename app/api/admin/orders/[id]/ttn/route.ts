@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '../../../../../../lib/supabase-server';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { npMarkingPdf } from '../../../../../../lib/np-api';
+import { npMarkingPdf, getNpApiKey } from '../../../../../../lib/np-api';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
 import { isManualPostalCarrier } from '../../../../../../lib/carriers';
 import { withApi } from '../../../../../../lib/api-handler';
-import { readSetting } from '../../../../../../lib/secrets';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -68,7 +67,7 @@ async function _GET(
     return NextResponse.json({ error: 'Це не доставка Новою Поштою' }, { status: 400 });
   }
 
-  const apiKey = (await readSetting(db, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
+  const apiKey = await getNpApiKey();
 
   try {
     const buf = await npMarkingPdf(apiKey, [order.tracking_number]);
@@ -93,7 +92,7 @@ async function _DELETE(
   const { id } = await params;
   const db = createServiceClient();
 
-  const apiKey = (await readSetting(db, 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
+  const apiKey = await getNpApiKey();
 
   const { data: order, error: orderErr } = await db
     .from('orders')

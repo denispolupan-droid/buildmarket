@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withNpRetry } from '../../../lib/np-retry';
 import { requireStaff } from '../../../lib/auth-guard';
 import { withApi } from '../../../lib/api-handler';
+import { getNpApiKey } from '../../../lib/np-api';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -22,7 +23,9 @@ async function _POST(req: NextRequest) {
   }
 
   // Settings' "Перевірити" button passes the not-yet-saved key here to test it before saving —
-  // everyone else falls back to the configured key (app_settings, checked by the caller, or env).
+  // everyone else uses the configured key: Vault (lib/secrets, np_api_key) — не env.
+  // 03.11.2026: роут читав ЛИШЕ process.env.NOVA_POSHTA_API_KEY (ключ іншого кабінету);
+  // коли змінну прибрали, модалка ТТН і вибір відділення на сайті лишились без довідника.
   // Власний ключ — лише адміну: інакше роут був би анонімним релеєм до API НП
   // з будь-яким ключем (аудит 31.10, §5 Low).
   const { _apiKeyOverride, ...rest } = body as { _apiKeyOverride?: string } & Record<string, unknown>;
@@ -30,7 +33,7 @@ async function _POST(req: NextRequest) {
     const auth = await requireStaff('admin');
     if (!auth.ok) return auth.response;
   }
-  const apiKey = _apiKeyOverride || process.env.NOVA_POSHTA_API_KEY;
+  const apiKey = _apiKeyOverride || await getNpApiKey();
   if (!apiKey) {
     return NextResponse.json({ error: 'Nova Poshta API key not configured' }, { status: 500 });
   }
