@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { parseBody, z } from '../../../../../lib/validate';
 
 const db = createServiceClient();
 
@@ -13,13 +14,13 @@ async function checkAdmin() {
 async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { sku, prom_markup_pct, price_wholesale } = await req.json() as {
-    sku:             string;
-    prom_markup_pct?: number | null;
-    price_wholesale?: number | null;
-  };
-
-  if (!sku) return NextResponse.json({ error: 'sku required' }, { status: 400 });
+  const parsed = await parseBody(req, z.object({
+    sku:              z.string().trim().min(1, 'sku обовʼязковий'),
+    prom_markup_pct:  z.number().min(-100).max(1000).nullable().optional(),
+    price_wholesale:  z.number().min(0).max(10_000_000).nullable().optional(),
+  }));
+  if (!parsed.ok) return parsed.response;
+  const { sku, prom_markup_pct, price_wholesale } = parsed.data;
 
   const [productRes, stockRes] = await Promise.all([
     prom_markup_pct !== undefined

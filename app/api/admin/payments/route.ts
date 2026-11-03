@@ -2,41 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { recordCustomerPayment, recordAdvanceReceived } from '../../../../lib/accounting/money';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { withApi } from '../../../../lib/api-handler';
+import { parseBody, z, zMoney, zYmd, zText } from '../../../../lib/validate';
 
 async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
   const { user } = auth;
 
-  const {
-    contractId,
-    customerId,
-    amount,
-    paymentMethod,
-    businessDate,
-    description,
-    isAdvance,
-    specialCounterparty,
-  } = await req.json() as {
-    contractId?:   string;
-    customerId?:   string;
-    amount:        number;
-    paymentMethod: 'bank' | 'cash' | 'acquiring';
-    businessDate:  string;
-    description?:  string;
-    isAdvance?:    boolean;
+  // Сума, спосіб, дата — за схемою ДО будь-якого запису (аудит 31.10, п. 13)
+  const parsed = await parseBody(req, z.object({
+    contractId:    z.string().min(1).optional(),
+    customerId:    z.string().min(1).optional(),
+    amount:        zMoney,
+    paymentMethod: z.enum(['bank', 'cash', 'acquiring']),
+    businessDate:  zYmd,
+    description:   zText(500),
+    isAdvance:     z.boolean().optional(),
     /** Виплата від спец-дебітора без договору: НП (COD) або маркетплейс */
-    specialCounterparty?: 'np:cod' | 'mp:prom' | 'mp:rozetka';
-  };
+    specialCounterparty: z.enum(['np:cod', 'mp:prom', 'mp:rozetka']).optional(),
+  }));
+  if (!parsed.ok) return parsed.response;
+  const { contractId, customerId, amount, paymentMethod, businessDate, description, isAdvance, specialCounterparty } = parsed.data;
 
   const SPECIAL = { 'np:cod': 'Виплата НП (наложені платежі)', 'mp:prom': 'Виплата Prom.ua', 'mp:rozetka': 'Виплата Rozetka' } as const;
-
-  if (!amount || amount <= 0) {
-    return NextResponse.json({ error: 'Невірні параметри' }, { status: 400 });
-  }
-  if (specialCounterparty && !(specialCounterparty in SPECIAL)) {
-    return NextResponse.json({ error: 'Невірний контрагент' }, { status: 400 });
-  }
 
   // Виплата від спец-дебітора: закриває дебіторку np:cod / mp:* (створену
   // виручкою продажів без customer_id) — DR bank / CR customer(спец-контрагент).

@@ -4,6 +4,7 @@ import { createServiceClient } from '../../../../../lib/supabase-service';
 import { createDebtAdjustment, listDebtAdjustments } from '../../../../../lib/accounting/debt-adjustment';
 import type { AdjustmentLineInput } from '../../../../../lib/accounting/debt-adjustment-rules';
 import { withApi } from '../../../../../lib/api-handler';
+import { parseBody, z, zMoney, zText, zYmdOpt } from '../../../../../lib/validate';
 
 // «Коригування боргу» (КБ): список і проведення. Документ проводиться одразу —
 // як платіжні ваучери; чернеток немає, помилка валідації = нічого не записано.
@@ -25,15 +26,22 @@ async function _POST(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
 
-  const body = await req.json().catch(() => ({})) as {
-    business_date?: string; notes?: string; lines?: AdjustmentLineInput[];
-  };
-  if (!Array.isArray(body.lines) || body.lines.length === 0) {
-    return NextResponse.json({ error: 'Додайте хоча б один рядок' }, { status: 400 });
-  }
-  // Суми — числа з клієнта, але межі перевіряє сервер за леджером; клієнтським
-  // цифрам тут не довіряють, вони лише кажуть, ЩО перенести.
-  const lines = body.lines.map(l => ({ ...l, amount: Number(l.amount) })) as AdjustmentLineInput[];
+  // Форма рядків — за схемою (аудит 31.10, п. 13); межі сум перевіряє сервер за
+  // леджером: клієнтські цифри лише кажуть, ЩО перенести.
+  const zSide = z.object({ account: z.string().min(1), party: z.string().min(1), orderId: z.string().nullable().optional() });
+  const zLine = z.discriminatedUnion('op', [
+    z.object({ op: z.literal('transfer'),  from: zSide, to: zSide, amount: zMoney, note: zText(500).nullable() }),
+    z.object({ op: z.literal('offset'),    customer: zSide, supplier: zSide, amount: zMoney, note: zText(500).nullable() }),
+    z.object({ op: z.literal('write_off'), side: zSide, kind: z.enum(['forgive', 'income']), amount: zMoney, note: zText(500).nullable() }),
+  ]);
+  const parsed = await parseBody(req, z.object({
+    business_date: zYmdOpt,
+    notes:         zText(1000),
+    lines:         z.array(zLine).min(1, 'Додайте хоча б один рядок').max(200),
+  }));
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
+  const lines = body.lines as AdjustmentLineInput[];
 
   try {
     const res = await createDebtAdjustment({

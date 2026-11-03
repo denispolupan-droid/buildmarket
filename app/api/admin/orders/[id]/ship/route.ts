@@ -19,6 +19,14 @@ import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn
 import { withApi } from '../../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 
+// Таймаут чи збій Prom при пуші ЕН — не втрата: крон prom-orders (кожні 5 хв)
+// звіряє наш номер із тим, що бачить Prom, і досилає. Алерт має це казати,
+// інакше власник біжить перевіряти (03.11.2026, #26111012 — крон допушив за 30 с).
+function promTtnAlertDetails(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return `${msg}. Крон Prom допушить номер протягом ≤5 хв — перевіряйте в кабінеті Prom, лише якщо його там не буде.`;
+}
+
 async function _POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -193,8 +201,7 @@ async function _POST(
       setPromTTN(rePromId, reTtn, (order.delivery_type as string | null) ?? 'nova_poshta')
         .catch(err => {
           console.warn('[ship] setPromTTN failed (re-ship):', err);
-          alertAdmin(`⚠ ЕН ${reTtn} не передана в Prom для #${order.order_number}`,
-            err instanceof Error ? err.message : String(err));
+          alertAdmin(`⚠ ЕН ${reTtn} не передана в Prom для #${order.order_number}`, promTtnAlertDetails(err));
         });
     }
     const reEpiId = order.epicentr_order_id as string | null;
@@ -405,8 +412,7 @@ async function _POST(
     }).catch(err => {
       console.warn('[ship] setPromTTN failed:', err);
       // Відповідь уже пішла менеджеру — єдиний спосіб не загубити відмову
-      alertAdmin(`⚠ ЕН ${effectiveTtn} не передана в Prom для #${order.order_number}`,
-        err instanceof Error ? err.message : String(err));
+      alertAdmin(`⚠ ЕН ${effectiveTtn} не передана в Prom для #${order.order_number}`, promTtnAlertDetails(err));
     });
   }
 

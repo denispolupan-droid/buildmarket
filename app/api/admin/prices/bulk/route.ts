@@ -4,6 +4,7 @@ import { saveProductMarkups, type ProductMarkup } from '../../../../../lib/price
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { parseBody, z } from '../../../../../lib/validate';
 
 const db = createServiceClient();
 
@@ -22,18 +23,28 @@ async function checkAdmin() {
 async function _PATCH(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json();
+  // Ціни — числа 0…10 млн або null («очистити»); рядок чи NaN не доходять до БД
+  // (аудит 31.10, п. 13). null НЕ зводимо до 0 — для ціни це різні речі.
+  const zPrice = z.number().min(0, 'ціна не може бути відʼємною').max(10_000_000, 'занадто велика ціна').nullable().optional();
+  const zPct   = z.number().min(-100).max(1000).nullable().optional();
+  const parsed = await parseBody(req, z.object({
+    skus:          z.array(z.string().min(1)).min(1).max(5000).optional(),
+    price_cost:    zPrice, price_unit: zPrice, price_retail: zPrice, price_drop: zPrice,
+    price_locked:  z.boolean().optional(),
+    batch:         z.array(z.object({ sku: z.string().min(1), unit: zPrice, retail: zPrice, drop: zPrice })).min(1).max(5000).optional(),
+    is_promo:      z.boolean().optional(),
+    overrides:     z.array(z.object({
+      sku: z.string().min(1),
+      markup_retail: zPct, markup_wholesale: zPct, markup_drop: zPct,
+      fixed_retail: zPrice, fixed_wholesale: zPrice, fixed_drop: zPrice,
+    })).max(5000).optional(),
+  }));
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   // ── Single edit mode ────────────────────────────────────────────────────────
   if (body.skus) {
-    const { skus, price_cost, price_unit, price_retail, price_drop, price_locked } = body as {
-      skus:          string[];
-      price_cost?:   number | null;
-      price_unit?:   number | null;
-      price_retail?: number | null;
-      price_drop?:   number | null;
-      price_locked?: boolean;
-    };
+    const { skus, price_cost, price_unit, price_retail, price_drop, price_locked } = body;
 
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (price_cost    !== undefined) update.price_cost    = price_cost;
@@ -52,7 +63,7 @@ async function _PATCH(req: NextRequest) {
 
   // ── Batch repricing mode ────────────────────────────────────────────────────
   if (body.batch) {
-    const batch    = body.batch as { sku: string; unit?: number | null; retail?: number | null; drop?: number | null }[];
+    const batch    = body.batch;
     const is_promo = !!body.is_promo;
 
     const errors: string[] = [];
@@ -83,10 +94,10 @@ async function _PATCH(req: NextRequest) {
     // щоб вона такою й лишилась після синку. Помилку тут не ховаємо: без
     // наценки переоцінка знову проживе до наступного синку.
     let overridesSaved = 0;
-    if (Array.isArray(body.overrides) && body.overrides.length) {
+    if (body.overrides?.length) {
       const errs = await saveProductMarkups(db, body.overrides as ProductMarkup[]);
       if (errs.length) return NextResponse.json({ error: 'Ціни оновлено, але наценки не збереглись: ' + errs.join('; ') }, { status: 500 });
-      overridesSaved = (body.overrides as ProductMarkup[]).length;
+      overridesSaved = body.overrides.length;
     }
 
     revalidateTag('products', 'max');
