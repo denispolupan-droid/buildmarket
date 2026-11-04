@@ -555,14 +555,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
               {/* Contact info */}
               <Section icon={User} title={tr.sectionContact}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
-                  {!isRetail && (
-                    <div id="field-company" style={{ gridColumn: '1 / -1' }}>
-                      <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
-                      <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder={tr.companyPh} value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
-                      {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errCompany}</p>}
-                    </div>
-                  )}
+                {/* Рядок 1: ПІБ; рядок 2: компанія (не для роздрібу) · телефон · email */}
+                <div className="cart-contact-grid">
                   <div id="field-lastName">
                     <label style={{ ...labelStyle, color: errors.has('lastName') ? '#EF4444' : undefined }}>{tr.lastName}</label>
                     <input style={{ ...inputStyle, border: err('lastName') ?? inputStyle.border }} placeholder={tr.lastNamePh} value={lastName} onChange={e => { setLastName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('lastName'); return n; }); }} />
@@ -573,10 +567,17 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     <input style={{ ...inputStyle, border: err('firstName') ?? inputStyle.border }} placeholder={tr.firstNamePh} value={firstName} onChange={e => { setFirstName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('firstName'); return n; }); }} />
                     {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errFirstName}</p>}
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  <div>
                     <label style={labelStyle}>{tr.middleName} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.middleNameOpt}</span></label>
                     <input style={inputStyle} placeholder={tr.middleNamePh} value={middleName} onChange={e => setMiddleName(e.target.value)} />
                   </div>
+                  {!isRetail && (
+                    <div id="field-company">
+                      <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
+                      <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder={tr.companyPh} value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
+                      {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errCompany}</p>}
+                    </div>
+                  )}
                   <div id="field-phone">
                     <label style={{ ...labelStyle, color: errors.has('phone') ? '#EF4444' : undefined }}>{tr.phone}</label>
                     <input
@@ -597,7 +598,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     />
                     {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPhone}</p>}
                   </div>
-                  <div id="field-email" style={{ gridColumn: '1 / -1' }}>
+                  <div id="field-email" className={isRetail ? 'cart-contact-grid__wide' : undefined}>
                     <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>{tr.email}</label>
                     <input style={{ ...inputStyle, border: err('email') ?? inputStyle.border }} type="email" placeholder="company@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(s => { const n = new Set(s); n.delete('email'); return n; }); }} />
                     {errors.has('email') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errEmail}</p>}

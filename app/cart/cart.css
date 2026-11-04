@@ -1,3 +1,12 @@
+/* «Контактні дані»: три колонки — ПІБ одним рядком, компанія · телефон · email другим.
+   У роздрібу компанії немає — email бере дві колонки. На телефоні — одна колонка. */
+.cart-contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
+.cart-contact-grid__wide { grid-column: span 2; }
+@media (max-width: 768px) {
+  .cart-contact-grid { grid-template-columns: 1fr; }
+  .cart-contact-grid__wide { grid-column: auto; }
+}
+
 /* Список «Ваше замовлення» у кошику. Префікс cart- — CSS сторінок глобальний, назви не мають збігатися.
    Шкала: мета 11.5 / назва 14 / ціна за од. 12 / сума 15 — лічильник 32px під цю шкалу. */
 .cart-item { display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; }
