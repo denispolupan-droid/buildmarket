@@ -262,7 +262,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
   // Однаковий список для роздрібу й опту: рахунок (IBAN) потрібен і роздрібному покупцю,
   // якому треба безготівкові документи на 1 шт. (рішення власника 04.11.2026).
-  // Обрав рахунок — з'являється обов'язкове поле «Назва компанії» (див. collectErrors).
+  // Назва компанії для рахунку в роздрібі не обов'язкова — покупцем у рахунку буде ПІБ.
   const PAYMENT_OPTIONS = [
     { value: 'card',    label: tr.payCard,         sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
     { value: 'cod',     label: tr.payCodLabel,     sub: null },
@@ -409,8 +409,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // Чиста перевірка (без setState) — нею ж рахуємо, які секції вже заповнені (підсвітка іконок)
   function collectErrors(): Set<string> {
     const e = new Set<string>();
-    // Назва компанії потрібна оптовику і будь-кому, хто платить за рахунком (документи на ФОП/ТОВ)
-    if ((!isRetail || payment === 'invoice') && !company.trim()) e.add('company');
+    // Назва компанії — лише для опту. Роздріб може платити за рахунком і як фізособа: у рахунку тоді ПІБ (lib/invoice-buyer)
+    if (!isRetail && !company.trim()) e.add('company');
     if (!lastName.trim())  e.add('lastName');
     if (!firstName.trim()) e.add('firstName');
     if (!/^\+?3?8?(0\d{9})$/.test(phone.replace(/[\s\-()]/g, ''))) e.add('phone');
@@ -564,7 +564,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
   const contactSummary = [
     [lastName, firstName, middleName].map(s => s.trim()).filter(Boolean).join(' '),
-    (!isRetail || payment === 'invoice') ? company.trim() : '',
+    !isRetail ? company.trim() : '',
     phone.trim(), email.trim(),
   ].filter(Boolean).join(' · ');
   const deliverySummary = (() => {
@@ -657,7 +657,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     <label style={labelStyle}>{tr.middleName} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.middleNameOpt}</span></label>
                     <input style={inputStyle} placeholder={tr.middleNamePh} value={middleName} onChange={e => setMiddleName(e.target.value)} />
                   </div>
-                  {(!isRetail || payment === 'invoice') && (
+                  {!isRetail && (
                     <div id="field-company">
                       <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
                       <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder={tr.companyPh} value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
