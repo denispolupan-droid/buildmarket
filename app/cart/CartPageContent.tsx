@@ -1069,7 +1069,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
               {/* Totals + submit */}
               <div className="cart-totals-block" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
-
+                {/* Дві колонки (вузько — одна): ліворуч умови й підказки, праворуч суми й кнопка —
+                    щоб підписи й суми не роз'їжджались на всю ширину лівої колонки сторінки */}
+                <div className="cart-totals-grid">
+                <div className="cart-totals-side">
                 {/* Promo code input */}
                 <div style={{ marginBottom: '16px' }}>
                   {promoApplied ? (
@@ -1107,47 +1110,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     </div>
                   )}
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{tr.itemsTotal(totalItems)}</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtMoney(totalPrice)} грн</span>
-                  </div>
-                  {promoApplied && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                      <span style={{ color: '#15803D' }}>{tr.promoDiscount}</span>
-                      <span style={{ fontWeight: 600, color: '#15803D' }}>−{fmtMoney(promoApplied.discountAmount)} грн</span>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{tr.deliveryLabel}</span>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{tr.deliveryByCarrier}</span>
-                  </div>
-                </div>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
-                  <span style={{ color: 'var(--text-primary)' }}>{tr.total}</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</span>
-                </div>
-                {role === 'wholesale' && (() => {
-                  const pct     = Math.min(100, Math.round((totalPrice / WHOLESALE_MIN) * 100));
-                  const metMin  = totalPrice >= WHOLESALE_MIN;
-                  const need    = WHOLESALE_MIN - totalPrice;
-                  return (
-                    <div style={{ marginBottom: '14px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                        <span style={{ color: metMin ? '#15803D' : 'var(--text-secondary)', fontWeight: 600 }}>
-                          {metMin ? tr.minReached : tr.minNeeded(WHOLESALE_MIN)}
-                        </span>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                          {metMin ? '' : tr.minRemaining(need)}
-                        </span>
-                      </div>
-                      <div className="wm-progress">
-                        <div className={'wm-progress__fill' + (metMin ? ' met' : '')} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })()}
 
                 {role === 'guest' && (
                   <div style={{
@@ -1199,6 +1161,49 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     {tr.noCallbackLabel}
                   </span>
                 </div>
+                </div>
+                <div className="cart-totals-sum">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{tr.itemsTotal(totalItems)}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtMoney(totalPrice)} грн</span>
+                  </div>
+                  {promoApplied && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#15803D' }}>{tr.promoDiscount}</span>
+                      <span style={{ fontWeight: 600, color: '#15803D' }}>−{fmtMoney(promoApplied.discountAmount)} грн</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{tr.deliveryLabel}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{tr.deliveryByCarrier}</span>
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
+                  <span style={{ color: 'var(--text-primary)' }}>{tr.total}</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</span>
+                </div>
+                {role === 'wholesale' && (() => {
+                  const pct     = Math.min(100, Math.round((totalPrice / WHOLESALE_MIN) * 100));
+                  const metMin  = totalPrice >= WHOLESALE_MIN;
+                  const need    = WHOLESALE_MIN - totalPrice;
+                  return (
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                        <span style={{ color: metMin ? '#15803D' : 'var(--text-secondary)', fontWeight: 600 }}>
+                          {metMin ? tr.minReached : tr.minNeeded(WHOLESALE_MIN)}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                          {metMin ? '' : tr.minRemaining(need)}
+                        </span>
+                      </div>
+                      <div className="wm-progress">
+                        <div className={'wm-progress__fill' + (metMin ? ' met' : '')} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
@@ -1217,6 +1222,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 {submitError && (
                   <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'center', marginTop: '8px' }}>{submitError}</p>
                 )}
+                </div>
+                </div>
               </div>
 
           </div>
