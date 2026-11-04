@@ -32,8 +32,8 @@ const T = {
     errRzPoint: 'Оберіть місто та точку видачі ROZETKA',
     payCard: 'Оплата карткою онлайн',
     payCodLabel: 'Накладний платіж (оплата при отриманні)',
-    payInvoiceLabel: 'Безготівковий розрахунок по рахунку (IBAN)',
-    payInvoiceSub: 'Для ФОП та юридичних осіб · без РРО',
+    payInvoiceLabel: 'Оплата за рахунком (IBAN)',
+    payInvoiceSub: 'ФОП, юрособи й фізособи',
     pageTitle: 'Оформлення замовлення',
     itemsCount: (n: number, price: number) => `${n} товарів на суму ${fmtMoney(price)} грн`,
     backShop: 'До магазину',
@@ -48,6 +48,8 @@ const T = {
     sectionComment: 'Коментар до замовлення',
     company: 'Назва компанії',
     companyPh: 'ТОВ «Будмайстер»',
+    companyRetail: 'Компанія / ФОП',
+    companyRetailPh: 'ФОП Іваненко І. І.',
     lastName: 'Прізвище',
     lastNamePh: 'Іванченко',
     firstName: 'Ім\'я',
@@ -102,8 +104,8 @@ const T = {
     errRzPoint: 'Выберите город и точку выдачи ROZETKA',
     payCard: 'Оплата картой онлайн',
     payCodLabel: 'Наложенный платёж (оплата при получении)',
-    payInvoiceLabel: 'Безналичный расчёт по счёту (IBAN)',
-    payInvoiceSub: 'Для ФЛП и юридических лиц · без РРО',
+    payInvoiceLabel: 'Оплата по счёту (IBAN)',
+    payInvoiceSub: 'ФЛП, юрлица и физлица',
     pageTitle: 'Оформление заказа',
     itemsCount: (n: number, price: number) => `${n} товаров на сумму ${fmtMoney(price)} грн`,
     backShop: 'В магазин',
@@ -118,6 +120,8 @@ const T = {
     sectionComment: 'Комментарий к заказу',
     company: 'Название компании',
     companyPh: 'ТОВ «Будмайстер»',
+    companyRetail: 'Компания / ФЛП',
+    companyRetailPh: 'ФЛП Иваненко И. И.',
     lastName: 'Фамилия',
     lastNamePh: 'Иванченко',
     firstName: 'Имя',
@@ -564,7 +568,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
   const contactSummary = [
     [lastName, firstName, middleName].map(s => s.trim()).filter(Boolean).join(' '),
-    !isRetail ? company.trim() : '',
+    company.trim(),
     phone.trim(), email.trim(),
   ].filter(Boolean).join(' · ');
   const deliverySummary = (() => {
@@ -689,6 +693,14 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     <input style={{ ...inputStyle, border: err('email') ?? inputStyle.border }} type="email" placeholder="company@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(s => { const n = new Set(s); n.delete('email'); return n; }); }} />
                     {errors.has('email') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errEmail}</p>}
                   </div>
+                  {/* Роздріб: компанія/ФОП необов'язкова — для документів на ФОП (рахунок, видаткова);
+                      порожня — у документах ПІБ. Заодно вирівнює другий рядок до трьох полів. */}
+                  {isRetail && (
+                    <div id="field-company">
+                      <label style={labelStyle}>{tr.companyRetail} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.middleNameOpt}</span></label>
+                      <input style={inputStyle} placeholder={tr.companyRetailPh} value={company} onChange={e => setCompany(e.target.value)} />
+                    </div>
+                  )}
                 </div>
               </Section>
 
