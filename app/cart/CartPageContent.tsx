@@ -185,10 +185,12 @@ const labelStyle: React.CSSProperties = {
  * Тіло при згортанні лише ховається (display:none), а не демонтується: селекти НП/ROZETKA
  * тримають свій внутрішній стан (місто, відділення), і після «Змінити» він має лишитись.
  */
-function Section({ icon: Icon, title, children, error, done, collapsed, summary, changeLabel, collapseLabel, onEditStart, onEditEnd }: {
+function Section({ icon: Icon, title, children, error, done, collapsed, summary, changeLabel, collapseLabel, onEditStart, onEditEnd, onReopen }: {
   icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean; done?: boolean;
   collapsed?: boolean; summary?: string; changeLabel?: string; collapseLabel?: string;
   onEditStart?: () => void; onEditEnd?: () => void;
+  /** «Змінити» на згорнутій секції — для доставки/оплати одразу показати весь список варіантів */
+  onReopen?: () => void;
 }) {
   return (
     <div
@@ -203,7 +205,7 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
     >
       <div
         className="cart-sec__head"
-        onClick={collapsed ? onEditStart : undefined}
+        onClick={collapsed ? () => { onEditStart?.(); onReopen?.(); } : undefined}
         style={{
           display: 'flex', alignItems: 'center', gap: '10px',
           padding: '10px 16px', borderBottom: collapsed ? 'none' : `1px solid ${error ? '#7F1D1D' : 'var(--border)'}`,
@@ -219,7 +221,7 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', flexShrink: 0 }}>{title}</span>
         {collapsed && summary && <span className="cart-sec__summary" title={summary}>{summary}</span>}
         {collapsed && (
-          <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditStart?.(); }}>
+          <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditStart?.(); onReopen?.(); }}>
             {changeLabel}
           </button>
         )}
@@ -367,8 +369,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   );
 
   const DELIVERY_OPTIONS = [
-    { value: 'nova', label: tr.deliveryNova, sub: null as string | null },
-    ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub }] : []),
+    // logo — офіційні файли з сайтів перевізників (public/images/carriers, завантажено 04.11.2026)
+    { value: 'nova', label: tr.deliveryNova, sub: null as string | null, logo: '/images/carriers/nova-poshta.svg' },
+    ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub, logo: '/images/carriers/rozetka-mark.svg' }] : []),
   ];
 
   // Спосіб міг прийти з минулого замовлення (підстановка вище) або перестати
@@ -390,6 +393,12 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [editing, setEditing] = useState({ contact: false, delivery: false, payment: false });
   const editStart = (k: keyof typeof editing) => () => setEditing(s => (s[k] ? s : { ...s, [k]: true }));
   const editEnd   = (k: keyof typeof editing) => () => setEditing(s => (s[k] ? { ...s, [k]: false } : s));
+  // Відкрили згорнуту доставку/оплату через «Змінити» — показуємо всі варіанти з позначеним поточним,
+  // а не лише обраний (інакше треба було тиснути «змінити» вдруге). Скидається, щойно обрали варіант.
+  const [reopened, setReopened] = useState({ delivery: false, payment: false });
+  // Клік по плитці варіанта не забирає фокус: інакше спершу спрацьовує blur секції, вона
+  // згортається, і клік (а з ним і вибір) губиться. Сам вибір іде через label → radio.
+  const keepFocus = (e: React.MouseEvent) => e.preventDefault();
 
   // Чиста перевірка (без setState) — нею ж рахуємо, які секції вже заповнені (підсвітка іконок)
   function collectErrors(): Set<string> {
@@ -682,11 +691,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   кожен додавав gap 16px, і між «Контактами» й «Доставкою» була діра ~80px */}
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
-              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={editEnd('delivery')} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={editEnd('delivery')} onReopen={() => setReopened(r => ({ ...r, delivery: true }))} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div className={'cart-opt-list' + (!delivery ? ' cart-opt-list--row' : '')}>
-                  {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
+                  {DELIVERY_OPTIONS.filter(opt => !delivery || reopened.delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
-                      <label style={{
+                      <label onMouseDown={keepFocus} style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
                         padding: '12px 14px', borderRadius: '10px', cursor: delivery === opt.value ? 'default' : 'pointer',
                         border: `1.5px solid ${delivery === opt.value ? '#1E3A5F' : 'var(--border)'}`,
@@ -701,12 +710,14 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         }}>
                           {delivery === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                         </div>
-                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { setDelivery(opt.value); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
+                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { if (delivery && delivery !== opt.value) { setAddress(''); setNovaSubtype(''); } setDelivery(opt.value); setReopened(r => ({ ...r, delivery: false })); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
                         <span style={{ fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
                           {opt.label}
                           {opt.sub && <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
                         </span>
-                        {delivery === opt.value && (
+                        {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG, next/image тут зайвий */}
+                        <img src={opt.logo} alt="" aria-hidden className="cart-carrier-logo" />
+                        {delivery === opt.value && !reopened.delivery && (
                           <button
                             onClick={e => { e.preventDefault(); setDelivery(''); setAddress(''); setNovaSubtype(''); }}
                             style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
@@ -720,7 +731,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       {opt.value === 'nova' && delivery === 'nova' && (
                         <div className={'cart-opt-sub' + (!novaSubtype ? ' cart-opt-list--row' : '')}>
                           {(['warehouse', 'postomat', 'courier'] as const).filter(sub => !novaSubtype || novaSubtype === sub).map(sub => (
-                            <label key={sub} style={{
+                            <label key={sub} onMouseDown={keepFocus} style={{
                               display: 'flex', alignItems: 'center', gap: '10px',
                               padding: '10px 14px', borderRadius: '8px', cursor: novaSubtype === sub ? 'default' : 'pointer',
                               border: `1.5px solid ${novaSubtype === sub ? '#1E3A5F' : 'var(--border)'}`,
@@ -802,6 +813,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   {!delivery && rzConfig?.enabled && !rzAvailable && rzConfig.maxWeightKg != null && (
                     <div className="cart-opt-disabled" aria-disabled="true">
                       <span className="cart-opt-disabled__dot" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/images/carriers/rozetka-mark.svg" alt="" aria-hidden className="cart-carrier-logo cart-carrier-logo--off" style={{ order: 9 }} />
                       <span>
                         {tr.deliveryRz}
                         <span className="cart-opt-disabled__why">
@@ -823,10 +836,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               {/* Payment */}
               <div>
               <div id="field-payment" />
-              <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} title={tr.sectionPayment} error={errors.has('payment')}>
+              <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} onReopen={() => setReopened(r => ({ ...r, payment: true }))} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div className={'cart-opt-list' + (!payment ? ' cart-opt-list--row' : '')}>
-                  {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
-                    <label key={opt.value} style={{
+                  {PAYMENT_OPTIONS.filter(opt => !payment || reopened.payment || payment === opt.value).map(opt => (
+                    <label key={opt.value} onMouseDown={keepFocus} style={{
                       display: 'flex', alignItems: 'center', gap: '12px',
                       padding: '12px 14px', borderRadius: '10px', cursor: payment === opt.value ? 'default' : 'pointer',
                       border: `1.5px solid ${payment === opt.value ? '#1E3A5F' : 'var(--border)'}`,
@@ -841,12 +854,12 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       }}>
                         {payment === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                       </div>
-                      <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => { setPayment(opt.value); editEnd('payment')(); setErrors(s => { const n = new Set(s); n.delete('payment'); return n; }); }} style={{ display: 'none' }} />
+                      <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => { setPayment(opt.value); setReopened(r => ({ ...r, payment: false })); editEnd('payment')(); setErrors(s => { const n = new Set(s); n.delete('payment'); return n; }); }} style={{ display: 'none' }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</div>
                         {opt.sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{opt.sub}</div>}
                       </div>
-                      {payment === opt.value && (
+                      {payment === opt.value && !reopened.payment && (
                         <button
                           onClick={e => { e.preventDefault(); setPayment(''); }}
                           style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}

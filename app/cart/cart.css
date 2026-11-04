@@ -61,6 +61,13 @@
   border: 1.5px dashed var(--border); border-radius: 10px; background: var(--bg-soft);
   font-size: 14px; font-weight: 500; color: var(--text-muted); cursor: not-allowed;
 }
+.cart-opt-disabled > span:not(.cart-opt-disabled__dot) { flex: 1; min-width: 0; }
+
+/* Логотип перевізника праворуч у плитці доставки. Напис НП — широкий, тож нижчий;
+   знак ROZETKA — круглий, тож вищий, щоб на око були однієї ваги. */
+.cart-carrier-logo { height: 15px; width: auto; flex-shrink: 0; display: block; }
+.cart-carrier-logo[src*="rozetka-mark"] { height: 24px; }
+.cart-carrier-logo--off { filter: grayscale(1); opacity: 0.45; }
 .cart-opt-disabled__dot { width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%; border: 2px solid var(--border); }
 .cart-opt-disabled__why { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; }
 
