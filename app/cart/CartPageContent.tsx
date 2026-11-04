@@ -1133,6 +1133,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       <button type="button" onClick={handleApplyPromo} disabled={promoLoading || !promoInput.trim()}>
                         {promoLoading ? tr.promoApplying : tr.promoApply}
                       </button>
+                      {/* Згорнути поле назад у «Маю промокод» */}
+                      <button type="button" className="cart-promo-close" aria-label={lang === 'ru' ? 'Скрыть' : 'Сховати'} title={lang === 'ru' ? 'Скрыть' : 'Сховати'}
+                        onClick={() => { setPromoOpen(false); setPromoInput(''); setPromoError(''); }}>✕</button>
                     </span>
                   )}
                 </div>
