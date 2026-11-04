@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Trash2, ShoppingCart, ArrowLeft, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle } from 'lucide-react';
 
 import './cart.css';
+import { fmtMoney } from '../../lib/format';
 import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -34,7 +35,7 @@ const T = {
     payInvoiceLabel: 'Безготівковий розрахунок по рахунку (IBAN)',
     payInvoiceSub: 'Для ФОП та юридичних осіб · без РРО',
     pageTitle: 'Оформлення замовлення',
-    itemsCount: (n: number, price: number) => `${n} товарів на суму ${price.toFixed(2)} грн`,
+    itemsCount: (n: number, price: number) => `${n} товарів на суму ${fmtMoney(price)} грн`,
     backShop: 'До магазину',
     backCatalog: 'До каталогу',
     backShopHref: '/shop',
@@ -104,7 +105,7 @@ const T = {
     payInvoiceLabel: 'Безналичный расчёт по счёту (IBAN)',
     payInvoiceSub: 'Для ФЛП и юридических лиц · без РРО',
     pageTitle: 'Оформление заказа',
-    itemsCount: (n: number, price: number) => `${n} товаров на сумму ${price.toFixed(2)} грн`,
+    itemsCount: (n: number, price: number) => `${n} товаров на сумму ${fmtMoney(price)} грн`,
     backShop: 'В магазин',
     backCatalog: 'В каталог',
     backShopHref: '/ru/shop',
@@ -813,7 +814,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '14px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
                 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{tr.orderSummary}</span>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{tr.orderSummary}</span>
                   <button
                     onClick={clearCart}
                     style={{
@@ -828,24 +829,28 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
                 <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
                   {items.map((item, idx) => (
-                    <div key={item.sku} style={{
-                      display: 'flex', gap: '10px', padding: '12px 16px',
-                      borderBottom: idx < items.length - 1 ? '1px solid var(--border)' : 'none',
-                      alignItems: 'flex-start',
-                    }}>
-                      <Link href={`/product/${item.sku}`} style={{ width: '64px', height: '64px', flexShrink: 0, display: 'block', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <div key={item.sku} className={'cart-item' + (idx < items.length - 1 ? ' cart-item--sep' : '')}>
+                      <Link href={`/product/${item.sku}`} className="cart-item__thumb">
                         <ProductImage
                           brand={item.brand} nl1={item.nl1} nl2={item.nl2}
                           volume={item.volume ?? ''} bc={item.bc} ac={item.ac} type={item.img_type}
                           imageUrl={item.imageUrl}
                         />
                       </Link>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '1px' }}>{item.brand} · {item.sku}</div>
-                        <Link href={`/product/${item.sku}`} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '6px', display: 'block', textDecoration: 'none' }}>
-                          {lang === 'ru' && item.name_ru ? item.name_ru : item.name}
-                        </Link>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <div className="cart-item__body">
+                        <div className="cart-item__head">
+                          <div style={{ minWidth: 0 }}>
+                            <div className="cart-item__meta">{item.brand} · {item.sku}</div>
+                            <Link href={`/product/${item.sku}`} className="cart-item__name">
+                              {lang === 'ru' && item.name_ru ? item.name_ru : item.name}
+                            </Link>
+                          </div>
+                          <button type="button" className="cart-item__del" onClick={() => removeItem(item.sku)}
+                            aria-label={lang === 'ru' ? 'Удалить' : 'Видалити'} title={lang === 'ru' ? 'Удалить' : 'Видалити'}>
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                        <div className="cart-item__row">
                           {/* Той самий вигляд, що в картці товару: «− N +» однією рамкою */}
                           <div className="cart-qty-stepper">
                             <button
@@ -865,24 +870,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               onClick={() => { setQtyInputs(prev => { const n = { ...prev }; delete n[item.sku]; return n; }); updateQty(item.sku, item.qty + item.min_order); }}
                             >+</button>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
+                          <div className="cart-item__price">
                             {item.price > 0 && item.qty > 1 && (
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>
-                                {item.price.toFixed(2)} × {item.qty}
-                              </div>
+                              <div className="cart-item__unit">{fmtMoney(item.price)} × {item.qty}</div>
                             )}
-                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                              {item.price > 0 ? `${(item.price * item.qty).toFixed(2)} грн` : '—'}
-                            </span>
+                            <div className="cart-item__sum">
+                              {item.price > 0 ? <>{fmtMoney(item.price * item.qty)} <span>грн</span></> : '—'}
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => removeItem(item.sku)}
-                        style={{ width: '36px', height: '36px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <Trash2 size={15} />
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -932,12 +929,12 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>{tr.itemsTotal(totalItems)}</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{totalPrice.toFixed(2)} грн</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtMoney(totalPrice)} грн</span>
                   </div>
                   {promoApplied && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                       <span style={{ color: '#15803D' }}>{tr.promoDiscount}</span>
-                      <span style={{ fontWeight: 600, color: '#15803D' }}>−{promoApplied.discountAmount.toFixed(2)} грн</span>
+                      <span style={{ fontWeight: 600, color: '#15803D' }}>−{fmtMoney(promoApplied.discountAmount)} грн</span>
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -947,7 +944,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
                   <span style={{ color: 'var(--text-primary)' }}>{tr.total}</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{(promoApplied?.finalTotal ?? totalPrice).toFixed(2)} грн</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</span>
                 </div>
                 {role === 'wholesale' && (() => {
                   const pct     = Math.min(100, Math.round((totalPrice / WHOLESALE_MIN) * 100));
