@@ -185,9 +185,9 @@ const labelStyle: React.CSSProperties = {
  * Тіло при згортанні лише ховається (display:none), а не демонтується: селекти НП/ROZETKA
  * тримають свій внутрішній стан (місто, відділення), і після «Змінити» він має лишитись.
  */
-function Section({ icon: Icon, title, children, error, done, collapsed, summary, changeLabel, onEditStart, onEditEnd }: {
+function Section({ icon: Icon, title, children, error, done, collapsed, summary, changeLabel, collapseLabel, onEditStart, onEditEnd }: {
   icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean; done?: boolean;
-  collapsed?: boolean; summary?: string; changeLabel?: string;
+  collapsed?: boolean; summary?: string; changeLabel?: string; collapseLabel?: string;
   onEditStart?: () => void; onEditEnd?: () => void;
 }) {
   return (
@@ -221,6 +221,12 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         {collapsed && (
           <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditStart?.(); }}>
             {changeLabel}
+          </button>
+        )}
+        {/* Розгорнута, але вже заповнена — можна згорнути вручну, не шукаючи, куди клікнути */}
+        {!collapsed && done && collapseLabel && (
+          <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditEnd?.(); }}>
+            {collapseLabel}
           </button>
         )}
       </div>
@@ -550,7 +556,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   ].filter(Boolean).join(' · ');
   const deliverySummary = (() => {
     if (delivery === 'nova') {
-      const sub = novaSubtype === 'warehouse' ? tr.novaWarehouse : novaSubtype === 'postomat' ? tr.novaPostomat : tr.novaCourier;
+      // Назва пункту НП уже починається з «Відділення №…»/«Поштомат №…» — тип окремо не пишемо,
+      // інакше «Відділення · Харків, Відділення №5». Для кур'єра типу в адресі нема — лишаємо.
+      const sub = novaSubtype === 'courier' ? tr.novaCourier : '';
       // address для відділення/поштомату — текст обраного пункту; місто — окремо, якщо його там нема
       const place = address && novaCityName && !address.includes(novaCityName) ? `${novaCityName}, ${address}` : (address || novaCityName);
       return [tr.deliveryNova, sub, place].filter(Boolean).join(' · ');
@@ -619,7 +627,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
-              <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} onEditStart={editStart('contact')} onEditEnd={editEnd('contact')} title={tr.sectionContact}>
+              <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('contact')} onEditEnd={editEnd('contact')} title={tr.sectionContact}>
                 {/* Рядок 1: ПІБ; рядок 2: компанія (не для роздрібу) · телефон · email */}
                 <div className="cart-contact-grid">
                   <div id="field-lastName">
@@ -676,7 +684,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   кожен додавав gap 16px, і між «Контактами» й «Доставкою» була діра ~80px */}
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
-              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} onEditStart={editStart('delivery')} onEditEnd={editEnd('delivery')} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={editEnd('delivery')} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
@@ -817,7 +825,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               {/* Payment */}
               <div>
               <div id="field-payment" />
-              <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} title={tr.sectionPayment} error={errors.has('payment')}>
+              <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
                     <label key={opt.value} style={{

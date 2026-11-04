@@ -1471,10 +1471,14 @@ input, select { font-family: inherit; }
 /* Права колонка (items + totals) content-розміру, зайву висоту від високої форми
    зліва з'їдає третій порожній рядок — інакше рядки розтягуються і між списком
    товарів та блоком підсумку з'являється велика порожнеча. */
+/* 04.11.2026: секції форми згортаються в рядки — ліва колонка стала короткою, а праву тягнув
+   довгий блок підсумку. Тепер підсумок і «Підтвердити» — під формою зліва, справа лише список
+   товарів, що прилипає при прокрутці. */
 .cart-grid {
-  grid-template-areas: "form items" "form totals" "form .";
-  grid-template-rows: min-content min-content 1fr;
+  grid-template-areas: "form items" "totals items";
+  grid-template-rows: min-content 1fr;
 }
+.cart-grid .cart-items-list { position: sticky; top: 88px; align-self: start; }
 .cart-form-col { grid-area: form; }
 .cart-items-list { grid-area: items; }
 .cart-totals-block { grid-area: totals; }
@@ -1519,6 +1523,7 @@ input, select { font-family: inherit; }
     grid-template-areas: "items" "form" "totals" !important;
     grid-template-rows: auto !important;
   }
+  .cart-grid .cart-items-list { position: static; }
 
   /* Account stats */
   .account-stats {
