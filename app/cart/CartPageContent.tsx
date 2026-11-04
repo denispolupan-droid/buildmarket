@@ -221,7 +221,13 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', flexShrink: 0 }}>{title}</span>
         {collapsed && summary && <span className="cart-sec__summary" title={summary}>{summary}</span>}
         {collapsed && (
-          <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditStart?.(); onReopen?.(); }}>
+          <button
+            type="button" className="cart-sec__change"
+            // Без фокусу на mousedown: інакше секція розгортається ще ДО кліку (onFocus), кнопка
+            // зникає з розмітки, і сам клик — а з ним onReopen (повний список) — губиться
+            onMouseDown={e => e.preventDefault()}
+            onClick={e => { e.stopPropagation(); onEditStart?.(); onReopen?.(); }}
+          >
             {changeLabel}
           </button>
         )}
