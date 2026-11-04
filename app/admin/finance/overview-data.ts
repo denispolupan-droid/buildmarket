@@ -528,13 +528,18 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   // (COGS FIFO + комісії, включно з доп. зборами), ще не доставлені — оцінка:
   // поточна закупівельна ціна + ставки комісій категорій (як в Аналітиці).
   type EstOrder = { id: string; channel_code: string | null; total_price: number; created_at: string; items: { sku: string; qty: number; price: number }[] | null };
-  const estById = new Map<string, EstOrder>();
-  for (const o of [...orderRows, ...monthlyOrders] as EstOrder[]) estById.set(o.id, o);
+  // Одне й те саме замовлення лежить і в orderRows (KPI періоду), і в
+  // monthlyOrders (стовпчики за 6 місяців) — це РІЗНІ об'єкти. Позиції треба
+  // присвоїти кожному з них, а не лише одному на id: інакше в KPI собівартість
+  // і комісії = 0 і «валовий прибуток» ≈ сумі замовлень (інцидент 04.11.2026).
+  const estOrders = [...orderRows, ...monthlyOrders] as EstOrder[];
+  // Один об'єкт на id — для графіка по днях, де замовлення не можна рахувати двічі
+  const estById = new Map(estOrders.map(o => [o.id, o]));
   const estIds  = [...estById.keys()];
   // Позиції — з order_lines (етап B, docs/ORDER-LINES-PLAN.md), а не з jsonb items
   const estLines = await loadOrderLines(db, estIds);
-  for (const o of estById.values()) o.items = linesOf(estLines, o.id);
-  const estSkus = [...new Set([...estById.values()].flatMap(o => (o.items ?? []).map(i => i.sku)))];
+  for (const o of estOrders) o.items = linesOf(estLines, o.id);
+  const estSkus = [...new Set([...estLines.values()].flat().map(l => l.sku))];
   const chunk = <T,>(arr: T[], n: number): T[][] => {
     const out: T[][] = [];
     for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
