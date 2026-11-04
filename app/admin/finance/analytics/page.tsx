@@ -3,6 +3,7 @@ import FinanceTabs from '../FinanceTabs';
 import { DualLineChart } from '../overview-charts';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { loadOrderLines, linesOf } from '../../../../lib/orders/lines-read';
+import { loadProfitEstimates } from '../../../../lib/accounting/estimate';
 import { summarizePL, PL_ACCOUNTS } from '../../../../lib/accounting/profit-rules';
 import { requireStaffPage } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
@@ -128,28 +129,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     ? Math.round((ledger.revenue - prevLedgerRevenue) / prevLedgerRevenue * 100)
     : null;
 
-  // ── Факт по кожному замовленню з леджера: COGS (FIFO, нетто повернень) і комісія МП
-  // (включно з доп. зборами типу «Дешева доставка Prom»). Це ті самі числа, що бачить
-  // картка замовлення в режимі «Факт» — дашборд більше не розходиться з нею.
-  const perOrderEntries = await (fetchAllRows((f, t) => db
-    .from('money_entries')
-    .select('order_id, account_type, amount')
-    .in('account_type', ['cogs', 'marketplace_fee'])
-    .not('order_id', 'is', null)
-    .gte('business_date', sixAgo.toISOString().slice(0, 10))
-    .order('id')
-    .range(f, t)) as Promise<({ order_id: string; account_type: string; amount: number })[]>);
-  const cogsByOrder = new Map<string, number>();
-  const feeByOrder  = new Map<string, number>();
-  for (const e of perOrderEntries ?? []) {
-    const m = e.account_type === 'cogs' ? cogsByOrder : feeByOrder;
-    m.set(e.order_id, (m.get(e.order_id) ?? 0) + Number(e.amount));
-  }
-
-  // order_id → собівартість із шапки підтвердженої РН (фолбек, якщо проводок ще немає)
-  const accCostByOrder = new Map(
-    (accDocs ?? []).map(d => [d.order_id as string, Number(d.total_cost ?? 0)])
-  );
+  // ── Прибуток по кожному замовленню: факт із леджера (COGS FIFO нетто повернень,
+  // комісія МП з доп. зборами, еквайринг/збори НП) або, поки не вручено, прогноз
+  // (поточна закупівля + оцінювач комісій каналу). Один модуль на всі екрани —
+  // lib/accounting/estimate; до 04.11.2026 тут була своя копія з плоскою ставкою
+  // категорії для Rozetka замість порогів, і прогноз розходився з «Оглядом».
+  const estimates = await loadProfitEstimates(db, orders, { lines: linesByOrder });
 
   // Рядки підтверджених РН — для собівартості по SKU в таблиці топ-товарів
   const accDocIds = accDocs.map(d => d.id as string);
@@ -169,60 +154,16 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     Object.entries(skuCostAgg).map(([sku, a]) => [sku, a.totalQty > 0 ? a.totalCost / a.totalQty : 0])
   );
 
-  // Всі SKU з усіх замовлень — для назв товарів і fallback-собівартості
+  // Всі SKU з усіх замовлень — для назв товарів, брендів і категорій
   const allOrderSkus = [...new Set(
     (orders ?? []).flatMap(o => (o.items ?? []).map((i: { sku: string }) => i.sku))
   )];
-
-  // Fallback: product_stock.price_cost для замовлень без підтвердженої РН
-  const ordersWithoutAcc = (orders ?? []).filter(o => !accCostByOrder.has(o.id));
-  const fallbackSkus = [...new Set(
-    ordersWithoutAcc.flatMap(o => (o.items ?? []).map((i: { sku: string }) => i.sku))
-  )];
-
-  const { data: stockPrices } = fallbackSkus.length > 0
-    ? await db.from('product_stock').select('sku, price_cost').in('sku', fallbackSkus)
-    : { data: [] };
-
-  const { data: productNames } = allOrderSkus.length > 0
-    ? await db.from('products').select('sku, name, brand, category_slug, categories(prom_commission_pct, prom_commission_pct_econom, rozetka_commission_pct)').in('sku', allOrderSkus)
-    : { data: [] };
-
-  const costMap  = new Map((stockPrices ?? []).map(s => [s.sku, Number(s.price_cost ?? 0)]));
-  const prodMap  = new Map((productNames ?? []).map(p => [p.sku, p]));
-
-  // Комісія маркетплейсів по SKU/категорії — та сама ставка, що йде в леджер при доставці
-  // (lib/prom-commission.ts / lib/rozetka-commission.ts), щоб маржа тут з ним не розходилась.
-  const { data: commissionSettings } = await db
-    .from('app_settings')
-    .select('key, value')
-    .in('key', ['prom_plan', 'prom_commission_pct', 'rozetka_commission_pct']);
-  const settingsMap     = Object.fromEntries((commissionSettings ?? []).map(s => [s.key, s.value]));
-  const promPlan        = (settingsMap.prom_plan ?? 'single') as 'single' | 'econom';
-  // Дефолт '3' — як у prom-sync/completion, щоб оцінка тут не розходилась із фактом
-  const promFallbackPct = parseFloat(settingsMap.prom_commission_pct ?? '3');
-  const rozFallbackPct  = parseFloat(settingsMap.rozetka_commission_pct ?? '15');
-
-  const commissionPctMap = new Map<string, { prom: number; rozetka: number }>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const p of (productNames ?? []) as any[]) {
-    const promRaw = promPlan === 'econom' ? p.categories?.prom_commission_pct_econom : p.categories?.prom_commission_pct;
-    const promPctParsed = promRaw != null ? parseFloat(String(promRaw)) : NaN;
-    const rozRaw = p.categories?.rozetka_commission_pct;
-    const rozPctParsed = rozRaw != null ? parseFloat(String(rozRaw)) : NaN;
-    commissionPctMap.set(p.sku, {
-      prom:    isNaN(promPctParsed) ? promFallbackPct : promPctParsed,
-      rozetka: isNaN(rozPctParsed)  ? rozFallbackPct  : rozPctParsed,
-    });
-  }
-
-  function orderCommission(o: { channel_code: string | null; items: { sku: string; qty: number; price: number }[] }) {
-    if (o.channel_code !== 'prom' && o.channel_code !== 'rozetka') return 0;
-    const ch = o.channel_code as 'prom' | 'rozetka';
-    const total = (o.items ?? []).reduce((s, item) =>
-      s + item.qty * item.price * (commissionPctMap.get(item.sku)?.[ch] ?? 0) / 100, 0);
-    return Math.round(total * 100) / 100;
-  }
+  const skuChunks: string[][] = [];
+  for (let i = 0; i < allOrderSkus.length; i += 200) skuChunks.push(allOrderSkus.slice(i, i + 200));
+  const productNames = (await Promise.all(skuChunks.map(c =>
+    db.from('products').select('sku, name, brand, category_slug').in('sku', c).limit(200).then(r => r.data ?? []),
+  ))).flat();
+  const prodMap  = new Map(productNames.map(p => [p.sku, p]));
 
   type OrderRow = {
     id: string; order_number: number; status: string;
@@ -232,17 +173,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     customer_id: string | null; phone: string | null;
   };
 
+  // margin — валовий за визначенням profit-rules: для вручених мінус ще й
+  // еквайринг/збори НП (тому для них margin ≠ total − cost − commission на їхню суму)
   const rows: OrderRow[] = (orders ?? []).map(o => {
-    // Пріоритет: факт із леджера → шапка РН → оцінка за поточною закупівлею
-    const cost = cogsByOrder.has(o.id)
-      ? cogsByOrder.get(o.id)!
-      : accCostByOrder.has(o.id)
-      ? accCostByOrder.get(o.id)!
-      : (o.items ?? []).reduce((s: number, item: { sku: string; qty: number }) =>
-          s + (costMap.get(item.sku) ?? 0) * item.qty, 0);
-    // Комісія: факт із леджера (проведені) → оцінка за ставками категорій
-    const commission = feeByOrder.get(o.id) ?? orderCommission(o);
-    return { ...o, cost, commission, margin: o.total_price - cost - commission };
+    const e = estimates.get(o.id);
+    const cost = e?.cogs ?? 0, commission = e?.fee ?? 0;
+    return { ...o, cost, commission, margin: e?.gross ?? (Number(o.total_price) - cost - commission) };
   });
 
   // ── Поточний місяць ────────────────────────────────────────────────────────
@@ -309,12 +245,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   const skuStats: Record<string, { revenue: number; cost: number; qty: number }> = {};
   for (const row of deliveredMonthRows) {
-    const ch = row.channel_code === 'prom' || row.channel_code === 'rozetka' ? row.channel_code : null;
-    for (const item of (row.items ?? [])) {
+    // Рядки з оцінки: комісія рядка — оцінювач каналу; собівартість — FIFO із
+    // проведених РН по SKU, інакше поточна закупівля з рядка оцінки
+    for (const item of (estimates.get(row.id)?.lines ?? [])) {
       if (!skuStats[item.sku]) skuStats[item.sku] = { revenue: 0, cost: 0, qty: 0 };
-      const itemCommission = ch ? item.price * item.qty * (commissionPctMap.get(item.sku)?.[ch] ?? 0) / 100 : 0;
       skuStats[item.sku].revenue += item.price * item.qty;
-      skuStats[item.sku].cost   += (skuAccCostMap.get(item.sku) ?? costMap.get(item.sku) ?? 0) * item.qty + itemCommission;
+      skuStats[item.sku].cost   += (skuAccCostMap.get(item.sku) ?? item.unitCost ?? 0) * item.qty + item.fee;
       skuStats[item.sku].qty    += item.qty;
     }
   }

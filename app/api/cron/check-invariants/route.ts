@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { alertAdmin } from '../../../../lib/alert';
 import { findSaleDivergences, type SaleDivergence } from '../../../../lib/accounting/reconcile-sale-docs';
+import { profitEstimateDrift } from '../../../../lib/accounting/estimate';
+import type { DriftSummary } from '../../../../lib/accounting/estimate-rules';
+import { log } from '../../../../lib/log';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
@@ -38,6 +41,26 @@ async function _GET(req: NextRequest) {
     console.error('[invariants] звірка замовлень із накладними не пройшла', err);
   }
 
+  // Третя перевірка — прогноз прибутку (lib/accounting/estimate) проти факту по
+  // вручених за 30 днів: систематичний дрейф означає, що ставки категорій чи
+  // закупівельні ціни застаріли і «Огляд» бреше на невручених замовленнях.
+  // Не валить прогін: це сигнал подивитись, а не порушення обліку.
+  let drift: DriftSummary | null = null;
+  try {
+    drift = await profitEstimateDrift(serviceClient);
+  } catch (err) {
+    log.warn('invariants.drift_failed', { err: err instanceof Error ? err.message : String(err) });
+  }
+  if (drift && !drift.ok) {
+    const sign = (n: number) => (n > 0 ? '+' : '') + n;
+    alertAdmin(
+      `🟠 Прогноз прибутку розійшовся з фактом за 30 дн (${sign(drift.pctOfRevenue ?? 0)} % виручки)`,
+      [`прогноз ${drift.est} ₴, факт ${drift.fact} ₴ (${sign(drift.pct ?? 0)} % валового), ${drift.orders} замовлень на ${drift.revenue} ₴`,
+        `закупівля: прогноз ${drift.cogs.est} / факт ${drift.cogs.fact}; збори площадок: прогноз ${drift.fee.est} / факт ${drift.fee.fact}`,
+        ...drift.worst.map(w => `№${w.orderNumber ?? '—'}: прогноз ${w.estGross} ≠ факт ${w.factGross} (${sign(w.diff)})`)].join('\n'),
+    );
+  }
+
   if (divergences.length) {
     alertAdmin(
       `🟠 Облік: замовлення розійшлись із проведеними накладними (${divergences.length})`,
@@ -52,10 +75,10 @@ async function _GET(req: NextRequest) {
       '🔴 Облік: порушено інваріанти БД',
       failed.map(f => `${f.invariant}: ${f.details ?? f.status}`).join('\n'),
     );
-    return NextResponse.json({ ok: false, failed, divergences }, { status: 500 });
+    return NextResponse.json({ ok: false, failed, divergences, drift }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, checked: rows.length, divergences });
+  return NextResponse.json({ ok: true, checked: rows.length, divergences, drift });
 }
 
 export const GET = withApi('cron/check-invariants', _GET);

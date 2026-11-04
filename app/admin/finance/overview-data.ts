@@ -1,11 +1,11 @@
 import { fetchAllRows } from '../../../lib/db-paginate';
-import { loadOrderLines, linesOf } from '../../../lib/orders/lines-read';
+import { loadProfitEstimates } from '../../../lib/accounting/estimate';
 import { getMarketplaceBalance } from '../../../lib/accounting/money';
 import { loadInTransitCommission } from '../../../lib/accounting/marketplace-transit';
 import { getMonoLiveBalance } from '../../../lib/mono-balance';
 import { getNovapayLiveBalance, getNovapayRegistersCache } from '../../../lib/novapay-api';
 import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
-import { PL_ACCOUNTS, classifyPLEntry, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
+import { PL_ACCOUNTS, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
 import { createServiceClient } from '../../../lib/supabase-service';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
@@ -524,84 +524,20 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
 
   // ── Очікуваний валовий прибуток по замовленнях (та сама база, що orderSum:
-  // усі створені за період, без скасованих). Доставлені — факт із проводок
-  // (COGS FIFO + комісії, включно з доп. зборами), ще не доставлені — оцінка:
-  // поточна закупівельна ціна + ставки комісій категорій (як в Аналітиці).
-  type EstOrder = { id: string; channel_code: string | null; total_price: number; created_at: string; items: { sku: string; qty: number; price: number }[] | null };
-  // Одне й те саме замовлення лежить і в orderRows (KPI періоду), і в
-  // monthlyOrders (стовпчики за 6 місяців) — це РІЗНІ об'єкти. Позиції треба
-  // присвоїти кожному з них, а не лише одному на id: інакше в KPI собівартість
-  // і комісії = 0 і «валовий прибуток» ≈ сумі замовлень (інцидент 04.11.2026).
-  const estOrders = [...orderRows, ...monthlyOrders] as EstOrder[];
+  // усі створені за період, без скасованих). Доставлені — факт із проводок,
+  // ще не доставлені — оцінка. Рахує lib/accounting/estimate (єдиний модуль
+  // прогнозу для «Огляду», «Аналітики» і звірки «прогноз vs факт»); до 04.11.2026
+  // тут була своя копія розрахунку, яка розійшлась із леджером (інцидент: позиції
+  // присвоювались лише одному з двох об'єктів замовлення → маржа 93 %).
+  type EstOrder = { id: string; channel_code: string | null; total_price: number; created_at: string };
   // Один об'єкт на id — для графіка по днях, де замовлення не можна рахувати двічі
-  const estById = new Map(estOrders.map(o => [o.id, o]));
-  const estIds  = [...estById.keys()];
-  // Позиції — з order_lines (етап B, docs/ORDER-LINES-PLAN.md), а не з jsonb items
-  const estLines = await loadOrderLines(db, estIds);
-  for (const o of estOrders) o.items = linesOf(estLines, o.id);
-  const estSkus = [...new Set([...estLines.values()].flat().map(l => l.sku))];
-  const chunk = <T,>(arr: T[], n: number): T[][] => {
-    const out: T[][] = [];
-    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
-    return out;
-  };
-  const [stockCostRows, prodCatRows, commSettings, perOrderRows] = await Promise.all([
-    Promise.all(chunk(estSkus, 200).map(c => db.from('product_stock').select('sku, price_cost').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
-    Promise.all(chunk(estSkus, 200).map(c => db.from('products').select('sku, categories(prom_commission_pct, prom_commission_pct_econom, rozetka_commission_pct, epicentr_commission_pct)').in('sku', c).then(r => r.data ?? []))).then(a => a.flat()),
-    db.from('app_settings').select('key, value').in('key', ['prom_plan', 'prom_commission_pct', 'rozetka_commission_pct', 'epicentr_commission_pct']).then(r => r.data ?? []),
-    Promise.all(chunk(estIds, 150).map(c => db.from('money_entries').select('order_id, account_type, doc_type, amount').in('account_type', ['cogs', 'marketplace_fee', 'acquiring_fee', 'logistics']).in('order_id', c).then(r => r.data ?? []))).then(a => a.flat()),
-  ]);
-  const commCfg = Object.fromEntries(commSettings.map(s => [s.key, s.value]));
-  // Дефолти — як у prom-sync/completion, щоб оцінка не розходилась із фактом
-  const promPlan     = (commCfg.prom_plan ?? 'single') as 'single' | 'econom';
-  const promFallback = parseFloat(commCfg.prom_commission_pct ?? '3');
-  const rozFallback  = parseFloat(commCfg.rozetka_commission_pct ?? '15');
-  const epiFallback  = parseFloat(commCfg.epicentr_commission_pct ?? '12');
-  const ratesBySku = new Map<string, { prom: number; rozetka: number; epicentr: number }>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation
-  for (const p of prodCatRows as any[]) {
-    const promRaw = promPlan === 'econom' ? p.categories?.prom_commission_pct_econom : p.categories?.prom_commission_pct;
-    const promPct = parseFloat(String(promRaw));
-    const rozPct  = parseFloat(String(p.categories?.rozetka_commission_pct));
-    const epiPct  = parseFloat(String(p.categories?.epicentr_commission_pct));
-    ratesBySku.set(p.sku, {
-      prom:     Number.isFinite(promPct) ? promPct : promFallback,
-      rozetka:  Number.isFinite(rozPct)  ? rozPct  : rozFallback,
-      epicentr: Number.isFinite(epiPct)  ? epiPct  : epiFallback,
-    });
-  }
-  const costBySku = new Map(stockCostRows.map(r => [r.sku as string, Number(r.price_cost ?? 0)]));
-  const factCogs = new Map<string, number>();
-  const factFee  = new Map<string, number>();
-  // Решта витрат угоди, уже проведених по замовленню: еквайринг і збори НП
-  // (доставка за наш рахунок, переказ наложки) — ті самі, що віднімає облік
-  // (classifyPLEntry → 'deal'). Без них «вже вручені» на «Огляді» були більші
-  // за факт у «Аналітиці» на суму цих зборів.
-  const factDealExtra = new Map<string, number>();
-  for (const e of perOrderRows as { order_id: string; account_type: string; doc_type: string | null; amount: number }[]) {
-    if (e.account_type === 'cogs' || e.account_type === 'marketplace_fee') {
-      const m = e.account_type === 'cogs' ? factCogs : factFee;
-      m.set(e.order_id, (m.get(e.order_id) ?? 0) + Number(e.amount));
-    } else if (classifyPLEntry(e.account_type, e.doc_type) === 'deal') {
-      factDealExtra.set(e.order_id, (factDealExtra.get(e.order_id) ?? 0) + Number(e.amount));
-    }
-  }
-  const orderMargin = (o: EstOrder): number => {
-    const items = o.items ?? [];
-    const cost = factCogs.has(o.id)
-      ? factCogs.get(o.id)!
-      : items.reduce((s, i) => s + (costBySku.get(i.sku) ?? 0) * Number(i.qty ?? 0), 0);
-    const ch = o.channel_code === 'prom' || o.channel_code === 'rozetka' || o.channel_code === 'epicentr' ? o.channel_code : null;
-    const fee = factFee.has(o.id)
-      ? factFee.get(o.id)!
-      : ch
-      ? items.reduce((s, i) => s + Number(i.price ?? 0) * Number(i.qty ?? 0) * ((ratesBySku.get(i.sku)?.[ch] ?? 0) / 100), 0)
-      : 0;
-    return Number(o.total_price ?? 0) - cost - fee - (factDealExtra.get(o.id) ?? 0);
-  };
+  const estById = new Map(([...orderRows, ...monthlyOrders] as EstOrder[]).map(o => [o.id, o]));
+  const estimates = await loadProfitEstimates(db, [...estById.values()]);
+  const orderMargin = (o: EstOrder): number => estimates.get(o.id)?.gross ?? Number(o.total_price ?? 0);
+  const hasFactCogs = (o: EstOrder): boolean => estimates.get(o.id)?.cogsSource === 'fact';
   const curProfitEst  = (curOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   // Розбивка для підказки картки: вручені (собівартість уже проведена) — факт, решта — прогноз
-  const curProfitDelivered = (curOrders as EstOrder[]).filter(o => factCogs.has(o.id)).reduce((s, o) => s + orderMargin(o), 0);
+  const curProfitDelivered = (curOrders as EstOrder[]).filter(hasFactCogs).reduce((s, o) => s + orderMargin(o), 0);
   const prevProfitEst = (prevOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   const prevOrdSum    = sum(prevOrders);
 

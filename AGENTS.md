@@ -19,6 +19,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Гроші.** Ціни/суми ЗАВЖДИ перераховуються на сервері з БД; ціні від клієнта не довіряй. Логіку виноси в чисту функцію і покрий тестом (`lib/pricing.ts`, `lib/mono-signature.ts`).
 
+**Прогноз прибутку.** Факт прибутку — лише леджер (`lib/accounting/profit-rules`). Оцінка валового прибутку по ще не вручених замовленнях («Огляд», «Аналітика», картки) — лише `loadProfitEstimates` з `lib/accounting/estimate`: закупівля з `product_stock`, комісія через `estimateChannelCommissionPerItem` (`lib/marketplace/fees`), факт із леджера має пріоритет. Своя формула «закупівля × qty + ставка категорії» в екрані — нова копія, яка розійдеться з леджером (інцидент 04.11); `price_cost`/`_commission_pct` в `app/admin/finance` ловить архітектурний тест. Дрейф прогнозу проти факту за 30 днів перевіряє крон `check-invariants`.
+
 **Єдині джерела правди** (не копіпасть): `lib/site.ts` (`SITE_URL`, `WHOLESALE_MIN`), `lib/company.ts` (`SELLER` — реквізити), `lib/number-to-words.ts` (сума прописом).
 
 **Рендер / SEO.** Не читай request-time API (`headers()`, `cookies()`, `searchParams`) у server-компонентах, які мають кешуватися — це відключає ISR. Персональні дані (ціни за тарифом) НІКОЛИ не попадають у спільний кеш — тільки на клієнт/edge. `openGraph.type` — лише валідні значення (`website`/`article`).

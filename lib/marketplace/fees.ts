@@ -3,6 +3,9 @@ import { computePromCommission } from '../prom-commission';
 import { computeRozetkaCommission } from '../rozetka-commission';
 import { computeSmartFee, getSmartTariff } from '../rozetka-smart';
 import { computePromDeliveryFee, getPromDeliveryTariff, isPromCheapDelivery } from '../prom-delivery';
+import { getRozetkaDeliveryTariff } from '../rozetka-delivery-fee';
+import { resolveRozetkaDeliveryFee } from '../rozetka-delivery-tariff';
+import { ROZETKA_DELIVERY_TYPE } from '../rozetka-delivery';
 import { computeEpicentrCommission, getEpicentrFallbackPct } from '../epicentr-commission';
 import { getEpicentrBillingInvoice } from '../epicentr-api';
 import { createServiceClient, asJson } from '../supabase-service';
@@ -10,6 +13,7 @@ import { log } from '../log';
 import { getPromCommissionSettings } from './prom';
 import { getRozetkaFallbackPct } from './rozetka';
 import type { MarketplaceCode, MappedItem } from './adapter';
+import { chunkByDistinctSku } from './fees-rules';
 
 /**
  * ChannelFeeProvider (аудит 31.10, п. 17): усе, що облік має знати про збори
@@ -103,6 +107,74 @@ export async function makeChannelEstimator(db: Db, mp: MarketplaceCode): Promise
 /** Лише оцінка за ставками категорій (без факту з площадки) — legacy-донарахування. */
 export async function estimateChannelCommission(db: Db, mp: MarketplaceCode, items: MappedItem[]): Promise<number> {
   return (await makeChannelEstimator(db, mp))(items);
+}
+
+/**
+ * Оцінка комісії ПО КОЖНІЙ позиції (ставки/пороги категорій) для будь-якої
+ * кількості замовлень одним батчем: результат — масив тієї ж довжини й у тому
+ * самому порядку, що й items. Пачки — за кількістю різних SKU (URL PostgREST).
+ * Прогноз прибутку на «Огляді»/«Аналітиці» (lib/accounting/estimate) бере
+ * комісію лише звідси, щоб не розходитись із тим, що проведе completion.
+ */
+export async function estimateChannelCommissionPerItem(
+  db: Db, mp: MarketplaceCode, items: { sku: string; qty: number; price: number }[],
+): Promise<number[]> {
+  if (items.length === 0) return [];
+  const s = mp === 'prom' ? await getPromCommissionSettings(db) : null;
+  const fallbackPct = mp === 'epicentr' ? await getEpicentrFallbackPct(db) : mp === 'rozetka' ? await getRozetkaFallbackPct(db) : 0;
+  const out: number[] = [];
+  for (const part of chunkByDistinctSku(items)) {
+    const res = mp === 'prom' ? await computePromCommission(part, s!)
+      : mp === 'epicentr' ? await computeEpicentrCommission(part, { fallbackPct })
+      : await computeRozetkaCommission(part, { fallbackPct });
+    if (res.items.length !== part.length) throw new Error(`fees: ${mp} повернув ${res.items.length} позицій на ${part.length}`);
+    for (const it of res.items) out.push(it.commission_amt);
+  }
+  return out;
+}
+
+/**
+ * Збори РІВНЯ ЗАМОВЛЕННЯ, відомі наперед (для прогнозу прибутку, lib/accounting/estimate):
+ * Rozetka Smart (за сумою замовлення), організація видачі Rozetka Доставки (не-Smart),
+ * «Дешева доставка» Prom (за акцією в payload). Тарифи читаються раз на виклик.
+ * Той самий розрахунок, що проводять ship-route і completion; факт площадки може
+ * відрізнятись на гривні (його доводить rozetka-fees-sync) — для прогнозу достатньо.
+ */
+export type OrderForLevelFees = {
+  id: string;
+  channel_code: string | null;
+  total_price: number | null;
+  delivery_type: string | null;
+  is_smart: unknown;          // rozetka_data->is_smart
+  ps_promotion: unknown;      // prom_data->ps_promotion
+  rz_delivery_price: unknown; // rozetka_data->_rz_delivery_price (факт з накладної, якщо є)
+};
+
+export async function estimateOrderLevelFees(db: Db, orders: OrderForLevelFees[]): Promise<Map<string, number>> {
+  void db; // тарифи читаються власними service-клієнтами; db — для симетрії з рештою оцінювачів
+  const out = new Map<string, number>();
+  const hasRz = orders.some(o => o.channel_code === 'rozetka');
+  const hasProm = orders.some(o => o.channel_code === 'prom');
+  const [smart, rzDelivery, promDelivery] = await Promise.all([
+    hasRz ? getSmartTariff() : null,
+    hasRz ? getRozetkaDeliveryTariff() : null,
+    hasProm ? getPromDeliveryTariff() : null,
+  ]);
+  for (const o of orders) {
+    const total = Number(o.total_price) || 0;
+    let fee = 0;
+    if (o.channel_code === 'rozetka' && smart && rzDelivery) {
+      const isSmart = Boolean(o.is_smart);
+      if (isSmart) fee += computeSmartFee(total, smart);
+      if (o.delivery_type === ROZETKA_DELIVERY_TYPE) {
+        fee += resolveRozetkaDeliveryFee({ isSmart, actualPrice: Number(o.rz_delivery_price) }, rzDelivery);
+      }
+    } else if (o.channel_code === 'prom' && promDelivery) {
+      if (isPromCheapDelivery({ ps_promotion: o.ps_promotion })) fee += computePromDeliveryFee(total, promDelivery);
+    }
+    if (fee > 0) out.set(o.id, Math.round(fee * 100) / 100);
+  }
+  return out;
 }
 
 /** Rozetka Smart — фіксований збір за порогами суми ЗАМОВЛЕННЯ; 0, якщо не Smart. */

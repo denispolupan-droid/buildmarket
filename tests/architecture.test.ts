@@ -157,6 +157,19 @@ describe('архітектурні межі (AGENTS.md)', () => {
     expect(offenders, 'читай/пиши секрет через readSetting/writeSetting з lib/secrets:\n' + offenders.join('\n')).toEqual([]);
   });
 
+  it('прогноз прибутку в «Фінансах» — лише через lib/accounting/estimate, без своїх формул закупівля × ставка', () => {
+    // 04.11.2026: «Огляд» і «Аналітика» мали по своїй копії оцінки (поточна закупівля
+    // з product_stock + ставка категорії): Rozetka рахувалась плоскою ставкою замість
+    // порогів, а на «Огляді» позиції губились і маржа показувала 93 %. Тепер оцінку дає
+    // loadProfitEstimates; читання price_cost чи ставок комісій прямо в екранах фінансів —
+    // ознака нової копії.
+    const re = /price_cost|_commission_pct/;
+    const offenders = files.map(rel)
+      .filter(r => r.startsWith('app/admin/finance/'))
+      .filter(r => re.test(read(path.join(ROOT, r)).replace(/\/\/[^\n]*/g, '')));
+    expect(offenders, 'бери прогноз через loadProfitEstimates (lib/accounting/estimate):\n' + offenders.join('\n')).toEqual([]);
+  });
+
   it('ключ НП — лише через getNpApiKey (lib/np-api), не через process.env напряму', () => {
     // 03.11.2026: /api/novaposhta, delivery-sync і np-debug читали ЛИШЕ
     // process.env.NOVA_POSHTA_API_KEY (ключ іншого кабінету). Коли змінну прибрали,
