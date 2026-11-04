@@ -418,6 +418,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     }
   }, [delivery, rzAvailable, rzConfig]);
 
+  // Скидання вибору доставки — ПОВНЕ: разом зі способом/підтипом чистимо й місто та відділення.
+  // Раніше «змінити» скидала лише address і novaSubtype, а novaWarehouseRef лишався від
+  // попереднього вибору: після повторного «НП → Відділення» з порожнім містом валідація вже
+  // вважала доставку заповненою, і замовлення пішло б зі старим відділенням, якого не видно.
+  const clearNovaPoint = () => { setAddress(''); setNovaCityName(''); setNovaCityRef(''); setNovaWarehouseRef(''); };
+  const clearDelivery = () => {
+    setDelivery(''); setNovaSubtype(''); clearNovaPoint();
+    setRzCityId(''); setRzCityName(''); setRzDepId(''); setRzDepLabel('');
+  };
+
   const [payment,   setPayment]   = useState('');
   const [comment,     setComment]     = useState('');
   const [commentOpen, setCommentOpen] = useState(false);
@@ -758,7 +768,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         background: delivery === opt.value ? '#1E3A5F22' : 'var(--bg-card)',
                         transition: 'all 0.15s',
                       }}>
-                        <div {...uncheckProps(delivery === opt.value, () => { setDelivery(''); setAddress(''); setNovaSubtype(''); })} style={{
+                        <div {...uncheckProps(delivery === opt.value, clearDelivery)} style={{
                           width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
                           border: `2px solid ${delivery === opt.value ? '#1E3A5F' : '#CBD5E1'}`,
                           background: delivery === opt.value ? '#1E3A5F' : 'var(--bg-card)',
@@ -766,7 +776,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         }}>
                           {delivery === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                         </div>
-                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { if (delivery && delivery !== opt.value) { setAddress(''); setNovaSubtype(''); } setDelivery(opt.value); setReopened(r => ({ ...r, delivery: false })); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
+                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { if (delivery && delivery !== opt.value) clearDelivery(); setDelivery(opt.value); setReopened(r => ({ ...r, delivery: false })); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
                         <span style={{ fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
                           {opt.label}
                           {opt.sub && <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
@@ -775,7 +785,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         <img src={opt.logo} alt="" aria-hidden className="cart-carrier-logo" />
                         {delivery === opt.value && !reopened.delivery && (
                           <button
-                            onClick={e => { e.preventDefault(); setDelivery(''); setAddress(''); setNovaSubtype(''); }}
+                            onClick={e => { e.preventDefault(); clearDelivery(); }}
                             style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                           >
                             {tr.change}
@@ -794,7 +804,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               background: novaSubtype === sub ? '#1E3A5F22' : 'var(--bg-soft)',
                               transition: 'all 0.15s',
                             }}>
-                              <div {...uncheckProps(novaSubtype === sub, () => { setNovaSubtype(''); setAddress(''); })} style={{
+                              <div {...uncheckProps(novaSubtype === sub, () => { setNovaSubtype(''); clearNovaPoint(); })} style={{
                                 width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
                                 border: `2px solid ${novaSubtype === sub ? '#1E3A5F' : '#CBD5E1'}`,
                                 background: novaSubtype === sub ? '#1E3A5F' : 'var(--bg-card)',
@@ -808,7 +818,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               </span>
                               {novaSubtype === sub && (
                                 <button
-                                  onClick={e => { e.preventDefault(); setNovaSubtype(''); setAddress(''); }}
+                                  onClick={e => { e.preventDefault(); setNovaSubtype(''); clearNovaPoint(); }}
                                   style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                                 >
                                   {tr.change}

@@ -208,6 +208,9 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
 
   function handleCityInput(val: string) {
     setCityQuery(val);
+    // Місто почали міняти — попередні місто й відділення вже не чинні. Без цього батьківська
+    // форма тримала старий Ref відділення й вважала доставку заповненою (кошик, 04.11.2026).
+    if (selectedCity) { onCityRefChange?.(''); onWarehouseRefChange?.(''); }
     setSelectedCity(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchCities(val), 350);
@@ -220,6 +223,8 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
     setSettlements([]);
     setSelectedWH(null);
     setWarehouseQuery('');
+    // Нове місто — відділення треба обрати заново; повідомляємо й батька, а не лише скидаємо своє поле
+    onWarehouseRefChange?.('');
     onCityChange?.(s.Present);
     onCityRefChange?.(s.Ref);
 
