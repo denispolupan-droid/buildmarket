@@ -417,6 +417,15 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // Клік по плитці варіанта не забирає фокус: інакше спершу спрацьовує blur секції, вона
   // згортається, і клік (а з ним і вибір) губиться. Сам вибір іде через label → radio.
   const keepFocus = (e: React.MouseEvent) => e.preventDefault();
+  // Позначка (кружок із галочкою) біля обраного варіанта — теж «змінити»: клік знімає вибір.
+  // preventDefault/stopPropagation — щоб клік не пішов у label і не обрав варіант знову.
+  const uncheckProps = (selected: boolean, clear: () => void) => selected ? {
+    className: 'cart-check is-on',
+    role: 'button' as const,
+    title: tr.change,
+    'aria-label': tr.change,
+    onClick: (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); clear(); },
+  } : {};
 
   // Чиста перевірка (без setState) — нею ж рахуємо, які секції вже заповнені (підсвітка іконок)
   function collectErrors(): Set<string> {
@@ -733,7 +742,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         background: delivery === opt.value ? '#1E3A5F22' : 'var(--bg-card)',
                         transition: 'all 0.15s',
                       }}>
-                        <div style={{
+                        <div {...uncheckProps(delivery === opt.value, () => { setDelivery(''); setAddress(''); setNovaSubtype(''); })} style={{
                           width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
                           border: `2px solid ${delivery === opt.value ? '#1E3A5F' : '#CBD5E1'}`,
                           background: delivery === opt.value ? '#1E3A5F' : 'var(--bg-card)',
@@ -769,7 +778,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               background: novaSubtype === sub ? '#1E3A5F22' : 'var(--bg-soft)',
                               transition: 'all 0.15s',
                             }}>
-                              <div style={{
+                              <div {...uncheckProps(novaSubtype === sub, () => { setNovaSubtype(''); setAddress(''); })} style={{
                                 width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
                                 border: `2px solid ${novaSubtype === sub ? '#1E3A5F' : '#CBD5E1'}`,
                                 background: novaSubtype === sub ? '#1E3A5F' : 'var(--bg-card)',
@@ -877,7 +886,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       background: payment === opt.value ? '#1E3A5F22' : 'var(--bg-card)',
                       transition: 'all 0.15s',
                     }}>
-                      <div style={{
+                      <div {...uncheckProps(payment === opt.value, () => setPayment(''))} style={{
                         width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
                         border: `2px solid ${payment === opt.value ? '#1E3A5F' : '#CBD5E1'}`,
                         background: payment === opt.value ? '#1E3A5F' : 'var(--bg-card)',
