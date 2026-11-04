@@ -13,6 +13,19 @@
   .cart-contact-grid__wide { grid-column: auto; }
 }
 
+/* Іконка в шапці секції: світла, поки секцію не заповнено; фірмова синя — коли все потрібне введено.
+   Так шапки підказують, що лишилось, без кольорових заливок, що сперечались би з кнопкою підтвердження. */
+.cart-sec-icon {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: #E8EEF5; color: var(--navy);
+  transition: background-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+.cart-sec-icon.is-done { background: var(--navy); color: #fff; }
+[data-theme="dark"] .cart-sec-icon { background: rgba(72, 128, 184, 0.18); color: #93C5FD; }
+[data-theme="dark"] .cart-sec-icon.is-done { background: var(--brand-blue); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .cart-sec-icon { transition: none; } }
+
 /* Спосіб доставки, недоступний для цього замовлення (напр. ROZETKA понад ліміт ваги) */
 .cart-opt-disabled {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px;

@@ -179,7 +179,7 @@ const labelStyle: React.CSSProperties = {
   color: '#374151', marginBottom: '6px',
 };
 
-function Section({ icon: Icon, title, children, error }: { icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean }) {
+function Section({ icon: Icon, title, children, error, done }: { icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean; done?: boolean }) {
   return (
     <div style={{
       background: 'var(--bg-card)', border: `1.5px solid ${error ? '#EF4444' : 'var(--border)'}`, borderRadius: '14px',
@@ -191,12 +191,9 @@ function Section({ icon: Icon, title, children, error }: { icon: React.ElementTy
         background: error ? '#2D0A0A' : 'var(--bg-soft)',
         borderRadius: '14px 14px 0 0',
       }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '8px',
-          background: '#E8EEF5', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <Icon size={16} color="#1E3A5F" strokeWidth={2} />
+        {/* Секцію заповнено — квадрат іконки фірмовий синій; ні — світлий */}
+        <div className={'cart-sec-icon' + (done ? ' is-done' : '')}>
+          <Icon size={16} strokeWidth={2} />
         </div>
         <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</span>
       </div>
@@ -359,7 +356,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [noCallback,  setNoCallback]  = useState(true);
   const [errors, setErrors] = useState<Set<string>>(new Set());
 
-  function validate(): Set<string> {
+  // Чиста перевірка (без setState) — нею ж рахуємо, які секції вже заповнені (підсвітка іконок)
+  function collectErrors(): Set<string> {
     const e = new Set<string>();
     if (!isRetail && !company.trim()) e.add('company');
     if (!lastName.trim())  e.add('lastName');
@@ -372,9 +370,19 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
     if (delivery === RZ_DELIVERY_TYPE && !rzDepId) e.add('rzPoint');
     if (!payment)         e.add('payment');
+    return e;
+  }
+
+  function validate(): Set<string> {
+    const e = collectErrors();
     setErrors(e);
     return e;
   }
+
+  const pending = collectErrors();
+  const contactDone  = !['company', 'lastName', 'firstName', 'phone', 'email'].some(k => pending.has(k));
+  const deliveryDone = !['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => pending.has(k));
+  const paymentDone  = !pending.has('payment');
 
   function scrollToFirstError(errs: Set<string>) {
     const priority = ['company', 'lastName', 'firstName', 'phone', 'email', 'delivery', 'novaSubtype', 'address', 'rzPoint', 'payment'];
@@ -554,7 +562,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
-              <Section icon={User} title={tr.sectionContact}>
+              <Section icon={User} done={contactDone} title={tr.sectionContact}>
                 {/* Рядок 1: ПІБ; рядок 2: компанія (не для роздрібу) · телефон · email */}
                 <div className="cart-contact-grid">
                   <div id="field-lastName">
@@ -613,7 +621,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <div className="cart-ship-pay">
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
-              <Section icon={Truck} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} done={deliveryDone} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.map(opt => (
                     <div key={opt.value}>
@@ -738,7 +746,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               {/* Payment */}
               <div>
               <div id="field-payment" />
-              <Section icon={CreditCard} title={tr.sectionPayment} error={errors.has('payment')}>
+              <Section icon={CreditCard} done={paymentDone} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {PAYMENT_OPTIONS.map(opt => (
                     <label key={opt.value} style={{
@@ -820,8 +828,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
                     {/* Іконка в тому ж квадраті, що в секціях форми */}
-                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#E8EEF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <ShoppingCart size={16} color="#1E3A5F" strokeWidth={2} />
+                    {/* Товари вже є — блок «заповнений», іконка синя */}
+                    <span className="cart-sec-icon is-done">
+                      <ShoppingCart size={16} strokeWidth={2} />
                     </span>
                     {tr.orderSummary}
                   </span>
