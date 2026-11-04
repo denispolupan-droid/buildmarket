@@ -35,15 +35,6 @@
 .cart-opt-disabled__dot { width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%; border: 2px solid var(--border); }
 .cart-opt-disabled__why { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; }
 
-/* «Спосіб доставки» і «Спосіб оплати» поруч — на широкому екрані; вужче — одна під одною.
-   Секції мають однакову висоту рядка (stretch), щоб нижні краї карток збігались. */
-.cart-ship-pay { display: grid; grid-template-columns: 1fr; gap: 16px; }
-.cart-ship-pay > div { display: flex; flex-direction: column; min-width: 0; }
-.cart-ship-pay > div > div:last-child { flex: 1; }
-@media (min-width: 1200px) {
-  .cart-ship-pay { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
 /* Список «Ваше замовлення» у кошику. Префікс cart- — CSS сторінок глобальний, назви не мають збігатися.
    Шкала: мета 11.5 / назва 14 / ціна за од. 12 / сума 15 — лічильник 32px під цю шкалу. */
 .cart-item { display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; }

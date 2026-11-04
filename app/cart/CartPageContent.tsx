@@ -619,8 +619,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               {/* Delivery */}
               {/* Якорі прокрутки до помилки — в одній обгортці з секцією: окремими дітьми колонки
                   кожен додавав gap 16px, і між «Контактами» й «Доставкою» була діра ~80px */}
-              {/* Доставка й оплата — поруч (на широкому екрані), щоб форма була компактною */}
-              <div className="cart-ship-pay">
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
               <Section icon={Truck} done={deliveryDone} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
@@ -776,7 +774,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 </div>
                 {errors.has('payment') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPayment}</p>}
               </Section>
-              </div>
               </div>
 
               {/* Comment */}
