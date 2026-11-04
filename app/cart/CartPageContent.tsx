@@ -179,7 +179,7 @@ const labelStyle: React.CSSProperties = {
   color: '#374151', marginBottom: '6px',
 };
 
-function Section({ icon: Icon, title, children, error }: { icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean }) {
+function Section({ icon: Icon, title, children, error, step }: { icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean; step?: number }) {
   return (
     <div style={{
       background: 'var(--bg-card)', border: `1.5px solid ${error ? '#EF4444' : 'var(--border)'}`, borderRadius: '14px',
@@ -198,7 +198,11 @@ function Section({ icon: Icon, title, children, error }: { icon: React.ElementTy
         }}>
           <Icon size={16} color="#1E3A5F" strokeWidth={2} />
         </div>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</span>
+        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+          {/* Номер кроку оформлення: 1 контакти → 2 доставка → 3 оплата */}
+          {step != null && <span className="cart-step">{step}</span>}
+          {title}
+        </span>
       </div>
       <div style={{ padding: '20px' }}>{children}</div>
     </div>
@@ -554,7 +558,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
-              <Section icon={User} title={tr.sectionContact}>
+              <Section icon={User} step={1} title={tr.sectionContact}>
                 {/* Рядок 1: ПІБ; рядок 2: компанія (не для роздрібу) · телефон · email */}
                 <div className="cart-contact-grid">
                   <div id="field-lastName">
@@ -613,7 +617,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <div className="cart-ship-pay">
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
-              <Section icon={Truck} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} step={2} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
@@ -728,8 +732,23 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       )}
                     </div>
                   ))}
+                  {/* ROZETKA Доставка не підходить за вагою — показуємо неактивною з причиною,
+                      а не ховаємо: інакше «Нова Пошта» виглядає єдиним способом без пояснень */}
+                  {!delivery && rzConfig?.enabled && !rzAvailable && rzConfig.maxWeightKg != null && (
+                    <div className="cart-opt-disabled" aria-disabled="true">
+                      <span className="cart-opt-disabled__dot" />
+                      <span>
+                        {tr.deliveryRz}
+                        <span className="cart-opt-disabled__why">
+                          {lang === 'ru'
+                            ? `Недоступно: заказ ≈ ${Math.ceil(orderWeightKg)} кг, лимит ${rzConfig.maxWeightKg} кг`
+                            : `Недоступно: замовлення ≈ ${Math.ceil(orderWeightKg)} кг, ліміт ${rzConfig.maxWeightKg} кг`}
+                        </span>
+                      </span>
+                    </div>
+                  )}
                 </div>
-                {errors.has('delivery') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errDelivery}</p>}
+                {errors.has('delivery') &&<p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errDelivery}</p>}
                 {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errNovaSubtype}</p>}
                 {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errAddress}</p>}
                 {errors.has('rzPoint') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errRzPoint}</p>}
@@ -739,7 +758,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               {/* Payment */}
               <div>
               <div id="field-payment" />
-              <Section icon={CreditCard} title={tr.sectionPayment} error={errors.has('payment')}>
+              <Section icon={CreditCard} step={3} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
                     <label key={opt.value} style={{
