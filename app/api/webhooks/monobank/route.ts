@@ -380,7 +380,8 @@ async function _POST(req: NextRequest) {
         }),
       }).catch(() => {});
 
-      resend.emails.send({
+      // Роздрібний покупець міг не вказати email (з 04.11.2026 він необов'язковий) — тоді листа немає
+      if (order.email) resend.emails.send({
         from: FROM, to: order.email,
         subject: `✅ Оплату підтверджено! Замовлення №${order.order_number} — FIXLINE`,
         html: buildCustomerOrderEmail({

@@ -36,7 +36,6 @@ async function _POST(req: NextRequest) {
   const phoneClean = String(phone ?? '').replace(/[\s\-()]/g, '');
   if (!contact?.trim())   return NextResponse.json({ error: 'Вкажіть контактну особу' }, { status: 400 });
   if (!/^\+?3?8?(0\d{9})$/.test(phoneClean)) return NextResponse.json({ error: 'Невірний номер телефону' }, { status: 400 });
-  if (!email?.trim() || !email.includes('@')) return NextResponse.json({ error: 'Невірний email' }, { status: 400 });
   if (!deliveryType)  return NextResponse.json({ error: 'Вкажіть тип доставки' }, { status: 400 });
   if (!paymentType)   return NextResponse.json({ error: 'Вкажіть тип оплати' }, { status: 400 });
   if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: 'Кошик порожній' }, { status: 400 });
@@ -50,6 +49,13 @@ async function _POST(req: NextRequest) {
   //    Every line price is recomputed from product_stock by SKU for the user's
   //    tier (retail: price_promo ?? price_retail; wholesale: price_unit).
   const isWholesaleUser = WHOLESALE_TYPES.includes(accountType ?? '');
+
+  // Email: обов'язковий для опту (компанії — документи, рахунки), для роздрібу — ні
+  // (рішення власника 04.11.2026: менше полів — більше оформлень; сповіщення підуть у Viber).
+  // Порожній зберігаємо як '' — orders.email NOT NULL, так само пишуть замовлення площадок.
+  const emailClean = String(email ?? '').trim();
+  if (emailClean && !emailClean.includes('@')) return NextResponse.json({ error: 'Невірний email' }, { status: 400 });
+  if (isWholesaleUser && !emailClean) return NextResponse.json({ error: 'Вкажіть email' }, { status: 400 });
   type OrderItem = { sku?: unknown; qty?: unknown; [k: string]: unknown };
   const rawItems = items as OrderItem[];
   const skus: string[] = [];
@@ -128,7 +134,7 @@ async function _POST(req: NextRequest) {
     contact,
     company:     company ?? null,
     phone,
-    email,
+    email:       emailClean || null,
     authUserId:  user?.id ?? null,
     accountType: (user?.app_metadata?.account_type as string | undefined) ?? null,
   });
@@ -151,7 +157,7 @@ async function _POST(req: NextRequest) {
       company:               company ?? null,
       contact,
       phone,
-      email,
+      email:                 emailClean,
       delivery_type:         deliveryType,
       delivery_subtype:      deliverySubtype ?? null,
       delivery_address:      deliveryAddress ?? null,
@@ -181,7 +187,7 @@ async function _POST(req: NextRequest) {
       payload,
       reference,
       total_price: serverTotal,
-      email,
+      email:       emailClean || null,
     });
     if (pendingErr) {
       alertAdmin('Checkout: не збереглось pending_card_orders (картка)', { email, reference, error: pendingErr.message });
@@ -223,9 +229,9 @@ async function _POST(req: NextRequest) {
       return NextResponse.json({ error: 'Не вдалось ініціювати оплату. Спробуйте ще раз або оберіть інший спосіб оплати.' }, { status: 500 });
     }
 
-    await admin.from('abandoned_carts')
+    if (emailClean) await admin.from('abandoned_carts')
       .update({ recovered_at: new Date().toISOString() })
-      .eq('email', email).is('recovered_at', null);
+      .eq('email', emailClean).is('recovered_at', null);
 
     return NextResponse.json({ pageUrl });
   }
@@ -240,7 +246,7 @@ async function _POST(req: NextRequest) {
       company,
       contact,
       phone,
-      email,
+      email:                 emailClean,
       delivery_type:         deliveryType,
       delivery_subtype:      deliverySubtype ?? null,
       delivery_address:      deliveryAddress ?? null,
@@ -276,15 +282,15 @@ async function _POST(req: NextRequest) {
     await admin.rpc('increment_promo_used', { p_code: resolvedPromoCode });
   }
 
-  await admin.from('abandoned_carts')
+  if (emailClean) await admin.from('abandoned_carts')
     .update({ recovered_at: new Date().toISOString() })
-    .eq('email', email).is('recovered_at', null);
+    .eq('email', emailClean).is('recovered_at', null);
 
   const invoiceUrl = `${siteUrl}/invoice/${data.id}`;
 
   const orderData = {
     orderNumber: data.order_number, company: company ?? '', contact,
-    phone, email, items: serverItems as unknown as CartItem[], totalPrice: finalTotal, deliveryType,
+    phone, email: emailClean, items: serverItems as unknown as CartItem[], totalPrice: finalTotal, deliveryType,
     deliveryAddress: deliveryAddress ?? '', paymentType, comment,
   };
 
@@ -304,12 +310,12 @@ async function _POST(req: NextRequest) {
     html: buildAdminNotificationHtml(orderData),
   }).catch(e => console.error('[admin email]', e));
 
-  const { data: prevOrder } = await admin
+  const { data: prevOrder } = emailClean ? await admin
     .from('orders').select('telegram_chat_id')
-    .eq('email', email).neq('id', data.id)
+    .eq('email', emailClean).neq('id', data.id)
     .not('telegram_chat_id', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(1).maybeSingle();
+    .limit(1).maybeSingle() : { data: null };
 
   const existingChatId = prevOrder?.telegram_chat_id ?? null;
 
@@ -329,8 +335,8 @@ async function _POST(req: NextRequest) {
   const customerSubject = paymentType === 'cod'
     ? `Замовлення №${data.order_number} оформлено — FIXLINE`
     : `Рахунок №${data.order_number} — FIXLINE`;
-  resend.emails.send({
-    from: FROM, to: email, subject: customerSubject,
+  if (emailClean) resend.emails.send({
+    from: FROM, to: emailClean, subject: customerSubject,
     html: buildCustomerOrderEmail({
       orderNumber: data.order_number, orderId: data.id,
       company: company ?? '', contact, totalPrice: finalTotal, paymentType,

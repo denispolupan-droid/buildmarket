@@ -59,6 +59,8 @@ const T = {
     middleNamePh: 'Іванович',
     phone: 'Телефон',
     email: 'Email для підтвердження',
+    emailRetail: 'Email',
+    emailRetailHint: "(необов'язково)",
     errCompany: 'Вкажіть назву компанії',
     errLastName: 'Вкажіть прізвище',
     errFirstName: 'Вкажіть ім\'я',
@@ -131,6 +133,8 @@ const T = {
     middleNamePh: 'Иванович',
     phone: 'Телефон',
     email: 'Email для подтверждения',
+    emailRetail: 'Email',
+    emailRetailHint: '(необязательно)',
     errCompany: 'Укажите название компании',
     errLastName: 'Укажите фамилию',
     errFirstName: 'Укажите имя',
@@ -418,7 +422,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     if (!lastName.trim())  e.add('lastName');
     if (!firstName.trim()) e.add('firstName');
     if (!/^\+?3?8?(0\d{9})$/.test(phone.replace(/[\s\-()]/g, ''))) e.add('phone');
-    if (!email.trim())    e.add('email');
+    // Email обов'язковий лише для опту; у роздрібі — необов'язковий, але якщо введено, має бути схожим на адресу
+    if (!isRetail && !email.trim()) e.add('email');
+    if (email.trim() && !email.includes('@')) e.add('email');
     if (!delivery)        e.add('delivery');
     if (delivery === 'nova' && !novaSubtype) e.add('novaSubtype');
     if (delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && !novaWarehouseRef) e.add('address');
@@ -689,8 +695,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPhone}</p>}
                   </div>
                   <div id="field-email">
-                    <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>{tr.email}</label>
-                    <input style={{ ...inputStyle, border: err('email') ?? inputStyle.border }} type="email" placeholder="company@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(s => { const n = new Set(s); n.delete('email'); return n; }); }} />
+                    {/* Роздріб — email необов'язковий (лист-підтвердження, якщо вказали); опт — обов'язковий */}
+                    <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>
+                      {isRetail ? <>{tr.emailRetail} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.emailRetailHint}</span></> : tr.email}
+                    </label>
+                    <input style={{ ...inputStyle, border: err('email') ?? inputStyle.border }} type="email" placeholder={isRetail ? 'name@email.com' : 'company@email.com'} value={email} onChange={e => { setEmail(e.target.value); setErrors(s => { const n = new Set(s); n.delete('email'); return n; }); }} />
                     {errors.has('email') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errEmail}</p>}
                   </div>
                   {/* Роздріб: компанія/ФОП необов'язкова — для документів на ФОП (рахунок, видаткова);
