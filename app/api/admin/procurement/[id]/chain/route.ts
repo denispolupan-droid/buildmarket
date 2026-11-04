@@ -49,8 +49,9 @@ async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: strin
   // 4. FIFO партії для дочірніх документів
   const { data: batches } = childIds.length
     ? await db.from('stock_batches')
-        .select('id, sku, initial_qty, cost_price, received_at')
+        .select('id, document_id, sku, initial_qty, cost_price, received_at')
         .in('document_id', childIds)
+        .limit(1000)
     : { data: [] };
 
   // 5. Landed cost lines для приходів (щоб показати окремо від вартості товару)
@@ -65,9 +66,10 @@ async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: strin
   const [{ data: orderDocs }, { data: customerOrder }] = await Promise.all([
     po.order_id ? db
       .from('acc_documents')
-      .select('id, doc_number, doc_type, doc_date, total_amount, total_cost, order_id')
+      .select('id, doc_number, doc_type, doc_date, status, total_amount, total_cost, order_id')
       .eq('order_id', po.order_id)
       .neq('id', id)
+      .limit(100)
       : { data: [] },
     po.order_id ? db
       .from('orders')

@@ -4,18 +4,19 @@ import { useState } from 'react';
 import { X, GitBranch, Loader2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { fmtInt as fmt } from '../../../../lib/format';
+import { orderPoEvents, orderSales, type PoAdjustment, type PoPayment, type PoReceipt, type SaleDoc } from './chain-order';
 
 type LandedCostLine = { document_id: string; cost_type: string; description: string | null; amount: number };
 
 type ChainData = {
   po: { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; procurement_status: string | null; notes: string | null };
   customerOrder: { id: string; order_number: number; status: string; total_price: number | null; created_at: string; contact: string | null; company: string | null } | null;
-  children:     { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; total_cost: number | null; notes: string | null }[];
-  adjustments:  { id: string; doc_number: string; doc_type: string; doc_date: string; status: string; notes: string | null }[];
+  children:     PoReceipt[];
+  adjustments:  PoAdjustment[];
   adjLines:     { document_id: string; sku: string; qty: number; cost_price: number | null }[];
-  payments:     { id: string; txn_id: string; amount: number; business_date: string; description: string | null; account_type: string; doc_type: string }[];
-  batches:      { id: string; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
-  relatedDocs:  { id: string; doc_number: string; doc_type: string; doc_date: string; total_amount: number | null; total_cost: number | null; order_id: string | null }[];
+  payments:     PoPayment[];
+  batches:      { id: string; document_id: string | null; sku: string; initial_qty: number; cost_price: number; received_at: string }[];
+  relatedDocs:  SaleDoc[];
   landedCosts:  LandedCostLine[];
 };
 
@@ -30,6 +31,16 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   receipt: '📥 Прихід товару',
   stock_in: '📥 Прихід товару',
   sale: '📤 Продаж',
+};
+// Продаж у ланцюжку — це видаткова: чернетка живе з відвантаження до вручення
+// (docs/ORDER-LIFECYCLE.md), проводиться при врученні.
+const SALE_STATUS: Record<string, string> = {
+  draft:     'чернетка · проведеться при врученні',
+  confirmed: 'проведено · виручка, COGS, склад',
+  cancelled: 'скасовано',
+};
+const LC_ICONS: Record<string, string> = {
+  delivery: '🚚', loading: '📦', customs: '🏛', packaging: '📦', broker: '🏛', other: '➕',
 };
 
 function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href, cancelled = false, children: kids }: {
@@ -69,6 +80,104 @@ function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href,
   );
 }
 
+/** Події всередині закупівлі: коригування, приходи (з витратами й партіями), оплати, витрати. */
+function PoEvents({ data }: { data: ChainData }) {
+  return (
+    <>
+      {orderPoEvents(data).map((ev, idx) => {
+        if (ev.kind === 'payment') {
+          const p = ev.data;
+          const isReversal = p.doc_type === 'supplier_payment_reversal';
+          const icon = p.account_type === 'cash' ? '💵' : p.account_type === 'bank' ? '🏦' : '💳';
+          return (
+            <TimelineNode key={`pay-${idx}`}
+              icon={isReversal ? '↩️' : icon}
+              title={isReversal ? 'Скасування оплати' : 'Оплата постачальнику'}
+              sub={`${fmtDate(p.business_date)} · ${ACCOUNT_LABELS[p.account_type] ?? p.account_type}`}
+              amount={isReversal ? `+${fmt(Math.abs(p.amount))} ₴` : `−${fmt(Math.abs(p.amount))} ₴`}
+              amountColor={isReversal ? '#B45309' : '#DC2626'}
+              cancelled={isReversal}
+            />
+          );
+        }
+        if (ev.kind === 'expense') {
+          const p = ev.data;
+          return (
+            <TimelineNode key={`exp-${idx}`}
+              icon={({ logistics: '🚚', loading: '📦', customs: '🏛', opex: '💼' } as Record<string, string>)[p.account_type] ?? '💼'}
+              title={p.description ?? ACCOUNT_LABELS[p.account_type]}
+              sub={fmtDate(p.business_date)}
+              amount={`−${fmt(p.amount)} ₴`} amountColor="#B45309"
+            />
+          );
+        }
+        if (ev.kind === 'adjustment') {
+          const adj = ev.data;
+          const lines = data.adjLines.filter(l => l.document_id === adj.id);
+          return (
+            <TimelineNode key={`adj-${idx}`}
+              icon="✏️"
+              title={`${adj.doc_number} — Коригування замовлення`}
+              sub={`${fmtDate(adj.doc_date)}${adj.notes ? ` · ${adj.notes}` : ''}`}
+              href={`/admin/accounting/documents/${adj.id}`}
+            >
+              {lines.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
+                  {lines.map(l => (
+                    <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : 'var(--color-success)', display: 'flex', gap: '6px' }}>
+                      <span style={{ fontFamily: 'monospace' }}>{l.sku}</span>
+                      <span>{l.qty > 0 ? `+${l.qty}` : l.qty} шт</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TimelineNode>
+          );
+        }
+        // receipt
+        const child = ev.data;
+        const childLC = (data.landedCosts ?? []).filter(lc => lc.document_id === child.id);
+        const lcTotal = childLC.reduce((s, lc) => s + Number(lc.amount), 0);
+        const goodsCost = child.total_cost ? Number(child.total_cost) - lcTotal : null;
+        // Партії — саме цього приходу (до 04.11 рахувались партії всіх приходів закупівлі)
+        const batches = data.batches.filter(b => b.document_id === child.id);
+        const batchQty = batches.reduce((s, b) => s + Number(b.initial_qty), 0);
+        return (
+          <TimelineNode key={`rec-${idx}`}
+            icon="📥" title={`${child.doc_number} — ${DOC_TYPE_LABELS[child.doc_type] ?? child.doc_type}`}
+            sub={`${fmtDate(child.doc_date)}${child.notes ? ` · ${child.notes}` : ''}`}
+            amount={goodsCost !== null ? `${fmt(goodsCost)} ₴` : undefined}
+            amountColor="#15803D"
+            href={`/admin/procurement/receipts/${child.id}`}
+          >
+            {childLC.map((lc, i) => (
+              <TimelineNode key={i}
+                icon={LC_ICONS[lc.cost_type] ?? '➕'}
+                title={lc.description || `Додаткові витрати: ${lc.cost_type}`}
+                sub="Landed Cost · розподілено по собівартості"
+                amount={`+${fmt(Number(lc.amount))} ₴`}
+                amountColor="#7C3AED"
+              />
+            ))}
+            {lcTotal > 0 && (
+              <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F3FF', borderRadius: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                <span style={{ color: '#6B21A8', fontWeight: 600 }}>Разом з витратами:</span>
+                <span style={{ color: '#6B21A8', fontWeight: 800 }}>{fmt(Number(child.total_cost))} ₴</span>
+              </div>
+            )}
+            {batches.length > 0 && (
+              <TimelineNode
+                icon="📊" title={`FIFO партії: ${new Set(batches.map(b => b.sku)).size} SKU · ${fmt(batchQty)} шт`}
+                sub="Залишки оновлено · собівартість розподілено"
+              />
+            )}
+          </TimelineNode>
+        );
+      })}
+    </>
+  );
+}
+
 export default function DocChain({ poId }: { poId: string }) {
   const [open,    setOpen]    = useState(false);
   const [data,    setData]    = useState<ChainData | null>(null);
@@ -85,8 +194,33 @@ export default function DocChain({ poId }: { poId: string }) {
     finally { setLoading(false); }
   }
 
-  const totalPaid = data?.payments.filter(p => p.amount < 0 && ['bank','cash','acquiring'].includes(p.account_type))
-    .reduce((s, p) => s + Math.abs(p.amount), 0) ?? 0;
+  // Ланцюжок читається як логіка продажу (замовлення покупця → закупівля з її
+  // подіями → продаж), а не як плоский список за датою: РН-чернетка створюється
+  // при відвантаженні з doc_date без часу і за датою випереджала прихід того ж дня.
+  const poNode = data && (
+    <TimelineNode
+      icon={data.po.status === 'cancelled' ? '🚫' : '📋'}
+      title={`${data.po.doc_number} — Замовлення постачальнику`}
+      sub={`${fmtDate(data.po.doc_date)}${data.po.notes ? ` · ${data.po.notes}` : ''}${data.po.status === 'cancelled' ? ' · Скасовано' : ''}`}
+      amount={data.po.total_cost ? `${fmt(Number(data.po.total_cost))} ₴` : undefined}
+      amountColor={data.po.status === 'cancelled' ? '#9CA3AF' : '#374151'}
+      href={data.po.status !== 'cancelled' ? `/admin/procurement/${data.po.id}` : undefined}
+      cancelled={data.po.status === 'cancelled'}
+    >
+      <PoEvents data={data} />
+    </TimelineNode>
+  );
+
+  const saleNodes = data && orderSales(data.relatedDocs).map(d => (
+    <TimelineNode key={`sale-${d.id}`}
+      icon="📤" title={`${d.doc_number} — Продаж`}
+      sub={`${fmtDate(d.doc_date)}${d.status && SALE_STATUS[d.status] ? ` · ${SALE_STATUS[d.status]}` : ''}`}
+      amount={d.total_amount ? `${fmt(Number(d.total_amount))} ₴` : undefined}
+      amountColor={d.status === 'cancelled' ? '#9CA3AF' : '#15803D'}
+      cancelled={d.status === 'cancelled'}
+      href={d.order_id ? `/admin?expand=${d.order_id}` : `/admin/accounting/documents/${d.id}`}
+    />
+  ));
 
   return (
     <>
@@ -118,167 +252,25 @@ export default function DocChain({ poId }: { poId: string }) {
                 </div>
               )}
 
-              {data && (
+              {data && (data.customerOrder ? (
+                // Замовлення покупця — корінь: під ним закупівля з її подіями, далі продаж
+                <TimelineNode
+                  icon="🛒"
+                  title={`Замовлення покупця #${data.customerOrder.order_number}`}
+                  sub={`${fmtDate(data.customerOrder.created_at)}${data.customerOrder.company ? ` · ${data.customerOrder.company}` : data.customerOrder.contact ? ` · ${data.customerOrder.contact}` : ''}`}
+                  amount={data.customerOrder.total_price ? `${fmt(Number(data.customerOrder.total_price))} ₴` : undefined}
+                  amountColor="#1E3A5F"
+                  href={`/admin?expand=${data.customerOrder.id}`}
+                >
+                  {poNode}
+                  {saleNodes}
+                </TimelineNode>
+              ) : (
                 <>
-                  {/* Замовлення покупця — якщо PO пов'язаний із customer order */}
-                  {data.customerOrder && (
-                    <TimelineNode
-                      icon="🛒"
-                      title={`Замовлення покупця #${data.customerOrder.order_number}`}
-                      sub={`${fmtDate(data.customerOrder.created_at)}${data.customerOrder.company ? ` · ${data.customerOrder.company}` : data.customerOrder.contact ? ` · ${data.customerOrder.contact}` : ''}`}
-                      amount={data.customerOrder.total_price ? `${fmt(Number(data.customerOrder.total_price))} ₴` : undefined}
-                      amountColor="#1E3A5F"
-                      href={`/admin?expand=${data.customerOrder.id}`}
-                    />
-                  )}
-
-                  {/* PO */}
-                  <TimelineNode
-                    icon={data.po.status === 'cancelled' ? '🚫' : '📋'}
-                    title={`${data.po.doc_number} — Замовлення постачальнику`}
-                    sub={`${fmtDate(data.po.doc_date)}${data.po.notes ? ` · ${data.po.notes}` : ''}${data.po.status === 'cancelled' ? ' · Скасовано' : ''}`}
-                    amount={data.po.total_cost ? `${fmt(Number(data.po.total_cost))} ₴` : undefined}
-                    amountColor={data.po.status === 'cancelled' ? '#9CA3AF' : '#374151'}
-                    href={data.po.status !== 'cancelled' ? `/admin/procurement/${data.po.id}` : undefined}
-                    cancelled={data.po.status === 'cancelled'}
-                  >
-                    {/* Всі дочірні події — відсортовані хронологічно */}
-                    {(() => {
-                      type ChainEvent =
-                        | { kind: 'payment';     sortKey: string; data: ChainData['payments'][0] }
-                        | { kind: 'expense';     sortKey: string; data: ChainData['payments'][0] }
-                        | { kind: 'adjustment';  sortKey: string; data: ChainData['adjustments'][0] }
-                        | { kind: 'receipt';     sortKey: string; data: ChainData['children'][0] }
-                        | { kind: 'sale';        sortKey: string; data: ChainData['relatedDocs'][0] };
-
-                      const events: ChainEvent[] = [
-                        ...data.payments
-                          .filter(p => ['bank','cash','acquiring'].includes(p.account_type))
-                          .map(p => ({ kind: 'payment'  as const, sortKey: p.business_date, data: p })),
-                        ...data.payments
-                          .filter(p => ['logistics','loading','customs','opex'].includes(p.account_type) && p.amount > 0)
-                          .map(p => ({ kind: 'expense'  as const, sortKey: p.business_date, data: p })),
-                        ...(data.adjustments ?? [])
-                          .map(a => ({ kind: 'adjustment' as const, sortKey: a.doc_date, data: a })),
-                        ...data.children
-                          .map(c => ({ kind: 'receipt'  as const, sortKey: c.doc_date, data: c })),
-                        ...data.relatedDocs.filter(d => d.doc_type === 'sale')
-                          .map(d => ({ kind: 'sale'     as const, sortKey: d.doc_date, data: d })),
-                      ].sort((a, b) => a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0);
-
-                      const LC_ICONS: Record<string, string> = {
-                        delivery: '🚚', loading: '📦', customs: '🏛', packaging: '📦', broker: '🏛', other: '➕',
-                      };
-
-                      return events.map((ev, idx) => {
-                        if (ev.kind === 'payment') {
-                          const p = ev.data;
-                          const isReversal = p.doc_type === 'supplier_payment_reversal';
-                          const icon = p.account_type === 'cash' ? '💵' : p.account_type === 'bank' ? '🏦' : '💳';
-                          return (
-                            <TimelineNode key={`pay-${idx}`}
-                              icon={isReversal ? '↩️' : icon}
-                              title={isReversal ? 'Скасування оплати' : 'Оплата постачальнику'}
-                              sub={`${fmtDate(p.business_date)} · ${ACCOUNT_LABELS[p.account_type] ?? p.account_type}`}
-                              amount={isReversal ? `+${fmt(Math.abs(p.amount))} ₴` : `−${fmt(Math.abs(p.amount))} ₴`}
-                              amountColor={isReversal ? '#B45309' : '#DC2626'}
-                              cancelled={isReversal}
-                            />
-                          );
-                        }
-                        if (ev.kind === 'expense') {
-                          const p = ev.data;
-                          return (
-                            <TimelineNode key={`exp-${idx}`}
-                              icon={({ logistics: '🚚', loading: '📦', customs: '🏛', opex: '💼' } as Record<string,string>)[p.account_type] ?? '💼'}
-                              title={p.description ?? ACCOUNT_LABELS[p.account_type]}
-                              sub={fmtDate(p.business_date)}
-                              amount={`−${fmt(p.amount)} ₴`} amountColor="#B45309"
-                            />
-                          );
-                        }
-                        if (ev.kind === 'adjustment') {
-                          const adj = ev.data;
-                          const lines = data.adjLines.filter(l => l.document_id === adj.id);
-                          return (
-                            <TimelineNode key={`adj-${idx}`}
-                              icon="✏️"
-                              title={`${adj.doc_number} — Коригування замовлення`}
-                              sub={`${fmtDate(adj.doc_date)}${adj.notes ? ` · ${adj.notes}` : ''}`}
-                              href={`/admin/accounting/documents/${adj.id}`}
-                            >
-                              {lines.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
-                                  {lines.map(l => (
-                                    <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : 'var(--color-success)', display: 'flex', gap: '6px' }}>
-                                      <span style={{ fontFamily: 'monospace' }}>{l.sku}</span>
-                                      <span>{l.qty > 0 ? `+${l.qty}` : l.qty} шт</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </TimelineNode>
-                          );
-                        }
-                        if (ev.kind === 'receipt') {
-                          const child = ev.data;
-                          const childLC = (data.landedCosts ?? []).filter(lc => lc.document_id === child.id);
-                          const lcTotal = childLC.reduce((s, lc) => s + Number(lc.amount), 0);
-                          const goodsCost = child.total_cost ? Number(child.total_cost) - lcTotal : null;
-                          return (
-                            <TimelineNode key={`rec-${idx}`}
-                              icon="📥" title={`${child.doc_number} — ${DOC_TYPE_LABELS[child.doc_type] ?? child.doc_type}`}
-                              sub={`${fmtDate(child.doc_date)}${child.notes ? ` · ${child.notes}` : ''}`}
-                              amount={goodsCost !== null ? `${fmt(goodsCost)} ₴` : undefined}
-                              amountColor="#15803D"
-                              href={`/admin/procurement/receipts/${child.id}`}
-                            >
-                              {childLC.map((lc, i) => (
-                                <TimelineNode key={i}
-                                  icon={LC_ICONS[lc.cost_type] ?? '➕'}
-                                  title={lc.description || `Додаткові витрати: ${lc.cost_type}`}
-                                  sub="Landed Cost · розподілено по собівартості"
-                                  amount={`+${fmt(Number(lc.amount))} ₴`}
-                                  amountColor="#7C3AED"
-                                />
-                              ))}
-                              {lcTotal > 0 && (
-                                <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F3FF', borderRadius: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                                  <span style={{ color: '#6B21A8', fontWeight: 600 }}>Разом з витратами:</span>
-                                  <span style={{ color: '#6B21A8', fontWeight: 800 }}>{fmt(Number(child.total_cost))} ₴</span>
-                                </div>
-                              )}
-                              {data.batches.filter(b => b.sku).length > 0 && (
-                                <TimelineNode
-                                  icon="📊" title={`FIFO партії: ${data.batches.length} SKU`}
-                                  sub="Залишки оновлено · собівартість розподілено"
-                                />
-                              )}
-                            </TimelineNode>
-                          );
-                        }
-                        if (ev.kind === 'sale') {
-                          const d = ev.data;
-                          const saleHref = d.order_id
-                            ? `/admin?expand=${d.order_id}`
-                            : `/admin/accounting/documents/${d.id}`;
-                          return (
-                            <TimelineNode key={`sale-${idx}`}
-                              icon="📤" title={`${d.doc_number} — Продаж`}
-                              sub={fmtDate(d.doc_date)}
-                              amount={d.total_amount ? `${fmt(Number(d.total_amount))} ₴` : undefined}
-                              amountColor="#15803D"
-                              href={saleHref}
-                            />
-                          );
-                        }
-                        return null;
-                      });
-                    })()}
-                  </TimelineNode>
-
+                  {poNode}
+                  {saleNodes}
                 </>
-              )}
+              ))}
             </div>
           </div>
         </div>
