@@ -623,11 +623,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
               <Section icon={Truck} done={deliveryDone} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {DELIVERY_OPTIONS.map(opt => (
+                  {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
                       <label style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
-                        padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                        padding: '12px 14px', borderRadius: '10px', cursor: delivery === opt.value ? 'default' : 'pointer',
                         border: `1.5px solid ${delivery === opt.value ? '#1E3A5F' : 'var(--border)'}`,
                         background: delivery === opt.value ? '#1E3A5F22' : 'var(--bg-card)',
                         transition: 'all 0.15s',
@@ -640,20 +640,28 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         }}>
                           {delivery === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                         </div>
-                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { if (delivery !== opt.value) { setAddress(''); setNovaSubtype(''); } setDelivery(opt.value); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
+                        <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { setDelivery(opt.value); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
                         <span style={{ fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
                           {opt.label}
                           {opt.sub && <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
                         </span>
+                        {delivery === opt.value && (
+                          <button
+                            onClick={e => { e.preventDefault(); setDelivery(''); setAddress(''); setNovaSubtype(''); }}
+                            style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                          >
+                            {tr.change}
+                          </button>
+                        )}
                       </label>
 
                       {/* Nova Poshta sub-options */}
                       {opt.value === 'nova' && delivery === 'nova' && (
                         <div style={{ marginTop: '10px', paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {(['warehouse', 'postomat', 'courier'] as const).map(sub => (
+                          {(['warehouse', 'postomat', 'courier'] as const).filter(sub => !novaSubtype || novaSubtype === sub).map(sub => (
                             <label key={sub} style={{
                               display: 'flex', alignItems: 'center', gap: '10px',
-                              padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
+                              padding: '10px 14px', borderRadius: '8px', cursor: novaSubtype === sub ? 'default' : 'pointer',
                               border: `1.5px solid ${novaSubtype === sub ? '#1E3A5F' : 'var(--border)'}`,
                               background: novaSubtype === sub ? '#1E3A5F22' : 'var(--bg-soft)',
                               transition: 'all 0.15s',
@@ -666,10 +674,18 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               }}>
                                 {novaSubtype === sub && <Check size={8} color="#fff" strokeWidth={3} />}
                               </div>
-                              <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => { if (novaSubtype !== sub) setAddress(''); setNovaSubtype(sub); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }} style={{ display: 'none' }} />
+                              <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => { setNovaSubtype(sub); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }} style={{ display: 'none' }} />
                               <span style={{ fontSize: '13px', fontWeight: novaSubtype === sub ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
                                 {sub === 'warehouse' ? tr.novaWarehouse : sub === 'postomat' ? tr.novaPostomat : tr.novaCourier}
                               </span>
+                              {novaSubtype === sub && (
+                                <button
+                                  onClick={e => { e.preventDefault(); setNovaSubtype(''); setAddress(''); }}
+                                  style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                                >
+                                  {tr.change}
+                                </button>
+                              )}
                             </label>
                           ))}
                           {novaSubtype && (
@@ -722,7 +738,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   ))}
                   {/* ROZETKA Доставка не підходить за вагою — показуємо неактивною з причиною,
                       а не ховаємо: інакше «Нова Пошта» виглядає єдиним способом без пояснень */}
-                  {rzConfig?.enabled && !rzAvailable && rzConfig.maxWeightKg != null && (
+                  {!delivery && rzConfig?.enabled && !rzAvailable && rzConfig.maxWeightKg != null && (
                     <div className="cart-opt-disabled" aria-disabled="true">
                       <span className="cart-opt-disabled__dot" />
                       <span>
@@ -748,10 +764,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <div id="field-payment" />
               <Section icon={CreditCard} done={paymentDone} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {PAYMENT_OPTIONS.map(opt => (
+                  {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
                     <label key={opt.value} style={{
                       display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                      padding: '12px 14px', borderRadius: '10px', cursor: payment === opt.value ? 'default' : 'pointer',
                       border: `1.5px solid ${payment === opt.value ? '#1E3A5F' : 'var(--border)'}`,
                       background: payment === opt.value ? '#1E3A5F22' : 'var(--bg-card)',
                       transition: 'all 0.15s',
@@ -769,6 +785,14 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         <div style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</div>
                         {opt.sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{opt.sub}</div>}
                       </div>
+                      {payment === opt.value && (
+                        <button
+                          onClick={e => { e.preventDefault(); setPayment(''); }}
+                          style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                        >
+                          {tr.change}
+                        </button>
+                      )}
                     </label>
                   ))}
                 </div>
