@@ -21,9 +21,9 @@
   background: #E8EEF5; color: var(--navy);
   transition: background-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
 }
-.cart-sec-icon.is-done { background: var(--navy); color: #fff; }
+/* Заливку заповнених (.is-done) власник 04.11 попросив поки прибрати — клас лишається в розмітці,
+   щоб повернути одним правилом: .cart-sec-icon.is-done { background: var(--navy); color: #fff; } */
 [data-theme="dark"] .cart-sec-icon { background: rgba(72, 128, 184, 0.18); color: #93C5FD; }
-[data-theme="dark"] .cart-sec-icon.is-done { background: var(--brand-blue); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .cart-sec-icon { transition: none; } }
 
 /* Згорнута секція: один рядок — іконка, назва, підсумок введеного, «Змінити» */
