@@ -379,11 +379,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     return e;
   }
 
-  const pending = collectErrors();
-  const contactDone  = !['company', 'lastName', 'firstName', 'phone', 'email'].some(k => pending.has(k));
-  const deliveryDone = !['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => pending.has(k));
-  const paymentDone  = !pending.has('payment');
-
   function scrollToFirstError(errs: Set<string>) {
     const priority = ['company', 'lastName', 'firstName', 'phone', 'email', 'delivery', 'novaSubtype', 'address', 'rzPoint', 'payment'];
     for (const key of priority) {
@@ -502,6 +497,13 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const backHref     = isRetail ? tr.backShopHref : tr.backCatalogHref;
   const backLabel    = isRetail ? tr.backShop : tr.backCatalog;
   const PAYMENT_OPTIONS = isRetail ? PAYMENT_OPTIONS_RETAIL : PAYMENT_OPTIONS_WHOLESALE;
+
+  // Які секції вже заповнені (підсвітка іконок). Рахувати ТІЛЬКИ тут, після isRetail:
+  // collectErrors читає isRetail, і виклик вище кидав «Cannot access before initialization».
+  const pending = collectErrors();
+  const contactDone  = !['company', 'lastName', 'firstName', 'phone', 'email'].some(k => pending.has(k));
+  const deliveryDone = !['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => pending.has(k));
+  const paymentDone  = !pending.has('payment');
 
   if (!loaded) return (
     <div style={{ background: 'var(--bg-soft)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
