@@ -30,9 +30,11 @@ const T = {
     deliveryRz: 'ROZETKA Доставка',
     deliveryRzSub: 'Точки видачі ROZETKA',
     errRzPoint: 'Оберіть місто та точку видачі ROZETKA',
-    payCard: 'Оплата карткою онлайн',
-    payCodLabel: 'Накладний платіж (оплата при отриманні)',
-    payInvoiceLabel: 'Оплата за рахунком (IBAN)',
+    payCard: 'Карткою онлайн',
+    payCardSub: 'Visa, Mastercard, Apple/Google Pay',
+    payCodLabel: 'Накладний платіж',
+    payCodSub: 'Оплата при отриманні',
+    payInvoiceLabel: 'За рахунком (IBAN)',
     payInvoiceSub: 'ФОП, юрособи й фізособи',
     pageTitle: 'Оформлення замовлення',
     itemsCount: (n: number, price: number) => `${n} товарів на суму ${fmtMoney(price)} грн`,
@@ -104,9 +106,11 @@ const T = {
     deliveryRz: 'ROZETKA Доставка',
     deliveryRzSub: 'Точки выдачи ROZETKA',
     errRzPoint: 'Выберите город и точку выдачи ROZETKA',
-    payCard: 'Оплата картой онлайн',
-    payCodLabel: 'Наложенный платёж (оплата при получении)',
-    payInvoiceLabel: 'Оплата по счёту (IBAN)',
+    payCard: 'Картой онлайн',
+    payCardSub: 'Visa, Mastercard, Apple/Google Pay',
+    payCodLabel: 'Наложенный платёж',
+    payCodSub: 'Оплата при получении',
+    payInvoiceLabel: 'По счёту (IBAN)',
     payInvoiceSub: 'ФЛП, юрлица и физлица',
     pageTitle: 'Оформление заказа',
     itemsCount: (n: number, price: number) => `${n} товаров на сумму ${fmtMoney(price)} грн`,
@@ -272,8 +276,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // якому треба безготівкові документи на 1 шт. (рішення власника 04.11.2026).
   // Назва компанії для рахунку в роздрібі не обов'язкова — покупцем у рахунку буде ПІБ.
   const PAYMENT_OPTIONS = [
-    { value: 'card',    label: tr.payCard,         sub: 'Visa · Mastercard · Apple Pay · Google Pay' },
-    { value: 'cod',     label: tr.payCodLabel,     sub: null },
+    { value: 'card',    label: tr.payCard,         sub: tr.payCardSub },
+    { value: 'cod',     label: tr.payCodLabel,     sub: tr.payCodSub },
     { value: 'invoice', label: tr.payInvoiceLabel, sub: tr.payInvoiceSub },
   ];
 
@@ -866,7 +870,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} onReopen={() => setReopened(r => ({ ...r, payment: true }))} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div className={'cart-opt-list' + (!payment ? ' cart-opt-list--row' : '')}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || reopened.payment || payment === opt.value).map(opt => (
-                    <label key={opt.value} onMouseDown={keepFocus} style={{
+                    <label key={opt.value} onMouseDown={keepFocus} title={`${opt.label} — ${opt.sub}`} style={{
                       display: 'flex', alignItems: 'center', gap: '12px',
                       padding: '12px 14px', borderRadius: '10px', cursor: payment === opt.value ? 'default' : 'pointer',
                       border: `1.5px solid ${payment === opt.value ? '#1E3A5F' : 'var(--border)'}`,
@@ -882,9 +886,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         {payment === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                       </div>
                       <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => { setPayment(opt.value); setReopened(r => ({ ...r, payment: false })); editEnd('payment')(); setErrors(s => { const n = new Set(s); n.delete('payment'); return n; }); }} style={{ display: 'none' }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</div>
-                        {opt.sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{opt.sub}</div>}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="cart-opt-line" style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</div>
+                        {opt.sub && <div className="cart-opt-line" style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{opt.sub}</div>}
                       </div>
                       {payment === opt.value && !reopened.payment && (
                         <button

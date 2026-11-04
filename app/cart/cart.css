@@ -18,6 +18,8 @@
 .cart-opt-list--row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: stretch; }
 .cart-opt-list--row > * { min-width: 0; }
 .cart-opt-list--row > * > label, .cart-opt-list--row > label { height: 100%; box-sizing: border-box; }
+/* Плитки оплати однакові: назва й опис — рівно по одному рядку (довше — «…», повний текст у title) */
+.cart-opt-list--row .cart-opt-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 768px) {
   .cart-opt-list--row { grid-template-columns: 1fr; }
 }
