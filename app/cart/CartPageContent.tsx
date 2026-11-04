@@ -606,6 +606,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               </Section>
 
               {/* Delivery */}
+              {/* Якорі прокрутки до помилки — в одній обгортці з секцією: окремими дітьми колонки
+                  кожен додавав gap 16px, і між «Контактами» й «Доставкою» була діра ~80px */}
+              <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
               <Section icon={Truck} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -728,8 +731,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errAddress}</p>}
                 {errors.has('rzPoint') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errRzPoint}</p>}
               </Section>
+              </div>
 
               {/* Payment */}
+              <div>
               <div id="field-payment" />
               <Section icon={CreditCard} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -767,6 +772,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 </div>
                 {errors.has('payment') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPayment}</p>}
               </Section>
+              </div>
 
               {/* Comment */}
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
