@@ -442,6 +442,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [reopened, setReopened] = useState({ delivery: false, payment: false });
   // Клік по плитці варіанта не забирає фокус: інакше спершу спрацьовує blur секції, вона
   // згортається, і клік (а з ним і вибір) губиться. Сам вибір іде через label → radio.
+  // Поле промокоду сховане за «Маю промокод» — ним користуються рідко, а рядок займав завжди
+  const [promoOpen, setPromoOpen] = useState(false);
   const keepFocus = (e: React.MouseEvent) => e.preventDefault();
   // Позначка (кружок із галочкою) біля обраного варіанта — теж «змінити»: клік знімає вибір.
   // preventDefault/stopPropagation — щоб клік не пішов у label і не обрав варіант знову.
@@ -1069,65 +1071,6 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
               {/* Totals + submit */}
               <div className="cart-totals-block" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
-
-                {/* Promo code input */}
-                <div style={{ marginBottom: '16px' }}>
-                  {promoApplied ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '10px 14px' }}>
-                      <span style={{ fontSize: '13px', color: '#15803D', fontWeight: 600 }}>
-                        Промокод <span style={{ fontFamily: 'monospace' }}>{promoApplied.code}</span> застосовано
-                      </span>
-                      <button
-                        onClick={() => { setPromoApplied(null); setPromoError(''); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#15803D', textDecoration: 'underline', padding: 0 }}
-                      >{tr.promoRemove}</button>
-                    </div>
-                  ) : (
-                    <div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          value={promoInput}
-                          onChange={e => setPromoInput(e.target.value.toUpperCase())}
-                          onKeyDown={e => e.key === 'Enter' && handleApplyPromo()}
-                          placeholder={tr.promoPlaceholder}
-                          style={{ flex: 1, height: '38px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', fontFamily: 'monospace', letterSpacing: '0.05em' }}
-                        />
-                        <button
-                          onClick={handleApplyPromo}
-                          disabled={promoLoading || !promoInput.trim()}
-                          style={{ height: '38px', padding: '0 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: promoInput.trim() ? 'pointer' : 'default', whiteSpace: 'nowrap', opacity: promoInput.trim() ? 1 : 0.5 }}
-                        >{promoLoading ? tr.promoApplying : tr.promoApply}</button>
-                      </div>
-                      {promoError && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>{promoError}</div>}
-                      {!promoError && promoEligibleTotal < totalPrice && promoEligibleTotal > 0 && (
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '5px' }}>
-                          Знижка не розповсюджується на акційні товари
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{tr.itemsTotal(totalItems)}</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtMoney(totalPrice)} грн</span>
-                  </div>
-                  {promoApplied && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                      <span style={{ color: '#15803D' }}>{tr.promoDiscount}</span>
-                      <span style={{ fontWeight: 600, color: '#15803D' }}>−{fmtMoney(promoApplied.discountAmount)} грн</span>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{tr.deliveryLabel}</span>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{tr.deliveryByCarrier}</span>
-                  </div>
-                </div>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
-                  <span style={{ color: 'var(--text-primary)' }}>{tr.total}</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</span>
-                </div>
                 {role === 'wholesale' && (() => {
                   const pct     = Math.min(100, Math.round((totalPrice / WHOLESALE_MIN) * 100));
                   const metMin  = totalPrice >= WHOLESALE_MIN;
@@ -1171,51 +1114,65 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   </div>
                 )}
 
-                <div
-                  onClick={() => setNoCallback(v => !v)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    marginBottom: '12px', cursor: 'pointer', userSelect: 'none',
-                    padding: '12px 14px', borderRadius: '10px',
-                    background: noCallback ? '#F0FDF4' : '#F8FAFC',
-                    border: `1.5px solid ${noCallback ? '#86EFAC' : '#E2E8F0'}`,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{
-                    width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,
-                    border: `2px solid ${noCallback ? '#16A34A' : '#CBD5E1'}`,
-                    background: noCallback ? '#16A34A' : '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s',
-                  }}>
-                    {noCallback && (
-                      <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                        <path d="M1 4.5L4 7.5L10 1" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
+                {/* Компактний підсумок: сума поруч із кнопкою; «Товарів / Доставка» — сірим підписом */}
+                <div className="cart-total-bar">
+                  <div className="cart-total-bar__sum">
+                    <div className="cart-total-bar__main">
+                      <span>{tr.total}</span>
+                      <strong>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</strong>
+                    </div>
+                    <div className="cart-total-bar__sub">
+                      {tr.itemsTotal(totalItems)} · {tr.deliveryLabel} {tr.deliveryByCarrier.toLowerCase()}
+                      {promoApplied && <span style={{ color: '#15803D' }}> · {tr.promoDiscount} −{fmtMoney(promoApplied.discountAmount)} грн</span>}
+                    </div>
                   </div>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: noCallback ? '#15803D' : '#64748B', lineHeight: 1.4 }}>
-                    {tr.noCallbackLabel}
-                  </span>
+                  <button
+                    className="cart-total-bar__btn"
+                    onClick={handleSubmit}
+                    disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
+                  >
+                    {submitting ? tr.submitting : payment === 'card' ? tr.submitCard : tr.submitOrder}
+                  </button>
                 </div>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
-                  style={{
-                    width: '100%', height: '48px', borderRadius: '10px',
-                    border: 'none',
-                    background: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? '#94A3B8' : '#1E3A5F',
-                    color: '#fff',
-                    fontSize: '15px', fontWeight: 700,
-                    cursor: submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN) ? 'not-allowed' : 'pointer',
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  {submitting ? tr.submitting : payment === 'card' ? tr.submitCard : tr.submitOrder}
-                </button>
                 {submitError && (
-                  <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'center', marginTop: '8px' }}>{submitError}</p>
+                  <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'right', margin: '8px 0 0' }}>{submitError}</p>
+                )}
+
+                {/* Рядок дрібниць: «не передзвонювати» і промокод (рідко потрібен — схований за посиланням) */}
+                <div className="cart-total-extras">
+                  <label className={'cart-nocall' + (noCallback ? ' is-on' : '')}>
+                    <input type="checkbox" checked={noCallback} onChange={e => setNoCallback(e.target.checked)} />
+                    <span>{tr.noCallbackLabel}</span>
+                  </label>
+                  {promoApplied ? (
+                    <span className="cart-promo-applied">
+                      Промокод <b style={{ fontFamily: 'monospace' }}>{promoApplied.code}</b> ✓
+                      <button type="button" onClick={() => { setPromoApplied(null); setPromoError(''); }}>{tr.promoRemove}</button>
+                    </span>
+                  ) : !promoOpen ? (
+                    <button type="button" className="cart-promo-toggle" onClick={() => setPromoOpen(true)}>
+                      {lang === 'ru' ? 'Есть промокод' : 'Маю промокод'} ▾
+                    </button>
+                  ) : (
+                    <span className="cart-promo-inline">
+                      <input
+                        autoFocus
+                        value={promoInput}
+                        onChange={e => setPromoInput(e.target.value.toUpperCase())}
+                        onKeyDown={e => e.key === 'Enter' && handleApplyPromo()}
+                        placeholder={tr.promoPlaceholder}
+                      />
+                      <button type="button" onClick={handleApplyPromo} disabled={promoLoading || !promoInput.trim()}>
+                        {promoLoading ? tr.promoApplying : tr.promoApply}
+                      </button>
+                    </span>
+                  )}
+                </div>
+                {promoError && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px', textAlign: 'right' }}>{promoError}</div>}
+                {!promoError && promoOpen && !promoApplied && promoEligibleTotal < totalPrice && promoEligibleTotal > 0 && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '5px', textAlign: 'right' }}>
+                    Знижка не розповсюджується на акційні товари
+                  </div>
                 )}
               </div>
 
