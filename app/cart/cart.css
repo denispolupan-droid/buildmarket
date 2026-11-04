@@ -2,6 +2,12 @@
    У роздрібу компанії немає — email бере дві колонки. На телефоні — одна колонка. */
 .cart-contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
 .cart-contact-grid__wide { grid-column: span 2; }
+/* Довгий текст у полі просто прокручується всередині input. Ризик — підписи: на вузькій колонці
+   «По батькові (необов'язково)» / «Email для підтвердження» переносяться і зсувають поле.
+   Тому на середніх екранах — дві колонки (колонка форми там ~450–600px). */
+@media (max-width: 1200px) {
+  .cart-contact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 768px) {
   .cart-contact-grid { grid-template-columns: 1fr; }
   .cart-contact-grid__wide { grid-column: auto; }
