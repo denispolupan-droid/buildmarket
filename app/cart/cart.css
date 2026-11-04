@@ -1,7 +1,6 @@
 /* «Контактні дані»: три колонки — ПІБ одним рядком, компанія · телефон · email другим.
    У роздрібу компанії немає — email бере дві колонки. На телефоні — одна колонка. */
-.cart-contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
-.cart-contact-grid__wide { grid-column: span 2; }
+.cart-contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
 /* Довгий текст у полі просто прокручується всередині input. Ризик — підписи: на вузькій колонці
    «По батькові (необов'язково)» / «Email для підтвердження» переносяться і зсувають поле.
    Тому на середніх екранах — дві колонки (колонка форми там ~450–600px). */
@@ -10,7 +9,17 @@
 }
 @media (max-width: 768px) {
   .cart-contact-grid { grid-template-columns: 1fr; }
-  .cart-contact-grid__wide { grid-column: auto; }
+}
+
+/* Варіанти доставки/оплати. Поки нічого не обрано — плитки в ряд (компактніше за стовпчик);
+   обрали — лишається один варіант на всю ширину зі своїм підвибором (НП: місто, відділення). */
+.cart-opt-list, .cart-opt-sub { display: flex; flex-direction: column; gap: 10px; }
+.cart-opt-sub { margin-top: 10px; padding-left: 14px; gap: 8px; }
+.cart-opt-list--row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: stretch; }
+.cart-opt-list--row > * { min-width: 0; }
+.cart-opt-list--row > * > label, .cart-opt-list--row > label { height: 100%; box-sizing: border-box; }
+@media (max-width: 768px) {
+  .cart-opt-list--row { grid-template-columns: 1fr; }
 }
 
 /* Іконка в шапці секції: світла, поки секцію не заповнено; фірмова синя — коли все потрібне введено.
