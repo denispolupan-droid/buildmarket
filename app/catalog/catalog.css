@@ -413,23 +413,24 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 }
 .qty-input:focus { border-color: #4880B8; }
 /* Таблиця каталогу: «− N +» однією рамкою, як у швидкому перегляді кошика */
-.qty-stepper {
+.cat-qty-stepper {
   display: inline-flex; align-items: center; height: 32px;
   border: 1px solid var(--border); border-radius: 7px; background: var(--bg-card); overflow: hidden;
 }
-.qty-stepper:focus-within { border-color: #4880B8; }
-.qty-stepper button {
+/* Підсвітка лише коли вводять число, а не після кліку по «−»/«+» */
+.cat-qty-stepper:has(.qty-input:focus) { border-color: #4880B8; }
+.cat-qty-stepper button {
   width: 24px; height: 100%; padding: 0; border: none; background: var(--bg-soft);
   color: var(--text-secondary); font-size: 14px; line-height: 1; cursor: pointer;
 }
-.qty-stepper button:hover:not(:disabled) { background: var(--border-light); color: var(--text-primary); }
-.qty-stepper button:disabled { opacity: 0.4; cursor: default; }
-.qty-stepper .qty-input {
+.cat-qty-stepper button:hover:not(:disabled) { background: var(--border-light); color: var(--text-primary); }
+.cat-qty-stepper button:disabled { opacity: 0.4; cursor: default; }
+.cat-qty-stepper .qty-input {
   width: 36px; height: 100%; padding: 0; border: none; border-radius: 0;
   -moz-appearance: textfield; appearance: textfield;
 }
-.qty-stepper .qty-input::-webkit-outer-spin-button,
-.qty-stepper .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cat-qty-stepper .qty-input::-webkit-outer-spin-button,
+.cat-qty-stepper .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .action-icon-btn {
   width: 32px; height: 32px; border-radius: 7px; border: 1px solid var(--border);
   background: var(--bg-card); display: flex; align-items: center; justify-content: center;

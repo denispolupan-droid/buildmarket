@@ -1219,7 +1219,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                           </td>
                           <td><span className="min-qty">{packStr}</span></td>
                           <td style={{ position: 'relative', zIndex: 1 }}>
-                            <div className="qty-stepper">
+                            <div className="cat-qty-stepper">
                               <button type="button" aria-label={t('Менше', 'Меньше')} disabled={qty <= 1}
                                 onClick={() => { setQty(p.sku, 1, qty - 1); setInputVals(prev => { const n = { ...prev }; delete n[p.sku]; return n; }); }}>−</button>
                               <input
