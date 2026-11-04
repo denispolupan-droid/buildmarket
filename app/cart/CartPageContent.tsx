@@ -445,6 +445,43 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // Поле промокоду сховане за «Маю промокод» — ним користуються рідко, а рядок займав завжди
   const [promoOpen, setPromoOpen] = useState(false);
   const keepFocus = (e: React.MouseEvent) => e.preventDefault();
+
+  // Права картка липне до верху (sticky top 88px), але внизу сторінки її низ має збігтися з низом
+  // блоку підсумку зліва (прохання власника 05.11). Прокрутка закінчується раніше, ніж контейнер
+  // «доштовхне» картку, тож на останніх d px прокрутки опускаємо її (top 88 → 88 + d) — у самому
+  // кінці низи колонок на одній лінії. Лише коли картка справді sticky (на телефоні — static).
+  const itemsCardRef = useRef<HTMLDivElement>(null);
+  const totalsRef    = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const STICKY_TOP = 88;
+    let raf = 0;
+    const place = () => {
+      raf = 0;
+      const card = itemsCardRef.current, totals = totalsRef.current;
+      if (!card || !totals) return;
+      if (getComputedStyle(card).position !== 'sticky') { card.style.top = ''; return; }
+      const remaining = Math.max(0, document.documentElement.scrollHeight - window.innerHeight - window.scrollY);
+      // Де буде низ підсумку, коли докрутимо до кінця, і наскільки нижче за звичайне місце має стати картка
+      const totalsBottomAtEnd = totals.getBoundingClientRect().bottom - remaining;
+      const d = totalsBottomAtEnd - card.offsetHeight - STICKY_TOP;
+      card.style.top = `${STICKY_TOP + Math.max(0, d - remaining)}px`;
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(place); };
+    schedule();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    // Висота колонок міняється без прокрутки (згортання секцій, кількість товарів)
+    const ro = new ResizeObserver(schedule);
+    if (itemsCardRef.current) ro.observe(itemsCardRef.current);
+    if (totalsRef.current) ro.observe(totalsRef.current);
+    if (totalsRef.current?.parentElement) ro.observe(totalsRef.current.parentElement);
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      ro.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [loaded, items.length]);
   // Позначка (кружок із галочкою) біля обраного варіанта — теж «змінити»: клік знімає вибір.
   // preventDefault/stopPropagation — щоб клік не пішов у label і не обрав варіант знову.
   const uncheckProps = (selected: boolean, clear: () => void) => selected ? {
@@ -984,7 +1021,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
             {/* ── RIGHT: Order summary ── */}
               {/* Items list */}
-              <div className="cart-items-list" style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+              <div ref={itemsCardRef} className="cart-items-list" style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   // Та сама висота шапки, що в секціях форми зліва (Section: 10px + іконка 32px + 10px)
@@ -1071,7 +1108,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               </div>
 
               {/* Totals + submit */}
-              <div className="cart-totals-block" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
+              <div ref={totalsRef} className="cart-totals-block" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
                 {role === 'wholesale' && (() => {
                   const pct     = Math.min(100, Math.round((totalPrice / WHOLESALE_MIN) * 100));
                   const metMin  = totalPrice >= WHOLESALE_MIN;
