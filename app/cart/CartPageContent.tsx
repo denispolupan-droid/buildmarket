@@ -1092,15 +1092,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   );
                 })()}
 
-                {role === 'guest' && (
-                  <div style={{
-                    background: '#F0F9FF', border: '1px solid #BAE6FD',
-                    borderRadius: '10px', padding: '12px 14px', marginBottom: '12px',
-                    fontSize: '13px', color: '#0369A1', lineHeight: 1.5,
-                  }}>
-                    {tr.guestHint}
-                  </div>
-                )}
+                {/* Підказку «можна без реєстрації» прибрано (04.11.2026): форма й так без входу */}
 
                 {role === 'wholesale' && totalPrice < WHOLESALE_MIN && (
                   <div style={{
@@ -1114,31 +1106,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   </div>
                 )}
 
-                {/* Компактний підсумок: сума поруч із кнопкою; «Товарів / Доставка» — сірим підписом */}
-                <div className="cart-total-bar">
-                  <div className="cart-total-bar__sum">
-                    <div className="cart-total-bar__main">
-                      <span>{tr.total}</span>
-                      <strong>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</strong>
-                    </div>
-                    <div className="cart-total-bar__sub">
-                      {tr.itemsTotal(totalItems)} · {tr.deliveryLabel} {tr.deliveryByCarrier.toLowerCase()}
-                      {promoApplied && <span style={{ color: '#15803D' }}> · {tr.promoDiscount} −{fmtMoney(promoApplied.discountAmount)} грн</span>}
-                    </div>
-                  </div>
-                  <button
-                    className="cart-total-bar__btn"
-                    onClick={handleSubmit}
-                    disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
-                  >
-                    {submitting ? tr.submitting : payment === 'card' ? tr.submitCard : tr.submitOrder}
-                  </button>
-                </div>
-                {submitError && (
-                  <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'right', margin: '8px 0 0' }}>{submitError}</p>
-                )}
-
-                {/* Рядок дрібниць: «не передзвонювати» і промокод (рідко потрібен — схований за посиланням) */}
+                {/* Над сумою: «не передзвонювати» і промокод (схований за посиланням) — промокод поруч із сумою, на яку впливає */}
                 <div className="cart-total-extras">
                   <label className={'cart-nocall' + (noCallback ? ' is-on' : '')}>
                     <input type="checkbox" checked={noCallback} onChange={e => setNoCallback(e.target.checked)} />
@@ -1174,6 +1142,31 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     Знижка не розповсюджується на акційні товари
                   </div>
                 )}
+
+                {/* Компактний підсумок: сума поруч із кнопкою; «Товарів / Доставка» — сірим підписом */}
+                <div className="cart-total-bar">
+                  <div className="cart-total-bar__sum">
+                    <div className="cart-total-bar__main">
+                      <span>{tr.total}</span>
+                      <strong>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</strong>
+                    </div>
+                    <div className="cart-total-bar__sub">
+                      {tr.itemsTotal(totalItems)} · {tr.deliveryLabel} {tr.deliveryByCarrier.toLowerCase()}
+                      {promoApplied && <span style={{ color: '#15803D' }}> · {tr.promoDiscount} −{fmtMoney(promoApplied.discountAmount)} грн</span>}
+                    </div>
+                  </div>
+                  <button
+                    className="cart-total-bar__btn"
+                    onClick={handleSubmit}
+                    disabled={submitting || (role === 'wholesale' && totalPrice < WHOLESALE_MIN)}
+                  >
+                    {submitting ? tr.submitting : payment === 'card' ? tr.submitCard : tr.submitOrder}
+                  </button>
+                </div>
+                {submitError && (
+                  <p style={{ fontSize: '12px', color: '#EF4444', textAlign: 'right', margin: '8px 0 0' }}>{submitError}</p>
+                )}
+
               </div>
 
           </div>
