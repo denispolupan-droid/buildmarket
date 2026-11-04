@@ -816,10 +816,13 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
             {/* ── RIGHT: Order summary ── */}
               {/* Items list */}
-              <div className="cart-items-list" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+              <div className="cart-items-list" style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '14px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
+                  // Та сама висота шапки, що в секціях форми зліва (Section: 16px + іконка 32px + 16px)
+                  // (65px з урахуванням нижньої лінії); по горизонталі — 16px, як рядки товарів нижче
+                  padding: '16px', minHeight: '65px', boxSizing: 'border-box',
+                  background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
                 }}>
                   <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{tr.orderSummary}</span>
                   <button
