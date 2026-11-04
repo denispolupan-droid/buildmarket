@@ -263,6 +263,7 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
             className="np-input"
             placeholder={tr.cityPh}
             value={cityQuery}
+            title={cityQuery || undefined}
             onChange={e => handleCityInput(e.target.value)}
             onFocus={() => settlements.length > 0 && setCityDropOpen(true)}
           />
@@ -300,6 +301,7 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
                 className="np-input"
                 placeholder={mode === 'postomat' ? tr.postomatPh : tr.warehousePh}
                 value={warehouseQuery}
+                title={warehouseQuery || undefined}
                 onChange={e => { setWarehouseQuery(e.target.value); setWhDropOpen(true); setSelectedWH(null); }}
                 onFocus={() => setWhDropOpen(true)}
               />
@@ -327,6 +329,7 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
             style={{ paddingLeft: '14px' }}
             placeholder={tr.courierPh}
             value={courierAddress}
+            title={courierAddress || undefined}
             onChange={e => { setCourierAddress(e.target.value); onAddressChange?.(e.target.value); }}
           />
         </div>

@@ -22,7 +22,8 @@ async function _GET(req: NextRequest) {
       .map(d => ({
         id:       d.id,
         label:    rzDepartmentLabel(d),
-        schedule: d.schedule ?? [],
+        // API Rozetka віддає вихідний як «Нд: null-null» — покупцю показуємо «вихідний»
+        schedule: (d.schedule ?? []).map(s => s.replace(/null\s*-\s*null/gi, 'вихідний')),
         limitKg:  rzWeightLimitKg(d),
       }));
     return NextResponse.json({ departments, total: all.length });

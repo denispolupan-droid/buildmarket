@@ -183,6 +183,7 @@ export default function RzDeliverySelect({
             className="rz-input"
             placeholder={tr.cityPh}
             value={cityQuery}
+            title={cityQuery || undefined}
             onChange={e => handleCityInput(e.target.value)}
             onFocus={() => cities.length > 0 && setCityOpen(true)}
           />
@@ -219,6 +220,8 @@ export default function RzDeliverySelect({
                 className="rz-input"
                 placeholder={tr.pointPh}
                 value={depQuery}
+                // Повна адреса точки не влазить у поле — показуємо її підказкою при наведенні
+                title={depQuery || undefined}
                 onChange={e => { setDepQuery(e.target.value); setDepOpen(true); setSelectedDep(null); }}
                 onFocus={() => setDepOpen(true)}
               />
