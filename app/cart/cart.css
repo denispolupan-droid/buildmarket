@@ -26,6 +26,26 @@
 [data-theme="dark"] .cart-sec-icon.is-done { background: var(--brand-blue); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .cart-sec-icon { transition: none; } }
 
+/* Згорнута секція: один рядок — іконка, назва, підсумок введеного, «Змінити» */
+.cart-sec__summary {
+  flex: 1; min-width: 0; margin-left: 4px;
+  font-size: 13.5px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cart-sec__change {
+  margin-left: auto; flex-shrink: 0; padding: 5px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--bg-card); cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
+  transition: border-color 0.15s, color 0.15s;
+}
+.cart-sec.is-collapsed .cart-sec__head:hover .cart-sec__change,
+.cart-sec__change:hover { border-color: var(--navy); color: var(--navy); }
+/* На телефоні підсумок переходить під назву, а не стискається до «…» */
+@media (max-width: 768px) {
+  .cart-sec.is-collapsed .cart-sec__head { flex-wrap: wrap; }
+  .cart-sec__summary { order: 3; flex-basis: 100%; margin-left: 42px; white-space: normal; }
+}
+
 /* Спосіб доставки, недоступний для цього замовлення (напр. ROZETKA понад ліміт ваги) */
 .cart-opt-disabled {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px;

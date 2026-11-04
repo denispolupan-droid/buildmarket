@@ -179,25 +179,52 @@ const labelStyle: React.CSSProperties = {
   color: '#374151', marginBottom: '6px',
 };
 
-function Section({ icon: Icon, title, children, error, done }: { icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean; done?: boolean }) {
+/**
+ * Секція форми кошика. Заповнена й не в роботі — згортається в один рядок із підсумком
+ * («Пол Ден · ФОП ПП · +38… · email») і кнопкою «Змінити».
+ * Тіло при згортанні лише ховається (display:none), а не демонтується: селекти НП/ROZETKA
+ * тримають свій внутрішній стан (місто, відділення), і після «Змінити» він має лишитись.
+ */
+function Section({ icon: Icon, title, children, error, done, collapsed, summary, changeLabel, onEditStart, onEditEnd }: {
+  icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean; done?: boolean;
+  collapsed?: boolean; summary?: string; changeLabel?: string;
+  onEditStart?: () => void; onEditEnd?: () => void;
+}) {
   return (
-    <div style={{
-      background: 'var(--bg-card)', border: `1.5px solid ${error ? '#EF4444' : 'var(--border)'}`, borderRadius: '14px',
-      transition: 'border-color 0.15s',
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '16px 20px', borderBottom: `1px solid ${error ? '#7F1D1D' : 'var(--border)'}`,
-        background: error ? '#2D0A0A' : 'var(--bg-soft)',
-        borderRadius: '14px 14px 0 0',
-      }}>
+    <div
+      className={'cart-sec' + (collapsed ? ' is-collapsed' : '')}
+      style={{
+        background: 'var(--bg-card)', border: `1.5px solid ${error ? '#EF4444' : 'var(--border)'}`, borderRadius: '14px',
+        transition: 'border-color 0.15s',
+      }}
+      // Фокус усередині — секція «в роботі» й не згортається; вийшли з неї — можна згорнути
+      onFocus={onEditStart}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onEditEnd?.(); }}
+    >
+      <div
+        className="cart-sec__head"
+        onClick={collapsed ? onEditStart : undefined}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '16px 20px', borderBottom: collapsed ? 'none' : `1px solid ${error ? '#7F1D1D' : 'var(--border)'}`,
+          background: error ? '#2D0A0A' : 'var(--bg-soft)',
+          borderRadius: collapsed ? '14px' : '14px 14px 0 0',
+          cursor: collapsed ? 'pointer' : undefined,
+        }}
+      >
         {/* Секцію заповнено — квадрат іконки фірмовий синій; ні — світлий */}
         <div className={'cart-sec-icon' + (done ? ' is-done' : '')}>
           <Icon size={16} strokeWidth={2} />
         </div>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</span>
+        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', flexShrink: 0 }}>{title}</span>
+        {collapsed && summary && <span className="cart-sec__summary" title={summary}>{summary}</span>}
+        {collapsed && (
+          <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditStart?.(); }}>
+            {changeLabel}
+          </button>
+        )}
       </div>
-      <div style={{ padding: '20px' }}>{children}</div>
+      <div style={{ padding: '20px', display: collapsed ? 'none' : undefined }}>{children}</div>
     </div>
   );
 }
@@ -355,6 +382,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [commentOpen, setCommentOpen] = useState(false);
   const [noCallback,  setNoCallback]  = useState(true);
   const [errors, setErrors] = useState<Set<string>>(new Set());
+  // Секція «в роботі» (фокус усередині або натиснули «Змінити») — не згортаємо її, навіть якщо заповнена
+  const [editing, setEditing] = useState({ contact: false, delivery: false, payment: false });
+  const editStart = (k: keyof typeof editing) => () => setEditing(s => (s[k] ? s : { ...s, [k]: true }));
+  const editEnd   = (k: keyof typeof editing) => () => setEditing(s => (s[k] ? { ...s, [k]: false } : s));
 
   // Чиста перевірка (без setState) — нею ж рахуємо, які секції вже заповнені (підсвітка іконок)
   function collectErrors(): Set<string> {
@@ -505,6 +536,30 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const deliveryDone = !['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => pending.has(k));
   const paymentDone  = !pending.has('payment');
 
+  // Згорнута секція: заповнена, не в роботі й без помилки після спроби відправити
+  const contactErr  = ['company', 'lastName', 'firstName', 'phone', 'email'].some(k => errors.has(k));
+  const deliveryErr = ['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => errors.has(k));
+  const contactCollapsed  = contactDone  && !editing.contact  && !contactErr;
+  const deliveryCollapsed = deliveryDone && !editing.delivery && !deliveryErr;
+  const paymentCollapsed  = paymentDone  && !editing.payment  && !errors.has('payment');
+
+  const contactSummary = [
+    [lastName, firstName, middleName].map(s => s.trim()).filter(Boolean).join(' '),
+    !isRetail ? company.trim() : '',
+    phone.trim(), email.trim(),
+  ].filter(Boolean).join(' · ');
+  const deliverySummary = (() => {
+    if (delivery === 'nova') {
+      const sub = novaSubtype === 'warehouse' ? tr.novaWarehouse : novaSubtype === 'postomat' ? tr.novaPostomat : tr.novaCourier;
+      // address для відділення/поштомату — текст обраного пункту; місто — окремо, якщо його там нема
+      const place = address && novaCityName && !address.includes(novaCityName) ? `${novaCityName}, ${address}` : (address || novaCityName);
+      return [tr.deliveryNova, sub, place].filter(Boolean).join(' · ');
+    }
+    if (delivery === RZ_DELIVERY_TYPE) return [tr.deliveryRz, [rzCityName, rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    return '';
+  })();
+  const paymentSummary = PAYMENT_OPTIONS.find(o => o.value === payment)?.label ?? '';
+
   if (!loaded) return (
     <div style={{ background: 'var(--bg-soft)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 40, height: 40, border: '3px solid #E2E8F0', borderTopColor: '#1E3A5F', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -564,7 +619,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
-              <Section icon={User} done={contactDone} title={tr.sectionContact}>
+              <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} onEditStart={editStart('contact')} onEditEnd={editEnd('contact')} title={tr.sectionContact}>
                 {/* Рядок 1: ПІБ; рядок 2: компанія (не для роздрібу) · телефон · email */}
                 <div className="cart-contact-grid">
                   <div id="field-lastName">
@@ -621,7 +676,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   кожен додавав gap 16px, і між «Контактами» й «Доставкою» була діра ~80px */}
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
-              <Section icon={Truck} done={deliveryDone} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} onEditStart={editStart('delivery')} onEditEnd={editEnd('delivery')} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
@@ -762,7 +817,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               {/* Payment */}
               <div>
               <div id="field-payment" />
-              <Section icon={CreditCard} done={paymentDone} title={tr.sectionPayment} error={errors.has('payment')}>
+              <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
                     <label key={opt.value} style={{
@@ -780,7 +835,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       }}>
                         {payment === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                       </div>
-                      <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => { setPayment(opt.value); setErrors(s => { const n = new Set(s); n.delete('payment'); return n; }); }} style={{ display: 'none' }} />
+                      <input type="radio" name="payment" value={opt.value} checked={payment === opt.value} onChange={() => { setPayment(opt.value); editEnd('payment')(); setErrors(s => { const n = new Set(s); n.delete('payment'); return n; }); }} style={{ display: 'none' }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '14px', fontWeight: payment === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</div>
                         {opt.sub && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{opt.sub}</div>}
