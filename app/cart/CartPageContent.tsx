@@ -685,8 +685,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
           </div>
 
           {/* Main grid */}
-          {/* minmax(0, …): довгий рядок-підсумок доставки (nowrap + «…») інакше розпирав ліву колонку й стискав праву зі списком товарів */}
-          <div className="cart-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
+          {/* 3 : 2 (було 2 : 1) — ліва форма вужча, колонки врівноваженіші. minmax(0, …): довгий рядок-підсумок доставки (nowrap + «…») інакше розпирав ліву колонку й стискав праву зі списком товарів */}
+          <div className="cart-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '24px', alignItems: 'start' }}>
 
             {/* ── LEFT: Checkout form ── */}
             <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
