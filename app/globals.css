@@ -1473,14 +1473,12 @@ input, select { font-family: inherit; }
    товарів та блоком підсумку з'являється велика порожнеча. */
 /* 04.11.2026: секції форми згортаються в рядки — ліва колонка стала короткою, а праву тягнув
    довгий блок підсумку. Тепер підсумок і «Підтвердити» — під формою зліва, справа лише список
-   товарів (на всю висоту — див. нижче). */
+   товарів, що прилипає при прокрутці. */
 .cart-grid {
   grid-template-areas: "form items" "totals items";
   grid-template-rows: min-content 1fr;
 }
-/* Права картка тягнеться на всю висоту рядка сітки — у кінці прокрутки її низ на одній лінії
-   з блоком підсумку зліва (прохання власника 05.11). Тому без sticky: розтягнуте й липке разом не працює. */
-.cart-grid .cart-items-list { align-self: stretch; display: flex; flex-direction: column; }
+.cart-grid .cart-items-list { position: sticky; top: 88px; align-self: start; }
 .cart-form-col { grid-area: form; }
 .cart-items-list { grid-area: items; }
 .cart-totals-block { grid-area: totals; }
