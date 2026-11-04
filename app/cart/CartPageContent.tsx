@@ -168,7 +168,7 @@ const T = {
 } as const;
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', height: '40px', padding: '0 14px',
+  width: '100%', height: '44px', padding: '0 14px',
   border: '1px solid #E2E8F0', borderRadius: '10px',
   background: 'var(--bg-card)', fontSize: '14px', color: 'var(--text-primary)',
   outline: 'none', boxSizing: 'border-box',
@@ -176,7 +176,7 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '13px', fontWeight: 600,
-  color: '#374151', marginBottom: '5px',
+  color: '#374151', marginBottom: '6px',
 };
 
 /**
@@ -206,7 +206,7 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         onClick={collapsed ? onEditStart : undefined}
         style={{
           display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '10px 16px', borderBottom: collapsed ? 'none' : `1px solid ${error ? '#7F1D1D' : 'var(--border)'}`,
+          padding: '16px 20px', borderBottom: collapsed ? 'none' : `1px solid ${error ? '#7F1D1D' : 'var(--border)'}`,
           background: error ? '#2D0A0A' : 'var(--bg-soft)',
           borderRadius: collapsed ? '14px' : '14px 14px 0 0',
           cursor: collapsed ? 'pointer' : undefined,
@@ -230,7 +230,7 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
           </button>
         )}
       </div>
-      <div style={{ padding: '16px', display: collapsed ? 'none' : undefined }}>{children}</div>
+      <div style={{ padding: '20px', display: collapsed ? 'none' : undefined }}>{children}</div>
     </div>
   );
 }
@@ -628,7 +628,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
               {/* Contact info */}
               <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('contact')} onEditEnd={editEnd('contact')} title={tr.sectionContact}>
-                {/* Рядок 1: Прізвище · Ім'я · Телефон; рядок 2: По батькові · Компанія (лише опт) · Email */}
+                {/* Рядок 1: ПІБ; рядок 2: компанія (не для роздрібу) · телефон · email */}
                 <div className="cart-contact-grid">
                   <div id="field-lastName">
                     <label style={{ ...labelStyle, color: errors.has('lastName') ? '#EF4444' : undefined }}>{tr.lastName}</label>
@@ -640,6 +640,17 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     <input style={{ ...inputStyle, border: err('firstName') ?? inputStyle.border }} placeholder={tr.firstNamePh} value={firstName} onChange={e => { setFirstName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('firstName'); return n; }); }} />
                     {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errFirstName}</p>}
                   </div>
+                  <div>
+                    <label style={labelStyle}>{tr.middleName} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.middleNameOpt}</span></label>
+                    <input style={inputStyle} placeholder={tr.middleNamePh} value={middleName} onChange={e => setMiddleName(e.target.value)} />
+                  </div>
+                  {!isRetail && (
+                    <div id="field-company">
+                      <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
+                      <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder={tr.companyPh} value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
+                      {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errCompany}</p>}
+                    </div>
+                  )}
                   <div id="field-phone">
                     <label style={{ ...labelStyle, color: errors.has('phone') ? '#EF4444' : undefined }}>{tr.phone}</label>
                     <input
@@ -660,18 +671,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     />
                     {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPhone}</p>}
                   </div>
-                  <div>
-                    <label style={labelStyle}>{tr.middleName} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.middleNameOpt}</span></label>
-                    <input style={inputStyle} placeholder={tr.middleNamePh} value={middleName} onChange={e => setMiddleName(e.target.value)} />
-                  </div>
-                  {!isRetail && (
-                    <div id="field-company">
-                      <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
-                      <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder={tr.companyPh} value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
-                      {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errCompany}</p>}
-                    </div>
-                  )}
-                  <div id="field-email">
+                  <div id="field-email" className={isRetail ? 'cart-contact-grid__wide' : undefined}>
                     <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>{tr.email}</label>
                     <input style={{ ...inputStyle, border: err('email') ?? inputStyle.border }} type="email" placeholder="company@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(s => { const n = new Set(s); n.delete('email'); return n; }); }} />
                     {errors.has('email') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errEmail}</p>}
@@ -685,7 +685,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
               <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={editEnd('delivery')} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
-                <div className={'cart-opt-list' + (!delivery ? ' cart-opt-list--row' : '')}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
                       <label style={{
@@ -720,7 +720,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
 
                       {/* Nova Poshta sub-options */}
                       {opt.value === 'nova' && delivery === 'nova' && (
-                        <div className={'cart-opt-sub' + (!novaSubtype ? ' cart-opt-list--row' : '')}>
+                        <div style={{ marginTop: '10px', paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {(['warehouse', 'postomat', 'courier'] as const).filter(sub => !novaSubtype || novaSubtype === sub).map(sub => (
                             <label key={sub} style={{
                               display: 'flex', alignItems: 'center', gap: '10px',
@@ -826,7 +826,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <div>
               <div id="field-payment" />
               <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} title={tr.sectionPayment} error={errors.has('payment')}>
-                <div className={'cart-opt-list' + (!payment ? ' cart-opt-list--row' : '')}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || payment === opt.value).map(opt => (
                     <label key={opt.value} style={{
                       display: 'flex', alignItems: 'center', gap: '12px',
@@ -869,7 +869,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   onClick={() => setCommentOpen(o => !o)}
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 16px', background: 'var(--bg-soft)', border: 'none', cursor: 'pointer',
+                    padding: '16px 20px', background: 'var(--bg-soft)', border: 'none', cursor: 'pointer',
                     borderBottom: commentOpen ? `1px solid var(--border)` : 'none',
                   }}
                 >
@@ -882,7 +882,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   {commentOpen ? <ChevronUp size={16} color="#64748B" /> : <ChevronDown size={16} color="#64748B" />}
                 </button>
                 {commentOpen && (
-                  <div style={{ padding: '16px' }}>
+                  <div style={{ padding: '20px' }}>
                     <textarea
                       value={comment}
                       onChange={e => setComment(e.target.value)}
@@ -907,9 +907,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <div className="cart-items-list" style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  // Та сама висота шапки, що в секціях форми зліва (Section: 10px + іконка 32px + 10px)
-                  // (53px з урахуванням нижньої лінії); по горизонталі — 16px, як у секціях
-                  padding: '10px 16px', minHeight: '53px', boxSizing: 'border-box',
+                  // Та сама висота шапки, що в секціях форми зліва (Section: 16px + іконка 32px + 16px)
+                  // (65px з урахуванням нижньої лінії); по горизонталі — 16px, як рядки товарів нижче
+                  padding: '16px', minHeight: '65px', boxSizing: 'border-box',
                   background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)',
                 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
