@@ -12,11 +12,13 @@ import { fmtMoney as fmt } from '../../../../lib/format';
  * усі, з ким є ненульове сальдо, найбільші зверху.
  */
 export default function CounterpartyPicker({
-  value, dateFrom, dateTo,
+  value, dateFrom, dateTo, embedded = false,
 }: {
   value: { ref: string; label: string } | null;
   dateFrom: string;
   dateTo: string;
+  /** Без власної картки й підпису — поле вбудоване в рядок фільтрів (типи контрагентів + пошук). */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [input, setInput]     = useState(value?.label ?? '');
@@ -66,10 +68,13 @@ export default function CounterpartyPicker({
   }
 
   return (
-    <div ref={boxRef} className="fin-card" style={{ padding: '10px 16px', position: 'relative' }}>
-      <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-        Контрагент
-      </label>
+    <div ref={boxRef} className={embedded ? undefined : 'fin-card'}
+      style={embedded ? { position: 'relative', flex: '1 1 320px', minWidth: '260px' } : { padding: '10px 16px', position: 'relative' }}>
+      {!embedded && (
+        <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+          Контрагент
+        </label>
+      )}
       <div style={{ position: 'relative' }}>
         <Search size={15} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
         <input
@@ -80,18 +85,19 @@ export default function CounterpartyPicker({
             if (e.key === 'Escape') setOpen(false);
             if (e.key === 'Enter' && options[0]) { e.preventDefault(); choose(options[0]); }
           }}
-          placeholder="Ім'я, компанія, телефон, постачальник…"
+          aria-label="Контрагент"
+          placeholder="Контрагент: ім'я, компанія, телефон, постачальник…"
           style={{
-            width: '100%', height: '38px', padding: '0 12px 0 34px', boxSizing: 'border-box',
+            width: '100%', height: embedded ? '34px' : '38px', padding: '0 12px 0 34px', boxSizing: 'border-box',
             border: '1.5px solid var(--border)', borderRadius: '8px',
-            fontSize: '14px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)',
+            fontSize: embedded ? '13px' : '14px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)',
           }}
         />
       </div>
 
       {open && (
         <div style={{
-          position: 'absolute', left: '18px', right: '18px', top: 'calc(100% - 6px)', zIndex: 40,
+          position: 'absolute', left: embedded ? 0 : '18px', right: embedded ? 0 : '18px', top: embedded ? 'calc(100% + 4px)' : 'calc(100% - 6px)', zIndex: 40,
           maxHeight: '380px', overflowY: 'auto',
           background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px',
           boxShadow: '0 10px 30px rgba(15,23,42,0.12)', padding: '4px',

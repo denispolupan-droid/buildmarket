@@ -198,7 +198,8 @@ export default function PODrawer({ poId, poLabel, onClose }: Props) {
           )}
 
           {!loading && !error && po && (
-            <ProcurementDetail po={po} chainButton={chainButton} compact={true} />
+            <ProcurementDetail po={po} chainButton={chainButton} compact={true}
+              ledgerDebt={(po as { ledger_debt?: number | null }).ledger_debt ?? null} />
           )}
         </div>
       </div>

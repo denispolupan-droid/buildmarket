@@ -42,7 +42,6 @@ export default async function ProcurementPage({
   const totalDrafts   = activeOrders.filter(p => p.procurement_status === 'draft').length;
   const totalPending  = activeOrders.filter(p => !p.has_receipt && p.procurement_status !== 'draft').length;
   const totalReceived = activeOrders.filter(p => p.has_receipt && p.procurement_status !== 'paid' && !(p.meta as Record<string, unknown> | null)?.is_paid).length;
-  const totalAmount   = activeOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
 
   // Деталі для карток
   const draftOrders    = activeOrders.filter(p => p.procurement_status === 'draft');
@@ -51,7 +50,11 @@ export default async function ProcurementPage({
 
   const amountDrafts   = draftOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
   const amountPending  = pendingOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
-  const amountReceived = receivedOrders.reduce((s, p) => s + Number(p.total_cost ?? 0), 0);
+  // «Отримано, не оплачено» — борг за леджером (прихід − оплати), а не сума ЗП:
+  // прихід може бути на іншу суму (ЗП-2026-0005: ЗП 1 327,60, прихід 1 200 — 04.11)
+  const debtByPo = await supplierDebtByPo(db, receivedOrders.map(p => p.id as string), receiptMap);
+  const debtOf = (p: { id: string | null; total_cost: number | null }) => debtByPo.get(p.id as string) ?? Number(p.total_cost ?? 0);
+  const amountReceived = receivedOrders.reduce((s, p) => s + debtOf(p), 0);
 
   function fmtDate(d: string | null) {
     if (!d) return '';
@@ -65,8 +68,9 @@ export default async function ProcurementPage({
         <ProcurementClient suppliers={suppliers ?? []} />
       </SectionBar>
 
-      {/* Показники — той самий словник, що у «Фінансах» (.fin-card/.fin-kpi) */}
-      <div className="fin-kpi-row cols-4" style={{ marginBottom: '16px' }}>
+      {/* Показники — той самий словник, що у «Фінансах» (.fin-card/.fin-kpi); compact —
+          картки не тягнуться до найвищої і щільніші (зауваження власника 04.11) */}
+      <div className="fin-kpi-row cols-4 compact" style={{ marginBottom: '16px' }}>
         <StatCard
           href="/admin/procurement?filter=draft"
           dot="muted"
@@ -102,13 +106,13 @@ export default async function ProcurementPage({
           rows={receivedOrders.slice(-4).reverse().map(p => ({
             name: p.supplier_name ?? '—',
             sub:  fmtDate(p.doc_date),
-            amt:  p.total_cost ? fmt(Number(p.total_cost)) + ' ₴' : null,
+            amt:  debtOf(p) > 0 ? fmt(debtOf(p)) + ' ₴' : null,
           }))}
         />
 
         <StatCard
           label="Загальна сума"
-          value={`${fmt(totalAmount)} ₴`}
+          value={`${fmt(amountDrafts + amountPending + amountReceived)} ₴`}
           foot={`${activeOrders.length} ${plural(activeOrders.length, 'замовлення', 'замовлення', 'замовлень')} в роботі`}
           rows={[
             amountDrafts   > 0 ? { name: 'Чернетки',    sub: `${totalDrafts} замовл.`,   amt: fmt(amountDrafts)   + ' ₴' } : null,
@@ -125,6 +129,39 @@ export default async function ProcurementPage({
       />
     </div>
   );
+}
+
+/**
+ * Борг постачальнику за леджером по закупівлях: CR supplier з приходів (doc_id =
+ * прихід) мінус оплати (doc_id = ЗП або meta.po_id = ЗП). Плюс = винні ми.
+ */
+async function supplierDebtByPo(
+  dbc: typeof db, poIds: string[], receiptMap: Map<string, { id: string }[] | null | undefined>,
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (poIds.length === 0) return out;
+  const poOfDoc = new Map<string, string>();
+  for (const id of poIds) {
+    poOfDoc.set(id, id);
+    for (const r of receiptMap.get(id) ?? []) poOfDoc.set(r.id, id);
+  }
+  const docIds = [...poOfDoc.keys()];
+  for (let i = 0; i < docIds.length; i += 100) {
+    const chunk = docIds.slice(i, i + 100);
+    const { data } = await dbc.from('money_entries')
+      .select('amount, doc_id, meta')
+      .eq('account_type', 'supplier')
+      .or(`doc_id.in.(${chunk.join(',')}),meta->>po_id.in.(${chunk.join(',')})`)
+      .limit(5000);
+    for (const e of data ?? []) {
+      const metaPo = (e.meta as { po_id?: string } | null)?.po_id;
+      const po = poOfDoc.get(e.doc_id ?? '') ?? (metaPo ? poOfDoc.get(metaPo) : undefined);
+      if (!po) continue;
+      out.set(po, (out.get(po) ?? 0) - Number(e.amount));
+    }
+  }
+  for (const [k, v] of out) out.set(k, Math.max(0, Math.round(v * 100) / 100));
+  return out;
 }
 
 // ── Картка-показник ───────────────────────────────────────────────────────────

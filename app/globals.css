@@ -2714,6 +2714,12 @@ input, select { font-family: inherit; }
 .fin-kpi-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
 .fin-kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .fin-kpi { position: relative; padding: 18px 20px; }
+/* Щільний варіант («Закупівля», 04.11): картки не розтягуються до найвищої в ряду
+   (align-items: start), менші відступи й цифра — порожні стадії не роздуваються. */
+.fin-kpi-row.compact { align-items: start; }
+.fin-kpi-row.compact .fin-kpi { padding: 12px 16px; }
+.fin-kpi-row.compact .fin-kpi-value { font-size: 22px; margin-top: 4px; }
+.fin-kpi-row.compact .fin-table td { padding-top: 4px; padding-bottom: 4px; }
 /* Картка-лічильник, що веде у відфільтрований список. Підкреслення й синій
    колір посилання зіпсували б цифру, тож успадковуємо текст, а клікабельність
    показуємо рамкою на ховері. */

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
+import { Button } from '../../../components/admin/ui/Button';
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -45,10 +46,12 @@ export default function PeriodBar({ dateFrom, dateTo }: { dateFrom: string; date
       <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={inp} aria-label="Початок періоду" />
       <span style={{ color: 'var(--text-muted)' }}>—</span>
       <input type="date" value={to} onChange={e => setTo(e.target.value)} style={inp} aria-label="Кінець періоду" />
-      <button type="button" onClick={() => go(from, to)} disabled={!from || !to || from > to}
-        style={{ height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      {/* Зелена (варіант done з UI-кіту), а не navy: navy — це активні пігулки типу
+          контрагента й періоду, кнопка дії серед них губилась (зауваження власника 04.11) */}
+      <Button variant="done" onClick={() => go(from, to)} disabled={!from || !to || from > to}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
         <RefreshCw size={13} /> Показати
-      </button>
+      </Button>
       <span style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />
       {presets().map(p => (
         <button key={p.label} type="button" onClick={() => go(p.from, p.to)}

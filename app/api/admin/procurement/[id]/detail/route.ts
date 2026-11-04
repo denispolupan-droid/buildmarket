@@ -114,7 +114,18 @@ async function _GET(
     })),
   };
 
-  return NextResponse.json(po);
+  // Борг постачальнику за леджером (приходи − оплати) — те саме число, що на
+  // сторінці закупівлі; дровер показує його замість «рахунок − оплачено»
+  const { data: rcpts } = await db.from('acc_documents').select('id')
+    .eq('parent_doc_id', id).eq('status', 'confirmed').in('doc_type', ['receipt', 'stock_in']).limit(200);
+  const debtDocIds = [id, ...(rcpts ?? []).map(r => r.id as string)];
+  const { data: debtRows } = await db.from('money_entries').select('amount')
+    .eq('account_type', 'supplier')
+    .or(`doc_id.in.(${debtDocIds.join(',')}),meta->>po_id.eq.${id}`)
+    .limit(2000);
+  const ledger_debt = Math.round((debtRows ?? []).reduce((s, e) => s - Number(e.amount), 0) * 100) / 100;
+
+  return NextResponse.json({ ...po, ledger_debt });
 }
 
 export const GET = withApi('admin/procurement/[id]/detail', _GET);

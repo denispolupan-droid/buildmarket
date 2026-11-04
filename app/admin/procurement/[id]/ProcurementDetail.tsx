@@ -55,7 +55,7 @@ type CustomerOrder = { order_number: number; contact: string | null; company: st
 type ActivityEvent = { icon: string; label: string; detail?: string; date: string | null; isDatetime: boolean };
 type PaymentHistoryEntry = { created_at: string; amount: number; payment_mode: string | null; doc_type: string };
 
-export default function ProcurementDetail({ po, chainButton, adjustmentButton, onClose, compact, customerOrder, events, paymentHistory, totalPaid }: { po: PO; chainButton?: React.ReactNode; adjustmentButton?: React.ReactNode; onClose?: () => void; compact?: boolean; customerOrder?: CustomerOrder; events?: ActivityEvent[]; paymentHistory?: PaymentHistoryEntry[]; totalPaid?: number }) {
+export default function ProcurementDetail({ po, chainButton, adjustmentButton, onClose, compact, customerOrder, events, paymentHistory, totalPaid, ledgerDebt }: { po: PO; chainButton?: React.ReactNode; adjustmentButton?: React.ReactNode; onClose?: () => void; compact?: boolean; customerOrder?: CustomerOrder; events?: ActivityEvent[]; paymentHistory?: PaymentHistoryEntry[]; totalPaid?: number; /** Борг постачальнику за леджером по цій закупівлі (приходи − оплати); null/undefined — невідомо */ ledgerDebt?: number | null }) {
   const router = useRouter();
 
   function goToList() {
@@ -114,7 +114,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [invoiceSaved,  setInvoiceSaved]  = useState(_hasInvoice || _isNoInvoiceConfirmed);
   const [editingInvoice,setEditingInvoice]= useState(!_hasInvoice && !_isNoInvoiceConfirmed);
 
-  const [payAmount,    setPayAmount]    = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
+  const [payAmount,    setPayAmount]    = useState(ledgerDebt != null && ledgerDebt > 0 ? ledgerDebt.toFixed(2) : String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
   const [payDate,      setPayDate]      = useState(new Date().toISOString().slice(0, 10));
   const payTermsDays = po.supplier_bank?.payment_days ?? 0;
 
@@ -258,14 +258,21 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [reversing,        setReversing]        = useState(false);
 
   const [showAddPayment, setShowAddPayment] = useState(false);
-  const [addPayAmount,   setAddPayAmount]   = useState(String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
+  // Сума за замовчуванням — борг за обліком, якщо він відомий (прихід), інакше рахунок/сума ЗП
+  const [addPayAmount,   setAddPayAmount]   = useState(ledgerDebt != null && ledgerDebt > 0 ? ledgerDebt.toFixed(2) : String(po.supplier_invoice_amount ?? po.total_cost ?? ''));
   const [addPayMode,     setAddPayMode]     = useState<'transfer' | 'cash'>('transfer');
   const [addPayDate,     setAddPayDate]     = useState(new Date().toISOString().slice(0, 10));
   const [addingPayment,  setAddingPayment]  = useState(false);
 
   const invoiceAmount      = Number(po.supplier_invoice_amount ?? po.total_cost ?? 0);
   const effectiveTotalPaid = totalPaid ?? 0;
-  const remaining          = Math.max(0, invoiceAmount - effectiveTotalPaid);
+  // Скільки винні — з леджера (борг виникає з приходу: CR supplier на суму
+  // оприбуткованого, оплати його гасять), а не з рахунку: рахунок за замовчуванням
+  // = сума ЗП, а прихід може бути іншим (ЗП-2026-0005: рахунок 1 327,60, прихід
+  // 1 200 — власник 04.11). Без леджера (дровер) — як раніше, рахунок − оплачено.
+  const remaining          = ledgerDebt != null ? Math.max(0, ledgerDebt) : Math.max(0, invoiceAmount - effectiveTotalPaid);
+  const owedBase           = effectiveTotalPaid + remaining;   // знаменник прогресу оплати
+  const invoiceDiffers     = ledgerDebt != null && po.has_receipt && Math.abs(invoiceAmount - owedBase) > 0.01;
 
   // Invoice file upload
   const fileRef = useRef<HTMLInputElement>(null);
@@ -939,6 +946,11 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '7px' }}>
               <Banknote size={14} /> Оплата постачальнику
             </div>
+            {invoiceDiffers && (
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: 1.4 }}>
+                За обліком винні <strong style={{ color: 'var(--text-primary)' }}>{owedBase.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</strong> (оприбутковано приходом), рахунок — {invoiceAmount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴. До сплати беремо облік.
+              </div>
+            )}
 
             {isPaid && !editingPayment ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1019,7 +1031,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
                       </div>
                     )}
                     <div style={{ marginTop: '4px', height: '4px', background: '#E5E7EB', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : 'var(--color-success)', borderRadius: '2px', width: `${Math.min(100, (effectiveTotalPaid / invoiceAmount) * 100)}%`, transition: 'width 0.3s' }} />
+                      <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : 'var(--color-success)', borderRadius: '2px', width: `${owedBase > 0 ? Math.min(100, (effectiveTotalPaid / owedBase) * 100) : 100}%`, transition: 'width 0.3s' }} />
                     </div>
                   </div>
                 )}

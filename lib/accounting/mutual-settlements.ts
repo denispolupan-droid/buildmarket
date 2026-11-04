@@ -56,7 +56,8 @@ export const COUNTERPARTY_GROUPS: { key: CounterpartyGroup; label: string }[] = 
   { key: 'customers', label: 'Покупці' },
   { key: 'partners',  label: 'Дропшипери' },
   { key: 'suppliers', label: 'Постачальники' },
-  { key: 'services',  label: 'Пошта й маркетплейси' },
+  // Службові дебітори: np:cod, mp:*, guest (продажі сайту без картки клієнта) — рішення власника 04.11
+  { key: 'services',  label: 'Пошта, маркетплейси й гості' },
 ];
 
 export function parseGroup(raw: string | null | undefined): CounterpartyGroup | null {

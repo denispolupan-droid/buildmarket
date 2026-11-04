@@ -195,6 +195,17 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     return null;
   }
 
+  // Борг постачальнику за леджером по цій закупівлі: CR supplier з приходів
+  // (doc_id = прихід) мінус оплати (doc_id = ЗП або meta.po_id = ЗП). Саме він —
+  // «до сплати», а не рахунок: рахунок за замовчуванням дорівнює сумі ЗП, а прихід
+  // може бути на іншу суму (ЗП-2026-0005: 1 327,60 проти 1 200, 04.11).
+  const debtDocIds = [id, ...((receiptDocs ?? []) as { id: string }[]).map(r => r.id)];
+  const { data: debtRows } = await db.from('money_entries').select('amount')
+    .eq('account_type', 'supplier')
+    .or(`doc_id.in.(${debtDocIds.join(',')}),meta->>po_id.eq.${id}`)
+    .limit(2000);
+  const ledgerDebt = Math.round((debtRows ?? []).reduce((s, e) => s - Number(e.amount), 0) * 100) / 100;
+
   const paymentHistory: PaymentHistoryEntry[] = allEntries
     .filter(e => e.doc_type === 'supplier_payment' && e.account_type === 'supplier' && Number(e.amount) > 0)
     .map(e => ({
@@ -249,6 +260,7 @@ export default async function ProcurementDetailPage({ params }: { params: Promis
     events={events}
     paymentHistory={paymentHistory}
     totalPaid={totalPaid}
+    ledgerDebt={ledgerDebt}
     adjustmentButton={
       !isDraft && !isCancelled ? (
         <div style={{ display: 'flex', gap: '8px' }}>

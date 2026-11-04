@@ -804,23 +804,29 @@ export default async function MutualSettlementsPage({
         </div>
         <FinanceTabs />
 
-        <div className="fin-card" style={{ margin: '16px 0 10px', padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {COUNTERPARTY_GROUPS.map(g => (
-              <Link key={g.key} href={qs({ group: g.key, from: dateFrom, to: dateTo })}
-                className={'fin-pill' + (g.key === group ? ' active' : '')}>
-                {g.label}
-              </Link>
-            ))}
+        {/* Фільтри (зауваження власника 04.11): рядок «кого» — типи контрагентів і
+            пошук конкретного контрагента; під розділювачем рядок «за коли» — період. */}
+        <div className="fin-card" style={{ margin: '16px 0 16px', padding: '0 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '10px 0' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Контрагенти</span>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {COUNTERPARTY_GROUPS.map(g => (
+                <Link key={g.key} href={qs({ group: g.key, from: dateFrom, to: dateTo })}
+                  className={'fin-pill' + (g.key === group ? ' active' : '')}>
+                  {g.label}
+                </Link>
+              ))}
+            </div>
+            <CounterpartyPicker
+              embedded
+              value={ref && counterparty ? { ref: counterpartyRefString(ref), label: counterparty.name } : null}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
           </div>
-          <PeriodBar dateFrom={dateFrom} dateTo={dateTo} />
-        </div>
-        <div style={{ marginBottom: '16px' }}>
-          <CounterpartyPicker
-            value={ref && counterparty ? { ref: counterpartyRefString(ref), label: counterparty.name } : null}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-          />
+          <div style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}>
+            <PeriodBar dateFrom={dateFrom} dateTo={dateTo} />
+          </div>
         </div>
       </div>
 
