@@ -1139,7 +1139,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                     <col style={{ width: '120px' }} />
                     <col style={{ width: '110px' }} />
                     <col style={{ width: '115px' }} />
-                    <col style={{ width: '80px' }} />
+                    <col style={{ width: '108px' }} />
                     <col style={{ width: '136px' }} />
                   </colgroup>
                   <thead>
@@ -1219,15 +1219,22 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                           </td>
                           <td><span className="min-qty">{packStr}</span></td>
                           <td style={{ position: 'relative', zIndex: 1 }}>
-                            <input
-                              className="qty-input"
-                              type="number"
-                              value={getInputVal(p.sku, 1)}
-                              min={1}
-                              placeholder={t('Мін.', 'Мин.')}
-                              onChange={e => setInputVals(prev => ({ ...prev, [p.sku]: e.target.value }))}
-                              onBlur={() => commitInputVal(p.sku, 1)}
-                            />
+                            <div className="qty-stepper">
+                              <button type="button" aria-label={t('Менше', 'Меньше')} disabled={qty <= 1}
+                                onClick={() => { setQty(p.sku, 1, qty - 1); setInputVals(prev => { const n = { ...prev }; delete n[p.sku]; return n; }); }}>−</button>
+                              <input
+                                className="qty-input"
+                                type="number"
+                                value={getInputVal(p.sku, 1)}
+                                min={1}
+                                aria-label={t('Кількість', 'Количество')}
+                                placeholder={t('Мін.', 'Мин.')}
+                                onChange={e => setInputVals(prev => ({ ...prev, [p.sku]: e.target.value }))}
+                                onBlur={() => commitInputVal(p.sku, 1)}
+                              />
+                              <button type="button" aria-label={t('Більше', 'Больше')}
+                                onClick={() => { setQty(p.sku, 1, qty + 1); setInputVals(prev => { const n = { ...prev }; delete n[p.sku]; return n; }); }}>+</button>
+                            </div>
                           </td>
                           <td style={{ position: 'relative', zIndex: 1, paddingLeft: '10px', paddingRight: '14px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
