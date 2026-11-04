@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Trash2, ShoppingCart, ArrowLeft, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle } from 'lucide-react';
@@ -204,9 +204,24 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
   /** «Змінити» на згорнутій секції — для доставки/оплати одразу показати весь список варіантів */
   onReopen?: () => void;
 }) {
+  // «Готово»-спалах: щойно секцію дозаповнили (done: false → true) — кнопка «згорнути» на 2 с
+  // зеленіє з галочкою, а згорнутий рядок коротко підсвічується. На старті сторінки не спалахує:
+  // дані з профілю/минулого замовлення підтягуються вже після монтування, це не дія покупця.
+  const [flash, setFlash] = useState(false);
+  const prevDone = useRef(done);
+  const mountedAt = useRef(0);
+  useEffect(() => { mountedAt.current = Date.now(); }, []);
+  useEffect(() => {
+    const was = prevDone.current;
+    prevDone.current = done;
+    if (!done || was || Date.now() - mountedAt.current < 1500) return;
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 2000);
+    return () => clearTimeout(t);
+  }, [done]);
   return (
     <div
-      className={'cart-sec' + (collapsed ? ' is-collapsed' : '')}
+      className={'cart-sec' + (collapsed ? ' is-collapsed' : '') + (flash ? ' is-flash' : '')}
       style={{
         background: 'var(--bg-card)', border: `1.5px solid ${error ? '#EF4444' : 'var(--border)'}`, borderRadius: '14px',
         transition: 'border-color 0.15s',
@@ -245,7 +260,8 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         )}
         {/* Розгорнута, але вже заповнена — можна згорнути вручну, не шукаючи, куди клікнути */}
         {!collapsed && done && collapseLabel && (
-          <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditEnd?.(); }}>
+          <button type="button" className={'cart-sec__change' + (flash ? ' is-flash' : '')} onClick={e => { e.stopPropagation(); onEditEnd?.(); }}>
+            {flash && <Check size={13} strokeWidth={3} className="cart-sec__tick" aria-hidden />}
             {collapseLabel}
           </button>
         )}
