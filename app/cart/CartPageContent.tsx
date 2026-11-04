@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, ShoppingCart, ArrowLeft, Plus, Minus, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowLeft, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle } from 'lucide-react';
 
+import './cart.css';
 import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -845,13 +846,12 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           {lang === 'ru' && item.name_ru ? item.name_ru : item.name}
                         </Link>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {/* Той самий вигляд, що в картці товару: «− N +» однією рамкою */}
+                          <div className="cart-qty-stepper">
                             <button
+                              type="button" aria-label={lang === 'ru' ? 'Меньше' : 'Менше'}
                               onClick={() => { setQtyInputs(prev => { const n = { ...prev }; delete n[item.sku]; return n; }); updateQty(item.sku, item.qty - item.min_order); }}
-                              style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                            >
-                              <Minus size={14} />
-                            </button>
+                            >−</button>
                             <input
                               type="number"
                               min={item.min_order}
@@ -859,19 +859,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               onChange={e => setQtyInputs(prev => ({ ...prev, [item.sku]: e.target.value }))}
                               onBlur={() => commitQtyInput(item.sku, item.min_order)}
                               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                              style={{
-                                width: '44px', height: '36px', borderRadius: '8px',
-                                border: '1px solid var(--border)', background: 'var(--bg-card)',
-                                textAlign: 'center', fontSize: '13px', fontWeight: 600,
-                                color: 'var(--text-primary)', outline: 'none',
-                              }}
                             />
                             <button
+                              type="button" aria-label={lang === 'ru' ? 'Больше' : 'Більше'}
                               onClick={() => { setQtyInputs(prev => { const n = { ...prev }; delete n[item.sku]; return n; }); updateQty(item.sku, item.qty + item.min_order); }}
-                              style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                            >
-                              <Plus size={14} />
-                            </button>
+                            >+</button>
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             {item.price > 0 && item.qty > 1 && (

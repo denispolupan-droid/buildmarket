@@ -43,6 +43,7 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
   const inCart = items.some(i => i.sku === sku);
   const { isLiked, toggle: toggleWish } = useWishlist();
   const liked = isLiked(sku);
+  const [wishPop, setWishPop] = useState(false);
 
   useEffect(() => {
     getSupabaseBrowser().auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
@@ -116,18 +117,13 @@ export default function ProductOrderPanel({ priceUnit, minOrder, inStock, sku, n
             </button>
 
             <button
-              onClick={() => toggleWish(sku)}
+              onClick={() => { setWishPop(!liked); toggleWish(sku); }}
               aria-label={liked ? t('Прибрати з обраного', 'Убрать из избранного') : t('Додати в обране', 'Добавить в избранное')}
-              className="op-wish-btn"
-              style={{
-                width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
-                border: `1px solid ${liked ? '#FECACA' : 'var(--border)'}`,
-                background: liked ? '#FEF2F2' : 'var(--bg-card)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: liked ? '#EF4444' : 'var(--text-muted)', cursor: 'pointer',
-              }}
+              aria-pressed={liked}
+              className={'op-wish-btn' + (liked ? ' is-liked' : '') + (wishPop && liked ? ' pop' : '')}
             >
-              <Heart size={18} fill={liked ? '#EF4444' : 'none'} strokeWidth={2} />
+              {/* «Пульс» лише після кліку (не при завантаженні сторінки з уже обраним товаром) */}
+              <Heart size={18} fill={liked ? 'currentColor' : 'none'} strokeWidth={2} onAnimationEnd={() => setWishPop(false)} />
             </button>
 
             {priceUnit > 0 && (

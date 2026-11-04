@@ -1,0 +1,18 @@
+/* Лічильник кількості в кошику — той самий вигляд, що в картці товару
+   (product.css: .qty-stepper), лише трохи нижчий під рядок списку.
+   Префікс cart- — CSS сторінок глобальний, назви не мають збігатися. */
+.cart-qty-stepper { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.cart-qty-stepper button {
+  width: 36px; height: 36px; padding: 0; border: none; background: var(--bg-soft); color: var(--text-primary);
+  font-size: 18px; font-weight: 500; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.cart-qty-stepper button:hover { background: var(--border); }
+.cart-qty-stepper input {
+  width: 48px; height: 36px; padding: 0; border: none;
+  border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  background: #fff; text-align: center; font-size: 14px; font-weight: 600; color: var(--text-primary); outline: none;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.cart-qty-stepper input::-webkit-outer-spin-button,
+.cart-qty-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+[data-theme="dark"] .cart-qty-stepper input { background: #0F172A; border-color: #334155; }
