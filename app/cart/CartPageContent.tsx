@@ -460,11 +460,17 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       const card = itemsCardRef.current, totals = totalsRef.current;
       if (!card || !totals) return;
       if (getComputedStyle(card).position !== 'sticky') { card.style.top = ''; return; }
-      const remaining = Math.max(0, document.documentElement.scrollHeight - window.innerHeight - window.scrollY);
+      // Усе рахуємо в пікселях вʼюпорта (getBoundingClientRect), а в style.top переводимо назад:
+      // на <html> стоїть zoom 0.95, і rect-и вже масштабовані, а CSS-значення — ні.
+      // Змішування одиниць давало недоліт ~15–20 px.
+      const cardRect = card.getBoundingClientRect();
+      const z = card.offsetHeight ? cardRect.height / card.offsetHeight : 1;
+      const remaining = Math.max(0, document.documentElement.getBoundingClientRect().bottom - window.innerHeight);
+      const stickyTop = STICKY_TOP * z;
       // Де буде низ підсумку, коли докрутимо до кінця, і наскільки нижче за звичайне місце має стати картка
       const totalsBottomAtEnd = totals.getBoundingClientRect().bottom - remaining;
-      const d = totalsBottomAtEnd - card.offsetHeight - STICKY_TOP;
-      card.style.top = `${STICKY_TOP + Math.max(0, d - remaining)}px`;
+      const d = totalsBottomAtEnd - cardRect.height - stickyTop;
+      card.style.top = `${(stickyTop + Math.max(0, d - remaining)) / z}px`;
     };
     const schedule = () => { if (!raf) raf = requestAnimationFrame(place); };
     schedule();
