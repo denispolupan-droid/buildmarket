@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, ShoppingCart, ArrowLeft, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowLeft, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle, Pencil } from 'lucide-react';
 
 import './cart.css';
 import { fmtMoney } from '../../lib/format';
@@ -275,13 +275,16 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         {collapsed && summary && <span className="cart-sec__summary" title={summary}>{summary}</span>}
         {collapsed && (
           <button
-            type="button" className="cart-sec__change"
+            type="button" className="cart-sec__change cart-sec__change--icon"
+            // Іконка-олівець замість слова — більше місця під підсумок (суть згорнутого рядка — швидко
+            // перевірити свої дані). Текст — у title/aria-label.
+            title={changeLabel} aria-label={changeLabel}
             // Без фокусу на mousedown: інакше секція розгортається ще ДО кліку (onFocus), кнопка
             // зникає з розмітки, і сам клик — а з ним onReopen (повний список) — губиться
             onMouseDown={e => e.preventDefault()}
             onClick={e => { e.stopPropagation(); onEditStart?.(); onReopen?.(); }}
           >
-            {changeLabel}
+            <Pencil size={15} strokeWidth={2} aria-hidden />
           </button>
         )}
         {/* Розгорнута, але вже заповнена — можна згорнути вручну, не шукаючи, куди клікнути */}
@@ -738,6 +741,25 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     }, 2500);
     return () => clearTimeout(t);
   }, [contactSig, contactDone, editing.contact]);
+
+  // Доставка: щойно вибір став повним (обрали відділення/поштомат/точку ROZETKA) — згортаємо, навіть
+  // якщо курсор лишився в полі пошуку відділення. Вибір зі списку — дискретна дія, тож пауза
+  // коротка (0,6 с); кур'єрську адресу друкують — там, як у контактах, 2,5 с після останньої зміни.
+  const deliverySig = [delivery, novaSubtype, novaCityRef, novaWarehouseRef, address, rzDepId].join('\u0001');
+  const prevDeliverySig = useRef(deliverySig);
+  useEffect(() => {
+    const changed = prevDeliverySig.current !== deliverySig;
+    prevDeliverySig.current = deliverySig;
+    if (!changed || !deliveryDone || !editing.delivery) return;
+    const t = setTimeout(() => {
+      setEditing(s => ({ ...s, delivery: false }));
+      // Фокус із поля пошуку, що зараз сховається (inert). Секція доставки — сусід якоря #field-delivery.
+      const sec = document.getElementById('field-delivery')?.parentElement?.querySelector('.cart-sec');
+      const el = document.activeElement as HTMLElement | null;
+      if (sec && el && sec.contains(el)) el.blur();
+    }, delivery === 'nova' && novaSubtype === 'courier' ? 2500 : 600);
+    return () => clearTimeout(t);
+  }, [deliverySig, deliveryDone, editing.delivery, delivery, novaSubtype]);
 
   // Згорнута секція: заповнена, не в роботі й без помилки після спроби відправити
   const contactErr  = ['company', 'lastName', 'firstName', 'phone', 'email'].some(k => errors.has(k));

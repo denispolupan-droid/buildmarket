@@ -77,6 +77,8 @@
 .cart-sec.is-collapsed .cart-sec__head:hover .cart-sec__change,
 .cart-sec__change:hover { border-color: var(--navy); color: var(--navy); }
 .cart-sec__change { display: inline-flex; align-items: center; gap: 5px; }
+/* «Змінити» в згорнутому рядку — квадратна кнопка з олівцем */
+.cart-sec__change--icon { width: 30px; height: 30px; padding: 0 !important; justify-content: center; }
 /* «Прийнято» — у момент згортання заповненої секції: іконка на мить стає зеленою галочкою,
    рамка рядка коротко підсвічується зеленим. */
 .cart-sec-icon.is-accepted { background: #16A34A; color: #fff; }
