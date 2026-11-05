@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickupWithTtnError, manualStatusWithoutSaleError, ttnReuseError } from '../lib/orders/ship-guards';
+import { pickupWithTtnError, manualStatusWithoutSaleError, ttnReuseError, sameBuyerPhone, ttnConfirmConflict } from '../lib/orders/ship-guards';
 
 describe('ttnReuseError — ЕН уже в іншому замовленні (#26101011 → #26101063, 15.10.2026)', () => {
   const other = { order_number: 26101011, status: 'cancelled' };
@@ -85,5 +85,28 @@ describe('pickupWithTtnError — самовивіз із накладною пе
     expect(pickupWithTtnError({ delivery_type: 'nova_poshta', tracking_number: '20451525048109' })).toBeNull();
     expect(pickupWithTtnError({ delivery_type: 'rz_delivery', tracking_number: '123' })).toBeNull();
     expect(pickupWithTtnError({ delivery_type: null, tracking_number: '123' })).toBeNull();
+  });
+});
+
+describe('спільна посилка на кілька замовлень (#26111003 + #26111002, 02.11.2026)', () => {
+  it('підтверджена спільна посилка — можна (той самий прапорець confirmed)', () => {
+    expect(ttnReuseError('20451576150090', { order_number: 26111003, status: 'shipped' }, true)).toBeNull();
+  });
+  it('текст пропонує обидва варіанти', () => {
+    const msg = ttnReuseError('20451576150090', { order_number: 26111003, status: 'shipped' }, false)!;
+    expect(msg).toContain('одна посилка на кілька замовлень');
+    expect(msg).toContain('переадресація');
+  });
+  it('той самий покупець — за останніми 9 цифрами телефону', () => {
+    expect(sameBuyerPhone('380674056477', '067 405 64 77')).toBe(true);
+    expect(sameBuyerPhone('+38 (067) 405-64-77', '0674056477')).toBe(true);
+    expect(sameBuyerPhone('380674056477', '380674056478')).toBe(false);
+    expect(sameBuyerPhone('', '')).toBe(false);
+    expect(sameBuyerPhone(null, '380674056477')).toBe(false);
+  });
+  it('спільна посилка й переадресація разом — відмова', () => {
+    expect(ttnConfirmConflict(true, true)).not.toBeNull();
+    expect(ttnConfirmConflict(true, false)).toBeNull();
+    expect(ttnConfirmConflict(false, true)).toBeNull();
   });
 });

@@ -18,6 +18,9 @@ import type { CustomerHistory, FulfillmentData, OrderItem, Order, AdminOrdersPro
 import { DELIVERY_NEEDS_CITY, DELIVERY_LABEL, PAYMENT_LABEL } from './constants';
 import { itemTitle, rozetkaCabinet } from './helpers';
 
+/** Що менеджер підтвердив про чужу ЕН: спільна посилка або переадресація */
+type ShipConfirm = 'shared' | 'redirect';
+
 export function useAdminOrders(props: AdminOrdersProps) {
   const {
   initialOrders, currentPage = 1, totalPages = 1, userRole = 'admin',
@@ -1116,17 +1119,36 @@ export function useAdminOrders(props: AdminOrdersProps) {
     setSavingPaymentType(false);
   }
 
-  async function autoShipDropship(orderId: string, redirect = false) {
+  /**
+   * ЕН уже в іншому замовленні — сервер відмовив і питає, що це. Два законні
+   * випадки: спільна посилка (кілька замовлень однією ЕН — кожне зі своєю РН)
+   * і переадресація (та сама посилка іншому покупцю — борг переноситься).
+   * Раніше питали лише про переадресацію, і спільну посилку доводилось
+   * «підтверджувати» нею — РН першого замовлення скасовувалась разом із боргом
+   * постачальнику (#26111003, 02.11.2026). Тому спершу — про спільну посилку.
+   */
+  function askTtnConflict(c: { order_number: number; same_buyer?: boolean }): ShipConfirm | null {
+    const who = c.same_buyer ? ' того самого покупця' : '';
+    if (confirm(`Ця ЕН уже прив'язана до замовлення #${c.order_number}${who}.\n\n`
+      + 'Це ОДНА ПОСИЛКА на кілька замовлень (товари їдуть разом)?\n\n'
+      + 'OK — так: у кожного замовлення своя накладна, нічого не переноситься.\n'
+      + 'Скасувати — інші варіанти.')) return 'shared';
+    if (confirm(`Тоді це ПЕРЕАДРЕСАЦІЯ тієї самої посилки з #${c.order_number} іншому покупцю?\n\n`
+      + `OK — так: накладну #${c.order_number} буде скасовано, борг постачальнику перенесеться сюди.\n`
+      + 'Скасувати — нічого не відвантажувати (внесіть нову ЕН).')) return 'redirect';
+    return null;
+  }
+
+  async function autoShipDropship(orderId: string, mode?: ShipConfirm) {
     const res = await fetch(`/api/admin/orders/${orderId}/ship`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(redirect ? { redirect: true } : {}),
+      body: JSON.stringify(mode ? { [mode]: true } : {}),
     });
     const data = await res.json();
-    if (!res.ok && data.ttn_conflict && !redirect) {
-      if (confirm(`${data.error}\n\nЦе переадресація тієї самої посилки з #${data.ttn_conflict.order_number}?`)) {
-        return autoShipDropship(orderId, true);
-      }
+    if (!res.ok && data.ttn_conflict && !mode) {
+      const choice = askTtnConflict(data.ttn_conflict);
+      if (choice) return autoShipDropship(orderId, choice);
       return;
     }
     if (res.ok) {
@@ -1185,7 +1207,7 @@ export function useAdminOrders(props: AdminOrdersProps) {
     });
   }
 
-  async function executeShip(orderId: string, items: { sku: string; shipQty: number }[], ttn?: string, redirect = false) {
+  async function executeShip(orderId: string, items: { sku: string; shipQty: number }[], ttn?: string, mode?: ShipConfirm) {
     setShipModal(null);
     setShipping(orderId);
     try {
@@ -1195,17 +1217,14 @@ export function useAdminOrders(props: AdminOrdersProps) {
         body: JSON.stringify({
           items: items.map(i => ({ sku: i.sku, qty: i.shipQty })),
           ...(ttn ? { ttn } : {}),
-          ...(redirect ? { redirect: true } : {}),
+          ...(mode ? { [mode]: true } : {}),
         }),
       });
       const data = await res.json();
-      // ЕН уже в іншому замовленні: сервер відмовив, бо без підтвердження це
-      // подвійний борг перед постачальником. Переадресація тієї самої посилки —
-      // підтверджуємо, і борг переноситься зі старого замовлення.
-      if (!res.ok && data.ttn_conflict && !redirect) {
-        if (confirm(`${data.error}\n\nЦе переадресація тієї самої посилки з #${data.ttn_conflict.order_number}?`)) {
-          return executeShip(orderId, items, ttn, true);
-        }
+      // ЕН уже в іншому замовленні: спільна посилка чи переадресація — див. askTtnConflict
+      if (!res.ok && data.ttn_conflict && !mode) {
+        const choice = askTtnConflict(data.ttn_conflict);
+        if (choice) return executeShip(orderId, items, ttn, choice);
         return;
       }
       if (res.ok) {

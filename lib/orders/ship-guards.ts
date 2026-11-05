@@ -47,19 +47,37 @@ const STATUS_UA: Record<string, string> = {
  * 318,50 за один фізичний товар. Тому чужа ЕН без явного «це переадресація»
  * блокується; з підтвердженням (redirect) відгрузка йде, а борг переноситься зі
  * старого замовлення (lib/accounting/transit → redirectTransit).
+ *
+ * Але спільна ЕН буває й законною: один покупець зробив кілька замовлень, і ми
+ * відправили їх ОДНІЄЮ посилкою (живий кейс 02.11.2026, #26111003 + #26111002).
+ * Товари там різні, тож у кожного замовлення своя РН і свій борг — нічого не
+ * переноситься (shared). Раніше діалог знав лише «переадресацію», менеджер її
+ * підтвердив, і РН першого замовлення скасувалась разом із боргом постачальнику.
+ * `confirmed` = менеджер явно обрав одне з двох (redirect або shared).
  */
 export function ttnReuseError(
   ttn: string | null | undefined,
   other: { order_number: number; status: string } | null | undefined,
-  redirect: boolean,
+  confirmed: boolean,
 ): string | null {
   const t = (ttn ?? '').trim();
-  if (!t || !other || redirect) return null;
+  if (!t || !other || confirmed) return null;
   const status = STATUS_UA[other.status] ?? other.status;
   return `ЕН №${t} вже прив'язана до замовлення #${other.order_number} (${status}). `
-    + 'Відвантаження з чужою накладною створить другий борг перед постачальником за той самий товар. '
-    + 'Якщо це переадресація тієї самої посилки — підтвердіть, і борг перенесеться зі старого замовлення; '
-    + 'якщо ні — внесіть нову ЕН.';
+    + 'Підтвердіть, що це: одна посилка на кілька замовлень чи переадресація тієї самої посилки; '
+    + 'якщо ні те, ні інше — внесіть нову ЕН.';
+}
+
+/** Той самий покупець за телефоном (останні 9 цифр: 067… / 38067… / +38 067 …). */
+export function sameBuyerPhone(a: string | null | undefined, b: string | null | undefined): boolean {
+  const tail = (p: string | null | undefined) => (p ?? '').replace(/\D/g, '').slice(-9);
+  const x = tail(a);
+  return x.length === 9 && x === tail(b);
+}
+
+/** Взаємовиключні підтвердження спільної ЕН: обидва разом — помилка клієнта. */
+export function ttnConfirmConflict(redirect: boolean, shared: boolean): string | null {
+  return redirect && shared ? 'Оберіть щось одне: спільна посилка або переадресація.' : null;
 }
 
 export type ShipGuardOrder = {

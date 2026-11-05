@@ -13,7 +13,7 @@ import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard'
 import { setPromTTN, promAcceptsTtnFor } from '../../../../../../lib/prom-api';
 import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
 import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
-import { pickupWithTtnError, ttnReuseError } from '../../../../../../lib/orders/ship-guards';
+import { pickupWithTtnError, ttnReuseError, sameBuyerPhone, ttnConfirmConflict } from '../../../../../../lib/orders/ship-guards';
 import { redirectTransit } from '../../../../../../lib/accounting/transit';
 import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
 import { withApi } from '../../../../../../lib/api-handler';
@@ -83,14 +83,21 @@ async function _POST(
     ttn?: string;
     /** Підтверджена переадресація: та сама ЕН їде з іншого замовлення іншому покупцю */
     redirect?: boolean;
+    /** Підтверджена спільна посилка: та сама ЕН везе й інше замовлення (свої товари, своя РН) */
+    shared?: boolean;
   };
   const partialItems = body.items; // undefined = ship everything
   const bodyTtn = body.ttn?.trim() || null;
   const isRedirect = body.redirect === true;
+  const isShared = body.shared === true;
+  const confirmConflict = ttnConfirmConflict(isRedirect, isShared);
+  if (confirmConflict) {
+    return NextResponse.json({ error: confirmConflict }, { status: 400 });
+  }
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, epicentr_order_id, tracking_number, tracking_ref, shipping_supplier_id, total_price, rozetka_data, fulfillment_mode')
+    .select('id, order_number, status, phone, items, channel_code, customer_id, delivery_type, prom_order_id, rozetka_order_id, epicentr_order_id, tracking_number, tracking_ref, shipping_supplier_id, total_price, rozetka_data, fulfillment_mode')
     .eq('id', id)
     .single();
 
@@ -117,23 +124,28 @@ async function _POST(
   // підтвердження не відвантажуємо — інакше за один товар буде два борги перед
   // постачальником. З підтвердженням борг старого замовлення знімається нижче.
   const guardTtn = bodyTtn ?? (order.tracking_number as string | null) ?? null;
-  type RedirectFrom = { id: string; order_number: number; status: string };
+  // Спільна посилка (shared) — законний випадок: свої товари, своя РН, борг не переноситься.
+  type RedirectFrom = { id: string; order_number: number; status: string; phone: string | null };
   let redirectFrom: RedirectFrom | null = null;
   if (guardTtn) {
     const { data: other } = await db
       .from('orders')
-      .select('id, order_number, status')
+      .select('id, order_number, status, phone')
       .eq('tracking_number', guardTtn)
       .neq('id', id)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     redirectFrom = (other as RedirectFrom | null) ?? null;
-    const reuseError = ttnReuseError(guardTtn, redirectFrom, isRedirect);
+    const reuseError = ttnReuseError(guardTtn, redirectFrom, isRedirect || isShared);
     if (reuseError) {
       return NextResponse.json({
         error: reuseError,
-        ttn_conflict: { order_id: redirectFrom!.id, order_number: redirectFrom!.order_number, status: redirectFrom!.status },
+        ttn_conflict: {
+          order_id: redirectFrom!.id, order_number: redirectFrom!.order_number, status: redirectFrom!.status,
+          // Підказка діалогу: той самий покупець → найімовірніше спільна посилка
+          same_buyer: sameBuyerPhone(order.phone as string | null, redirectFrom!.phone),
+        },
       }, { status: 409 });
     }
   }
