@@ -17,6 +17,7 @@ import { planMergeTtn, sameBuyerGroups } from '../../../lib/orders/merge-ttn';
 import type { CustomerHistory, FulfillmentData, OrderItem, Order, AdminOrdersProps } from './types';
 import { DELIVERY_NEEDS_CITY, DELIVERY_LABEL, PAYMENT_LABEL } from './constants';
 import { itemTitle, rozetkaCabinet } from './helpers';
+import { fmtMoney } from '../../../lib/format';
 
 /** Що менеджер підтвердив про чужу ЕН: спільна посилка або переадресація */
 type ShipConfirm = 'shared' | 'redirect';
@@ -114,7 +115,7 @@ export function useAdminOrders(props: AdminOrdersProps) {
         setOrders(prev => prev.map(o => o.id === orderId
           ? { ...o, price_type: priceType, items: data.items ?? o.items, total_price: data.total_price ?? o.total_price }
           : o));
-        showToast(`Тип цін: ${PRICE_TYPE_LABELS[priceType]} · нова сума ${Number(data.total_price).toFixed(2)} ₴`, 'success');
+        showToast(`Тип цін: ${PRICE_TYPE_LABELS[priceType]} · нова сума ${fmtMoney(Number(data.total_price))} ₴`, 'success');
       } else {
         showToast(data.error ?? 'Помилка перерахунку', 'error');
       }
@@ -128,7 +129,7 @@ export function useAdminOrders(props: AdminOrdersProps) {
   async function applyDiscount(orderId: string, mode: 'pct' | 'amount', value: number) {
     const clean = Number(value);
     if (Number.isNaN(clean) || clean < 0) { showToast('Некоректне значення знижки', 'error'); return; }
-    const label = mode === 'pct' ? `${clean}%` : `${clean.toFixed(2)} ₴`;
+    const label = mode === 'pct' ? `${clean}%` : `${fmtMoney(clean)} ₴`;
     const ok = clean === 0
       ? await showConfirm('Прибрати знижку і повернути повні ціни?')
       : await showConfirm(`Застосувати знижку ${label}? Ціни всіх позицій буде знижено.`);
@@ -146,7 +147,7 @@ export function useAdminOrders(props: AdminOrdersProps) {
           : o));
         showToast(
           data.discount_pct > 0
-            ? `Знижка ${data.discount_pct}% (−${Number(data.discount_amount).toFixed(2)} ₴) · сума ${Number(data.total_price).toFixed(2)} ₴`
+            ? `Знижка ${data.discount_pct}% (−${fmtMoney(Number(data.discount_amount))} ₴) · сума ${fmtMoney(Number(data.total_price))} ₴`
             : 'Знижку прибрано',
           'success',
         );

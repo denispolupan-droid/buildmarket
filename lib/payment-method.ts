@@ -14,16 +14,18 @@
  * Тут лише підписи для UI — щоб назва форми оплати була в одному місці.
  */
 export type PaymentMethodCode =
-  | 'cod' | 'prom' | 'wallet' | 'card' | 'invoice' | 'cash' | 'deferred' | 'other';
+  | 'cod' | 'installments' | 'prom' | 'wallet' | 'card' | 'partner' | 'invoice' | 'cash' | 'deferred' | 'other';
 
 // Підписи короткі навмисне: ряд фільтрів у журналі замовлень і без того має
 // 15 чіпів, а з повними назвами («Накладений платіж», «Apple / Google Pay») він
 // переносився на другий рядок. Повна назва лишається в title при наведенні.
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethodCode, string> = {
   cod:      'Накладений',
+  installments: 'Частинами',
   prom:     'Пром-оплата',
   wallet:   'Apple/Google',
   card:     'Картка',
+  partner:  'Партнер',
   invoice:  'Рахунок',
   cash:     'Готівка',
   deferred: 'Відстрочка',
@@ -32,9 +34,11 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethodCode, string> = {
 
 export const PAYMENT_METHOD_HINT: Record<PaymentMethodCode, string> = {
   cod:      'Оплата при отриманні — гроші приходять після доставки',
+  installments: 'Оплата частинами (Rozetka / Prom) — гроші перераховує площадка чи банк',
   prom:     'Пром-оплата (evopay) на площадці Prom',
   wallet:   'Apple Pay або Google Pay через Rozetka',
   card:     'Картка онлайн: Monobank на сайті або Visa/MasterCard у Rozetka',
+  partner:  'Дропшип: партнер розраховується з нами по взаєморозрахунках',
   invoice:  'Безготівка: рахунок на сайті/в роздрібі або «Оплата на рахунок продавця» в Rozetka',
   cash:     'Готівка',
   deferred: 'Відстрочка платежу',
@@ -43,8 +47,39 @@ export const PAYMENT_METHOD_HINT: Record<PaymentMethodCode, string> = {
 
 /** Порядок чіпів у фільтрі — від найчастішого до рідкісного. */
 export const PAYMENT_METHOD_ORDER: PaymentMethodCode[] = [
-  'cod', 'prom', 'wallet', 'card', 'invoice', 'cash', 'deferred', 'other',
+  'cod', 'prom', 'wallet', 'card', 'installments', 'invoice', 'partner', 'cash', 'deferred', 'other',
 ];
+
+/**
+ * Групи для фільтра журналу: менеджеру важливо не «чим саме», а «коли й звідки
+ * прийдуть гроші». Вісім чіпів (Пром-оплата / Apple-Google / Картка окремо)
+ * роздували ряд фільтрів; точний спосіб видно в рядку (Пром, A Pay, G Pay, Кар.).
+ */
+export type PaymentGroupKey = 'cod' | 'online' | 'invoice' | 'other';
+
+export const PAYMENT_GROUPS: { key: PaymentGroupKey; label: string; hint: string; codes: PaymentMethodCode[] }[] = [
+  { key: 'cod',     label: 'Накладений', codes: ['cod'],
+    hint: 'Оплата при отриманні — гроші приходять після доставки (НоваПей / RozetkaPay)' },
+  { key: 'online',  label: 'Онлайн',     codes: ['prom', 'wallet', 'card', 'installments'],
+    hint: 'Передоплата онлайн: Пром-оплата, Apple/Google Pay, картка, оплата частинами' },
+  { key: 'invoice', label: 'Рахунок',    codes: ['invoice', 'deferred', 'partner'],
+    hint: 'Безготівка за рахунком, у т.ч. з відстрочкою, і розрахунок із дропшип-партнером' },
+  { key: 'other',   label: 'Готівка',    codes: ['cash', 'other'],
+    hint: 'Готівка' },
+];
+
+/** Група за кодом форми оплати (null/невідомий → «Інше»). */
+export function paymentGroupOf(code: string | null | undefined): PaymentGroupKey {
+  return PAYMENT_GROUPS.find(g => (g.codes as string[]).includes(code ?? ''))?.key ?? 'other';
+}
+
+/** Значення параметра ?pay= → група. Старі посилання з кодом (?pay=prom) теж працюють. */
+export function parsePaymentGroup(param: string | null | undefined): PaymentGroupKey | '' {
+  if (!param) return '';
+  if (PAYMENT_GROUPS.some(g => g.key === param)) return param as PaymentGroupKey;
+  if ((PAYMENT_METHOD_ORDER as string[]).includes(param)) return paymentGroupOf(param);
+  return '';
+}
 
 export type PaymentSource = {
   channel_code?: string | null;

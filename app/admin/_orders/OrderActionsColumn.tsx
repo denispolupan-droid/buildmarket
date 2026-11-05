@@ -6,6 +6,7 @@ import type { OrderItem } from './types';
 import { TransitDecisionBox } from './TransitDecisionBox';
 import type { Order } from './types';
 import { useOrdersCtx } from './OrdersContext';
+import { fmtInt } from '../../../lib/format';
 
 export function OrderActionsColumn({ order }: {
   order: Order;
@@ -225,7 +226,7 @@ export function OrderActionsColumn({ order }: {
                         // можна тільки окремим поверненням, тож питаємо.
                         const ok = confirm(
                           `Підтвердити доставку замовлення №${order.order_number}?\n\n`
-                          + `Буде проведено видаткову накладну: виручка ${Number(order.total_price).toFixed(0)} ₴, `
+                          + `Буде проведено видаткову накладну: виручка ${fmtInt(Number(order.total_price))} ₴, `
                           + 'собівартість, комісія маркетплейсу і зняття резерву потраплять в облік.\n\n'
                           + 'Скасувати проведення можна буде тільки оформленням повернення.'
                         );

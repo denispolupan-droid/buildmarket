@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { marketplacePaymentMethod } from '../lib/payment-method';
+import { marketplacePaymentMethod, PAYMENT_GROUPS, PAYMENT_METHOD_ORDER, paymentGroupOf, parsePaymentGroup } from '../lib/payment-method';
 
 describe('marketplacePaymentMethod — Prom', () => {
   it('бере назву способу оплати з кабінету', () => {
@@ -64,5 +64,25 @@ describe('marketplacePaymentMethod — решта', () => {
     expect(marketplacePaymentMethod({ channel_code: 'website' })).toBeNull();
     expect(marketplacePaymentMethod({ channel_code: 'prom', prom_data: null })).toBeNull();
     expect(marketplacePaymentMethod({ channel_code: 'rozetka', rozetka_data: {} })).toBeNull();
+  });
+});
+
+describe('групи форм оплати для фільтра журналу', () => {
+  it('кожен код належить рівно одній групі', () => {
+    for (const code of PAYMENT_METHOD_ORDER) {
+      expect(PAYMENT_GROUPS.filter(g => (g.codes as string[]).includes(code))).toHaveLength(1);
+    }
+  });
+  it('онлайн = Пром-оплата, гаманці, картка; невідоме → «Інше»', () => {
+    expect(['prom', 'wallet', 'card'].map(paymentGroupOf)).toEqual(['online', 'online', 'online']);
+    expect(paymentGroupOf('deferred')).toBe('invoice');
+    expect(paymentGroupOf(null)).toBe('other');
+  });
+  it('?pay= приймає групу і старий код (закладки), сміття — без фільтра', () => {
+    expect(parsePaymentGroup('online')).toBe('online');
+    expect(parsePaymentGroup('wallet')).toBe('online');
+    expect(parsePaymentGroup('cod')).toBe('cod');
+    expect(parsePaymentGroup('xyz')).toBe('');
+    expect(parsePaymentGroup(undefined)).toBe('');
   });
 });

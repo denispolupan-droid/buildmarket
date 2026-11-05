@@ -1,7 +1,7 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { PAYMENT_METHOD_LABEL, PAYMENT_METHOD_ORDER } from '../../../lib/payment-method';
+import { PAYMENT_GROUPS } from '../../../lib/payment-method';
 import { CHANNEL_LABEL } from './constants';
 import { useOrdersCtx } from './OrdersContext';
 
@@ -87,9 +87,9 @@ export function OrdersTableHeader() {
             ];
             const payOpts = [
               { value: '', label: 'Всі', n: sum(payCounts) },
-              ...PAYMENT_METHOD_ORDER
-                .filter(code => (payCounts[code] ?? 0) > 0 || payFilter === code)
-                .map(code => ({ value: code, label: PAYMENT_METHOD_LABEL[code], n: payCounts[code] ?? 0 })),
+              ...PAYMENT_GROUPS
+                .filter(g => (payCounts[g.key] ?? 0) > 0 || payFilter === g.key)
+                .map(g => ({ value: g.key, label: g.label, n: payCounts[g.key] ?? 0 })),
             ];
             const th = (key: string, label: string, style?: React.CSSProperties) => {
               const active = sortBy === key;

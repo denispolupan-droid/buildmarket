@@ -4,6 +4,7 @@ import { Plus, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue } from '../../../lib/marketplace-delivery-fee';
 import type { Order } from './types';
 import { useOrdersCtx } from './OrdersContext';
+import { fmtInt, fmtMoney } from '../../../lib/format';
 
 export function OrderNoteAndSections({ order }: {
   order: Order;
@@ -152,13 +153,13 @@ export function OrderNoteAndSections({ order }: {
                         {isFact ? 'Факт' : 'Оцінка'}
                       </span>
                     </div>
-                    {row('Виручка', `${revenue.toFixed(0)} ₴`)}
-                    {row('Собівартість', cost != null ? `${cost.toFixed(0)} ₴` : '…', { color: 'var(--text-secondary)' })}
-                    {(commission ?? 0) > 0 && row('Комісія маркетплейсу', `−${commission!.toFixed(0)} ₴`, { color: '#C2410C' })}
-                    {deliveryExp > 0 && row('Доставка НП (наш рахунок)', `−${deliveryExp.toFixed(0)} ₴`, { color: '#C2410C' })}
-                    {mpDelivery && row(mpDelivery.label, `−${mpDeliveryFee.toFixed(0)} ₴`, { color: '#C2410C', title: mpDelivery.hint })}
-                    {row('Валовий прибуток', gross != null ? `${gross.toFixed(0)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
-                    {((commission ?? 0) > 0 || deliveryExp > 0 || mpDeliveryFee > 0) && row('Чистий прибуток', net != null ? `${net.toFixed(0)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
+                    {row('Виручка', `${fmtInt(revenue)} ₴`)}
+                    {row('Собівартість', cost != null ? `${fmtInt(cost)} ₴` : '…', { color: 'var(--text-secondary)' })}
+                    {(commission ?? 0) > 0 && row('Комісія маркетплейсу', `−${fmtInt(commission!)} ₴`, { color: '#C2410C' })}
+                    {deliveryExp > 0 && row('Доставка НП (наш рахунок)', `−${fmtInt(deliveryExp)} ₴`, { color: '#C2410C' })}
+                    {mpDelivery && row(mpDelivery.label, `−${fmtInt(mpDeliveryFee)} ₴`, { color: '#C2410C', title: mpDelivery.hint })}
+                    {row('Валовий прибуток', gross != null ? `${fmtInt(gross)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
+                    {((commission ?? 0) > 0 || deliveryExp > 0 || mpDeliveryFee > 0) && row('Чистий прибуток', net != null ? `${fmtInt(net)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
                   </div>
                 );
               })()}
@@ -259,7 +260,7 @@ export function OrderNoteAndSections({ order }: {
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Знижка</div>
                               <div style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 8px', border: '1px solid var(--border-light)', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--color-warn)', background: 'var(--bg-warn)' }}>
-                                −{activePct}% (−{Number(order.discount_amount ?? 0).toFixed(2)} ₴)
+                                −{activePct}% (−{fmtMoney(Number(order.discount_amount ?? 0))} ₴)
                               </div>
                             </div>
                           );
@@ -410,11 +411,11 @@ export function OrderNoteAndSections({ order }: {
                       const groupNet = group.total_margin - groupComm - groupFee;
                       return (
                       <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-                        <div title={`Валовий прибуток ${group.total_margin.toFixed(0)}${groupComm > 0 ? ` − комісія ${groupComm.toFixed(0)}` : ''}${groupFee > 0 ? ` − ${mpFee!.label.toLowerCase()} ${groupFee.toFixed(0)}` : ''} = ${groupNet.toFixed(0)} ₴`}
+                        <div title={`Валовий прибуток ${fmtInt(group.total_margin)}${groupComm > 0 ? ` − комісія ${fmtInt(groupComm)}` : ''}${groupFee > 0 ? ` − ${mpFee!.label.toLowerCase()} ${fmtInt(groupFee)}` : ''} = ${fmtInt(groupNet)} ₴`}
                           style={{ padding: '7px 12px', background: 'var(--bg-soft)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                           <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
                           <span style={{ color: groupNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {groupNet >= 0 ? '+' : ''}{groupNet.toFixed(0)} грн{(hasComm || groupFee > 0) ? ' чистими' : ''}
+                            {groupNet >= 0 ? '+' : ''}{fmtInt(groupNet)} грн{(hasComm || groupFee > 0) ? ' чистими' : ''}
                           </span>
                         </div>
                         {group.items.map((item, ii) => {
@@ -426,11 +427,11 @@ export function OrderNoteAndSections({ order }: {
                               <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                               <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
                               <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontSize: '11px' }}
-                                title={hasComm && c ? `Валовий прибуток ${item.margin.toFixed(0)} − комісія ${c.amt.toFixed(0)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
-                                {item.cost_price.toFixed(0)}→{item.sale_price.toFixed(0)}{hasComm && c ? ` −${c.amt.toFixed(0)}к` : ''}
+                                title={hasComm && c ? `Валовий прибуток ${fmtInt(item.margin)} − комісія ${fmtInt(c.amt)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
+                                {fmtInt(item.cost_price)}→{fmtInt(item.sale_price)}{hasComm && c ? ` −${fmtInt(c.amt)}к` : ''}
                               </span>
                               <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                                {net >= 0 ? '+' : ''}{net.toFixed(0)} грн
+                                {net >= 0 ? '+' : ''}{fmtInt(net)} грн
                               </span>
                             </div>
                           );
@@ -439,7 +440,7 @@ export function OrderNoteAndSections({ order }: {
                           <div title={mpFee!.hint}
                             style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)', fontSize: '12px', color: 'var(--text-secondary)' }}>
                             <span>🚚 {mpFee!.label}{fi.by_supplier.length > 1 ? ' · частка' : ''}</span>
-                            <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: '#C2410C' }}>−{groupFee.toFixed(0)} грн</span>
+                            <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: '#C2410C' }}>−{fmtInt(groupFee)} грн</span>
                           </div>
                         )}
                       </div>

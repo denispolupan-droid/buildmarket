@@ -33,6 +33,7 @@ import { NpRegistryPickerModal } from './_orders/NpRegistryPickerModal';
 import { OrdersCtx } from './_orders/OrdersContext';
 import { StatusMenu } from './_orders/StatusMenu';
 import { Modal } from '../components/admin/ui/Modal';
+import { fmtMoney } from '../../lib/format';
 
 export default function AdminOrders(props: AdminOrdersProps) {
   const ctx = useAdminOrders(props);
@@ -557,7 +558,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                         {order.promo_code && (
                           <span title="Знижку вже враховано в сумі замовлення"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
-                            <Tag size={12} /> {order.promo_code} · −{Number(order.promo_discount ?? 0).toFixed(2)} ₴
+                            <Tag size={12} /> {order.promo_code} · −{fmtMoney(Number(order.promo_discount ?? 0))} ₴
                           </span>
                         )}
                       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '../../../lib/toast';
 import { decisionBtn } from './constants';
+import { fmtMoney } from '../../../lib/format';
 
 export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; orderNumber: number }) {
   const router = useRouter();
@@ -23,8 +24,8 @@ export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; 
 
   async function decide(decision: 'to_supplier' | 'keep') {
     const ok = confirm(decision === 'to_supplier'
-      ? `Замовлення №${orderNumber}: товар на ${amount!.toFixed(2)} ₴ повернувся постачальнику?\n\nБорг перед ним буде знято.`
-      : `Замовлення №${orderNumber}: товар на ${amount!.toFixed(2)} ₴ лишається в нас?\n\nВін стане на склад, борг перед постачальником лишиться.`);
+      ? `Замовлення №${orderNumber}: товар на ${fmtMoney(amount!)} ₴ повернувся постачальнику?\n\nБорг перед ним буде знято.`
+      : `Замовлення №${orderNumber}: товар на ${fmtMoney(amount!)} ₴ лишається в нас?\n\nВін стане на склад, борг перед постачальником лишиться.`);
     if (!ok) return;
     setBusy(true);
     try {
@@ -36,8 +37,8 @@ export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; 
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         showToast(decision === 'to_supplier'
-          ? `Борг перед постачальником знято на ${Number(data.amount ?? 0).toFixed(2)} ₴`
-          : `Товар оприбутковано на склад на ${Number(data.amount ?? 0).toFixed(2)} ₴`, 'success');
+          ? `Борг перед постачальником знято на ${fmtMoney(Number(data.amount ?? 0))} ₴`
+          : `Товар оприбутковано на склад на ${fmtMoney(Number(data.amount ?? 0))} ₴`, 'success');
         setAmount(0);
         router.refresh();
       } else {
@@ -55,7 +56,7 @@ export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; 
       border: '1px solid #FDE68A', background: 'var(--bg-warn)',
     }}>
       <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--color-warn)' }}>
-        Товар у дорозі — {amount.toFixed(2)} ₴
+        Товар у дорозі — {fmtMoney(amount)} ₴
       </div>
       <div style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 6px' }}>
         Борг перед постачальником проведено при відвантаженні. Куди подівся товар?

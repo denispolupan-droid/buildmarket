@@ -12,7 +12,7 @@ import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/pro
 import { orderSearchOr } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
-import { PAYMENT_METHOD_ORDER, type PaymentMethodCode } from '../../lib/payment-method';
+import { PAYMENT_GROUPS, paymentGroupOf, parsePaymentGroup } from '../../lib/payment-method';
 import { kyivBounds, statusDateOrFilter, createdOrFilter, matchesEventDate, matchesCreatedDate } from '../../lib/orders/date-filter';
 import { ORDER_TAB_ORDER, ORDER_TAB_LABELS } from '../../lib/orders/status';
 import { createServiceClient } from '../../lib/supabase-service';
@@ -53,7 +53,8 @@ export default async function AdminPage({
   // Форма оплати — код із generated-колонки orders.payment_method_code
   // (див. міграцію 099). Фільтрувати по payment_type не можна: у частини
   // замовлень маркетплейсів він розходиться з фактичним способом оплати.
-  const pay = PAYMENT_METHOD_ORDER.includes(payParam as PaymentMethodCode) ? payParam! : '';
+  // Фільтр — групою (Накладений / Онлайн / Рахунок / Інше), див. PAYMENT_GROUPS.
+  const pay = parsePaymentGroup(payParam);
   // Зріз «повернення без рішення» (див. applyReturnPendingFilter нижче)
   const ret = retParam === 'pending' ? 'pending' : '';
   // Сортування — кліком по заголовку колонки журналу (15.10.2026); тут — білий
@@ -103,7 +104,7 @@ export default async function AdminPage({
       // точки й один процес здачі, різне лише API накладної.
       if (carrier === 'rozetka')   q = q.in('delivery_type', [ROZETKA_DELIVERY_TYPE, RZ_DELIVERY_TYPE]);
       else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${ROZETKA_DELIVERY_TYPE},${RZ_DELIVERY_TYPE},pickup)`);
-      if (pay) q = q.eq('payment_method_code', pay);
+      if (pay) q = q.in('payment_method_code', PAYMENT_GROUPS.find(g => g.key === pay)!.codes);
       if (sent === 'sent')        q = q.not('supplier_sent_at', 'is', null);
       else if (sent === 'unsent') q = q.is('supplier_sent_at', null);
     }
@@ -335,7 +336,7 @@ export default async function AdminPage({
     return acc;
   }, {});
   const payCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
-    const key = r.payment_method_code ?? 'other';
+    const key = paymentGroupOf(r.payment_method_code);
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});

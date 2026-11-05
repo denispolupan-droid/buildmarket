@@ -2,7 +2,7 @@
 
 import { X, ChevronDown, Search } from 'lucide-react';
 import SmartDateInput from '../../components/SmartDateInput';
-import { PAYMENT_METHOD_HINT, PAYMENT_METHOD_LABEL, PAYMENT_METHOD_ORDER } from '../../../lib/payment-method';
+import { PAYMENT_GROUPS } from '../../../lib/payment-method';
 import { CHANNEL_LABEL } from './constants';
 import { rozetkaCabinet } from './helpers';
 import { useOrdersCtx } from './OrdersContext';
@@ -233,12 +233,13 @@ export function OrdersToolbar() {
             </div>
             <div className={`oc-filter-group${grpOpen('pay') ? ' open' : ''}`}>
             <button type="button" className="oc-filter-grp" onClick={() => toggleGroup('pay')} aria-expanded={grpOpen('pay')} title={grpOpen('pay') ? 'Згорнути' : 'Фільтр за формою оплати'}>Оплата <ChevronDown size={11} /></button>
-            {PAYMENT_METHOD_ORDER.filter(code => ((payCounts[code] ?? 0) > 0 || payFilter === code) && (grpOpen('pay') || payFilter === code)).map(code => {
+            {PAYMENT_GROUPS.filter(g => ((payCounts[g.key] ?? 0) > 0 || payFilter === g.key) && (grpOpen('pay') || payFilter === g.key)).map(g => {
+              const code = g.key;
               const active = payFilter === code;
               return (
                 <button
                   key={code}
-                  title={PAYMENT_METHOD_HINT[code]}
+                  title={g.hint}
                   onClick={() => pushFilters({ pay: active ? '' : code })}
                   style={{
                     height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
@@ -248,7 +249,7 @@ export function OrdersToolbar() {
                     cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
                   }}
                 >
-                  {PAYMENT_METHOD_LABEL[code]}
+                  {g.label}
                   <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{payCounts[code] ?? 0}</span>
                 </button>
               );
@@ -322,7 +323,7 @@ export function OrdersToolbar() {
           if (initialSearch) chips.push({ key: 'q', label: `Пошук: «${initialSearch}»`, clear: () => { setSearchInput(''); pushFilters({ q: '' }); } });
           if (channelFilter) chips.push({ key: 'channel', label: `Канал: ${CHANNEL_LABEL[channelFilter]?.label ?? channelFilter}`, clear: () => pushFilters({ channel: '' }) });
           if (carrierFilter) chips.push({ key: 'carrier', label: `Доставка: ${carrierFilter === 'nova' ? 'Нова Пошта' : 'Rozetka Доставка'}`, clear: () => pushFilters({ carrier: '' }) });
-          if (payFilter) chips.push({ key: 'pay', label: `Оплата: ${(PAYMENT_METHOD_LABEL as Record<string, string>)[payFilter] ?? payFilter}`, clear: () => pushFilters({ pay: '' }) });
+          if (payFilter) chips.push({ key: 'pay', label: `Оплата: ${PAYMENT_GROUPS.find(g => g.key === payFilter)?.label ?? payFilter}`, clear: () => pushFilters({ pay: '' }) });
           if (retFilter === 'pending') chips.push({ key: 'ret', label: 'Повернення без рішення', clear: () => pushFilters({ ret: '' }) });
           if (sentFilter) chips.push({ key: 'sent', label: sentFilter === 'sent' ? 'Постачальнику: надіслано' : 'Постачальнику: ще не надіслано', clear: () => pushFilters({ sent: '' }) });
           if (dateFrom || dateTo) chips.push({ key: 'date', label: `Період: ${dateFrom ? fmtD(dateFrom) : '…'} — ${dateTo ? fmtD(dateTo) : '…'}`, clear: () => pushFilters({ dateFrom: '', dateTo: '' }) });

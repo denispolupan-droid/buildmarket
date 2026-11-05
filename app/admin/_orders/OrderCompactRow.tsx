@@ -9,6 +9,21 @@ import { ItemThumbs } from './ItemThumbs';
 import type { Order } from './types';
 import type { OrderSettlement } from '../../../lib/accounting/order-settlement';
 import { useOrdersCtx } from './OrdersContext';
+import { PAYMENT_METHOD_HINT, type PaymentMethodCode } from '../../../lib/payment-method';
+import { fmtInt } from '../../../lib/format';
+
+// Короткі підписи для колонки «Опл.» (58px). Повна назва — у title.
+const PAY_SHORT: Partial<Record<PaymentMethodCode | '', string>> = {
+  cod:      'НП',
+  prom:     'Пром',
+  wallet:   'A/G Pay',
+  card:     'Картка',
+  installments: 'Частини',
+  partner:  'Партн.',
+  invoice:  'Рах.',
+  cash:     'Гот.',
+  deferred: 'Відст.',
+};
 
 export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone, date, dateShort, mergedBadge, buyerBadge, channel, mpNumber, deliveryBadges, isCod, paymentConfirmed, settlement, isCancelled, orderBadges, carrierLabel, delivery, inRegistry, isRozetkaPoint, carrierNote, status, isDropship, noCallback, callbackDone }: {
   isExpanded: boolean;
@@ -228,8 +243,8 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             <Tag size={12} style={{ color: 'var(--color-warn)', flexShrink: 0 }}
               aria-label={`Промокод ${order.promo_code}`} />
           )}
-          <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${Number(order.promo_discount ?? 0).toFixed(2)} ₴ (сума вже з урахуванням)` : undefined}>
-            {order.total_price.toFixed(0)} ₴
+          <span title={order.promo_code ? `Промокод ${order.promo_code} · знижка −${fmtMoney(Number(order.promo_discount ?? 0))} ₴ (сума вже з урахуванням)` : undefined}>
+            {fmtInt(order.total_price)} ₴
           </span>
         </span>
 
@@ -374,19 +389,36 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
         {/* Оплата (58px — як заголовок із лійкою в шапці) */}
         <div className="oc-hide-m" style={{ width: '58px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {(() => {
-            const label = order.payment_type === 'cod' ? 'НП'
-              : order.payment_type === 'card' ? 'Кар.'
-              : order.payment_type === 'prepaid' ? 'Пре.'
-              : order.payment_type === 'cash' ? 'Гот.'
-              : order.payment_type === 'deferred' ? 'Відст.'
-              : 'Рах.';
+            // Підпис — з payment_method_code (той самий код, що й фільтр «оплата» в шапці):
+            // payment_type у неоплаченої Пром-оплати / Apple Pay Rozetka — 'invoice', і рядок
+            // показував «Рах.» замість способу, яким покупець платить.
+            const code = (order.payment_method_code ?? '') as PaymentMethodCode | '';
+            // Гаманець Rozetka: Apple Pay / Google Pay — з payload (payment_type_title)
+            const walletTitle = code === 'wallet'
+              ? String((order.rozetka_data as { payment?: { payment_type_title?: unknown } } | null)?.payment?.payment_type_title ?? '')
+              : '';
+            const label = walletTitle === 'Apple Pay' ? 'A Pay'
+              : walletTitle === 'Google Pay' ? 'G Pay'
+              : PAY_SHORT[code] ?? (order.payment_type === 'prepaid' ? 'Пре.' : '—');
             // Зелений = оплата підтверджена (передоплата/безнал/картка). НП платить при отриманні.
             const paid = order.payment_confirmed && order.payment_type !== 'cod';
+            // Онлайн-оплата площадки, яка ще не пройшла: сірий + підказка «в процесі»
+            const inProgress = !paid && !isCancelled && (code === 'prom' || code === 'wallet' || code === 'card' || code === 'installments');
+            // Rozetka не віддає тип картки (Visa/Mastercard) — лише назву способу,
+            // напр. «Оплата карткою Visa/MasterCard»; показуємо її в підказці.
+            const rzMethod = order.channel_code === 'rozetka'
+              ? String((order.rozetka_data as { payment?: { payment_method_name?: unknown } } | null)?.payment?.payment_method_name ?? '')
+              : '';
+            const hint = (walletTitle ? `${walletTitle} через Rozetka`
+              : (code === 'card' || code === 'installments') && rzMethod ? `Rozetka: ${rzMethod}`
+              : code === 'card' && order.channel_code === 'website' ? 'Картка онлайн через Monobank на сайті'
+              : code && code in PAYMENT_METHOD_HINT ? PAYMENT_METHOD_HINT[code as PaymentMethodCode] : '')
+              + (inProgress ? ' — оплата ще в процесі' : '');
             // Насичено-зелений з «✓» = гроші вже на нашому рахунку; помаранчевий = вручено, виплата не дійшла
             const received = settlement?.state === 'received' && !isCancelled;
             const waiting = settlement?.state === 'pending' && !isCancelled;
             return (
-              <span title={received ? `Виплачено — гроші дійшли до нас (${fmtMoney(settlement!.received)} ₴)` : waiting ? `Чекаємо виплату: ${fmtMoney(settlement!.open)} ₴ ще не дійшли до нас` : paid ? 'Оплачено' : undefined}
+              <span title={received ? `Виплачено — гроші дійшли до нас (${fmtMoney(settlement!.received)} ₴)` : waiting ? `Чекаємо виплату: ${fmtMoney(settlement!.open)} ₴ ще не дійшли до нас` : paid ? `Оплачено${hint ? ' · ' + hint : ''}` : hint || undefined}
                 style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', whiteSpace: 'nowrap',
                   background: received ? '#BBF7D0' : waiting ? '#FEF3C7' : paid ? '#DCFCE7' : 'var(--border-light)',
                   color: received ? '#166534' : waiting ? 'var(--color-warn)' : paid ? 'var(--color-success)' : 'var(--text-secondary)',

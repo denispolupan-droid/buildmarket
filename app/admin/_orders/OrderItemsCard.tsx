@@ -4,6 +4,7 @@ import { Package, Pencil, Trash2, Plus, X, Check, Copy, RotateCcw } from 'lucide
 import { STATUSES, SOURCE_EDITABLE_STATUSES } from './constants';
 import type { Order } from './types';
 import { useOrdersCtx } from './OrdersContext';
+import { fmtInt, fmtMoney } from '../../../lib/format';
 
 export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
   order: Order;
@@ -71,7 +72,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                     onChange={e => setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, parseInt(e.target.value) || 1) } : it))}
                     style={{ width: '46px', height: '26px', border: '1px solid var(--border)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
                   <span style={{ color: item.is_bonus ? 'var(--color-success)' : 'var(--text-secondary)', width: '70px', textAlign: 'right', flexShrink: 0, fontWeight: item.is_bonus ? 600 : 400 }}>
-                    {item.is_bonus ? '🎁 0 ₴' : `${(item.price * item.qty).toFixed(0)} грн`}
+                    {item.is_bonus ? '🎁 0 ₴' : `${fmtInt(item.price * item.qty)} грн`}
                   </span>
                   <button onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
                     style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', flexShrink: 0, display: 'flex' }}>
@@ -114,7 +115,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-light)' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)' }}>
-                  Разом: {editItems.reduce((s, i) => s + i.price * i.qty, 0).toFixed(2)} грн
+                  Разом: {fmtMoney(editItems.reduce((s, i) => s + i.price * i.qty, 0))} грн
                 </span>
                 <button onClick={() => saveEdit(order.id)} disabled={editSaving}
                   style={{ height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', opacity: editSaving ? 0.6 : 1 }}>
@@ -258,12 +259,12 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                           </td>
                           <td className="oc-col-qty" style={{ padding: '10px 6px', color: 'var(--text-primary)', textAlign: 'right', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>{item.qty}</td>
                           <td className="oc-col-price" style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>
-                            {item.is_bonus ? '' : `${item.price.toFixed(0)} ₴`}
+                            {item.is_bonus ? '' : `${fmtInt(item.price)} ₴`}
                           </td>
                           <td className="oc-col-sum" style={{ padding: '10px 0', textAlign: 'right', verticalAlign: 'middle' }}>
                             {item.is_bonus
                               ? <span style={{ color: 'var(--color-success)', fontSize: '11px', fontWeight: 700, background: 'var(--bg-success)', padding: '1px 6px', borderRadius: '4px' }}>🎁 Бонус</span>
-                              : <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toFixed(0)} ₴</span>
+                              : <span style={{ color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtInt(item.price * item.qty)} ₴</span>
                             }
                           </td>
                           <td className="oc-col-src" style={{ padding: '10px 0 10px 8px', textAlign: 'right', verticalAlign: 'middle', background: srcBg, borderLeft: srcBorder, borderRadius: isMixed ? '6px' : undefined }}>
@@ -347,7 +348,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                       <tr className="oc-total-row" key="__total">
                         <td colSpan={4} style={{ padding: '10px 0 0', textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>Разом</td>
                         <td style={{ padding: '10px 0 0', textAlign: 'right', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                          {Number(order.total_price).toFixed(0)} ₴
+                          {fmtInt(Number(order.total_price))} ₴
                         </td>
                         <td style={{ padding: '10px 0 0' }} />
                       </tr>
@@ -370,7 +371,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                         <tr className="oc-total-row" key={key}>
                           <td colSpan={4} style={{ padding: '2px 0 0', textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>{label}</td>
                           <td style={{ padding: '2px 0 0', textAlign: 'right', fontSize: '12.5px', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-                            {value.toFixed(0)} ₴
+                            {fmtInt(value)} ₴
                           </td>
                           <td style={{ padding: '2px 0 0' }} />
                         </tr>
