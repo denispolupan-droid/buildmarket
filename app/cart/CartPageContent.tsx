@@ -204,21 +204,22 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
   /** «Змінити» на згорнутій секції — для доставки/оплати одразу показати весь список варіантів */
   onReopen?: () => void;
 }) {
-  // «Готово»-спалах: щойно секцію дозаповнили (done: false → true) — кнопка «згорнути» на 2 с
-  // зеленіє з галочкою, а згорнутий рядок коротко підсвічується. На старті сторінки не спалахує:
+  // «Прийнято»: одна зелена підсвітка рядка-підсумку в МОМЕНТ ЗГОРТАННЯ заповненої секції
+  // (05.11.2026 замість спалаху кнопки «згорнути» посеред набору — той спрацьовував на останній
+  // цифрі телефону й далеко від поля, на яке дивишся). На старті сторінки не спалахує:
   // дані з профілю/минулого замовлення підтягуються вже після монтування, це не дія покупця.
   const [flash, setFlash] = useState(false);
-  const prevDone = useRef(done);
+  const prevCollapsed = useRef(collapsed);
   const mountedAt = useRef(0);
   useEffect(() => { mountedAt.current = Date.now(); }, []);
   useEffect(() => {
-    const was = prevDone.current;
-    prevDone.current = done;
-    if (!done || was || Date.now() - mountedAt.current < 1500) return;
+    const was = prevCollapsed.current;
+    prevCollapsed.current = collapsed;
+    if (!collapsed || was || !done || Date.now() - mountedAt.current < 1500) return;
     setFlash(true);
-    const t = setTimeout(() => setFlash(false), 2000);
+    const t = setTimeout(() => setFlash(false), 1600);
     return () => clearTimeout(t);
-  }, [done]);
+  }, [collapsed, done]);
   return (
     <div
       className={'cart-sec' + (collapsed ? ' is-collapsed' : '') + (flash ? ' is-flash' : '')}
@@ -242,8 +243,9 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         }}
       >
         {/* Секцію заповнено — квадрат іконки фірмовий синій; ні — світлий */}
-        <div className={'cart-sec-icon' + (done ? ' is-done' : '')}>
-          <Icon size={16} strokeWidth={2} />
+        <div className={'cart-sec-icon' + (done ? ' is-done' : '') + (flash ? ' is-accepted' : '')}>
+          {/* Під час «прийнято» іконка секції на мить стає галочкою */}
+          {flash ? <Check size={16} strokeWidth={3} className="cart-sec__tick" /> : <Icon size={16} strokeWidth={2} />}
         </div>
         <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', flexShrink: 0 }}>{title}</span>
         {collapsed && summary && <span className="cart-sec__summary" title={summary}>{summary}</span>}
@@ -260,8 +262,7 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         )}
         {/* Розгорнута, але вже заповнена — можна згорнути вручну, не шукаючи, куди клікнути */}
         {!collapsed && done && collapseLabel && (
-          <button type="button" className={'cart-sec__change' + (flash ? ' is-flash' : '')} onClick={e => { e.stopPropagation(); onEditEnd?.(); }}>
-            {flash && <Check size={13} strokeWidth={3} className="cart-sec__tick" aria-hidden />}
+          <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); onEditEnd?.(); }}>
             {collapseLabel}
           </button>
         )}
@@ -652,6 +653,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // Які секції вже заповнені (підсвітка іконок). Рахувати ТІЛЬКИ тут, після isRetail:
   // collectErrors читає isRetail, і виклик вище кидав «Cannot access before initialization».
   const pending = collectErrors();
+  // Зелена галочка в заповненому полі контактів (cart.css .cart-field.is-valid) — підказка просто
+  // там, куди дивишся, що поле прийнято. Перевірки — ті самі, що в collectErrors.
+  const phoneValid = /^\+?3?8?(0\d{9})$/.test(phone.replace(/[\s\-()]/g, ''));
+  const fieldCls = (valid: boolean) => 'cart-field' + (valid ? ' is-valid' : '');
   const contactDone  = !['company', 'lastName', 'firstName', 'phone', 'email'].some(k => pending.has(k));
   const deliveryDone = !['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => pending.has(k));
   const paymentDone  = !pending.has('payment');
@@ -745,12 +750,12 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('contact')} onEditEnd={editEnd('contact')} title={tr.sectionContact}>
                 {/* Рядок 1: Прізвище · Ім'я · По батькові; рядок 2: Компанія (лише опт) · Телефон · Email */}
                 <div className="cart-contact-grid">
-                  <div id="field-lastName">
+                  <div id="field-lastName" className={fieldCls(!!lastName.trim())}>
                     <label style={{ ...labelStyle, color: errors.has('lastName') ? '#EF4444' : undefined }}>{tr.lastName}</label>
                     <input style={{ ...inputStyle, border: err('lastName') ?? inputStyle.border }} placeholder={tr.lastNamePh} value={lastName} onChange={e => { setLastName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('lastName'); return n; }); }} />
                     {errors.has('lastName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errLastName}</p>}
                   </div>
-                  <div id="field-firstName">
+                  <div id="field-firstName" className={fieldCls(!!firstName.trim())}>
                     <label style={{ ...labelStyle, color: errors.has('firstName') ? '#EF4444' : undefined }}>{tr.firstName}</label>
                     <input style={{ ...inputStyle, border: err('firstName') ?? inputStyle.border }} placeholder={tr.firstNamePh} value={firstName} onChange={e => { setFirstName(e.target.value); setErrors(s => { const n = new Set(s); n.delete('firstName'); return n; }); }} />
                     {errors.has('firstName') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errFirstName}</p>}
@@ -760,13 +765,13 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     <input style={inputStyle} placeholder={tr.middleNamePh} value={middleName} onChange={e => setMiddleName(e.target.value)} />
                   </div>
                   {!isRetail && (
-                    <div id="field-company">
+                    <div id="field-company" className={fieldCls(!!company.trim())}>
                       <label style={{ ...labelStyle, color: errors.has('company') ? '#EF4444' : undefined }}>{tr.company}</label>
                       <input style={{ ...inputStyle, border: err('company') ?? inputStyle.border }} placeholder={tr.companyPh} value={company} onChange={e => { setCompany(e.target.value); setErrors(s => { const n = new Set(s); n.delete('company'); return n; }); }} />
                       {errors.has('company') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errCompany}</p>}
                     </div>
                   )}
-                  <div id="field-phone">
+                  <div id="field-phone" className={fieldCls(phoneValid)}>
                     <label style={{ ...labelStyle, color: errors.has('phone') ? '#EF4444' : undefined }}>{tr.phone}</label>
                     <input
                       style={{ ...inputStyle, border: err('phone') ?? inputStyle.border }}
@@ -786,7 +791,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     />
                     {errors.has('phone') && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errPhone}</p>}
                   </div>
-                  <div id="field-email">
+                  <div id="field-email" className={fieldCls(!!email.trim() && email.includes('@'))}>
                     {/* Роздріб — email необов'язковий (лист-підтвердження, якщо вказали); опт — обов'язковий */}
                     <label style={{ ...labelStyle, color: errors.has('email') ? '#EF4444' : undefined }}>
                       {isRetail ? <>{tr.emailRetail} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.emailRetailHint}</span></> : tr.email}
@@ -797,7 +802,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   {/* Роздріб: компанія/ФОП необов'язкова — для документів на ФОП (рахунок, видаткова);
                       порожня — у документах ПІБ. Заодно вирівнює другий рядок до трьох полів. */}
                   {isRetail && (
-                    <div id="field-company">
+                    <div id="field-company" className={fieldCls(!!company.trim())}>
                       <label style={labelStyle}>{tr.companyRetail} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{tr.middleNameOpt}</span></label>
                       <input style={inputStyle} placeholder={tr.companyRetailPh} value={company} onChange={e => setCompany(e.target.value)} />
                     </div>
