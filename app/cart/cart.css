@@ -161,7 +161,17 @@
   font-size: 14px; font-weight: 600; color: var(--brand-blue); transition: background-color 0.15s;
 }
 .cart-promo-toggle:hover { background: color-mix(in srgb, var(--brand-blue) 8%, transparent); }
-.cart-promo-inline { display: inline-flex; gap: 6px; flex-shrink: 0; }
+.cart-promo-inline { position: relative; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+/* Компактно, щоб розгорнутий промокод не з'їдав підпис «не передзвонювати» ліворуч */
+.cart-promo-inline input { width: 104px !important; }
+.cart-promo-inline button:not(.cart-promo-close) { padding: 0 10px !important; font-size: 12px !important; }
+.cart-promo-inline.has-error input { border-color: #EF4444 !important; background: #FEF2F2 !important; }
+/* Помилка/примітка під полем — absolute, тож не додає рядка; праворуч, у межах нижнього відступу рядка */
+.cart-promo-note {
+  position: absolute; top: calc(100% + 2px); right: 0;
+  font-size: 11px; line-height: 1.2; white-space: nowrap; color: var(--text-muted); pointer-events: none;
+}
+.cart-promo-note.is-error { color: #EF4444; }
 /* Розгорнуте поле промокоду лишається в тому ж рядку, що й «не передзвонювати»: на широкому екрані
    рядок не переноситься — підпис «не передзвонювати» за потреби звужується з «…». */
 @media (min-width: 769px) {

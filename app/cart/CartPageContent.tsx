@@ -89,7 +89,7 @@ const T = {
     minRemaining: (n: number) => `ще ${n.toFixed(0)} ₴`,
     minWarning: (n: number) => `Додайте товарів ще на ${n.toFixed(0)} ₴ для оформлення замовлення`,
     guestHint: '💡 Можна оформити замовлення без реєстрації — просто заповніть форму.',
-    noCallbackLabel: 'Не передзвонювати для підтвердження замовлення',
+    noCallbackLabel: 'Не передзвонювати для підтвердження',
     submitting: 'Завантаження...',
     submitCard: 'Перейти до оплати →',
     submitOrder: 'Підтвердити замовлення →',
@@ -165,7 +165,7 @@ const T = {
     minRemaining: (n: number) => `ещё ${n.toFixed(0)} ₴`,
     minWarning: (n: number) => `Добавьте товаров ещё на ${n.toFixed(0)} ₴ для оформления заказа`,
     guestHint: '💡 Можно оформить заказ без регистрации — просто заполните форму.',
-    noCallbackLabel: 'Не перезванивать для подтверждения заказа',
+    noCallbackLabel: 'Не перезванивать для подтверждения',
     submitting: 'Загрузка...',
     submitCard: 'Перейти к оплате →',
     submitOrder: 'Подтвердить заказ →',
@@ -1246,11 +1246,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       {lang === 'ru' ? 'Есть промокод' : 'Маю промокод'} ▾
                     </button>
                   ) : (
-                    <span className="cart-promo-inline">
+                    <span className={'cart-promo-inline' + (promoError ? ' has-error' : '')}>
                       <input
                         autoFocus
                         value={promoInput}
-                        onChange={e => setPromoInput(e.target.value.toUpperCase())}
+                        onChange={e => { setPromoInput(e.target.value.toUpperCase()); if (promoError) setPromoError(''); }}
                         onKeyDown={e => e.key === 'Enter' && handleApplyPromo()}
                         placeholder={tr.promoPlaceholder}
                       />
@@ -1260,15 +1260,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       {/* Згорнути поле назад у «Маю промокод» */}
                       <button type="button" className="cart-promo-close" aria-label={lang === 'ru' ? 'Скрыть' : 'Сховати'} title={lang === 'ru' ? 'Скрыть' : 'Сховати'}
                         onClick={() => { setPromoOpen(false); setPromoInput(''); setPromoError(''); }}>✕</button>
+                      {/* Помилка/примітка — дрібним рядком під полем, поверх відступу (absolute):
+                          не додає рядка й не зсуває розмітку. Поле при помилці — з червоною рамкою. */}
+                      {promoError
+                        ? <span className="cart-promo-note is-error">{promoError}</span>
+                        : promoEligibleTotal < totalPrice && promoEligibleTotal > 0
+                          ? <span className="cart-promo-note">Знижка не розповсюджується на акційні товари</span>
+                          : null}
                     </span>
                   )}
                 </div>
-                {promoError && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px', textAlign: 'right' }}>{promoError}</div>}
-                {!promoError && promoOpen && !promoApplied && promoEligibleTotal < totalPrice && promoEligibleTotal > 0 && (
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '5px', textAlign: 'right' }}>
-                    Знижка не розповсюджується на акційні товари
-                  </div>
-                )}
 
                 {/* Компактний підсумок: сума поруч із кнопкою; «Товарів / Доставка» — сірим підписом */}
                 <div className="cart-total-bar">
