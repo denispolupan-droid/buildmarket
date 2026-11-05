@@ -212,13 +212,20 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
   const rootRef = useRef<HTMLDivElement>(null);
   const onEditEndRef = useRef(onEditEnd);
   useEffect(() => { onEditEndRef.current = onEditEnd; });
+  // Вихід = клік поза секцією або фокус (Tab) на елемент поза нею. Не blur: коли елемент у фокусі
+  // зникає з розмітки (обрали місто НП — список закрився), браузер шле blur «у нікуди», і секція
+  // вважала, що з неї вийшли, — підсвічувала незаповнене відділення, поки людина ще обирала.
   useEffect(() => {
     if (!active) return;
-    const onDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onEditEndRef.current?.();
-    };
+    const outside = (t: EventTarget | null) => !!rootRef.current && t instanceof Node && t.isConnected && !rootRef.current.contains(t);
+    const onDown = (e: PointerEvent) => { if (outside(e.target)) onEditEndRef.current?.(); };
+    const onFocusIn = (e: FocusEvent) => { if (outside(e.target)) onEditEndRef.current?.(); };
     document.addEventListener('pointerdown', onDown, true);
-    return () => document.removeEventListener('pointerdown', onDown, true);
+    document.addEventListener('focusin', onFocusIn, true);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('focusin', onFocusIn, true);
+    };
   }, [active]);
   // «Прийнято»: одна зелена підсвітка рядка-підсумку в МОМЕНТ ЗГОРТАННЯ заповненої секції
   // (05.11.2026 замість спалаху кнопки «згорнути» посеред набору — той спрацьовував на останній
@@ -244,17 +251,17 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
         background: 'var(--bg-card)', border: `1.5px solid ${error ? '#EF4444' : 'var(--border)'}`, borderRadius: '14px',
         transition: 'border-color 0.15s',
       }}
-      // Фокус усередині — секція «в роботі» й не згортається; вийшли з неї — можна згорнути
+      // Фокус усередині — секція «в роботі» й не згортається; вихід — див. ефект вище (клік/фокус поза)
       onFocus={onEditStart}
-      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onEditEnd?.(); }}
     >
       <div
         className="cart-sec__head"
         onClick={collapsed ? () => { onEditStart?.(); onReopen?.(); } : undefined}
         style={{
           display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '10px 16px', borderBottom: collapsed ? 'none' : `1px solid ${error ? '#7F1D1D' : 'var(--border)'}`,
-          background: error ? '#2D0A0A' : 'var(--bg-soft)',
+          padding: '10px 16px', borderBottom: collapsed ? 'none' : `1px solid ${error ? '#FECACA' : 'var(--border)'}`,
+          // Помилка: світло-червона шапка (було #2D0A0A — колір темної теми, у світлій виглядав чорно-бордовим)
+          background: error ? 'var(--bg-danger)' : 'var(--bg-soft)',
           borderRadius: collapsed ? '14px' : '14px 14px 0 0',
           cursor: collapsed ? 'pointer' : undefined,
         }}
@@ -514,12 +521,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       const grid = card.parentElement;
       if (list && grid) {
         const headH = list.getBoundingClientRect().top - cardRect.top;
-        const baseTop = Math.max(STICKY_TOP * z, grid.getBoundingClientRect().top);
+        // Верх картки «на старті сторінки» — стала величина, не залежить від прокрутки. Раніше брали
+        // поточний верх сітки: висота списку мінялась на кожному кадрі прокрутки, картка «тремтіла».
+        const gridTopAtStart = grid.getBoundingClientRect().top - document.documentElement.getBoundingClientRect().top;
+        const baseTop = Math.max(STICKY_TOP * z, gridTopAtStart);
         // …і не вища за ліву колонку (форма + підсумок): інакше права картка стає найвищою в сітці,
         // перестає липнути й не вирівнюється з низом підсумку
         const leftH = totals.getBoundingClientRect().bottom - grid.getBoundingClientRect().top;
         const maxVp = Math.max(160 * z, Math.min(window.innerHeight - 16 * z - baseTop, leftH) - headH);
-        list.style.maxHeight = `${maxVp / z}px`;
+        const next = `${Math.round(maxVp / z)}px`;
+        if (list.style.maxHeight !== next) list.style.maxHeight = next;
         cardRect = card.getBoundingClientRect();
       }
       const remaining = Math.max(0, document.documentElement.getBoundingClientRect().bottom - window.innerHeight);
