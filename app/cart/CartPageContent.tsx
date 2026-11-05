@@ -445,6 +445,19 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [editing, setEditing] = useState({ contact: false, delivery: false, payment: false });
   const editStart = (k: keyof typeof editing) => () => setEditing(s => (s[k] ? s : { ...s, [k]: true }));
   const editEnd   = (k: keyof typeof editing) => () => setEditing(s => (s[k] ? { ...s, [k]: false } : s));
+  // Вийшли з секції (фокус пішов далі) — обов'язкові поля цієї секції, що лишились порожні,
+  // одразу підсвічуємо червоним, а не чекаємо натискання «Підтвердити».
+  const SECTION_FIELDS = {
+    contact:  ['company', 'lastName', 'firstName', 'phone', 'email'],
+    delivery: ['delivery', 'novaSubtype', 'address', 'rzPoint'],
+    payment:  ['payment'],
+  } as const;
+  const leaveSection = (k: keyof typeof editing) => () => {
+    editEnd(k)();
+    const missing = collectErrors();
+    const add = SECTION_FIELDS[k].filter(f => missing.has(f));
+    if (add.length) setErrors(prev => new Set([...prev, ...add]));
+  };
   // Відкрили згорнуту доставку/оплату через «Змінити» — показуємо всі варіанти з позначеним поточним,
   // а не лише обраний (інакше треба було тиснути «змінити» вдруге). Скидається, щойно обрали варіант.
   const [reopened, setReopened] = useState({ delivery: false, payment: false });
@@ -661,6 +674,24 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const deliveryDone = !['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => pending.has(k));
   const paymentDone  = !pending.has('payment');
 
+  // Контакти: усе обов'язкове введено, і 2,5 с нічого не змінювали — згортаємо, навіть якщо курсор
+  // лишився в полі (браузерне автозаповнення вносить усе разом і фокус не йде далі).
+  // Таймер стартує лише від ЗМІНИ значень — просто розгорнути «змінити» й дивитись не згорне.
+  const contactSig = [lastName, firstName, middleName, company, phone, email].join('\u0001');
+  const prevContactSig = useRef(contactSig);
+  useEffect(() => {
+    const changed = prevContactSig.current !== contactSig;
+    prevContactSig.current = contactSig;
+    if (!changed || !contactDone || !editing.contact) return;
+    const t = setTimeout(() => {
+      setEditing(s => ({ ...s, contact: false }));
+      // Фокус із поля, що зараз сховається (inert), — інакше браузер лишає курсор «у нікуди»
+      const el = document.activeElement as HTMLElement | null;
+      if (el?.closest('.cart-sec')?.querySelector('#field-lastName')) el.blur();
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [contactSig, contactDone, editing.contact]);
+
   // Згорнута секція: заповнена, не в роботі й без помилки після спроби відправити
   const contactErr  = ['company', 'lastName', 'firstName', 'phone', 'email'].some(k => errors.has(k));
   const deliveryErr = ['delivery', 'novaSubtype', 'address', 'rzPoint'].some(k => errors.has(k));
@@ -747,7 +778,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
-              <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('contact')} onEditEnd={editEnd('contact')} title={tr.sectionContact}>
+              <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('contact')} onEditEnd={leaveSection('contact')} title={tr.sectionContact}>
                 {/* Рядок 1: Прізвище · Ім'я · По батькові; рядок 2: Компанія (лише опт) · Телефон · Email */}
                 <div className="cart-contact-grid">
                   <div id="field-lastName" className={fieldCls(!!lastName.trim())}>
@@ -815,7 +846,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   кожен додавав gap 16px, і між «Контактами» й «Доставкою» була діра ~80px */}
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
-              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={editEnd('delivery')} onReopen={() => setReopened(r => ({ ...r, delivery: true }))} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={leaveSection('delivery')} onReopen={() => setReopened(r => ({ ...r, delivery: true }))} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div className={'cart-opt-list' + (!delivery ? ' cart-opt-list--row' : '')}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || reopened.delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
@@ -1067,7 +1098,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   </button>
                 </div>
 
-                <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                <div className="cart-items-scroll">
                   {items.map((item, idx) => (
                     <div key={item.sku} className={'cart-item' + (idx < items.length - 1 ? ' cart-item--sep' : '')}>
                       <Link href={`/product/${item.sku}`} className="cart-item__thumb">
