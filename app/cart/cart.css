@@ -64,8 +64,8 @@
 
 /* Згорнута секція: один рядок — іконка, назва, підсумок введеного, «Змінити» */
 .cart-sec__summary {
-  flex: 1; min-width: 0; margin-left: 4px;
-  font-size: 13.5px; color: var(--text-secondary);
+  flex: 1; min-width: 0; margin-left: 2px;
+  font-size: 14px; color: var(--text-primary); /* назви секції в рядку нема — підсумок і є зміст */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .cart-sec__change {
@@ -77,6 +77,11 @@
 .cart-sec.is-collapsed .cart-sec__head:hover .cart-sec__change,
 .cart-sec__change:hover { border-color: var(--navy); color: var(--navy); }
 .cart-sec__change { display: inline-flex; align-items: center; gap: 5px; }
+/* Назва секції в згорнутому рядку — лише для скрінрідера (візуально прихована) */
+.cart-sec__title.is-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 /* «Змінити» в згорнутому рядку — квадратна кнопка з олівцем */
 .cart-sec__change--icon { width: 30px; height: 30px; padding: 0 !important; justify-content: center; }
 /* «Прийнято» — у момент згортання заповненої секції: іконка на мить стає зеленою галочкою,

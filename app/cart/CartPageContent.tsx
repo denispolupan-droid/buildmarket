@@ -271,7 +271,9 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
           {/* Під час «прийнято» іконка секції на мить стає галочкою */}
           {flash ? <Check size={16} strokeWidth={3} className="cart-sec__tick" /> : <Icon size={16} strokeWidth={2} />}
         </div>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', flexShrink: 0 }}>{title}</span>
+        {/* У згорнутому рядку назву секції ховаємо (лишається для скрінрідера) — іконка й так
+            показує розділ, а місце потрібне, щоб підсумок даних читався повністю, без «…» */}
+        <span className={collapsed ? 'cart-sec__title is-hidden' : 'cart-sec__title'} style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', flexShrink: 0 }}>{title}</span>
         {collapsed && summary && <span className="cart-sec__summary" title={summary}>{summary}</span>}
         {collapsed && (
           <button
@@ -773,16 +775,21 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     company.trim(),
     phone.trim(), email.trim(),
   ].filter(Boolean).join(' · ');
+  // «м. Павлоград, Павлоградський р-н, Дніпропетровська обл.» → «м. Павлоград»
+  const shortCity = (s: string) => s.split(',')[0].trim();
   const deliverySummary = (() => {
     if (delivery === 'nova') {
       // Назва пункту НП уже починається з «Відділення №…»/«Поштомат №…» — тип окремо не пишемо,
       // інакше «Відділення · Харків, Відділення №5». Для кур'єра типу в адресі нема — лишаємо.
       const sub = novaSubtype === 'courier' ? tr.novaCourier : '';
-      // address для відділення/поштомату — текст обраного пункту; місто — окремо, якщо його там нема
-      const place = address && novaCityName && !address.includes(novaCityName) ? `${novaCityName}, ${address}` : (address || novaCityName);
+      // Для перевірки покупцю досить міста й пункту: «м. Павлоград, Павлоградський р-н,
+      // Дніпропетровська обл.» → «м. Павлоград» (район/область лише роздували рядок до «…»)
+      const city = shortCity(novaCityName);
+      const point = address && novaCityName && address.startsWith(novaCityName) ? address.slice(novaCityName.length).replace(/^[,\s]+/, '') : address;
+      const place = point && point !== novaCityName ? [city, point].filter(Boolean).join(', ') : city;
       return [tr.deliveryNova, sub, place].filter(Boolean).join(' · ');
     }
-    if (delivery === RZ_DELIVERY_TYPE) return [tr.deliveryRz, [rzCityName, rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    if (delivery === RZ_DELIVERY_TYPE) return [tr.deliveryRz, [shortCity(rzCityName), rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
     return '';
   })();
   const paymentSummary = PAYMENT_OPTIONS.find(o => o.value === payment)?.label ?? '';
