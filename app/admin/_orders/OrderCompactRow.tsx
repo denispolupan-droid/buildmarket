@@ -17,7 +17,7 @@ const PAY_SHORT: Partial<Record<PaymentMethodCode | '', string>> = {
   cod:      'НП',
   prom:     'Пром',
   wallet:   'A/G Pay',
-  card:     'Картка',
+  card:     'Card',
   installments: 'Частини',
   partner:  'Партн.',
   invoice:  'Рах.',
