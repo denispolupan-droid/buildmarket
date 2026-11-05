@@ -2626,7 +2626,6 @@ input, select { font-family: inherit; }
   .oc-status-box { order: 1; width: auto !important; min-width: 118px; flex: 0 0 auto; padding: 0 26px 0 10px; }
   .oc-hdr-title > div:last-child { order: 2; flex-basis: 100%; }
   .oc-carrier-note { order: 3; flex-basis: 100%; text-align: left !important; }
-  .oc-status-panel > div:last-child { order: 5; flex-basis: 100%; }
   /* margin-left:auto на обгортці кнопки «Підтвердити» у стовпчику переважав stretch і
      тиснув кнопку вправо по контенту — прибираємо, щоб вона була на всю ширину. */
   .oc-pay-part > * { margin-left: 0 !important; }

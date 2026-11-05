@@ -31,6 +31,7 @@ import { SupplierSendQueueModal } from './_orders/SupplierSendQueueModal';
 import { BulkSupplierSendModal } from './_orders/BulkSupplierSendModal';
 import { NpRegistryPickerModal } from './_orders/NpRegistryPickerModal';
 import { OrdersCtx } from './_orders/OrdersContext';
+import { StatusMenu } from './_orders/StatusMenu';
 import { Modal } from '../components/admin/ui/Modal';
 
 export default function AdminOrders(props: AdminOrdersProps) {
@@ -620,36 +621,30 @@ export default function AdminOrders(props: AdminOrdersProps) {
                         </div>
                       )}
                       <div className="oc-status-box" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '186px', flexShrink: 0, height: '32px', borderRadius: '8px', color: status.color, background: status.bg, border: `1.5px solid ${status.color}` }}>
-                        <span style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
-                        <button onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
-                          title="Змінити статус вручну"
-                          style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', border: 'none', cursor: 'pointer', color: status.color, padding: '2px', borderRadius: '6px', display: 'inline-flex' }}>
-                          <MoreHorizontal size={15} />
+                        {/* Уся плашка — кнопка: клік одразу відкриває список статусів */}
+                        <button type="button" onClick={() => setStatusEditOpen(p => ({ ...p, [order.id]: !p[order.id] }))}
+                          title="Змінити статус вручну" aria-haspopup="menu" aria-expanded={statusEditOpen[order.id] ?? false}
+                          style={{ flex: 1, alignSelf: 'stretch', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: status.color, padding: 0 }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>{status.label}</span>
+                          <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: (statusEditOpen[order.id] ?? false) ? 'rgba(0,0,0,0.12)' : 'none', padding: '2px', borderRadius: '6px', display: 'inline-flex' }}>
+                            <MoreHorizontal size={15} />
+                          </span>
                         </button>
-                      </div>
-                      </div>
-                      {(statusEditOpen[order.id] ?? false) && (
-                        <div style={{ width: '186px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            Змінити вручну{!isAdmin && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
-                          </div>
-                          <select
-                            value={order.status}
-                            onChange={e => { if (e.target.value !== order.status) changeStatus(order.id, e.target.value); }}
-                            style={{ width: '100%', height: '32px', padding: '0 8px', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '12px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-primary)' }}
-                          >
-                            {STATUSES.filter(s => {
+                        {(statusEditOpen[order.id] ?? false) && (
+                          <StatusMenu
+                            current={order.status}
+                            locked={!isAdmin}
+                            options={STATUSES.filter(s => {
                               if (isAdmin) return true;
                               if (s.value === 'cancelled') return order.status === 'new';
                               return (STATUS_RANK[s.value] ?? -1) >= (STATUS_RANK[order.status] ?? 0);
-                            }).map(s => (
-                              <option key={s.value} value={s.value} style={s.value === 'cancelled' ? { color: 'var(--color-danger)', fontWeight: 700 } : undefined}>
-                                {s.value === 'cancelled' ? '⚠ ' + s.label : s.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                            })}
+                            onPick={v => changeStatus(order.id, v)}
+                            onClose={() => setStatusEditOpen(p => ({ ...p, [order.id]: false }))}
+                          />
+                        )}
+                      </div>
+                      </div>
                     </div>
                   </div>
                   <div className={`order-expand-grid${(actionsOpen[order.id] ?? true) ? '' : ' oc-actions-off'}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: '14px', padding: '14px', background: 'var(--bg-soft)', alignItems: 'stretch' }}>
