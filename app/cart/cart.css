@@ -41,9 +41,10 @@
 [data-theme="dark"] .cart-sec-icon { background: rgba(72, 128, 184, 0.18); color: #93C5FD; }
 @media (prefers-reduced-motion: reduce) { .cart-sec-icon { transition: none; } }
 
-/* Список товарів праворуч — до низу екрана (картка липне на 88px; мінус шапка картки й відступ),
-   а не фіксовані 420px. На телефоні картка не липне — там список без обмеження висоти. */
-.cart-items-scroll { max-height: calc(100vh - 88px - 53px - 24px); overflow-y: auto; }
+/* Список товарів праворуч: точну max-height рахує JS (CartPageContent, place()) — так, щоб картка
+   влазила в екран від свого поточного верху. Тут — лише запасне значення до першого розрахунку.
+   На телефоні картка не липне — там список без обмеження висоти. */
+.cart-items-scroll { max-height: calc(100vh - 260px); overflow-y: auto; }
 @media (max-width: 768px) { .cart-items-scroll { max-height: none; overflow: visible; } }
 
 /* Плавне згортання/розгортання тіла секції (0.5 с). grid-template-rows 1fr ↔ 0fr анімує висоту «auto».
@@ -160,9 +161,16 @@
   font-size: 14px; font-weight: 600; color: var(--brand-blue); transition: background-color 0.15s;
 }
 .cart-promo-toggle:hover { background: color-mix(in srgb, var(--brand-blue) 8%, transparent); }
-.cart-promo-inline { display: inline-flex; gap: 6px; }
+.cart-promo-inline { display: inline-flex; gap: 6px; flex-shrink: 0; }
+/* Розгорнуте поле промокоду лишається в тому ж рядку, що й «не передзвонювати»: на широкому екрані
+   рядок не переноситься — підпис «не передзвонювати» за потреби звужується з «…». */
+@media (min-width: 769px) {
+  .cart-total-extras { flex-wrap: nowrap; }
+  .cart-nocall { min-width: 0; }
+  .cart-nocall span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 .cart-promo-inline input {
-  width: 150px; height: 32px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--border);
+  width: 130px; height: 32px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--border);
   background: var(--bg-soft); color: var(--text-primary); font-size: 13px; outline: none;
   font-family: monospace; letter-spacing: 0.05em;
 }

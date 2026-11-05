@@ -197,13 +197,29 @@ const labelStyle: React.CSSProperties = {
  * Тіло при згортанні лише ховається (display:none), а не демонтується: селекти НП/ROZETKA
  * тримають свій внутрішній стан (місто, відділення), і після «Змінити» він має лишитись.
  */
-function Section({ icon: Icon, title, children, error, done, collapsed, summary, changeLabel, collapseLabel, onEditStart, onEditEnd, onReopen }: {
+function Section({ icon: Icon, title, children, error, done, collapsed, summary, changeLabel, collapseLabel, onEditStart, onEditEnd, onReopen, active }: {
   icon: React.ElementType; title: string; children: React.ReactNode; error?: boolean; done?: boolean;
   collapsed?: boolean; summary?: string; changeLabel?: string; collapseLabel?: string;
   onEditStart?: () => void; onEditEnd?: () => void;
   /** «Змінити» на згорнутій секції — для доставки/оплати одразу показати весь список варіантів */
   onReopen?: () => void;
+  /** Секція «в роботі» (editing) — тоді клік будь-де поза нею = вихід із секції */
+  active?: boolean;
 }) {
+  // Вихід із секції ловимо не лише blur-ом: плитки доставки/оплати навмисно не беруть фокус
+  // (keepFocus), тож клік по них фокус не переносив — і підсвітка порожніх полів спрацьовувала
+  // лише коли вікно втрачало фокус (напр. на знімку екрана). Тепер — pointerdown поза секцією.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const onEditEndRef = useRef(onEditEnd);
+  useEffect(() => { onEditEndRef.current = onEditEnd; });
+  useEffect(() => {
+    if (!active) return;
+    const onDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onEditEndRef.current?.();
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [active]);
   // «Прийнято»: одна зелена підсвітка рядка-підсумку в МОМЕНТ ЗГОРТАННЯ заповненої секції
   // (05.11.2026 замість спалаху кнопки «згорнути» посеред набору — той спрацьовував на останній
   // цифрі телефону й далеко від поля, на яке дивишся). На старті сторінки не спалахує:
@@ -222,6 +238,7 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
   }, [collapsed, done]);
   return (
     <div
+      ref={rootRef}
       className={'cart-sec' + (collapsed ? ' is-collapsed' : '') + (flash ? ' is-flash' : '')}
       style={{
         background: 'var(--bg-card)', border: `1.5px solid ${error ? '#EF4444' : 'var(--border)'}`, borderRadius: '14px',
@@ -480,12 +497,31 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       raf = 0;
       const card = itemsCardRef.current, totals = totalsRef.current;
       if (!card || !totals) return;
-      if (getComputedStyle(card).position !== 'sticky') { card.style.top = ''; return; }
+      if (getComputedStyle(card).position !== 'sticky') {
+        card.style.top = '';
+        const l = card.querySelector<HTMLElement>('.cart-items-scroll'); if (l) l.style.maxHeight = '';
+        return;
+      }
       // Усе рахуємо в пікселях вʼюпорта (getBoundingClientRect), а в style.top переводимо назад:
       // на <html> стоїть zoom 0.95, і rect-и вже масштабовані, а CSS-значення — ні.
       // Змішування одиниць давало недоліт ~15–20 px.
-      const cardRect = card.getBoundingClientRect();
+      let cardRect = card.getBoundingClientRect();
       const z = card.offsetHeight ? cardRect.height / card.offsetHeight : 1;
+      // Висота списку — щоб уся картка влазила в екран від її поточного верху (до прилипання —
+      // від місця в сітці, після — від 88px) до низу вікна з відступом 16px. Рахуємо від «базового»
+      // верху (без зсуву вирівнювання внизу), інакше висота й зсув підкручували б одне одного.
+      const list = card.querySelector<HTMLElement>('.cart-items-scroll');
+      const grid = card.parentElement;
+      if (list && grid) {
+        const headH = list.getBoundingClientRect().top - cardRect.top;
+        const baseTop = Math.max(STICKY_TOP * z, grid.getBoundingClientRect().top);
+        // …і не вища за ліву колонку (форма + підсумок): інакше права картка стає найвищою в сітці,
+        // перестає липнути й не вирівнюється з низом підсумку
+        const leftH = totals.getBoundingClientRect().bottom - grid.getBoundingClientRect().top;
+        const maxVp = Math.max(160 * z, Math.min(window.innerHeight - 16 * z - baseTop, leftH) - headH);
+        list.style.maxHeight = `${maxVp / z}px`;
+        cardRect = card.getBoundingClientRect();
+      }
       const remaining = Math.max(0, document.documentElement.getBoundingClientRect().bottom - window.innerHeight);
       const stickyTop = STICKY_TOP * z;
       // Де буде низ підсумку, коли докрутимо до кінця, і наскільки нижче за звичайне місце має стати картка
@@ -754,10 +790,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
         <div className="mobile-pad" style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 32px 64px' }}>
 
           {/* Page header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
-            <div>
-              <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{tr.pageTitle}</h1>
-              <p style={{ fontSize: '14px', color: '#64748B' }}>{tr.itemsCount(totalItems, totalPrice)}</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '20px' }}>
+            {/* Заголовок і «N товарів на суму …» — одним рядком (на вузькому екрані підсумок переноситься) */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap', minWidth: 0 }}>
+              <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{tr.pageTitle}</h1>
+              <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>{tr.itemsCount(totalItems, totalPrice)}</p>
             </div>
             <Link href={backHref} style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -778,7 +815,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
             <div className="cart-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Contact info */}
-              <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('contact')} onEditEnd={leaveSection('contact')} title={tr.sectionContact}>
+              <Section icon={User} done={contactDone} collapsed={contactCollapsed} summary={contactSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('contact')} onEditEnd={leaveSection('contact')} active={editing.contact} title={tr.sectionContact}>
                 {/* Рядок 1: Прізвище · Ім'я · По батькові; рядок 2: Компанія (лише опт) · Телефон · Email */}
                 <div className="cart-contact-grid">
                   <div id="field-lastName" className={fieldCls(!!lastName.trim())}>
@@ -846,7 +883,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   кожен додавав gap 16px, і між «Контактами» й «Доставкою» була діра ~80px */}
               <div>
               <div id="field-delivery" /><div id="field-novaSubtype" /><div id="field-address" /><div id="field-rzPoint" />
-              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={leaveSection('delivery')} onReopen={() => setReopened(r => ({ ...r, delivery: true }))} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
+              <Section icon={Truck} done={deliveryDone} collapsed={deliveryCollapsed} summary={deliverySummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('delivery')} onEditEnd={leaveSection('delivery')} active={editing.delivery} onReopen={() => setReopened(r => ({ ...r, delivery: true }))} title={tr.sectionDelivery} error={errors.has('delivery') || errors.has('novaSubtype') || errors.has('address')}>
                 <div className={'cart-opt-list' + (!delivery ? ' cart-opt-list--row' : '')}>
                   {DELIVERY_OPTIONS.filter(opt => !delivery || reopened.delivery || delivery === opt.value).map(opt => (
                     <div key={opt.value}>
@@ -991,7 +1028,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               {/* Payment */}
               <div>
               <div id="field-payment" />
-              <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} onReopen={() => setReopened(r => ({ ...r, payment: true }))} title={tr.sectionPayment} error={errors.has('payment')}>
+              <Section icon={CreditCard} done={paymentDone} collapsed={paymentCollapsed} summary={paymentSummary} changeLabel={tr.change} collapseLabel={lang === 'ru' ? 'свернуть' : 'згорнути'} onEditStart={editStart('payment')} onEditEnd={editEnd('payment')} active={editing.payment} onReopen={() => setReopened(r => ({ ...r, payment: true }))} title={tr.sectionPayment} error={errors.has('payment')}>
                 <div className={'cart-opt-list' + (!payment ? ' cart-opt-list--row' : '')}>
                   {PAYMENT_OPTIONS.filter(opt => !payment || reopened.payment || payment === opt.value).map(opt => (
                     <label key={opt.value} onMouseDown={keepFocus} title={`${opt.label} — ${opt.sub}`} style={{
