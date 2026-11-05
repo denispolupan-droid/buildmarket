@@ -41,6 +41,21 @@
 [data-theme="dark"] .cart-sec-icon { background: rgba(72, 128, 184, 0.18); color: #93C5FD; }
 @media (prefers-reduced-motion: reduce) { .cart-sec-icon { transition: none; } }
 
+/* Плавне згортання/розгортання тіла секції (0.5 с). grid-template-rows 1fr ↔ 0fr анімує висоту «auto».
+   overflow: hidden — лише на час руху й у згорнутому стані: у розгорнутому випадайки НП/ROZETKA
+   (position: absolute) мають виходити за межі секції. */
+.cart-sec__body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.cart-sec__body.is-collapsed { grid-template-rows: 0fr; }
+.cart-sec__inner { min-height: 0; overflow: visible; animation: cart-sec-clip 0.5s; }
+.cart-sec__body.is-collapsed .cart-sec__inner { overflow: hidden; animation: none; }
+.cart-sec__inner > div { transition: opacity 0.35s ease; }
+.cart-sec__body.is-collapsed .cart-sec__inner > div { opacity: 0; }
+@keyframes cart-sec-clip { from, to { overflow: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .cart-sec__body, .cart-sec__inner > div { transition: none; }
+  .cart-sec__inner { animation: none; }
+}
+
 /* Згорнута секція: один рядок — іконка, назва, підсумок введеного, «Змінити» */
 .cart-sec__summary {
   flex: 1; min-width: 0; margin-left: 4px;

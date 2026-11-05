@@ -266,7 +266,14 @@ function Section({ icon: Icon, title, children, error, done, collapsed, summary,
           </button>
         )}
       </div>
-      <div style={{ padding: '16px', display: collapsed ? 'none' : undefined }}>{children}</div>
+      {/* Плавне згортання: висота тіла анімується через grid-template-rows 1fr → 0fr (cart.css).
+          Тіло лишається змонтованим (селекти НП/ROZETKA тримають стан); inert — щоб у згорнуту
+          секцію не потрапляв фокус із клавіатури. */}
+      <div className={'cart-sec__body' + (collapsed ? ' is-collapsed' : '')} inert={collapsed}>
+        <div className="cart-sec__inner">
+          <div style={{ padding: '16px' }}>{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
