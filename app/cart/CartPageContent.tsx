@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, ShoppingCart, ArrowLeft, Check, ChevronDown, ChevronUp, User, Truck, CreditCard, MessageSquare, AlertCircle, Pencil } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowLeft, Check, User, Truck, CreditCard, MessageSquare, AlertCircle, Pencil } from 'lucide-react';
 
 import './cart.css';
 import { fmtMoney } from '../../lib/format';
@@ -1107,26 +1107,40 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
               </div>
 
               {/* Comment */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
-                <button
-                  onClick={() => setCommentOpen(o => !o)}
+              {/* Коментар — у тій самій логіці, що згорнуті секції: іконка, текст (або сіра підказка,
+                  поки порожній), праворуч олівець; розгорнутий — «згорнути». Необов'язковий, тож без
+                  жирного заголовка — не виділяється сильніше за обов'язкові секції. */}
+              <div className="cart-sec" style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+                <div
+                  className="cart-sec__head"
+                  onClick={() => { if (!commentOpen) setCommentOpen(true); }}
                   style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 16px', background: 'var(--bg-soft)', border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 16px', background: 'var(--bg-soft)', cursor: commentOpen ? undefined : 'pointer',
                     borderBottom: commentOpen ? `1px solid var(--border)` : 'none',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#E8EEF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MessageSquare size={16} color="#1E3A5F" strokeWidth={2} />
-                    </div>
-                    <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{tr.sectionComment}</span>
-                  </div>
-                  {commentOpen ? <ChevronUp size={16} color="#64748B" /> : <ChevronDown size={16} color="#64748B" />}
-                </button>
+                  <div className="cart-sec-icon"><MessageSquare size={16} strokeWidth={2} /></div>
+                  {commentOpen
+                    ? <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{tr.sectionComment}</span>
+                    : comment.trim()
+                      ? <span className="cart-sec__summary" title={comment}>{comment.replace(/\s+/g, ' ')}</span>
+                      : <span className="cart-sec__summary" style={{ color: 'var(--text-muted)' }}>{lang === 'ru' ? 'Добавить комментарий (необязательно)' : 'Додати коментар (необов\'язково)'}</span>}
+                  {commentOpen ? (
+                    <button type="button" className="cart-sec__change" onClick={e => { e.stopPropagation(); setCommentOpen(false); }}>
+                      {lang === 'ru' ? 'свернуть' : 'згорнути'}
+                    </button>
+                  ) : (
+                    <button type="button" className="cart-sec__change cart-sec__change--icon" title={tr.sectionComment} aria-label={tr.sectionComment}
+                      onClick={e => { e.stopPropagation(); setCommentOpen(true); }}>
+                      <Pencil size={15} strokeWidth={2} aria-hidden />
+                    </button>
+                  )}
+                </div>
                 {commentOpen && (
                   <div style={{ padding: '16px' }}>
                     <textarea
+                      autoFocus
                       value={comment}
                       onChange={e => setComment(e.target.value)}
                       placeholder={tr.commentPh}
