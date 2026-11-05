@@ -133,9 +133,21 @@
 .cart-total-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .cart-total-bar__sum { min-width: 0; }
 .cart-total-bar__main { display: flex; align-items: baseline; gap: 10px; }
-.cart-total-bar__main span { font-size: 15px; font-weight: 600; color: var(--text-secondary); }
-.cart-total-bar__main strong { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; }
-.cart-total-bar__sub { margin-top: 2px; font-size: 12.5px; color: var(--text-muted); }
+.cart-total-bar__main > span:first-child { font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+.cart-total-bar__main strong { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; white-space: nowrap; }
+.cart-total-bar__main strong.is-discounted { color: #15803D; }
+.cart-total-bar__old { font-size: 15px; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+/* Плашка економії — найпомітніший сигнал знижки */
+.cart-total-bar__save {
+  align-self: center; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  background: #DCFCE7; color: #15803D; font-size: 13px; font-weight: 700;
+}
+.cart-total-bar__sub { margin-top: 2px; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* На широкому екрані кнопка завжди в рядку з сумою — без переносу під неї */
+@media (min-width: 769px) {
+  .cart-total-bar { flex-wrap: nowrap; }
+  .cart-total-bar__sum { flex: 1; }
+}
 .cart-total-bar__btn {
   height: 48px; padding: 0 28px; border: none; border-radius: 10px; flex-shrink: 0;
   background: var(--navy); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
@@ -194,8 +206,17 @@
   color: var(--text-muted); font-size: 13px;
 }
 .cart-promo-inline .cart-promo-close:hover { color: var(--text-primary); background: var(--bg-soft); }
-.cart-promo-applied { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #15803D; }
-.cart-promo-applied button { border: none; background: none; padding: 0; cursor: pointer; font-size: 12px; color: #15803D; text-decoration: underline; }
+/* Застосований промокод — компактна зелена плашка «✓ PROMO20 ✕» на місці «Маю промокод» */
+.cart-promo-applied {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap;
+  padding: 6px 8px 6px 11px; border-radius: 9px; border: 1.5px solid #86EFAC; background: #F0FDF4;
+  font-size: 14px; color: #15803D;
+}
+.cart-promo-applied button {
+  width: 22px; height: 22px; padding: 0; border: none; border-radius: 6px; background: none; cursor: pointer;
+  font-size: 12px; color: #15803D;
+}
+.cart-promo-applied button:hover { background: #DCFCE7; }
 @media (max-width: 768px) {
   .cart-total-bar__btn { width: 100%; }
 }

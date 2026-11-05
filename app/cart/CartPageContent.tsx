@@ -1249,8 +1249,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   </label>
                   {promoApplied ? (
                     <span className="cart-promo-applied">
-                      Промокод <b style={{ fontFamily: 'monospace' }}>{promoApplied.code}</b> ✓
-                      <button type="button" onClick={() => { setPromoApplied(null); setPromoError(''); }}>{tr.promoRemove}</button>
+                      <Check size={14} strokeWidth={3} aria-hidden />
+                      <b style={{ fontFamily: 'monospace' }}>{promoApplied.code}</b>
+                      <button type="button" aria-label={tr.promoRemove} title={tr.promoRemove} onClick={() => { setPromoApplied(null); setPromoError(''); setPromoOpen(false); setPromoInput(''); }}>✕</button>
                     </span>
                   ) : !promoOpen ? (
                     <button type="button" className="cart-promo-toggle" onClick={() => setPromoOpen(true)}>
@@ -1285,13 +1286,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 {/* Компактний підсумок: сума поруч із кнопкою; «Товарів / Доставка» — сірим підписом */}
                 <div className="cart-total-bar">
                   <div className="cart-total-bar__sum">
+                    {/* Зі знижкою: стара сума закреслена, нова — зелена, поруч плашка «−450,93 грн».
+                        Підпис знизу короткий, щоб кнопка лишалась у тому ж рядку. */}
                     <div className="cart-total-bar__main">
                       <span>{tr.total}</span>
-                      <strong>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</strong>
+                      {promoApplied && <s className="cart-total-bar__old">{fmtMoney(totalPrice)}</s>}
+                      <strong className={promoApplied ? 'is-discounted' : undefined}>{fmtMoney(promoApplied?.finalTotal ?? totalPrice)} грн</strong>
+                      {promoApplied && <span className="cart-total-bar__save">−{fmtMoney(promoApplied.discountAmount)} грн</span>}
                     </div>
                     <div className="cart-total-bar__sub">
                       {tr.itemsTotal(totalItems)} · {tr.deliveryLabel} {tr.deliveryByCarrier.toLowerCase()}
-                      {promoApplied && <span style={{ color: '#15803D' }}> · {tr.promoDiscount} −{fmtMoney(promoApplied.discountAmount)} грн</span>}
                     </div>
                   </div>
                   <button
