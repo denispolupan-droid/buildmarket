@@ -407,14 +407,13 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 ? `Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
                 : 'Замовлення ще не надіслано постачальнику'}
               aria-label={order.supplier_sent_at ? 'Надіслано постачальнику' : 'Не надіслано постачальнику'}
+              // Без заливки й рамки — лише кольорова іконка: з плашкою поруч із «Пост.»
+              // ряд виглядав строкатим (06.11.2026)
               style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                width: '24px', height: '20px', borderRadius: '20px', boxSizing: 'border-box',
-                color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--text-warn-dark)',
-                background: order.supplier_sent_at ? '#DCFCE7' : '#FEF3C7',
-                border: `1px solid ${order.supplier_sent_at ? 'var(--border-success)' : 'var(--border-warn)'}`,
+                display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+                color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--color-warn)',
               }}>
-              {order.supplier_sent_at ? <MailCheck size={13} strokeWidth={2.2} /> : <Mail size={13} strokeWidth={2.2} />}
+              {order.supplier_sent_at ? <MailCheck size={15} strokeWidth={2} /> : <Mail size={15} strokeWidth={2} />}
             </span>
           )}
         </div>
