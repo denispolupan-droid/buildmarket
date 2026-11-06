@@ -44,7 +44,7 @@ export function OrdersToolbar() {
   return (
     <>
       {/* Filters + search */}
-      <div className="oc-toolbar-wrap" style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="oc-toolbar-wrap" style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
         {/* Панель інструментів — один ряд: підсумок · період · пошук. Фільтри
             каналу / перевізника / оплати на десктопі — лійками в шапці аркуша,
