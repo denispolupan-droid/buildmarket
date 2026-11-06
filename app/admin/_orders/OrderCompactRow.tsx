@@ -388,34 +388,34 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
 
         {/* Відправка (80px — як заголовок зі стрілкою сортування й лійкою) */}
         <div className="oc-hide-m" style={{ width: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {order.fulfillment_mode && (
-            <span
-              title={order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка'}
-              style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px',
-                color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
-                background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
-              {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
-            </span>
-          )}
-          {/* Лист постачальнику — та сама іконка, що на телефоні біля статусу (06.11.2026):
-              зелений лист із ✓ — надіслано; жовтий — ще ні (лише поки замовлення в роботі,
-              у старих замовлень мітки надсилання немає). Раніше тут була зелена пташка. */}
-          {(order.supplier_sent_at || ((order.fulfillment_mode === 'supplier' || order.fulfillment_mode === 'mixed')
-            && ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status))) && (
-            <span
-              title={order.supplier_sent_at
-                ? `Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
-                : 'Замовлення ще не надіслано постачальнику'}
-              aria-label={order.supplier_sent_at ? 'Надіслано постачальнику' : 'Не надіслано постачальнику'}
-              // Без заливки й рамки — лише кольорова іконка: з плашкою поруч із «Пост.»
-              // ряд виглядав строкатим (06.11.2026)
-              style={{
-                display: 'inline-flex', alignItems: 'center', flexShrink: 0,
-                color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--color-warn)',
-              }}>
-              {order.supplier_sent_at ? <MailCheck size={15} strokeWidth={2} /> : <Mail size={15} strokeWidth={2} />}
-            </span>
-          )}
+          {order.fulfillment_mode && (() => {
+            // Лист постачальнику — іконкою ВСЕРЕДИНІ мітки «Пост.»/«Mix» (06.11.2026; та сама
+            // іконка, що на телефоні біля статусу): зелений лист із ✓ — надіслано, жовтий —
+            // ще ні (лише поки замовлення в роботі: у старих мітки надсилання немає).
+            // Окремою плашкою поруч ряд виглядав строкатим. Раніше тут була зелена пташка.
+            const viaSupplier = order.fulfillment_mode === 'supplier' || order.fulfillment_mode === 'mixed';
+            const showMail = viaSupplier && (!!order.supplier_sent_at || ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status));
+            const modeTitle = order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка';
+            const mailTitle = !showMail ? '' : order.supplier_sent_at
+              ? ` · надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+              : ' · ще не надіслано постачальнику';
+            return (
+              <span
+                title={modeTitle + mailTitle}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  fontSize: '11px', fontWeight: 600, padding: showMail ? '2px 6px 2px 8px' : '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap',
+                  color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
+                  background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
+                {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
+                {showMail && (
+                  <span aria-label={order.supplier_sent_at ? 'надіслано постачальнику' : 'не надіслано постачальнику'}
+                    style={{ display: 'inline-flex', color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--color-warn)' }}>
+                    {order.supplier_sent_at ? <MailCheck size={13} strokeWidth={2.2} /> : <Mail size={13} strokeWidth={2.2} />}
+                  </span>
+                )}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Оплата (58px — як заголовок із лійкою в шапці) */}
