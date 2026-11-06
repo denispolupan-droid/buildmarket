@@ -348,7 +348,10 @@ export function OrdersToolbar() {
           if (carrierFilter) chips.push({ key: 'carrier', label: `Доставка: ${carrierFilter === 'nova' ? 'Нова Пошта' : 'Rozetka Доставка'}`, clear: () => pushFilters({ carrier: '' }) });
           if (payFilter) chips.push({ key: 'pay', label: `Оплата: ${PAYMENT_GROUPS.find(g => g.key === payFilter)?.label ?? payFilter}`, clear: () => pushFilters({ pay: '' }) });
           if (retFilter === 'pending') chips.push({ key: 'ret', label: 'Повернення без рішення', clear: () => pushFilters({ ret: '' }) });
-          if (sentFilter) chips.push({ key: 'sent', label: sentFilter === 'sent' ? 'Постачальнику: надіслано' : 'Постачальнику: ще не надіслано', clear: () => pushFilters({ sent: '' }) });
+          if (sentFilter) chips.push({ key: 'sent', label: ({
+            sent: 'Постачальнику: надіслано', unsent: 'Постачальнику: ще не надіслано',
+            own: 'Відправка: склад', supplier: 'Відправка: постачальник', mixed: 'Відправка: змішана',
+          } as Record<string, string>)[sentFilter] ?? sentFilter, clear: () => pushFilters({ sent: '' }) });
           if (dateFrom || dateTo) chips.push({ key: 'date', label: `Період: ${dateFrom ? fmtD(dateFrom) : '…'} — ${dateTo ? fmtD(dateTo) : '…'}`, clear: () => pushFilters({ dateFrom: '', dateTo: '' }) });
           if (!chips.length) return null;
           return (

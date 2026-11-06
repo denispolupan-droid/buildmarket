@@ -147,7 +147,8 @@ export interface AdminOrdersProps {
   payFilter?: string;
   /** 'pending' — показані лише повернення без рішення (зріз перекриває вкладку статусу) */
   retFilter?: string;
-  /** 'sent' | 'unsent' — чи надіслано постачальнику (колонка «Відпр.»); '' — без фільтра */
+  /** Фільтр колонки «Відправка»: 'sent' | 'unsent' — чи надіслано постачальнику;
+   *  'own' | 'supplier' | 'mixed' — спосіб відправки (fulfillment_mode); '' — без фільтра */
   sentFilter?: string;
   sentCounts?: Record<string, number>;
   /** скільки посилок їде назад без рішення «забрати з пошти / залишити» */

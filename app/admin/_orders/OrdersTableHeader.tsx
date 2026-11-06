@@ -80,8 +80,12 @@ export function OrdersTableHeader() {
               { value: 'nova', label: 'Нова Пошта', n: carrierCounts.nova ?? 0 },
               { value: 'rozetka', label: 'Rozetka Доставка', n: carrierCounts.rozetka ?? 0 },
             ].filter(o => !o.value || o.n > 0 || carrierFilter === o.value);
+            // «Всі» — сума лише sent+unsent: у sentCounts є ще лічильники способів відправки
             const sentOpts = [
-              { value: '', label: 'Всі', n: sum(sentCounts) },
+              { value: '', label: 'Всі', n: (sentCounts.sent ?? 0) + (sentCounts.unsent ?? 0) },
+              { value: 'own', label: 'Склад', n: sentCounts.own ?? 0 },
+              { value: 'supplier', label: 'Постачальник', n: sentCounts.supplier ?? 0 },
+              { value: 'mixed', label: 'Змішана', n: sentCounts.mixed ?? 0 },
               { value: 'sent', label: 'Надіслано постачальнику', n: sentCounts.sent ?? 0 },
               { value: 'unsent', label: 'Ще не надіслано', n: sentCounts.unsent ?? 0 },
             ];
@@ -123,7 +127,7 @@ export function OrdersTableHeader() {
                 {/* 76 і 58 px — ширше за «Відпр.», бо в цих двох є лійка; комірки
                     рядка нижче мають ті самі ширини */}
                 <span className={channelFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '76px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('channel_code', 'Канал')}{flt('channel', 'канал', channelFilter, channelOpts, v => pushFilters({ channel: v }))}</span>
-                <span className={sentFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '112px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('fulfillment_mode', 'Відправка')}{flt('sent', 'надіслано постачальнику', sentFilter, sentOpts, v => pushFilters({ sent: v }))}</span>
+                <span className={sentFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '112px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('fulfillment_mode', 'Відправка')}{flt('sent', 'відправка', sentFilter, sentOpts, v => pushFilters({ sent: v }))}</span>
                 <span className={payFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '58px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('payment_method_code', 'Опл.')}{flt('pay', 'оплата', payFilter, payOpts, v => pushFilters({ pay: v }))}</span>
                 <span style={{ width: '34px', flexShrink: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>Дзв.</span>
                 <div style={{ width: '14px', flexShrink: 0 }} />

@@ -49,7 +49,9 @@ export default async function AdminPage({
   const channel = channelParam ?? '';
   const carrier = carrierParam ?? '';
   // Чи надіслано постачальнику (orders.supplier_sent_at): фільтр колонки «Відпр.»
-  const sent = sentParam === 'sent' || sentParam === 'unsent' ? sentParam : '';
+  // + спосіб відправки (orders.fulfillment_mode): склад / постачальник / змішана — у тому ж
+  // меню колонки «Відправка» (06.11.2026)
+  const sent = ['sent', 'unsent', 'own', 'supplier', 'mixed'].includes(sentParam ?? '') ? sentParam! : '';
   // Форма оплати — код із generated-колонки orders.payment_method_code
   // (див. міграцію 099). Фільтрувати по payment_type не можна: у частини
   // замовлень маркетплейсів він розходиться з фактичним способом оплати.
@@ -107,6 +109,7 @@ export default async function AdminPage({
       if (pay) q = q.in('payment_method_code', PAYMENT_GROUPS.find(g => g.key === pay)!.codes);
       if (sent === 'sent')        q = q.not('supplier_sent_at', 'is', null);
       else if (sent === 'unsent') q = q.is('supplier_sent_at', null);
+      else if (sent)              q = q.eq('fulfillment_mode', sent);
     }
     // Номер, ТТН, телефон у будь-якому форматі, ім'я послівно — див.
     // orderSearchOr (чиста функція, покрита тестами).
@@ -193,9 +196,9 @@ export default async function AdminPage({
     // статусу (і по даті/пошуку), але БЕЗ фільтрів самих чіпів — класична
     // фасетна логіка: інакше, ставши на «Rozetka», всі інші канали показали б
     // нуль і перемкнутися між ними було б неможливо.
-    fetchAllRows<{ channel_code: string | null; delivery_type: string | null; payment_method_code: string | null; supplier_sent_at: string | null }>((f, t) =>
+    fetchAllRows<{ channel_code: string | null; delivery_type: string | null; payment_method_code: string | null; supplier_sent_at: string | null; fulfillment_mode: string | null }>((f, t) =>
       applyStatusFilter(applyOrderFilters(
-        serviceClient.from('orders').select('channel_code, delivery_type, payment_method_code, supplier_sent_at'),
+        serviceClient.from('orders').select('channel_code, delivery_type, payment_method_code, supplier_sent_at, fulfillment_mode'),
         { ignoreFacets: true },
       )).order('id').range(f, t),
     ),
@@ -344,6 +347,7 @@ export default async function AdminPage({
   const sentCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
     const key = r.supplier_sent_at ? 'sent' : 'unsent';
     acc[key] = (acc[key] ?? 0) + 1;
+    if (r.fulfillment_mode) acc[r.fulfillment_mode] = (acc[r.fulfillment_mode] ?? 0) + 1;
     return acc;
   }, {});
 
