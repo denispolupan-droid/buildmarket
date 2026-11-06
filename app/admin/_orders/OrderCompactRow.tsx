@@ -397,10 +397,24 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
             </span>
           )}
-          {order.supplier_sent_at && (
-            <span title={`Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
-              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--color-success)', flexShrink: 0 }}>
-              <Check size={13} strokeWidth={3} />
+          {/* Лист постачальнику — та сама іконка, що на телефоні біля статусу (06.11.2026):
+              зелений лист із ✓ — надіслано; жовтий — ще ні (лише поки замовлення в роботі,
+              у старих замовлень мітки надсилання немає). Раніше тут була зелена пташка. */}
+          {(order.supplier_sent_at || ((order.fulfillment_mode === 'supplier' || order.fulfillment_mode === 'mixed')
+            && ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status))) && (
+            <span
+              title={order.supplier_sent_at
+                ? `Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                : 'Замовлення ще не надіслано постачальнику'}
+              aria-label={order.supplier_sent_at ? 'Надіслано постачальнику' : 'Не надіслано постачальнику'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                width: '24px', height: '20px', borderRadius: '20px', boxSizing: 'border-box',
+                color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--text-warn-dark)',
+                background: order.supplier_sent_at ? '#DCFCE7' : '#FEF3C7',
+                border: `1px solid ${order.supplier_sent_at ? 'var(--border-success)' : 'var(--border-warn)'}`,
+              }}>
+              {order.supplier_sent_at ? <MailCheck size={13} strokeWidth={2.2} /> : <Mail size={13} strokeWidth={2.2} />}
             </span>
           )}
         </div>
