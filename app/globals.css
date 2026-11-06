@@ -2463,8 +2463,28 @@ input, select { font-family: inherit; }
   .order-compact-row .oc-status > div > .oc-supl-m.is-sent {
     color: var(--color-success); background: #DCFCE7; border-color: var(--border-success);
   }
-  /* Щільніший список: менше повітря між картками й усередині (06.11.2026) */
-  .oc-sheet-list { gap: 6px !important; }
+  /* Журнал — одним аркушем, як на десктопі (06.11.2026): замовлення йдуть
+     суцільно, між ними лише тонкий роздільник, без проміжків і тіней. Лівий
+     акцент (виділений, неоплачений, проблемний) лишається інлайновим. */
+  .oc-sheet {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  .oc-sheet-list { gap: 0 !important; }
+  .oc-sheet-row {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-top-color: var(--border-light) !important;
+  }
+  .oc-sheet-row:first-child { border-top: 0 !important; }
+  /* Розгорнутий запис — синя лінія зверху й світла рамка, щоб не зливався з сусідами */
+  .oc-sheet-row.is-open {
+    border-top: 2px solid var(--brand-blue) !important;
+    box-shadow: inset 0 0 0 1px #C9D6E8 !important;
+  }
+  .oc-sheet-row.is-open + .oc-sheet-row { border-top: 2px solid #C9D6E8 !important; }
   /* Сума без правого відступу: на десктопі він відсуває її від колонки доставки,
      на телефоні це просто 24px порожнечі в найтіснішому рядку картки. */
   /* nowrap: без нього в тісному рядку сума ламалась на «362» і «₴» окремими рядками. */
@@ -3464,7 +3484,7 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
 }
 .oc-saved-ok { background: #1E3A5F; border-color: #1E3A5F; color: #fff; }
 
-/* Аркуш — лише на десктопі; на телефоні лишаються окремі картки */
+/* Аркуш на десктопі (на телефоні — свій варіант у блоці max-width: 768px, з 06.11.2026) */
 @media (min-width: 769px) {
   .oc-sheet {
     background: var(--bg-card); border: 1px solid var(--border);
