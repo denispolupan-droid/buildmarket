@@ -1003,11 +1003,9 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                 >
                   🔥 {t('Акції', 'Акции')}
                 </button>
-                {/* Коротко «Excel» (повний підпис — у підказці): з «Завантажити Excel» ряд
-                    шапки не влазив до ~1500px і кнопки падали на другий рядок (06.11.2026) */}
-                <button className="catalog-desktop-btn action-btn excel" onClick={exportToExcel} title={t('Завантажити прайс в Excel', 'Скачать прайс в Excel')}>
+                <button className="catalog-desktop-btn action-btn excel" onClick={exportToExcel}>
                   <Upload size={14} strokeWidth={2} />
-                  Excel
+                  {t('Завантажити Excel', 'Скачать Excel')}
                 </button>
                 <div className="catalog-view-toggle">
                   <button
