@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
-import { Upload, Heart, Eye, ShoppingCart, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX, Grid2x2, Rows2 } from 'lucide-react';
+import { Upload, Heart, Eye, ShoppingBasket, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX, Grid2x2, Rows2 } from 'lucide-react';
 import SortIconSelect from '../components/SortIconSelect';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
@@ -1184,7 +1184,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                               >
                                 {added[p.sku]
                                   ? <><Check size={14} strokeWidth={2.5} /> <span className="catalog-card__cart-btn-label">{t('Додано', 'Добавлено')}</span></>
-                                  : <><ShoppingCart size={14} strokeWidth={2} /> <span className="catalog-card__cart-btn-label">{t('В кошик', 'В корзину')}</span></>
+                                  : <><ShoppingBasket size={15} strokeWidth={2} /> <span className="catalog-card__cart-btn-label">{t('В кошик', 'В корзину')}</span></>
                                 }
                               </button>
                             </div>
@@ -1321,7 +1321,9 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             </div>
                           </td>
                           <td style={{ position: 'relative', zIndex: 1, paddingLeft: '10px', paddingRight: '14px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                            {/* «додано N шт» — абсолютно під кнопками: у потоці вона додавала
+                                висоти, і три кнопки «підскакували» вгору при першому додаванні */}
+                            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                               <button
                                 className={'action-icon-btn primary' + (added[p.sku] ? ' added' : '')}
@@ -1330,7 +1332,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                                 onClick={e => { e.preventDefault(); e.stopPropagation(); handleAddToCart(p, qty); }}
                                 style={!inStock ? { opacity: 0.4, cursor: 'default' } : undefined}
                               >
-                                {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <ShoppingCart size={14} strokeWidth={2} />}
+                                {added[p.sku] ? <Check size={14} strokeWidth={2.5} /> : <ShoppingBasket size={15} strokeWidth={2} />}
                               </button>
                               <button
                                 className="action-icon-btn"
@@ -1351,7 +1353,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                             {inCartSkus.has(p.sku) && (() => {
                               const cartQty = cartItems.find(i => i.sku === p.sku)?.qty ?? 0;
                               return (
-                                <span style={{ fontSize: '11px', fontWeight: 600, color: '#16A34A', whiteSpace: 'nowrap' }}>
+                                <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '3px', fontSize: '11px', fontWeight: 600, color: '#16A34A', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
                                   {t('додано', 'добавлено')} {cartQty} {t('шт', 'шт')}
                                 </span>
                               );

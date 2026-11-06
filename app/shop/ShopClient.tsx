@@ -9,7 +9,7 @@ import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
 import { goodsWord } from '../../lib/plural';
 import SortIconSelect from '../components/SortIconSelect';
 import Link from 'next/link';
-import { Plus, Minus, Heart, ShoppingCart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
+import { Plus, Minus, Heart, ShoppingBasket, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductImage from '../components/ProductImage';
@@ -249,7 +249,7 @@ function ShopCard({ p, price, priceOld, inStock, salePercent, isWished, onToggle
         >
           {inCart
             ? <><Check size={14} strokeWidth={2.5} /> <span className="shop-card__btn-label">{t('В кошику', 'В корзине')}</span></>
-            : <><ShoppingCart size={14} strokeWidth={2} /> <span className="shop-card__btn-label">{t('В кошик', 'В корзину')}</span></>
+            : <><ShoppingBasket size={15} strokeWidth={2} /> <span className="shop-card__btn-label">{t('В кошик', 'В корзину')}</span></>
           }
         </button>
       </div>
