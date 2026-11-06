@@ -386,8 +386,9 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
           </span>
         </div>
 
-        {/* Відправка (80px — як заголовок зі стрілкою сортування й лійкою) */}
-        <div className="oc-hide-m" style={{ width: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Відправка (112px — як заголовок; ширше, ніж було, щоб «Постачальник» писати
+            повністю разом з іконкою листа, 06.11.2026) */}
+        <div className="oc-hide-m" style={{ width: '112px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
           {order.fulfillment_mode && (() => {
             // Лист постачальнику — іконкою ВСЕРЕДИНІ мітки «Пост.»/«Mix» (06.11.2026; та сама
             // іконка, що на телефоні біля статусу): зелений лист із ✓ — надіслано, жовтий —
@@ -406,7 +407,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                   fontSize: '11px', fontWeight: 600, padding: showMail ? '2px 6px 2px 8px' : '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap',
                   color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
                   background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
-                {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Mix' : 'Пост.'}
+                {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Змішана' : 'Постачальник'}
                 {showMail && (
                   <span aria-label={order.supplier_sent_at ? 'надіслано постачальнику' : 'не надіслано постачальнику'}
                     style={{ display: 'inline-flex', color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--color-warn)' }}>
