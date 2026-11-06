@@ -808,6 +808,13 @@ export default function ShopClient({ products: shippedProducts, categories, revi
     <div className="shop-layout">
       {/* Sidebar */}
       <aside className={`shop-sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
+        {/* Телефон: шапка відкритої панелі з хрестиком — закрити одразу, не гортаючи */}
+        <div className="shop-mpanel-head">
+          <span>{mobilePanel === 'cats' ? t('Категорії', 'Категории') : t('Фільтри', 'Фильтры')}</span>
+          <button type="button" onClick={() => setMobilePanel(null)} aria-label={t('Закрити', 'Закрыть')}>
+            <X size={18} strokeWidth={2.2} />
+          </button>
+        </div>
         <div className="sidebar-cats-section">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <h3 style={{ margin: 0 }}>{t('Категорії', 'Категории')}</h3>
@@ -1091,7 +1098,7 @@ export default function ShopClient({ products: shippedProducts, categories, revi
             було лише догортавши до кінця. Липка кнопка закриває в будь-якому місці
             (06.11.2026). По центру — щоб не ховатись під кнопкою чату справа. */}
         <button type="button" className="shop-mpanel-done" onClick={() => { setMobilePanel(null); scrollPageToProducts(); }}>
-          {t('Показати', 'Показать')} {filtered.length} {goodsWord(filtered.length, lang)}
+          <X size={16} strokeWidth={2.4} /> {t('Закрити', 'Закрыть')} · {filtered.length} {goodsWord(filtered.length, lang)}
         </button>
 
       </aside>

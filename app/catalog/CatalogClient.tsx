@@ -624,6 +624,14 @@ export default function CatalogClient({ products, categories, reviewStats, initi
           {/* Sidebar */}
           <aside className={`sidebar${mobilePanel ? ' mobile-open' : ''}${mobilePanel === 'cats' ? ' mobile-cats' : ''}${mobilePanel === 'filters' ? ' mobile-filters' : ''}`} ref={sidebarRef}>
 
+            {/* Телефон: шапка відкритої панелі з хрестиком — закрити одразу, не гортаючи */}
+            <div className="catalog-mpanel-head">
+              <span>{mobilePanel === 'cats' ? t('Категорії', 'Категории') : t('Фільтри', 'Фильтры')}</span>
+              <button type="button" onClick={() => setMobilePanel(null)} aria-label={t('Закрити', 'Закрыть')}>
+                <X size={18} strokeWidth={2.2} />
+              </button>
+            </div>
+
             {/* Categories */}
             <div className="sidebar-section sidebar-cats-section">
               <div className="sidebar-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -878,7 +886,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                 екрана закриває панель у будь-якому місці (06.11.2026). По центру —
                 щоб не ховатись під круглою кнопкою чату справа. */}
             <button type="button" className="catalog-mpanel-done" onClick={() => { setMobilePanel(null); scrollPageToProducts(); }}>
-              {t('Показати', 'Показать')} {filtered.length} {goodsWord(filtered.length, lang)}
+              <X size={16} strokeWidth={2.4} /> {t('Закрити', 'Закрыть')} · {filtered.length} {goodsWord(filtered.length, lang)}
             </button>
 
 

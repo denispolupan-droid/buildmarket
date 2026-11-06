@@ -486,7 +486,8 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 .catalog-msort { display: none !important; }
 .catalog-msale.active { background: #EF4444; border-color: #EF4444; }
 /* «Показати N товарів» — липка внизу відкритої панелі (лише телефон) */
-.catalog-mpanel-done { display: none; }
+.catalog-mpanel-done { display: none; gap: 6px; }
+.catalog-mpanel-head { display: none; }
 .catalog-mobile-badge {
   display: inline-flex;
   align-items: center;
@@ -728,6 +729,21 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .catalog-grid.list-view .catalog-card__img-wrap { height: 220px; }
   .catalog-grid.list-view .catalog-card__cart-btn-label { display: inline; }
   .catalog-grid.list-view .catalog-card__cart-btn { padding: 0 14px; }
+  /* Шапка відкритої панелі: назва + хрестик (06.11.2026) */
+  .sidebar.mobile-open .catalog-mpanel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: -6px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light);
+    font-size: 15px; font-weight: 700; color: var(--text-primary);
+  }
+  /* Назва вже в шапці — внутрішні заголовки панелі не дублюємо */
+  .sidebar.mobile-open .sidebar-cats-section .sidebar-heading > span:first-child,
+  .sidebar.mobile-open .sidebar-section-divider { display: none; }
+  .sidebar.mobile-open .sidebar-cats-section .sidebar-heading { justify-content: flex-end !important; }
+  .catalog-mpanel-head > button {
+    width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-soft);
+    color: var(--text-secondary); cursor: pointer;
+  }
   .sidebar.mobile-open .catalog-mpanel-done {
     display: flex; align-items: center; justify-content: center;
     position: sticky; bottom: 16px; z-index: 5;

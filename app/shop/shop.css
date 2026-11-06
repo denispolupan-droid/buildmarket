@@ -696,7 +696,8 @@ body:has(.shop-layout) { overflow-anchor: none; }
 @media (max-width: 1100px) {
   .shop-grid { grid-template-columns: repeat(3, 1fr); }
 }
-.shop-mpanel-done { display: none; }
+.shop-mpanel-done { display: none; gap: 6px; }
+.shop-mpanel-head { display: none; }
 .shop-msort { display: none !important; }
 @media (max-width: 768px) {
   .shop-layout { grid-template-columns: 1fr; }
@@ -710,7 +711,22 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-sidebar.mobile-open { display: block; }
   .shop-sidebar.mobile-cats .sidebar-filters-section { display: none; }
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
-  /* «Показати N товарів» — липка внизу відкритої панелі (06.11.2026, як у /catalog) */
+  /* Шапка відкритої панелі: назва + хрестик (06.11.2026) */
+  .shop-sidebar.mobile-open .shop-mpanel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: -6px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light);
+    font-size: 15px; font-weight: 700; color: var(--text-primary);
+  }
+  /* Назва вже в шапці — внутрішні заголовки панелі не дублюємо */
+  .shop-sidebar.mobile-open .sidebar-cats-section > div:first-child > h3,
+  .shop-sidebar.mobile-open .sidebar-section-divider { display: none; }
+  .shop-sidebar.mobile-open .sidebar-cats-section > div:first-child { justify-content: flex-end !important; }
+  .shop-mpanel-head > button {
+    width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-soft);
+    color: var(--text-secondary); cursor: pointer;
+  }
+  /* «✕ Закрити · N товарів» — липка внизу відкритої панелі (06.11.2026, як у /catalog) */
   .shop-sidebar.mobile-open .shop-mpanel-done {
     display: flex; align-items: center; justify-content: center;
     position: sticky; bottom: 16px; z-index: 5;
