@@ -847,7 +847,7 @@ export default function ShopClient({ products: shippedProducts, categories, revi
             const isDirectActive = selCat === cat.slug;
             const isParentActive = !isDirectActive && children.some(c => c.slug === selCat || childrenOf[c.slug]?.some(g => g.slug === selCat));
             return (
-              <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div key={cat.slug} ref={el => { catRefs.current[cat.slug] = el; }} style={{ display: 'flex', flexDirection: 'column' }}>
                 <Link
                   href={`${shopBase}/${cat.slug}`}
                   prefetch={false}
@@ -891,7 +891,7 @@ export default function ShopClient({ products: shippedProducts, categories, revi
                   const isChildDirectActive = selCat === child.slug;
                   const isChildParentActive = !isChildDirectActive && grandchildren.some(g => g.slug === selCat);
                   return (
-                    <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div key={child.slug} ref={el => { catRefs.current[child.slug] = el; }} style={{ display: 'flex', flexDirection: 'column' }}>
                       <Link
                         href={`${shopBase}/${child.slug}`}
                         prefetch={false}
