@@ -697,6 +697,7 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-grid { grid-template-columns: repeat(3, 1fr); }
 }
 .shop-mpanel-done { display: none; }
+.shop-msort { display: none !important; }
 @media (max-width: 768px) {
   .shop-layout { grid-template-columns: 1fr; }
   .shop-sidebar {
@@ -758,9 +759,15 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-topbar { justify-content: flex-start; flex-wrap: wrap; }
   /* Ряд контролів розтягуємо на всю ширину: селект сортування під ним займає
      100%, і без цього праві краї не збігались — блок читався кривим. */
-  .shop-topbar-actions { flex-wrap: wrap; row-gap: 8px; gap: 6px; justify-content: space-between; }
-  .shop-topbar-actions .shop-sort-select { flex: 1 1 100%; }
+  /* Один ряд на всю ширину (06.11.2026): сортування — іконкою .shop-msort у ряду,
+     повний селект схований. Перемикач вигляду — однією кнопкою (іконка режиму,
+     на який перемкне), інакше з сортуванням ряд не влазить у 360–390px. */
+  .shop-topbar-actions { flex-wrap: nowrap; gap: 6px; width: 100%; }
+  .shop-topbar-actions .shop-sort-select { display: none; }
+  .shop-msort { display: inline-flex !important; }
+  .shop-sale-btn { margin-left: auto; }
   .shop-view-toggle { display: flex; gap: 6px; }
+  .shop-view-toggle-btn.active { display: none; }
 
   /* Уся група контролів — в один ряд. Раніше «Акція» не влазила й падала на
      власний рядок, з'їдаючи екран перед товарами. Підпис ховаємо (лишається в
@@ -795,6 +802,7 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-view-toggle-btn { width: 32px; height: 32px; }
   .shop-mobile-filter-btn, .shop-sale-btn { height: 32px; }
   .shop-sale-btn { width: 32px; }
+  .shop-msort { width: 32px !important; height: 32px !important; }
 }
 
 /* Найвужчі екрани (≤340px, iPhone SE і подібні). Тут місця немає навіть після

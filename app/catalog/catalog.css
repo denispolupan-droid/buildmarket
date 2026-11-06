@@ -481,6 +481,9 @@ body:has(.catalog-page) { background: var(--bg-soft); }
 }
 /* «Акції» на телефоні — квадратна іконка в кінці ряду кнопок панелей */
 .catalog-msale { width: 34px; padding: 0; justify-content: center; margin-left: auto; font-size: 16px; }
+/* Вигляд карток (2/1 в ряд) і сортування — квадратні іконки, лише телефон */
+.catalog-mcols { width: 34px; padding: 0; justify-content: center; }
+.catalog-msort { display: none !important; }
 .catalog-msale.active { background: #EF4444; border-color: #EF4444; }
 /* «Показати N товарів» — липка внизу відкритої панелі (лише телефон) */
 .catalog-mpanel-done { display: none; }
@@ -715,8 +718,15 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .sidebar.mobile-cats .sidebar-filters-section { display: none; }
   .sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .catalog-mobile-btn { display: flex; }
-  /* Ряд кнопок — на всю ширину, щоб «Акції» стали до правого краю */
-  .catalog-actions { width: 100%; }
+  /* Ряд кнопок — на всю ширину й без переносу: «Акції» й сортування — до правого краю */
+  .catalog-actions { width: 100%; gap: 6px; }
+  .catalog-msort { display: inline-flex !important; }
+  .catalog-mobile-btn:not(.catalog-mcols):not(.catalog-msale) { padding: 0 10px; }
+  /* По 1 в ряд: ширша картка — більше фото й підпис на кнопці кошика */
+  .catalog-grid.list-view { grid-template-columns: 1fr; }
+  .catalog-grid.list-view .catalog-card__img-wrap { height: 220px; }
+  .catalog-grid.list-view .catalog-card__cart-btn-label { display: inline; }
+  .catalog-grid.list-view .catalog-card__cart-btn { padding: 0 14px; }
   .sidebar.mobile-open .catalog-mpanel-done {
     display: flex; align-items: center; justify-content: center;
     position: sticky; bottom: 16px; z-index: 5;
@@ -759,6 +769,16 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .catalog-card__cart-btn-label { display: none; }
 }
 
+
+/* Вузькі телефони: заміряно 06.11.2026 — ряду з 5 кнопок треба ~320px, а на 360px
+   доступно 319 (з zoom 0.95 і відступами картки). Трохи стискаємо кнопки панелей. */
+@media (max-width: 400px) {
+  .catalog-actions { gap: 4px; }
+  .catalog-mobile-btn:not(.catalog-mcols):not(.catalog-msale) { padding: 0 7px; gap: 4px; font-size: 12.5px; }
+  .catalog-mcols, .catalog-msale { width: 32px; }
+  .catalog-msort { width: 32px !important; }
+  .catalog-title-row { padding-left: 12px !important; padding-right: 12px !important; }
+}
 
 @keyframes hint-bounce {
   0%, 100% { transform: translateY(0); opacity: 0.35; }

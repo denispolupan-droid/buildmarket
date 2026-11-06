@@ -7,6 +7,7 @@ import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import { resolveFacets, facetProductTokens, facetNum, hidesTypeFilter, subtreeSlugs } from '../../lib/facets';
 import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
 import { goodsWord } from '../../lib/plural';
+import SortIconSelect from '../components/SortIconSelect';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ShoppingCart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
@@ -1167,6 +1168,21 @@ export default function ShopClient({ products: shippedProducts, categories, revi
               <span aria-hidden="true">🔥</span>
               <span className="shop-sale-btn__label">{t('Акція', 'Акция')}</span>
             </button>
+            {/* Телефон: сортування іконкою в тому ж ряду (як «⇅» у журналі замовлень),
+                повний селект нижче — лише на десктопі (06.11.2026) */}
+            <SortIconSelect
+              className="shop-msort"
+              value={sortBy}
+              defaultValue="default"
+              label={t('Сортування', 'Сортировка')}
+              onChange={v => { setSortBy(v); setVisibleCount(24); }}
+              options={[
+                { value: 'default',    label: t('За замовчуванням', 'По умолчанию') },
+                { value: 'price_asc',  label: t('Ціна: від низької', 'Цена: по возрастанию') },
+                { value: 'price_desc', label: t('Ціна: від високої', 'Цена: по убыванию') },
+                { value: 'sale',       label: t('Спочатку акційні', 'Сначала акционные') },
+              ]}
+            />
             <select
               className="shop-sort-select"
               value={sortBy}

@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
-import { Upload, Heart, Eye, ShoppingCart, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX } from 'lucide-react';
+import { Upload, Heart, Eye, ShoppingCart, Check, ChevronDown, ChevronRight, ChevronUp, LayoutList, SlidersHorizontal, LayoutGrid, Table2, X, SearchX, Grid2x2, Rows2 } from 'lucide-react';
+import SortIconSelect from '../components/SortIconSelect';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import Link from 'next/link';
@@ -51,6 +52,17 @@ function CopySkuBtn({ sku, lang }: { sku: string; lang: 'uk' | 'ru' }) {
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
 // (fast start, gentle settle) reads as "pulling" the category up, rather than the
 // uniform, scroll-like motion an ease-in-out curve produces.
+/** Ціна, яку бачить оптовик на картці (з акційним % до оптової), і чи це акція — для сортування. */
+function catalogPrice(p: ProductB2B): { price: number; sale: boolean } {
+  const unit   = p.stock?.price_unit ?? 0;
+  const retail = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
+  const promo  = p.stock?.price_promo != null ? Number(p.stock.price_promo) : null;
+  const wPromo = promo != null && retail > 0 && promo < retail ? Math.round(unit * (promo / retail) * 100) / 100 : null;
+  const price  = wPromo != null && wPromo < unit ? wPromo : unit;
+  const old    = wPromo != null && wPromo < unit ? unit : (p.stock?.price_old ?? null);
+  return { price, sale: old != null && price > 0 && price < old };
+}
+
 function easeOutQuad(t: number) {
   return 1 - (1 - t) * (1 - t);
 }
@@ -210,6 +222,18 @@ export default function CatalogClient({ products, categories, reviewStats, initi
     return () => mq.removeEventListener('change', onChange);
   }, []);
   const effectiveViewMode = isMobile ? 'grid' : viewMode;
+  // Телефон: по 2 картки в ряд або по 1 (як у магазині), вибір пам'ятаємо (06.11.2026)
+  const [gridCols, setGridCols] = useState<1 | 2>(2);
+  useLayoutEffect(() => {
+    try { if (localStorage.getItem('catalog-grid-cols') === '1') setGridCols(1); } catch { /* приватне вікно */ }
+  }, []);
+  function toggleGridCols() {
+    const next = gridCols === 2 ? 1 : 2;
+    setGridCols(next);
+    try { localStorage.setItem('catalog-grid-cols', String(next)); } catch { /* приватне вікно */ }
+  }
+  // Сортування (на телефоні — іконкою в ряду кнопок, як у магазині)
+  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'sale'>('default');
   const expandedFor = (target: string): Set<string> => {
     if (!target) return new Set<string>();
     const expanded = new Set<string>();
@@ -439,13 +463,21 @@ export default function CatalogClient({ products, categories, reviewStats, initi
   // позиції вгорі лише заважали б. Склад списку не змінюється, лише порядок,
   // тому лічильники на filtered.length лишаються правильними.
   const listed = useMemo(() => {
+    // Обране сортування — поверх усього, вітрина не втручається
+    if (sortBy !== 'default') {
+      const sorted = [...filtered];
+      if (sortBy === 'price_asc')  sorted.sort((a, b) => catalogPrice(a).price - catalogPrice(b).price);
+      if (sortBy === 'price_desc') sorted.sort((a, b) => catalogPrice(b).price - catalogPrice(a).price);
+      if (sortBy === 'sale')       sorted.sort((a, b) => Number(catalogPrice(b).sale) - Number(catalogPrice(a).sale));
+      return sorted;
+    }
     const pristine = !selCat && !search.trim() && !saleOnly && !inStockOnly && activeFilterCount === 0;
     if (!pristine || !showcaseSkus.length) return filtered;
     const pinned = orderByShowcase(showcaseSkus, filtered, { visible: isShowcaseVisible });
     if (!pinned.length) return filtered;
     const pinnedSkus = new Set(pinned.map(p => p.sku));
     return [...pinned, ...filtered.filter(p => !pinnedSkus.has(p.sku))];
-  }, [filtered, showcaseSkus, selCat, search, saleOnly, inStockOnly, activeFilterCount]);
+  }, [filtered, showcaseSkus, selCat, search, saleOnly, inStockOnly, activeFilterCount, sortBy]);
 
   // Keyed on the filter *values*, not on `filtered`. `/catalog` is a fully dynamic route
   // (auth + searchParams), so the Client Cache never reuses it and every
@@ -892,6 +924,16 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                 </div>
               )}
               <div className="catalog-actions">
+                {/* Телефон: вигляд карток однією кнопкою — іконка режиму, на який перемкне */}
+                <button
+                  type="button"
+                  className="catalog-mobile-btn catalog-mcols"
+                  onClick={toggleGridCols}
+                  aria-label={gridCols === 2 ? t('По 1 в ряд', 'По 1 в ряд') : t('По 2 в ряд', 'По 2 в ряд')}
+                  title={gridCols === 2 ? t('По 1 в ряд', 'По 1 в ряд') : t('По 2 в ряд', 'По 2 в ряд')}
+                >
+                  {gridCols === 2 ? <Rows2 size={16} strokeWidth={2} /> : <Grid2x2 size={16} strokeWidth={2} />}
+                </button>
                 {/* Mobile only: two panel buttons */}
                 <button
                   className={'catalog-mobile-btn' + (mobilePanel === 'cats' ? ' active' : '')}
@@ -926,6 +968,19 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                 >
                   <span aria-hidden>🔥</span>
                 </button>
+                <SortIconSelect
+                  className="catalog-msort"
+                  value={sortBy}
+                  defaultValue="default"
+                  label={t('Сортування', 'Сортировка')}
+                  onChange={v => { setSortBy(v); setVisibleCount(50); }}
+                  options={[
+                    { value: 'default',    label: t('За замовчуванням', 'По умолчанию') },
+                    { value: 'price_asc',  label: t('Ціна: від низької', 'Цена: по возрастанию') },
+                    { value: 'price_desc', label: t('Ціна: від високої', 'Цена: по убыванию') },
+                    { value: 'sale',       label: t('Спочатку акційні', 'Сначала акционные') },
+                  ]}
+                />
                 {/* Desktop only */}
                 <button
                   className="catalog-desktop-btn"
@@ -1023,7 +1078,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                 <div className="product-table-wrap"><div className="brand-empty"><SearchX size={36} strokeWidth={1.5} /><h3>{t('Нічого не знайдено', 'Ничего не найдено')}</h3><p>{t('Спробуйте змінити фільтри або пошуковий запит', 'Попробуйте изменить фильтры или поисковый запрос')}</p>{activeFilterCount > 0 && (<button onClick={() => { setFilterValues({}); setFilterVolumes([]); setFilterVolumesKg([]); setInStockOnly(false); setSaleOnly(false); setExpandedValues(new Set()); }}>{t('Скинути фільтри', 'Сбросить фильтры')}</button>)}</div></div>
               ) : (
                 <>
-                  <div className="catalog-grid">
+                  <div className={'catalog-grid' + (gridCols === 1 ? ' list-view' : '')}>
                     {listed.slice(0, visibleCount).map(p => {
                       const priceUnit    = p.stock?.price_unit  ?? 0;
                       const priceRetail  = p.stock?.price_retail != null ? Number(p.stock.price_retail) : 0;
