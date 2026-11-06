@@ -83,7 +83,7 @@ export function OrdersTableHeader() {
             // «Всі» — сума лише sent+unsent: у sentCounts є ще лічильники способів відправки
             const sentOpts = [
               { value: '', label: 'Всі', n: (sentCounts.sent ?? 0) + (sentCounts.unsent ?? 0) },
-              { value: 'own', label: 'Склад', n: sentCounts.own ?? 0 },
+              { value: 'own', label: 'FXL (наш склад)', n: sentCounts.own ?? 0 },
               { value: 'supplier', label: 'Постачальник', n: sentCounts.supplier ?? 0 },
               { value: 'mixed', label: 'Змішана', n: sentCounts.mixed ?? 0 },
               { value: 'sent', label: 'Надіслано постачальнику', n: sentCounts.sent ?? 0 },

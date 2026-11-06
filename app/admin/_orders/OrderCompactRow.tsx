@@ -397,7 +397,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             // Окремою плашкою поруч ряд виглядав строкатим. Раніше тут була зелена пташка.
             const viaSupplier = order.fulfillment_mode === 'supplier' || order.fulfillment_mode === 'mixed';
             const showMail = viaSupplier && (!!order.supplier_sent_at || ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status));
-            const modeTitle = order.fulfillment_mode === 'own' ? 'Відправка зі складу' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка';
+            const modeTitle = order.fulfillment_mode === 'own' ? 'Відправка з нашого складу (FXL)' : order.fulfillment_mode === 'supplier' ? 'Відправка через постачальника' : 'Змішана відправка';
             const mailTitle = !showMail ? '' : order.supplier_sent_at
               ? ` · надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
               : ' · ще не надіслано постачальнику';
@@ -410,7 +410,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                   fontSize: '11px', fontWeight: 600, padding: showMail ? '2px 6px 2px 8px' : '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap',
                   color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
                   background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
-                {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Змішана' : 'Постач.'}
+                {order.fulfillment_mode === 'own' ? 'FXL' : order.fulfillment_mode === 'mixed' ? 'Змішана' : 'Постач.'}
                 {showMail && (
                   <span aria-label={order.supplier_sent_at ? 'надіслано постачальнику' : 'не надіслано постачальнику'}
                     style={{ display: 'inline-flex', color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--color-warn)' }}>
