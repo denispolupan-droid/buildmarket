@@ -381,7 +381,8 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
 
         {/* Канал (76px — як заголовок із лійкою в шапці) */}
         <div className="oc-hide-m" style={{ width: '76px', flexShrink: 0, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
+          {/* marginLeft = −padding: текст під літерою заголовка (06.11.2026) */}
+          <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 6px', marginLeft: '-6px', borderRadius: '20px', color: channel.color, background: channel.bg, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
             {channel.label}
           </span>
         </div>
@@ -454,7 +455,8 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             const waiting = settlement?.state === 'pending' && !isCancelled;
             return (
               <span title={received ? `Виплачено — гроші дійшли до нас (${fmtMoney(settlement!.received)} ₴)` : waiting ? `Чекаємо виплату: ${fmtMoney(settlement!.open)} ₴ ще не дійшли до нас` : paid ? `Оплачено${hint ? ' · ' + hint : ''}` : hint || undefined}
-                style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', whiteSpace: 'nowrap',
+                // marginLeft = −padding: текст під літерою заголовка «Опл.» (06.11.2026)
+                style={{ fontSize: '11px', padding: '2px 6px', marginLeft: '-6px', borderRadius: '20px', whiteSpace: 'nowrap',
                   background: received ? '#BBF7D0' : waiting ? '#FEF3C7' : paid ? '#DCFCE7' : 'var(--border-light)',
                   color: received ? '#166534' : waiting ? 'var(--color-warn)' : paid ? 'var(--color-success)' : 'var(--text-secondary)',
                   fontWeight: received || waiting ? 700 : undefined, display: 'inline-flex', alignItems: 'center' }}>
