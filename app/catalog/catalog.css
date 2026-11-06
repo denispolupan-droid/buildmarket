@@ -480,7 +480,7 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   border-color: #4880B8;
 }
 /* «Акції» на телефоні — квадратна іконка в кінці ряду кнопок панелей */
-.catalog-msale { width: 34px; padding: 0; justify-content: center; margin-left: auto; font-size: 16px; }
+.catalog-msale { width: 34px; padding: 0; justify-content: center; font-size: 16px; }
 /* Вигляд карток (2/1 в ряд) і сортування — квадратні іконки, лише телефон */
 .catalog-mcols { width: 34px; padding: 0; justify-content: center; }
 .catalog-msort { display: none !important; }
@@ -721,7 +721,8 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   /* Ряд кнопок — на всю ширину й без переносу: «Акції» й сортування — до правого краю */
   .catalog-actions { width: 100%; gap: 6px; }
   .catalog-msort { display: inline-flex !important; }
-  .catalog-mobile-btn:not(.catalog-mcols):not(.catalog-msale) { padding: 0 10px; }
+  /* «Категорії» й «Фільтри» ділять вільне місце — без порожнечі посередині ряду */
+  .catalog-mobile-btn:not(.catalog-mcols):not(.catalog-msale) { padding: 0 10px; flex: 1 1 0; min-width: 0; justify-content: center; }
   /* По 1 в ряд: ширша картка — більше фото й підпис на кнопці кошика */
   .catalog-grid.list-view { grid-template-columns: 1fr; }
   .catalog-grid.list-view .catalog-card__img-wrap { height: 220px; }

@@ -765,7 +765,8 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-topbar-actions { flex-wrap: nowrap; gap: 6px; width: 100%; }
   .shop-topbar-actions .shop-sort-select { display: none; }
   .shop-msort { display: inline-flex !important; }
-  .shop-sale-btn { margin-left: auto; }
+  /* Без порожнечі посередині: «Категорії» й «Фільтри» ділять вільне місце між собою */
+  .shop-topbar-actions .shop-mobile-filter-btn { flex: 1 1 0; min-width: 0; justify-content: center; }
   .shop-view-toggle { display: flex; gap: 6px; }
   .shop-view-toggle-btn.active { display: none; }
 
