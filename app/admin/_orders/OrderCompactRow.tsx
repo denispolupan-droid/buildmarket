@@ -403,7 +403,9 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             return (
               <span
                 title={modeTitle + mailTitle}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px',
+                // marginLeft −8px = лівий padding плашки: текст мітки стоїть точно під
+                // літерою заголовка «Відправка», а не на 8px правіше (06.11.2026)
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '-8px',
                   fontSize: '11px', fontWeight: 600, padding: showMail ? '2px 6px 2px 8px' : '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap',
                   color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
                   background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
