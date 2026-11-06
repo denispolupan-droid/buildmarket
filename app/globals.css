@@ -3306,8 +3306,9 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
 }
 .oc-mselect__box.is-checked, .oc-mselect__box.is-partial { border-color: #3DBFB8; background: #3DBFB8; }
 /* Чотири кнопки (Період · Канал · Доставка · Оплата) мають влізти в рядок на 360px */
-/* Рядок фільтрів — на всю ширину (.oc-only-m робить його inline-flex, і він стискався до вмісту) */
-.oc-filter-row.oc-only-m { display: flex !important; width: 100%; }
+/* Рядок фільтрів — на всю ширину (.oc-only-m робить його inline-flex, і він стискався до вмісту).
+   ЛИШЕ телефон: без media це правило перебивало display:none на десктопі (06.11.2026) */
+@media (max-width: 768px) { .oc-filter-row.oc-only-m { display: flex !important; width: 100%; } }
 /* Телефон: однакові відступи пошук → фільтри → перше замовлення (було 0 і 19px, 06.11.2026) */
 @media (max-width: 768px) {
   .oc-filter-row.oc-only-m { margin-top: 8px; }
