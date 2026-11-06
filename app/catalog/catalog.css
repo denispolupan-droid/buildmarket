@@ -479,6 +479,11 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   color: #1E3A5F;
   border-color: #4880B8;
 }
+/* «Акції» на телефоні — квадратна іконка в кінці ряду кнопок панелей */
+.catalog-msale { width: 34px; padding: 0; justify-content: center; margin-left: auto; font-size: 16px; }
+.catalog-msale.active { background: #EF4444; border-color: #EF4444; }
+/* «Показати N товарів» — липка внизу відкритої панелі (лише телефон) */
+.catalog-mpanel-done { display: none; }
 .catalog-mobile-badge {
   display: inline-flex;
   align-items: center;
@@ -710,6 +715,16 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .sidebar.mobile-cats .sidebar-filters-section { display: none; }
   .sidebar.mobile-filters .sidebar-cats-section { display: none; }
   .catalog-mobile-btn { display: flex; }
+  /* Ряд кнопок — на всю ширину, щоб «Акції» стали до правого краю */
+  .catalog-actions { width: 100%; }
+  .sidebar.mobile-open .catalog-mpanel-done {
+    display: flex; align-items: center; justify-content: center;
+    position: sticky; bottom: 16px; z-index: 5;
+    width: fit-content; margin: 12px auto 0; height: 44px; padding: 0 22px; border-radius: 999px;
+    border: none; background: var(--navy); color: #fff; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 700; white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(15, 30, 60, .28);
+  }
   .catalog-desktop-btn { display: none !important; }
   .catalog-view-toggle { display: none !important; }
   .catalog-count { display: none; }

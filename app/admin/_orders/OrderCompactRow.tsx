@@ -1,6 +1,6 @@
 'use client';
 
-import { Truck, Check, ChevronDown, ChevronUp, Copy, Tag, MessageSquare } from 'lucide-react';
+import { Truck, Check, ChevronDown, ChevronUp, Copy, Tag, MessageSquare, Mail, MailCheck } from 'lucide-react';
 import { phoneLocal } from '../../../lib/notify/phone';
 import { deliveryPlace } from '../../../lib/delivery-label';
 import { rowBadge, PAYMENT_LABEL } from './constants';
@@ -122,27 +122,6 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             <span title={`Номер замовлення в кабінеті ${channel.label} — за ним шукають замовлення в кабінеті й у листуванні`}
               style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
               №{mpNumber}
-            </span>
-          )}
-          {/* Постачальник (колонка «Відпр.» на десктопі): лише для замовлень через
-              постачальника і лише поки замовлення в роботі (до «Відправлено») —
-              «ПОСТ. ✓» надіслано, «ПОСТ.» ще ні. Після відправки питання вже
-              закрите, а в старих замовлень мітки надсилання немає взагалі —
-              жовта «ПОСТ.» на доставленому вводила б в оману (06.11.2026). */}
-          {(order.fulfillment_mode === 'supplier' || order.fulfillment_mode === 'mixed')
-            && ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status) && (
-            <span
-              title={order.supplier_sent_at
-                ? `Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
-                : 'Замовлення ще не надіслано постачальнику'}
-              style={{
-                ...rowBadge, display: 'inline-flex', alignItems: 'center', gap: '2px',
-                color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--text-warn-dark)',
-                background: order.supplier_sent_at ? '#DCFCE7' : '#FEF3C7',
-                borderColor: order.supplier_sent_at ? 'var(--border-success)' : 'var(--border-warn)',
-              }}>
-              {order.fulfillment_mode === 'mixed' ? 'MIX' : 'ПОСТ.'}
-              {order.supplier_sent_at && <Check size={11} strokeWidth={3} aria-label="надіслано" />}
             </span>
           )}
           {deliveryBadges}
@@ -360,6 +339,25 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', color: status.color, background: status.bg, display: 'inline-flex', alignItems: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {status.label}
           </span>
+          {/* Постачальник — лише телефон (на десктопі є колонка «Відпр.»): іконка
+              листа біля статусу, бо надсилання постачальнику — це й є «стан» замовлення
+              до відправки. Зелений лист із ✓ — надіслано, жовтий — ще ні. Лише для замовлень
+              через постачальника і лише до «Відправлено»: у старих замовлень мітки
+              надсилання немає, жовта іконка на доставленому вводила б в оману.
+              Раніше це була мітка «ПОСТ.» у рядку джерела — там вона переносила
+              рядок на вузьких екранах (06.11.2026). */}
+          {(order.fulfillment_mode === 'supplier' || order.fulfillment_mode === 'mixed')
+            && ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status) && (
+            <span
+              className={`oc-only-m oc-supl-m${order.supplier_sent_at ? ' is-sent' : ''}`}
+              style={{ display: 'none' }}
+              title={(order.fulfillment_mode === 'mixed' ? 'Частково через постачальника. ' : '') + (order.supplier_sent_at
+                ? `Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                : 'Замовлення ще не надіслано постачальнику')}
+              aria-label={order.supplier_sent_at ? 'Надіслано постачальнику' : 'Не надіслано постачальнику'}>
+              {order.supplier_sent_at ? <MailCheck size={13} strokeWidth={2.2} /> : <Mail size={13} strokeWidth={2.2} />}
+            </span>
+          )}
           {order.status === 'shipped' && order.tracking_number && !order.carrier_status_text && (
             <span
               title={`${order.carrier_accepted_at ? 'Прийнято' : 'Очікує приймання'} ${isRozetkaPoint ? 'Rozetka Доставкою' : 'Новою Поштою'}`}

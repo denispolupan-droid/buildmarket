@@ -14,6 +14,7 @@ import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
 import { getRzSender, isRzDeliveryEnabled } from '../../../lib/rz-delivery-api';
 import { cartWeightKg } from '../../../lib/parcel-weight';
 import { withApi } from '../../../lib/api-handler';
+import { npWarehouseDescription } from '../../../lib/np-api';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -39,6 +40,11 @@ async function _POST(req: NextRequest) {
   if (!deliveryType)  return NextResponse.json({ error: 'Вкажіть тип доставки' }, { status: 400 });
   if (!paymentType)   return NextResponse.json({ error: 'Вкажіть тип оплати' }, { status: 400 });
   if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: 'Кошик порожній' }, { status: 400 });
+
+  // Ref відділення НП є, а назви немає — дібрати з довідника НП, інакше картка
+  // замовлення показує лише місто (lib/np-api → npWarehouseDescription).
+  const deliveryAddressFinal: string | null = deliveryAddress
+    || (deliveryType === 'nova' && deliveryWarehouseRef ? await npWarehouseDescription(String(deliveryWarehouseRef)) : null);
 
   const WHOLESALE_TYPES = ['dealer', 'wholesale', 'contractor', 'shop_owner'];
   const accountType = user?.app_metadata?.account_type as string | undefined;
@@ -160,7 +166,7 @@ async function _POST(req: NextRequest) {
       email:                 emailClean,
       delivery_type:         deliveryType,
       delivery_subtype:      deliverySubtype ?? null,
-      delivery_address:      deliveryAddress ?? null,
+      delivery_address:      deliveryAddressFinal,
       delivery_city_ref:     deliveryCityRef ?? null,
       delivery_city_name:    deliveryCityName ?? null,
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
@@ -249,7 +255,7 @@ async function _POST(req: NextRequest) {
       email:                 emailClean,
       delivery_type:         deliveryType,
       delivery_subtype:      deliverySubtype ?? null,
-      delivery_address:      deliveryAddress ?? null,
+      delivery_address:      deliveryAddressFinal,
       delivery_city_ref:     deliveryCityRef ?? null,
       delivery_city_name:    deliveryCityName ?? null,
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
@@ -291,7 +297,7 @@ async function _POST(req: NextRequest) {
   const orderData = {
     orderNumber: data.order_number, company: company ?? '', contact,
     phone, email: emailClean, items: serverItems as unknown as CartItem[], totalPrice: finalTotal, deliveryType,
-    deliveryAddress: deliveryAddress ?? '', paymentType, comment,
+    deliveryAddress: deliveryAddressFinal ?? '', paymentType, comment,
   };
 
   notifyAdminNewOrder({

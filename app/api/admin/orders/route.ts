@@ -5,6 +5,7 @@ import { buildAdminNotificationHtml } from '../../../../lib/invoice-email';
 import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { withApi } from '../../../../lib/api-handler';
+import { npWarehouseDescription } from '../../../../lib/np-api';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -150,6 +151,11 @@ async function _POST(req: NextRequest) {
     createdAtIso = picked.toISOString();
   }
 
+  // Ref відділення НП є, а назви немає (9 ручних замовлень з 01.09 по 06.11.2026,
+  // зокрема №26111029) — дібрати з довідника НП, інакше картка показує лише місто.
+  const deliveryAddressFinal: string | null = deliveryAddress
+    || (deliveryType === 'nova' && deliveryWarehouseRef ? await npWarehouseDescription(String(deliveryWarehouseRef)) : null);
+
   const db = createServiceClient();
   // Сума — лише з рядків, на сервері (правило «ціні від клієнта не довіряй»).
   // Рядок без артикула тут допустимий (вільна позиція з модалки), тому не
@@ -181,7 +187,7 @@ async function _POST(req: NextRequest) {
       email:                 email ?? '',
       delivery_type:         deliveryType ?? 'pickup',
       delivery_subtype:      deliverySubtype ?? null,
-      delivery_address:      deliveryAddress ?? null,
+      delivery_address:      deliveryAddressFinal,
       delivery_city_ref:     deliveryCityRef ?? null,
       delivery_city_name:    deliveryCityName ?? null,
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
@@ -223,7 +229,7 @@ async function _POST(req: NextRequest) {
       orderNumber: data.order_number, company: company ?? '', contact,
       phone: phone ?? '', email: email ?? '', items,
       totalPrice: orderTotal, deliveryType: deliveryType ?? 'pickup',
-      deliveryAddress: deliveryAddress ?? '', paymentType, comment,
+      deliveryAddress: deliveryAddressFinal ?? '', paymentType, comment,
     }),
   }).catch(e => console.error('[admin order email]', e));
 

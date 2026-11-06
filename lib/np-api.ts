@@ -43,6 +43,22 @@ export async function getNpApiKey(): Promise<string> {
   return (await readSetting(createServiceClient(), 'np_api_key')) || process.env.NOVA_POSHTA_API_KEY || '';
 }
 
+/**
+ * Назва відділення/поштомату НП за його Ref («Відділення №447 (до 30 кг): вул. …»).
+ * Ручне замовлення інколи доходило до бази з Ref відділення, але без назви
+ * (9 замовлень з 01.09 по 06.11.2026) — картка показувала лише місто. Сервер
+ * добирає назву сам; помилка НП не має валити створення замовлення → null.
+ */
+export async function npWarehouseDescription(ref: string): Promise<string | null> {
+  if (!ref) return null;
+  try {
+    const res = await npCall<{ Description?: string }>(await getNpApiKey(), 'Address', 'getWarehouses', { Ref: ref, Limit: 1, Page: 1 });
+    return res.success ? (res.data?.[0]?.Description?.trim() || null) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const npError = (res: NpResponse<unknown>, fallback: string) =>
   res.errors?.filter(Boolean).join('; ') || fallback;
 

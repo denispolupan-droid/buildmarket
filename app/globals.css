@@ -2350,11 +2350,14 @@ input, select { font-family: inherit; }
      порожнім місцем, і панель дій починалася з середини екрана — під нею не
      лишалось видимих замовлень, щоб добрати ще кілька. */
   .oc-merge-bar { bottom: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px; padding: 10px !important; }
-  .oc-merge-title { font-size: 13px !important; line-height: 1.35; padding-right: 40px; }
+  .oc-merge-bar .oc-merge-title { font-size: 13px !important; line-height: 1.35; padding: 0 40px 0 2px; }
   /* Одна колонка кнопок на всю ширину, без роздільника від підпису;
      хрестик — у правому верхньому куті панелі, поруч із підписом */
-  .oc-merge-actions { grid-template-columns: 1fr; gap: 6px !important; margin-left: 0; padding-left: 0; border-left: none; }
-  .oc-merge-close { position: absolute; top: 8px; right: 8px; margin: 0; }
+  /* .oc-merge-bar у селекторі — специфічність: базові правила панелі стоять у файлі
+     НИЖЧЕ цього блоку і перебивали його — лишались лівий відступ 26px і біла
+     риска border-left, кнопки зсувались праворуч від підпису (06.11.2026). */
+  .oc-merge-bar .oc-merge-actions { grid-template-columns: 1fr; gap: 6px !important; margin-left: 0; padding-left: 0; border-left: none; }
+  .oc-merge-bar .oc-merge-close { position: absolute; top: 8px; right: 8px; margin: 0; }
 
   /* Розміри тексту в картці. Базові 10–13px розраховані на таблицю з десятком
      колонок; на телефоні колонок немає, місце звільнилося — і дрібний шрифт
@@ -2418,7 +2421,7 @@ input, select { font-family: inherit; }
     /* Щільніше по вертикалі: мініатюра товару додала рядку висоти, і картка
        розповзалася — на екран влазило менше замовлень, ніж до неї. */
     gap: 3px 6px !important;
-    padding: 11px 12px !important;
+    padding: 9px 12px !important;
   }
   .order-compact-row > div:first-child { grid-column: 1; grid-row: 1; }
   /* № і дата — однією коміркою: удвох вони і є відповідь на «що це за рядок».
@@ -2451,6 +2454,17 @@ input, select { font-family: inherit; }
   /* min-width: 0 і на самій плашці: без нього вона не стискається нижче свого
      тексту, і замість багатокрапки виходив різаний край («Відпра»). */
   .order-compact-row .oc-status > div > span { min-width: 0; }
+  /* Лист постачальнику біля статусу (06.11.2026): не стискається, статус підтискається замість нього */
+  .order-compact-row .oc-status > div > .oc-supl-m {
+    flex-shrink: 0; align-items: center; justify-content: center;
+    width: 24px; height: 20px; border-radius: 20px; box-sizing: border-box;
+    color: var(--text-warn-dark); background: #FEF3C7; border: 1px solid var(--border-warn);
+  }
+  .order-compact-row .oc-status > div > .oc-supl-m.is-sent {
+    color: var(--color-success); background: #DCFCE7; border-color: var(--border-success);
+  }
+  /* Щільніший список: менше повітря між картками й усередині (06.11.2026) */
+  .oc-sheet-list { gap: 6px !important; }
   /* Сума без правого відступу: на десктопі він відсуває її від колонки доставки,
      на телефоні це просто 24px порожнечі в найтіснішому рядку картки. */
   /* nowrap: без нього в тісному рядку сума ламалась на «362» і «₴» окремими рядками. */
