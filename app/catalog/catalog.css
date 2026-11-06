@@ -757,6 +757,11 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .catalog-count { display: none; }
   .catalog-title { font-size: 18px; }
   .catalog-title-row { margin-bottom: 12px; flex-wrap: wrap; }
+  /* Шапка як у магазині (06.11.2026): без заголовка — лише ряд кнопок (і під ним
+     мінімальне замовлення), тонша смуга, менше відступів. Обрана категорія видно
+     в рядку категорій під пошуком. */
+  .catalog-title-wrap { display: none; }
+  .catalog-title-row { padding: 6px 10px; margin-bottom: 2px; row-gap: 6px; }
   .cart-peek-host--badge { width: 100%; order: 3; }
   .wholesale-min-badge { width: 100%; min-width: 0; }
   .wholesale-min-row { white-space: normal; flex-wrap: wrap; row-gap: 2px; }
@@ -794,7 +799,6 @@ body:has(.catalog-page) { background: var(--bg-soft); }
   .catalog-mobile-btn:not(.catalog-mcols):not(.catalog-msale) { padding: 0 7px; gap: 4px; font-size: 12.5px; }
   .catalog-mcols, .catalog-msale { width: 32px; }
   .catalog-msort { width: 32px !important; }
-  .catalog-title-row { padding-left: 12px !important; padding-right: 12px !important; }
 }
 
 @keyframes hint-bounce {

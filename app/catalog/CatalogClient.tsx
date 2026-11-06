@@ -901,7 +901,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
               className="catalog-title-row"
               style={(() => { const a = categoryAccent(selCat, categories.find(c => c.slug === selCat)?.parent_slug); return a ? ({ '--cat-accent': a } as React.CSSProperties) : undefined; })()}
             >
-              <div>
+              <div className="catalog-title-wrap">
                 {selCat && <span className="eyebrow" style={{ fontSize: '11px' }}>{catalogTitle}</span>}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
                   <h1 className="catalog-title">
