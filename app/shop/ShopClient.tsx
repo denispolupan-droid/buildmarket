@@ -6,6 +6,7 @@ import { getCategoryNameRu, getCategoryDescriptionRu } from '../../lib/ru';
 import { tFilterLabel, tFilterValue } from '../../lib/translations-ru';
 import { resolveFacets, facetProductTokens, facetNum, hidesTypeFilter, subtreeSlugs } from '../../lib/facets';
 import { useLiftOnFilterChange } from '../../lib/useLiftOnFilterChange';
+import { goodsWord } from '../../lib/plural';
 import Link from 'next/link';
 import { Plus, Minus, Heart, ShoppingCart, ChevronDown, Check, SlidersHorizontal, LayoutList, Grid2x2, Rows2, X, SearchX } from 'lucide-react';
 import { CATEGORY_ICONS, CATEGORY_COLORS, categoryAccent } from '../../lib/category-icons';
@@ -1085,6 +1086,12 @@ export default function ShopClient({ products: shippedProducts, categories, revi
         </label>
         </div>{/* end sidebar-filters-section */}
 
+        {/* Телефон: панель стоїть НАД кнопками «Категорії/Фільтри», закрити її можна
+            було лише догортавши до кінця. Липка кнопка закриває в будь-якому місці
+            (06.11.2026). По центру — щоб не ховатись під кнопкою чату справа. */}
+        <button type="button" className="shop-mpanel-done" onClick={() => { setMobilePanel(null); scrollPageToProducts(); }}>
+          {t('Показати', 'Показать')} {filtered.length} {goodsWord(filtered.length, lang)}
+        </button>
 
       </aside>
 

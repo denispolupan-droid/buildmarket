@@ -696,6 +696,7 @@ body:has(.shop-layout) { overflow-anchor: none; }
 @media (max-width: 1100px) {
   .shop-grid { grid-template-columns: repeat(3, 1fr); }
 }
+.shop-mpanel-done { display: none; }
 @media (max-width: 768px) {
   .shop-layout { grid-template-columns: 1fr; }
   .shop-sidebar {
@@ -708,6 +709,15 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-sidebar.mobile-open { display: block; }
   .shop-sidebar.mobile-cats .sidebar-filters-section { display: none; }
   .shop-sidebar.mobile-filters .sidebar-cats-section { display: none; }
+  /* «Показати N товарів» — липка внизу відкритої панелі (06.11.2026, як у /catalog) */
+  .shop-sidebar.mobile-open .shop-mpanel-done {
+    display: flex; align-items: center; justify-content: center;
+    position: sticky; bottom: 16px; z-index: 5;
+    width: fit-content; margin: 12px auto 0; height: 44px; padding: 0 22px; border-radius: 999px;
+    border: none; background: var(--navy); color: #fff; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 700; white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(15, 30, 60, .28);
+  }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .shop-grid.list-view { grid-template-columns: 1fr; }
   .shop-card__pack-qty { display: block; }

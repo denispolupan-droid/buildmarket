@@ -14,6 +14,7 @@ import { PROMO } from '../promo.config';
 import SalesBanner from '../components/SalesBanner';
 import type { ProductB2B, Category, ReviewStats } from '../../lib/supabase';
 import { useCart } from '../../lib/cart';
+import { goodsWord } from '../../lib/plural';
 import CartPeek from './CartPeek';
 import { useWishlist } from '../../lib/wishlist';
 import { getSupabaseBrowser } from '../../lib/supabase-browser';
@@ -50,15 +51,6 @@ function CopySkuBtn({ sku, lang }: { sku: string; lang: 'uk' | 'ru' }) {
 // this gives the category auto-lift its own slower, eased animation instead. Ease-out
 // (fast start, gentle settle) reads as "pulling" the category up, rather than the
 // uniform, scroll-like motion an ease-in-out curve produces.
-function slavicForm(n: number, one: string, few: string, many: string) {
-  const m10 = n % 10, m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
-  return many;
-}
-const ukGoods = (n: number) => slavicForm(n, 'товар', 'товари', 'товарів');
-const ruGoods = (n: number) => slavicForm(n, 'товар', 'товара', 'товаров');
-
 function easeOutQuad(t: number) {
   return 1 - (1 - t) * (1 - t);
 }
@@ -854,7 +846,7 @@ export default function CatalogClient({ products, categories, reviewStats, initi
                 екрана закриває панель у будь-якому місці (06.11.2026). По центру —
                 щоб не ховатись під круглою кнопкою чату справа. */}
             <button type="button" className="catalog-mpanel-done" onClick={() => { setMobilePanel(null); scrollPageToProducts(); }}>
-              {t('Показати', 'Показать')} {filtered.length} {lang === 'ru' ? ruGoods(filtered.length) : ukGoods(filtered.length)}
+              {t('Показати', 'Показать')} {filtered.length} {goodsWord(filtered.length, lang)}
             </button>
 
 
