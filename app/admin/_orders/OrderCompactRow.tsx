@@ -387,9 +387,9 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
           </span>
         </div>
 
-        {/* Відправка (112px — як заголовок; ширше, ніж було, щоб «Постачальник» писати
-            повністю разом з іконкою листа, 06.11.2026) */}
-        <div className="oc-hide-m" style={{ width: '112px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Колонка «Склад» (96px — як заголовок зі стрілкою й лійкою): склад / постач. /
+            змішана + іконка листа постачальнику (06.11.2026) */}
+        <div className="oc-hide-m" style={{ width: '96px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
           {order.fulfillment_mode && (() => {
             // Лист постачальнику — іконкою ВСЕРЕДИНІ мітки «Пост.»/«Mix» (06.11.2026; та сама
             // іконка, що на телефоні біля статусу): зелений лист із ✓ — надіслано, жовтий —
@@ -405,12 +405,12 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               <span
                 title={modeTitle + mailTitle}
                 // marginLeft −8px = лівий padding плашки: текст мітки стоїть точно під
-                // літерою заголовка «Відправка», а не на 8px правіше (06.11.2026)
+                // літерою заголовка «Склад», а не на 8px правіше (06.11.2026)
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '-8px',
                   fontSize: '11px', fontWeight: 600, padding: showMail ? '2px 6px 2px 8px' : '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap',
                   color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
                   background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
-                {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Змішана' : 'Постачальник'}
+                {order.fulfillment_mode === 'own' ? 'Склад' : order.fulfillment_mode === 'mixed' ? 'Змішана' : 'Постач.'}
                 {showMail && (
                   <span aria-label={order.supplier_sent_at ? 'надіслано постачальнику' : 'не надіслано постачальнику'}
                     style={{ display: 'inline-flex', color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--color-warn)' }}>

@@ -350,7 +350,7 @@ export function OrdersToolbar() {
           if (retFilter === 'pending') chips.push({ key: 'ret', label: 'Повернення без рішення', clear: () => pushFilters({ ret: '' }) });
           if (sentFilter) chips.push({ key: 'sent', label: ({
             sent: 'Постачальнику: надіслано', unsent: 'Постачальнику: ще не надіслано',
-            own: 'Відправка: склад', supplier: 'Відправка: постачальник', mixed: 'Відправка: змішана',
+            own: 'Склад: власний', supplier: 'Склад: постачальник', mixed: 'Склад: змішана',
           } as Record<string, string>)[sentFilter] ?? sentFilter, clear: () => pushFilters({ sent: '' }) });
           if (dateFrom || dateTo) chips.push({ key: 'date', label: `Період: ${dateFrom ? fmtD(dateFrom) : '…'} — ${dateTo ? fmtD(dateTo) : '…'}`, clear: () => pushFilters({ dateFrom: '', dateTo: '' }) });
           if (!chips.length) return null;
