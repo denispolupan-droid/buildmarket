@@ -1,7 +1,9 @@
 /* Загальний фон — як у магазині (--bg-soft), а не темніший body-фон */
 body:has(.catalog-page) { background: var(--bg-soft); }
 
-.catalog-page { display: grid; grid-template-columns: 310px 1fr; gap: 16px; padding: 28px 0 48px; align-items: start; }
+/* Зверху 10px, а не 28: між «Головна / Оптовий каталог» і сайдбаром/шапкою
+   була зайва порожня смуга (06.11.2026, як у магазині — крихти + 8px) */
+.catalog-page { display: grid; grid-template-columns: 310px 1fr; gap: 16px; padding: 10px 0 48px; align-items: start; }
 
 /* ── Sidebar ── */
 .sidebar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 16px 20px; position: sticky; top: 80px; max-height: calc(100vh - 88px); overflow-y: scroll; scrollbar-width: none; overscroll-behavior: contain; }
