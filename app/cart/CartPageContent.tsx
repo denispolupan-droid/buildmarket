@@ -3,9 +3,54 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, ShoppingCart, ArrowLeft, Check, User, Truck, CreditCard, MessageSquare, AlertCircle, Pencil } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowLeft, Check, User, Truck, CreditCard, MessageSquare, AlertCircle, Pencil, TicketPercent } from 'lucide-react';
 
 import './cart.css';
+
+// Чернетка оформлення в localStorage покупця (див. «Чернетка оформлення» в компоненті).
+// Усі звернення — у try/catch: приватний режим чи заблоковане сховище не мають ламати кошик.
+const CHECKOUT_DRAFT_KEY = 'fixline_checkout_draft_v1';
+const CHECKOUT_DRAFT_TTL_MS = 14 * 24 * 3600 * 1000;
+type CheckoutDraft = {
+  lastName: string; firstName: string; middleName: string; phone: string; company: string; email: string;
+  delivery: string; novaSubtype: 'warehouse' | 'courier' | 'postomat' | ''; address: string;
+  novaCityRef: string; novaCityName: string; novaWarehouseRef: string;
+  rzCityId: string; rzCityName: string; rzDepId: string; rzDepLabel: string;
+  payment: string; comment: string; noCallback: boolean;
+};
+function readCheckoutDraft(): CheckoutDraft | null {
+  try {
+    const raw = localStorage.getItem(CHECKOUT_DRAFT_KEY);
+    if (!raw) return null;
+    const { savedAt, data } = JSON.parse(raw) as { savedAt: number; data: Partial<CheckoutDraft> };
+    if (!savedAt || Date.now() - savedAt > CHECKOUT_DRAFT_TTL_MS || !data) { localStorage.removeItem(CHECKOUT_DRAFT_KEY); return null; }
+    const s = (v: unknown) => (typeof v === 'string' ? v : '');
+    const sub = s(data.novaSubtype);
+    return {
+      lastName: s(data.lastName), firstName: s(data.firstName), middleName: s(data.middleName),
+      phone: s(data.phone), company: s(data.company), email: s(data.email),
+      delivery: s(data.delivery),
+      novaSubtype: sub === 'warehouse' || sub === 'courier' || sub === 'postomat' ? sub : '',
+      address: s(data.address), novaCityRef: s(data.novaCityRef), novaCityName: s(data.novaCityName), novaWarehouseRef: s(data.novaWarehouseRef),
+      rzCityId: s(data.rzCityId), rzCityName: s(data.rzCityName), rzDepId: s(data.rzDepId), rzDepLabel: s(data.rzDepLabel),
+      payment: s(data.payment), comment: s(data.comment), noCallback: data.noCallback !== false,
+    };
+  } catch { return null; }
+}
+function writeCheckoutDraft(data: CheckoutDraft) {
+  try { localStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify({ savedAt: Date.now(), data })); } catch {}
+}
+function clearCheckoutDraft() {
+  try { localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch {}
+}
+
+// 1 товар · 2–4 товари · 5+ товарів (укр/рос однакова логіка, різні форми)
+function pluralForm(n: number, one: string, few: string, many: string): string {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
 import { fmtMoney } from '../../lib/format';
 import { WHOLESALE_MIN } from '../../lib/site';
 import { useCart } from '../../lib/cart';
@@ -37,7 +82,7 @@ const T = {
     payInvoiceLabel: 'За рахунком (IBAN)',
     payInvoiceSub: 'ФОП, юрособи й фізособи',
     pageTitle: 'Оформлення замовлення',
-    itemsCount: (n: number, price: number) => `${n} товарів на суму ${fmtMoney(price)} грн`,
+    itemsCount: (n: number, price: number) => `${n} ${pluralForm(n, 'товар', 'товари', 'товарів')} на суму ${fmtMoney(price)} грн`,
     backShop: 'До магазину',
     backCatalog: 'До каталогу',
     backShopHref: '/shop',
@@ -90,6 +135,7 @@ const T = {
     minWarning: (n: number) => `Додайте товарів ще на ${n.toFixed(0)} ₴ для оформлення замовлення`,
     guestHint: '💡 Можна оформити замовлення без реєстрації — просто заповніть форму.',
     noCallbackLabel: 'Не передзвонювати для підтвердження',
+    noCallbackShort: 'Не передзвонювати',
     submitting: 'Завантаження...',
     submitCard: 'Перейти до оплати →',
     submitOrder: 'Підтвердити замовлення →',
@@ -113,7 +159,7 @@ const T = {
     payInvoiceLabel: 'По счёту (IBAN)',
     payInvoiceSub: 'ФЛП, юрлица и физлица',
     pageTitle: 'Оформление заказа',
-    itemsCount: (n: number, price: number) => `${n} товаров на сумму ${fmtMoney(price)} грн`,
+    itemsCount: (n: number, price: number) => `${n} ${pluralForm(n, 'товар', 'товара', 'товаров')} на сумму ${fmtMoney(price)} грн`,
     backShop: 'В магазин',
     backCatalog: 'В каталог',
     backShopHref: '/ru/shop',
@@ -166,6 +212,7 @@ const T = {
     minWarning: (n: number) => `Добавьте товаров ещё на ${n.toFixed(0)} ₴ для оформления заказа`,
     guestHint: '💡 Можно оформить заказ без регистрации — просто заполните форму.',
     noCallbackLabel: 'Не перезванивать для подтверждения',
+    noCallbackShort: 'Не перезванивать',
     submitting: 'Загрузка...',
     submitCard: 'Перейти к оплате →',
     submitOrder: 'Подтвердить заказ →',
@@ -352,8 +399,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       const type = data.user.app_metadata?.account_type as string | undefined;
       const wholesale = ['dealer', 'wholesale', 'contractor', 'shop_owner'].includes(type ?? '');
       setRole(wholesale ? 'wholesale' : 'retail');
-      setCompany(data.user.user_metadata?.company_name ?? '');
-      setEmail(data.user.email ?? '');
+      // Підстановка з профілю й минулого замовлення — лише в порожні поля:
+      // чернетка (вже відновлена) і введене покупцем мають пріоритет.
+      setCompany(p => p || (data.user!.user_metadata?.company_name ?? ''));
+      setEmail(p => p || (data.user!.email ?? ''));
 
       if (wholesale) {
         const { data: orders } = await supabase
@@ -366,14 +415,15 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
         if (orders) {
           if (orders.contact) {
             const parts = orders.contact.trim().split(/\s+/);
-            setLastName(parts[0] ?? '');
-            setFirstName(parts[1] ?? '');
-            setMiddleName(parts[2] ?? '');
+            setLastName(p => p || (parts[0] ?? ''));
+            setFirstName(p => p || (parts[1] ?? ''));
+            setMiddleName(p => p || (parts[2] ?? ''));
           }
-          if (orders.phone) setPhone(orders.phone);
-          if (orders.delivery_type) setDelivery(orders.delivery_type);
-          if (orders.delivery_address) setAddress(orders.delivery_address);
-          if (orders.payment_type) setPayment(orders.payment_type);
+          if (orders.phone) setPhone(p => p || orders.phone);
+          // Доставку з минулого замовлення не підставляємо: там лише тип і текст адреси,
+          // без підтипу, міста й відділення — секція виглядала заповненою наполовину
+          // («Нова Пошта» без пункту) і все одно вимагала вибору заново.
+          if (orders.payment_type) setPayment(p => p || orders.payment_type);
         }
       }
     });
@@ -459,9 +509,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // Раніше «змінити» скидала лише address і novaSubtype, а novaWarehouseRef лишався від
   // попереднього вибору: після повторного «НП → Відділення» з порожнім містом валідація вже
   // вважала доставку заповненою, і замовлення пішло б зі старим відділенням, якого не видно.
-  const clearNovaPoint = () => { setAddress(''); setNovaCityName(''); setNovaCityRef(''); setNovaWarehouseRef(''); };
+  // npInit/rzInit (відновлення з чернетки) теж скидаємо — інакше перемонтований селект підставив би старий пункт
+  const clearNovaPoint = () => { npInit.current = null; setAddress(''); setNovaCityName(''); setNovaCityRef(''); setNovaWarehouseRef(''); };
   const clearDelivery = () => {
-    setDelivery(''); setNovaSubtype(''); clearNovaPoint();
+    setDelivery(''); setNovaSubtype(''); clearNovaPoint(); rzInit.current = null;
     setRzCityId(''); setRzCityName(''); setRzDepId(''); setRzDepLabel('');
   };
 
@@ -622,6 +673,43 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   // Reset promo when cart contents change
   useEffect(() => { setPromoApplied(null); setPromoError(''); }, [totalPrice]);
 
+  // ── Чернетка оформлення (06.11.2026) ─────────────────────────────────────
+  // Дані форми жили лише в стані сторінки: «у каталог → назад у кошик» —
+  // і контакти, доставка, оплата зникали. Тримаємо чернетку в localStorage
+  // браузера покупця (14 днів, очищається після оформлення). Відновлюємо після
+  // монтування, а не в ініціалізаторі useState, — інакше розійдеться гідратація.
+  const [draftReady, setDraftReady] = useState(false);
+  // Відновлений вибір НП/Rozetka — для initial*-пропсів селектів; заморожений на
+  // момент відновлення, щоб набір у полях не запускав повторне «відновлення».
+  const npInit = useRef<{ city: string; cityRef: string; whRef: string; address: string } | null>(null);
+  const rzInit = useRef<{ city: string; cityId: string; dep: string } | null>(null);
+  useEffect(() => {
+    const d = readCheckoutDraft();
+    if (d) {
+      setLastName(d.lastName); setFirstName(d.firstName); setMiddleName(d.middleName);
+      setPhone(d.phone); setCompany(d.company); setEmail(d.email);
+      setDelivery(d.delivery); setNovaSubtype(d.novaSubtype); setAddress(d.address);
+      setNovaCityRef(d.novaCityRef); setNovaCityName(d.novaCityName); setNovaWarehouseRef(d.novaWarehouseRef);
+      setRzCityId(d.rzCityId); setRzCityName(d.rzCityName); setRzDepId(d.rzDepId); setRzDepLabel(d.rzDepLabel);
+      setPayment(d.payment); setComment(d.comment); setNoCallback(d.noCallback);
+      // Відновлюємо пункт НП лише з Ref міста — інакше селект почав би шукати місто за назвою
+      if (d.novaCityRef) npInit.current = { city: d.novaCityName, cityRef: d.novaCityRef, whRef: d.novaWarehouseRef, address: d.novaSubtype === 'courier' ? d.address : '' };
+      if (d.rzCityId) rzInit.current = { city: d.rzCityName, cityId: d.rzCityId, dep: d.rzDepLabel };
+    }
+    setDraftReady(true);
+  }, []);
+  useEffect(() => {
+    if (!draftReady) return;
+    const t = setTimeout(() => writeCheckoutDraft({
+      lastName, firstName, middleName, phone, company, email,
+      delivery, novaSubtype, address, novaCityRef, novaCityName, novaWarehouseRef,
+      rzCityId, rzCityName, rzDepId, rzDepLabel, payment, comment, noCallback,
+    }), 400);
+    return () => clearTimeout(t);
+  }, [draftReady, lastName, firstName, middleName, phone, company, email,
+      delivery, novaSubtype, address, novaCityRef, novaCityName, novaWarehouseRef,
+      rzCityId, rzCityName, rzDepId, rzDepLabel, payment, comment, noCallback]);
+
   const promoEligibleTotal = items.reduce((s, i) => s + (i.is_promo ? 0 : i.price * i.qty), 0);
 
   async function handleApplyPromo() {
@@ -686,6 +774,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Помилка сервера');
+      clearCheckoutDraft();
       // Для вікна «Google Отзывы клиентов» на сторінці успіху — пошта й номер,
       // не через URL (див. app/components/GoogleCustomerReviewsOptIn)
       try { sessionStorage.setItem(GCR_STORAGE_KEY, JSON.stringify({ email, num: data.orderNumber })); } catch {}
@@ -830,20 +919,20 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
         <div className="mobile-pad" style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 32px 64px' }}>
 
           {/* Page header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '20px' }}>
+          <div className="cart-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '20px' }}>
             {/* Заголовок і «N товарів на суму …» — одним рядком (на вузькому екрані підсумок переноситься) */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap', minWidth: 0 }}>
-              <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{tr.pageTitle}</h1>
+              <h1 className="cart-head__title" style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{tr.pageTitle}</h1>
               <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>{tr.itemsCount(totalItems, totalPrice)}</p>
             </div>
-            <Link href={backHref} style={{
+            <Link href={backHref} className="cart-head__back" aria-label={backLabel} title={backLabel} style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               height: '36px', padding: '0 14px', borderRadius: '8px',
               border: '1px solid var(--border)', background: 'var(--bg-card)',
               color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600,
               whiteSpace: 'nowrap', flexShrink: 0,
             }}>
-              <ArrowLeft size={13} />{backLabel}
+              <ArrowLeft size={13} /><span className="cart-head__back-text">{backLabel}</span>
             </Link>
           </div>
 
@@ -978,7 +1067,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               }}>
                                 {novaSubtype === sub && <Check size={8} color="#fff" strokeWidth={3} />}
                               </div>
-                              <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => { setNovaSubtype(sub); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }} style={{ display: 'none' }} />
+                              <input type="radio" name="nova_sub" value={sub} checked={novaSubtype === sub} onChange={() => { npInit.current = null; setNovaSubtype(sub); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }} style={{ display: 'none' }} />
                               <span style={{ fontSize: '13px', fontWeight: novaSubtype === sub ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
                                 {sub === 'warehouse' ? tr.novaWarehouse : sub === 'postomat' ? tr.novaPostomat : tr.novaCourier}
                               </span>
@@ -998,6 +1087,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                                 key={novaSubtype}
                                 mode={novaSubtype}
                                 lang={lang}
+                                // Відновлення з чернетки (лише при першому монтуванні — див. npInit)
+                                initialCity={npInit.current?.city}
+                                initialCityRef={npInit.current?.cityRef}
+                                initialWarehouseRef={npInit.current?.whRef}
+                                initialAddress={npInit.current?.address}
                                 onCityChange={city => { setNovaCityName(city); setAddress(city); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
                                 onWarehouseChange={wh => { setAddress(wh); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
                                 onAddressChange={addr => { setAddress(addr); setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
@@ -1015,6 +1109,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           <RzDeliverySelect
                             weightKg={orderWeightKg}
                             lang={lang}
+                            initialCity={rzInit.current?.city}
+                            initialCityId={rzInit.current?.cityId}
+                            initialDepartment={rzInit.current?.dep}
                             onCityChange={setRzCityName}
                             onCityIdChange={setRzCityId}
                             onDepartmentChange={setRzDepLabel}
@@ -1285,10 +1382,12 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 )}
 
                 {/* Над сумою: «не передзвонювати» і промокод (схований за посиланням) — промокод поруч із сумою, на яку впливає */}
-                <div className="cart-total-extras">
-                  <label className={'cart-nocall' + (noCallback ? ' is-on' : '')}>
+                <div className={'cart-total-extras' + (promoOpen && !promoApplied ? ' is-promo-open' : '')}>
+                  <label className={'cart-nocall' + (noCallback ? ' is-on' : '')} title={tr.noCallbackLabel}>
                     <input type="checkbox" checked={noCallback} onChange={e => setNoCallback(e.target.checked)} />
-                    <span>{tr.noCallbackLabel}</span>
+                    {/* На телефоні — коротко, щоб поруч у тому ж рядку влізла кнопка промокоду */}
+                    <span className="cart-nocall__full">{tr.noCallbackLabel}</span>
+                    <span className="cart-nocall__short">{tr.noCallbackShort}</span>
                   </label>
                   {promoApplied ? (
                     <span className="cart-promo-applied">
@@ -1298,7 +1397,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                     </span>
                   ) : !promoOpen ? (
                     <button type="button" className="cart-promo-toggle" onClick={() => setPromoOpen(true)}>
-                      {lang === 'ru' ? 'Есть промокод' : 'Маю промокод'} ▾
+                      <TicketPercent size={16} strokeWidth={2} aria-hidden />
+                      <span className="cart-promo-toggle__full">{lang === 'ru' ? 'Есть промокод' : 'Маю промокод'} ▾</span>
+                      <span className="cart-promo-toggle__short">{lang === 'ru' ? 'Промокод' : 'Промокод'}</span>
                     </button>
                   ) : (
                     <span className={'cart-promo-inline' + (promoError ? ' has-error' : '')}>

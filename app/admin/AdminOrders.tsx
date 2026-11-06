@@ -101,39 +101,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
       <div className={filtered.length > 0 ? 'oc-sheet' : undefined}>
       <OrdersTableHeader />
 
-      {/* «Вибрати всі» на телефоні: шапка таблиці там схована (.oc-hide-m), а
-          разом з нею і чекбокс вибору — групові дії (друк етикеток, реєстр НП,
-          об'єднання) з телефона були недоступні взагалі. */}
-      {filtered.length > 0 && (() => {
-        const allIds = filtered.map(o => o.id);
-        const allSelected = allIds.every(id => selectedIds.has(id));
-        const picked = allIds.filter(id => selectedIds.has(id)).length;
-        return (
-          <button
-            className="oc-only-m oc-selectall-m"
-            onClick={() => setSelectedIds(allSelected ? new Set() : new Set(allIds))}
-            style={{
-              display: 'none', alignItems: 'center', gap: '8px', width: '100%',
-              marginBottom: '8px', padding: '9px 12px', borderRadius: '10px',
-              border: `1.5px solid ${picked > 0 ? 'var(--brand-teal)' : 'var(--border)'}`,
-              background: picked > 0 ? 'var(--brand-teal-light)' : 'var(--bg-card)',
-              color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-            }}>
-            <span style={{
-              width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-              border: `2px solid ${allSelected ? '#3DBFB8' : 'var(--border)'}`,
-              background: allSelected ? '#3DBFB8' : 'var(--bg-card)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {allSelected && <Check size={9} color="#fff" strokeWidth={3} />}
-            </span>
-            {allSelected ? 'Зняти вибір' : 'Вибрати всі'}
-            <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>
-              {picked > 0 ? `вибрано ${picked} з ${filtered.length}` : `${filtered.length} у списку`}
-            </span>
-          </button>
-        );
-      })()}
+      {/* «Вибрати всі» на телефоні — у рядку підсумку (OrdersToolbar, .oc-summary-tools) */}
 
       {filtered.length === 0 ? (
         <div style={{

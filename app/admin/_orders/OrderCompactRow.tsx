@@ -124,6 +124,27 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               №{mpNumber}
             </span>
           )}
+          {/* Постачальник (колонка «Відпр.» на десктопі): лише для замовлень через
+              постачальника і лише поки замовлення в роботі (до «Відправлено») —
+              «ПОСТ. ✓» надіслано, «ПОСТ.» ще ні. Після відправки питання вже
+              закрите, а в старих замовлень мітки надсилання немає взагалі —
+              жовта «ПОСТ.» на доставленому вводила б в оману (06.11.2026). */}
+          {(order.fulfillment_mode === 'supplier' || order.fulfillment_mode === 'mixed')
+            && ['new', 'confirmed', 'awaiting_stock', 'picking'].includes(order.status) && (
+            <span
+              title={order.supplier_sent_at
+                ? `Надіслано постачальнику ${new Date(order.supplier_sent_at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                : 'Замовлення ще не надіслано постачальнику'}
+              style={{
+                ...rowBadge, display: 'inline-flex', alignItems: 'center', gap: '2px',
+                color: order.supplier_sent_at ? 'var(--color-success)' : 'var(--text-warn-dark)',
+                background: order.supplier_sent_at ? '#DCFCE7' : '#FEF3C7',
+                borderColor: order.supplier_sent_at ? 'var(--border-success)' : 'var(--border-warn)',
+              }}>
+              {order.fulfillment_mode === 'mixed' ? 'MIX' : 'ПОСТ.'}
+              {order.supplier_sent_at && <Check size={11} strokeWidth={3} aria-label="надіслано" />}
+            </span>
+          )}
           {deliveryBadges}
           {/* Оплата: «Наложка» — гроші беремо при врученні, «Оплачено» —
               гроші вже в нас, решта — рахунок ще не закритий. */}

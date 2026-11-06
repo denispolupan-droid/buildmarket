@@ -3260,44 +3260,65 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
   background: #FEF2F2; color: #DC2626; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
 }
 
-/* Смуга фільтрів: одна м'яка підкладка на всю ширину панелі, поділена рисками
-   на секції «Канал · Доставка · Оплата»; секції тягнуться пропорційно, тож
-   смуга доходить до правого краю рівно під пошуком */
-.oc-filter-bar {
-  display: flex; align-items: center; width: 100%; min-height: 34px; box-sizing: border-box;
-  padding: 3px; border-radius: 999px;
-  background: var(--bg-soft); border: 1px solid var(--border-light);
+/* Фільтри журналу на телефоні: один ряд кнопок «Канал ▾ · Доставка ▾ · Оплата ▾».
+   Кожна кнопка — пігулка з прозорим нативним <select> поверх (системний список
+   вибору). Ряд не переноситься; якщо поруч чіпи «Повернення»/«Кабінет» — скрол убік. */
+.oc-mfilter-bar {
+  display: flex; align-items: center; gap: 4px; width: 100%;
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
-.oc-filter-group {
-  display: flex; align-items: center; gap: 1px; flex: 1 1 0; min-width: 0; flex-wrap: wrap;
-  padding: 0 4px 0 10px;
-  border-left: 1px solid var(--border);
+.oc-mfilter-bar::-webkit-scrollbar { display: none; }
+.oc-mfilter-bar > button { flex-shrink: 0; }
+.oc-mfilter {
+  position: relative; flex: 0 1 auto; min-width: 0; max-width: 46%;
+  display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px 0 12px;
+  border: 1.5px solid var(--border); border-radius: 999px; background: var(--bg-card);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
 }
-.oc-filter-group:first-child { border-left: none; }
-/* Чип «Повернення без рішення» (лише на «Скасовано») — крайня секція смуги */
-.oc-filter-bar > button { margin-left: 6px; flex-shrink: 0; height: 28px !important; }
-/* Підпис групи — кнопка: згортає/розгортає значення групи вправо */
-.oc-filter-grp {
-  display: inline-flex; align-items: center; gap: 3px; height: 28px; padding: 0 4px 0 0;
-  border: none; background: none; font-family: inherit; cursor: pointer;
-  font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none;
-  color: var(--text-muted); margin-right: 2px; white-space: nowrap;
+.oc-mfilter svg { flex-shrink: 0; color: currentColor; opacity: 0.7; }
+.oc-mfilter__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Телефон: праворуч від суми — сортування */
+.oc-summary-tools { margin-left: auto; align-items: center; gap: 6px; flex-shrink: 0; }
+.oc-summary-tools .oc-mfilter { max-width: 150px; }
+.oc-mselect {
+  /* Квадрат у рядку фільтрів; з вибраними — ширшає під лічильник */
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 34px; min-width: 34px; padding: 0 8px; flex-shrink: 0;
+  border: 1.5px solid var(--border); border-radius: 999px; background: var(--bg-card);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; font-family: inherit;
 }
-.oc-filter-grp:hover { color: var(--text-primary); }
-.oc-filter-grp svg { transition: transform 0.15s; color: var(--text-muted); }
-.oc-filter-group.open .oc-filter-grp svg { transform: rotate(180deg); }
-.oc-filter-group.open .oc-filter-grp { color: var(--text-primary); }
-/* Пігулки всередині групи — без власних рамок (сегмент на спільній підкладці),
-   компактні, щоб усі три групи вмістились в один рядок */
-/* Один розмір шрифту на всю панель фільтрів — 12 px: підписи груп, значення
-   й лічильники; різниця лише кольором (підпис і лічильник сірі) */
-.oc-filter-group > button {
-  height: 28px !important; padding: 0 10px !important; font-size: 12.5px !important;
-  border-color: transparent !important;
+.oc-mselect.is-on { border-color: var(--brand-teal); background: var(--brand-teal-light); color: var(--text-primary); }
+.oc-mselect__box {
+  width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--border); background: var(--bg-card);
+  display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; line-height: 1;
 }
-.oc-filter-group > button > span { margin-left: 4px !important; font-size: 12px !important; opacity: 0.75 !important; color: var(--text-muted); font-weight: 500; }
-.oc-filter-group > button:hover { border-color: var(--border) !important; }
-
+.oc-mselect__box.is-checked, .oc-mselect__box.is-partial { border-color: #3DBFB8; background: #3DBFB8; }
+/* Чотири кнопки (Період · Канал · Доставка · Оплата) мають влізти в рядок на 360px */
+/* Рядок фільтрів — на всю ширину (.oc-only-m робить його inline-flex, і він стискався до вмісту) */
+.oc-filter-row.oc-only-m { display: flex !important; width: 100%; }
+/* Телефон: однакові відступи пошук → фільтри → перше замовлення (було 0 і 19px, 06.11.2026) */
+@media (max-width: 768px) {
+  .oc-filter-row.oc-only-m { margin-top: 8px; }
+  .oc-toolbar-wrap { margin-bottom: 8px !important; }
+  /* Сума, пошук, фільтри й картки — від одного лівого краю (рядок підсумку мав padding-left 12px) */
+  .oc-summary-row { padding-left: 0; }
+}
+/* «Доставка ▾» потребує ≈82px на кнопку; на телефонах вужчих за ~410px її бракує (виміряно: 400 — «Достав…», 412 — ціла) —
+   там стрілку прибираємо (форма пігулки й так показує кнопку), підпис лишається цілим */
+@media (max-width: 409px) {
+  .oc-mfilter-bar > .oc-mfilter svg { display: none; }
+}
+/* Рівні частки на всю ширину (рішення власника 06.11.2026); довгий підпис — з «…» */
+.oc-mfilter-bar > .oc-mfilter { flex: 1 1 0; max-width: none; justify-content: center; gap: 3px; padding: 0 4px; font-size: 12px; }
+/* Свої дати — рядок під фільтрами: «з [дата] по [дата] ✕» */
+.oc-mfilter-dates { width: 100%; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--text-muted); }
+/* 2-й і 4-й — поля дат (SmartDateInput із кнопкою календаря) */
+.oc-mfilter-dates > span:nth-child(2), .oc-mfilter-dates > span:nth-child(4) { flex: 1 1 0; min-width: 0; }
+.oc-mfilter-dates > button { flex-shrink: 0; width: 34px; height: 34px; border: none; border-radius: 9px; background: #FEF2F2; color: #DC2626; font-weight: 700; cursor: pointer; }
+.oc-mfilter select {
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+  font-size: 16px; /* iOS не зумить сторінку на фокусі */
+  border: none; background: none; appearance: none; -webkit-appearance: none;
+}
 
 /* Заголовки колонок аркуша — кнопки сортування */
 .oc-th {
@@ -3468,11 +3489,6 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
   /* Період стоїть у рядку підсумку — без роздільника групи зверху */
   .oc-summary-row .oc-filter-dates { border-top: none !important; padding-top: 3px !important; margin-top: 0 !important; width: 100%; }
   .oc-summary-row .oc-search-compact { border-top: none !important; padding-top: 0 !important; margin-top: 0 !important; flex: 1 1 100%; }
-  /* Смуга фільтрів на телефоні — секції одна під одною, пігулки переносяться */
-  .oc-filter-bar { flex-wrap: wrap; border-radius: 12px; padding: 4px 6px; }
-  .oc-filter-group { flex: 1 1 100%; border-left: none; border-top: 1px solid var(--border); padding: 4px 2px; }
-  .oc-filter-group:first-child { border-top: none; }
-  .oc-filter-grp { flex-basis: 100%; margin: 0 0 2px !important; }
   .oc-toolbar { padding: 8px; }
   .oc-summary { min-width: 0; }
 }
@@ -3653,4 +3669,12 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
   .inbox.has-selected .inbox-thread { display: flex; }
   .inbox-back { display: inline-flex; }
   .inbox-bubble { max-width: 88%; }
+}
+
+/* Меню адмінки до гідратації: сервер не знає ширини екрана й малює десктопний
+   <aside> (data-mobile="0"). На телефоні ховаємо його за лівий край, доки клієнт
+   не перемкнеться на мобільний режим — інакше десктопне меню на мить стискало
+   сторінку (AdminSidebar, useSyncExternalStore, 06.11.2026). */
+@media (max-width: 768px) {
+  aside[data-admin-sidebar][data-mobile="0"] { position: fixed !important; transform: translateX(-100%) !important; }
 }

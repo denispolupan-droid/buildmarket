@@ -1,6 +1,7 @@
 'use client';
 
-import { X, ChevronDown, Search } from 'lucide-react';
+import { useState } from 'react';
+import { X, ChevronDown, Search, Check } from 'lucide-react';
 import SmartDateInput from '../../components/SmartDateInput';
 import { PAYMENT_GROUPS } from '../../../lib/payment-method';
 import { CHANNEL_LABEL } from './constants';
@@ -12,14 +13,36 @@ export function OrdersToolbar() {
   const {
     pushFilters, dateFrom, dateTo, totalFound, summaryAmount, currentStatus,
     totalPages, currentPage, searchBoxRef, searchInput, searchHint, searchInputRef,
-    setSearchInput, pushSearch, pendingReturns, retFilter, grpOpen, toggleGroup,
+    setSearchInput, pushSearch, pendingReturns, retFilter,
     channelFilter, channelCounts, carrierFilter, carrierCounts, payCounts, payFilter,
     orders, cabinetAheadOnly, setCabinetAheadOnly, initialSearch, sentFilter,
+    sortBy, sortDir, filtered, selectedIds, setSelectedIds,
   } = useOrdersCtx();
+  // Дати пресетів — за Києвом: toISOString() дає UTC, і після опівночі
+  // до 03:00 «Сьогодні» було ще вчорашнім днем
+  const kyivYmd = (ms: number) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+  const today = kyivYmd(Date.now());
+  const weekAgo = kyivYmd(Date.now() - 7 * 86400000);
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const applyDate = (from: string, to: string) => pushFilters({ dateFrom: from, dateTo: to });
+  const hasDateFilter = !!(dateFrom || dateTo);
+  const PERIODS = [
+    { value: 'today', label: 'Сьогодні', from: today,      to: today },
+    { value: 'week',  label: '7 днів',   from: weekAgo,    to: today },
+    { value: 'month', label: 'Місяць',   from: monthStart, to: today },
+  ];
+  const periodPreset = PERIODS.find(p => dateFrom === p.from && dateTo === p.to)?.value;
+  // Телефон: рядок своїх дат під фільтрами — відкритий, коли обрано «Свої дати…»
+  // або період не збігається з жодним пресетом
+  const [customDates, setCustomDates] = useState(false);
+  const showCustom = customDates || (hasDateFilter && !periodPreset);
+  // 16px — інакше iOS зумить сторінку на фокусі поля
+  const mDateStyle: React.CSSProperties = { height: '34px', width: '100%', minWidth: 0, fontSize: '16px', borderRadius: '9px', padding: '0 6px' };
+  const ddmm = (iso?: string | null) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}` : '…');
   return (
     <>
       {/* Filters + search */}
-      <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="oc-toolbar-wrap" style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
         {/* Панель інструментів — один ряд: підсумок · період · пошук. Фільтри
             каналу / перевізника / оплати на десктопі — лійками в шапці аркуша,
@@ -28,14 +51,6 @@ export function OrdersToolbar() {
         {/* Row 0: підсумок активної вкладки + період + пошук. Сума — головний
             акцент, поруч кількість і середній чек стовпчиком. */}
         {(() => {
-          // Дати пресетів — за Києвом: toISOString() дає UTC, і після опівночі
-          // до 03:00 «Сьогодні» було ще вчорашнім днем
-          const kyivYmd = (ms: number) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
-          const today = kyivYmd(Date.now());
-          const weekAgo = kyivYmd(Date.now() - 7 * 86400000);
-          const monthStart = `${today.slice(0, 7)}-01`;
-          const applyDate = (from: string, to: string) => pushFilters({ dateFrom: from, dateTo: to });
-          const hasDateFilter = !!(dateFrom || dateTo);
           const fmt = (v: number) => v.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
           const cnt = totalFound;
           const avg = cnt > 0 && summaryAmount > 0 ? Math.round(summaryAmount / cnt) : 0;
@@ -62,6 +77,19 @@ export function OrdersToolbar() {
                   <span className="oc-summary-stat"><b>{cnt}</b> {noun}{totalPages > 1 && <span className="oc-summary-page"> · стор. {currentPage}/{totalPages}</span>}</span>
                   {showMoney && avg > 0 && <span className="oc-summary-stat">середній чек <b>{fmt(avg)} ₴</b></span>}
                 </span>
+              </div>
+              {/* Телефон: праворуч від суми — сортування. Шапки
+                  колонок (де на десктопі сортують) на телефоні немає (06.11.2026). */}
+              <div className="oc-summary-tools oc-only-m" style={{ display: 'none' }}>
+                <MobileFilterSelect
+                  label="Нові" allLabel="Нові спочатку"
+                  value={sortBy === 'created_at' && sortDir === 'desc' ? '' : `${sortBy}:${sortDir}`}
+                  onChange={v => {
+                    const [key, dir] = (v || 'created_at:desc').split(':');
+                    pushFilters({ sortBy: key, sortDir: dir as 'asc' | 'desc' });
+                  }}
+                  options={SORT_OPTIONS}
+                />
               </div>
               {/* Порядок у рядку (рішення власника 20.10.2026): пошук → період →
                   повернення. Пошук перший, бо ним користуються найчастіше.
@@ -101,7 +129,7 @@ export function OrdersToolbar() {
                 )}
               </div>
               </div>
-              <div className="oc-filter-dates oc-period" role="group" aria-label="Період">
+              <div className="oc-filter-dates oc-period oc-hide-m" role="group" aria-label="Період">
                 {[
                   { label: 'Сьогодні', from: today,      to: today },
                   { label: '7 днів',   from: weekAgo,    to: today },
@@ -153,108 +181,76 @@ export function OrdersToolbar() {
             пігулками — на десктопі ці фільтри в шапці аркуша. Клік по підпису
             секції згортає її до підпису й обраного значення. */}
         <div className="oc-filter-row oc-only-m" style={{ display: 'none' }}>
-          <div className="oc-filter-bar">
-            <div className={`oc-filter-group${grpOpen('channel') ? ' open' : ''}`}>
-            <button type="button" className="oc-filter-grp" onClick={() => toggleGroup('channel')} aria-expanded={grpOpen('channel')} title={grpOpen('channel') ? 'Згорнути' : 'Фільтр за каналом'}>Канал <ChevronDown size={11} /></button>
-            {[
-              { value: '',         label: 'Всі' },
-              { value: 'website',  label: 'Магазин' },
-              { value: 'b2b',      label: 'Опт' },
-              { value: 'dropship', label: 'Дроп' },
-              { value: 'retail',   label: 'Роздріб' },
-              { value: 'phone',    label: 'Телефон' },
-              { value: 'prom',     label: 'Prom' },
-              { value: 'rozetka',  label: 'Rozetka' },
-            ].map(ch => {
-              const active = channelFilter === ch.value;
-              const cfg = ch.value ? CHANNEL_LABEL[ch.value] : null;
-              const n = ch.value
-                ? (channelCounts[ch.value] ?? 0)
-                : Object.values(channelCounts).reduce((s, c) => s + c, 0);
-              // Порожні канали ховаємо: на вкладці статусу їх буває половина
-              // ряду («Опт 0 · Дроп 0 · Телефон 0»), через що фільтри
-              // переносились на другий рядок. Перемикатись туди все одно нема
-              // на що. «Всі канали» і вибраний чіп лишаються завжди.
-              if (ch.value && !n && !active) return null;
-              // Згорнута група показує лише обраний канал («Всі канали» — не фільтр)
-              if (!grpOpen('channel') && !(active && ch.value)) return null;
+          <div className="oc-mfilter-bar">
+            {/* «Вибрати всі» — квадрат-чекбокс першим у рядку фільтрів (рішення власника 06.11.2026);
+                поруч із ним — лічильник вибраних, коли щось вибрано */}
+            {filtered.length > 0 && (() => {
+              const allIds = filtered.map(o => o.id);
+              const allSelected = allIds.every(id => selectedIds.has(id));
+              const picked = allIds.filter(id => selectedIds.has(id)).length;
               return (
-                <button
-                  key={ch.value}
-                  onClick={() => pushFilters({ channel: ch.value })}
-                  style={{
-                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    border: `1.5px solid ${active ? (cfg?.color ?? 'var(--navy)') : 'var(--border)'}`,
-                    background: active ? (cfg?.bg ?? '#EFF4FF') : 'var(--bg-card)',
-                    color: active ? (cfg?.color ?? 'var(--navy)') : 'var(--text-secondary)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                >
-                  {ch.label}
-                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{n}</span>
+                <button type="button" className={`oc-mselect${picked > 0 ? ' is-on' : ''}`}
+                  onClick={() => setSelectedIds(allSelected ? new Set() : new Set(allIds))}
+                  aria-pressed={allSelected}
+                  aria-label={allSelected ? 'Зняти вибір' : `Вибрати всі ${allIds.length}`}
+                  title={allSelected ? 'Зняти вибір' : `Вибрати всі ${allIds.length}`}>
+                  <span className={`oc-mselect__box${allSelected ? ' is-checked' : picked > 0 ? ' is-partial' : ''}`} aria-hidden>
+                    {allSelected ? <Check size={10} strokeWidth={3.5} /> : picked > 0 ? '–' : null}
+                  </span>
+                  {picked > 0 && <span className="oc-mselect__n">{picked}</span>}
                 </button>
               );
-            })}
-            </div>
-            {/* Перевізник. Окремий ряд кнопок був би зайвим рядком у щільній
-                панелі, тож стоять тут же, своєю групою з підписом (.oc-filter-group):
-                підпис і пігулки на спільній підкладці читаються одним блоком. */}
-            <div className={`oc-filter-group${grpOpen('carrier') ? ' open' : ''}`}>
-            <button type="button" className="oc-filter-grp" onClick={() => toggleGroup('carrier')} aria-expanded={grpOpen('carrier')} title={grpOpen('carrier') ? 'Згорнути' : 'Фільтр за перевізником'}>Доставка <ChevronDown size={11} /></button>
-            {[
-              { value: 'nova',    label: 'НП',      color: '#7C2D12', bg: '#FFF7ED', border: '#FDBA74' },
-              { value: 'rozetka', label: 'Rozetka Доставка', color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' },
-            ].map(c => {
-              const active = carrierFilter === c.value;
-              const n = carrierCounts[c.value] ?? 0;
-              if (!n && !active) return null;
-              if (!grpOpen('carrier') && !active) return null;
-              return (
-                <button
-                  key={c.value}
-                  title={c.value === 'nova' ? 'Відправлення Новою Поштою' : 'Доставка в точки видачі Rozetka (накладна RMP-…)'}
-                  onClick={() => pushFilters({ carrier: active ? '' : c.value })}
-                  style={{
-                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    border: `1.5px solid ${active ? c.border : 'var(--border)'}`,
-                    background: active ? c.bg : 'var(--bg-card)',
-                    color: active ? c.color : 'var(--text-secondary)',
-                    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
-                  }}
-                >
-                  {c.label}
-                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{n}</span>
-                </button>
-              );
-            })}
-            {/* Форма оплати. Показуємо лише ті, що реально є в поточному зрізі
-                (плюс активну) — інакше і без того щільний ряд фільтрів обріс би
-                порожніми «Готівка 0 · Відстрочка 0». */}
-            </div>
-            <div className={`oc-filter-group${grpOpen('pay') ? ' open' : ''}`}>
-            <button type="button" className="oc-filter-grp" onClick={() => toggleGroup('pay')} aria-expanded={grpOpen('pay')} title={grpOpen('pay') ? 'Згорнути' : 'Фільтр за формою оплати'}>Оплата <ChevronDown size={11} /></button>
-            {PAYMENT_GROUPS.filter(g => ((payCounts[g.key] ?? 0) > 0 || payFilter === g.key) && (grpOpen('pay') || payFilter === g.key)).map(g => {
-              const code = g.key;
-              const active = payFilter === code;
-              return (
-                <button
-                  key={code}
-                  title={g.hint}
-                  onClick={() => pushFilters({ pay: active ? '' : code })}
-                  style={{
-                    height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    border: `1.5px solid ${active ? '#7C3AED' : 'var(--border)'}`,
-                    background: active ? '#F3E8FF' : 'var(--bg-card)',
-                    color: active ? '#6D28D9' : 'var(--text-secondary)',
-                    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
-                  }}
-                >
-                  {g.label}
-                  <span style={{ marginLeft: '4px', fontSize: '10px', opacity: 0.7 }}>{payCounts[code] ?? 0}</span>
-                </button>
-              );
-            })}
-            </div>
+            })()}
+            <MobileFilterSelect
+              label="Період" allLabel="Усі дати"
+              value={hasDateFilter ? (periodPreset ?? 'custom') : (customDates ? 'custom' : '')}
+              onChange={v => {
+                if (v === 'custom') { setCustomDates(true); return; }
+                setCustomDates(false);
+                const p = PERIODS.find(x => x.value === v);
+                if (p) applyDate(p.from, p.to); else pushFilters({ dateFrom: '', dateTo: '' });
+              }}
+              options={[
+                ...PERIODS.map(p => ({ value: p.value, label: p.label })),
+                { value: 'custom', label: hasDateFilter && !periodPreset ? `${ddmm(dateFrom)}–${ddmm(dateTo)}` : 'Свої дати…' },
+              ]}
+            />
+            {/* Телефон: три кнопки в один ряд, кожна — нативний <select> (системний
+                список вибору на Android/iOS). Без фільтра на кнопці назва групи, з
+                фільтром — обране значення з підсвіткою. Раніше групи стояли пігулками
+                одна під одною й займали пів екрана (06.11.2026). */}
+            <MobileFilterSelect
+              label="Канал" allLabel="Всі канали"
+              value={channelFilter}
+              onChange={v => pushFilters({ channel: v })}
+              total={Object.values(channelCounts).reduce((s, c) => s + c, 0)}
+              options={CHANNEL_OPTIONS
+                .map(ch => ({ value: ch.value, label: ch.label, n: channelCounts[ch.value] ?? 0 }))
+                .filter(o => o.n > 0 || o.value === channelFilter)}
+              activeColor={CHANNEL_LABEL[channelFilter]?.color}
+              activeBg={CHANNEL_LABEL[channelFilter]?.bg}
+            />
+            <MobileFilterSelect
+              label="Доставка" allLabel="Усі перевізники"
+              value={carrierFilter}
+              onChange={v => pushFilters({ carrier: v })}
+              total={Object.values(carrierCounts).reduce((s, c) => s + c, 0)}
+              options={[
+                { value: 'nova',    label: 'НП',               n: carrierCounts.nova ?? 0 },
+                { value: 'rozetka', label: 'Rozetka Доставка', n: carrierCounts.rozetka ?? 0 },
+              ].filter(o => o.n > 0 || o.value === carrierFilter)}
+              activeColor="#7C2D12" activeBg="#FFF7ED"
+            />
+            <MobileFilterSelect
+              label="Оплата" allLabel="Будь-яка оплата"
+              value={payFilter}
+              onChange={v => pushFilters({ pay: v })}
+              total={Object.values(payCounts).reduce((s, c) => s + c, 0)}
+              options={PAYMENT_GROUPS
+                .map(g => ({ value: g.key as string, label: g.label, n: payCounts[g.key] ?? 0 }))
+                .filter(o => o.n > 0 || o.value === payFilter)}
+              activeColor="#6D28D9" activeBg="#F3E8FF"
+            />
             {/* Повернення без рішення. Це не стан замовлення, а робота, яка
                 висить: посилка їде назад, а забирати її з пошти чи залишити —
                 ще ніхто не сказав. Серед десятків скасованих такі рядки
@@ -307,6 +303,17 @@ export function OrdersToolbar() {
             })()}
           </div>
         </div>
+        {/* Телефон: свої дати — окремим рядком під фільтрами, лише коли обрано «Свої дати…» */}
+        {showCustom && (
+          <div className="oc-mfilter-dates oc-only-m" style={{ display: 'none' }}>
+            <span>з</span>
+            <SmartDateInput value={dateFrom ?? ''} onChange={v => applyDate(v, dateTo ?? '')} style={mDateStyle} withPicker />
+            <span>по</span>
+            <SmartDateInput value={dateTo ?? ''} onChange={v => applyDate(dateFrom ?? '', v)} style={mDateStyle} withPicker />
+            <button type="button" aria-label="Скинути період" title="Скинути період"
+              onClick={() => { setCustomDates(false); pushFilters({ dateFrom: '', dateTo: '' }); }}>✕</button>
+          </div>
+        )}
         </div>
 
         {/* Період — у рядку підсумку вище (Row 0); сортування — кліком по
@@ -348,5 +355,57 @@ export function OrdersToolbar() {
         })()}
       </div>
     </>
+  );
+}
+
+// Сортування на телефоні (значення — «колонка:напрям», як у шапці аркуша на десктопі).
+// Перший пункт («Нові спочатку») — порядок за замовчуванням, тож його тут немає.
+const SORT_OPTIONS = [
+  { value: 'created_at:asc',  label: 'Старі спочатку' },
+  { value: 'total_price:desc', label: 'Сума ↓' },
+  { value: 'total_price:asc',  label: 'Сума ↑' },
+  { value: 'status:asc',       label: 'За статусом' },
+  { value: 'contact:asc',      label: 'За клієнтом' },
+];
+
+// Канали в порядку фільтра (порожні ховаються — див. MobileFilterSelect)
+const CHANNEL_OPTIONS = [
+  { value: 'website',  label: 'Магазин' },
+  { value: 'b2b',      label: 'Опт' },
+  { value: 'dropship', label: 'Дроп' },
+  { value: 'retail',   label: 'Роздріб' },
+  { value: 'phone',    label: 'Телефон' },
+  { value: 'prom',     label: 'Prom' },
+  { value: 'rozetka',  label: 'Rozetka' },
+];
+
+/**
+ * Фільтр-кнопка для телефону: пігулка з назвою групи (або обраним значенням),
+ * а поверх неї — прозорий нативний <select>, тож дотик відкриває системний
+ * список вибору. Перше значення списку скидає фільтр.
+ */
+function MobileFilterSelect({ label, allLabel, value, onChange, options, total, activeColor, activeBg }: {
+  label: string;
+  allLabel: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string; n?: number }[];
+  /** Скільки всього — у першому пункті «Усі …»; без нього лічильників немає (Період) */
+  total?: number;
+  activeColor?: string;
+  activeBg?: string;
+}) {
+  const current = options.find(o => o.value === value);
+  const active = Boolean(value);
+  return (
+    <label className={`oc-mfilter${active ? ' is-active' : ''}`}
+      style={active ? { color: activeColor ?? 'var(--navy)', background: activeBg ?? '#EFF4FF', borderColor: activeColor ?? 'var(--navy)' } : undefined}>
+      <span className="oc-mfilter__text">{active ? (current?.label ?? value) : label}</span>
+      <ChevronDown size={13} aria-hidden />
+      <select value={value} onChange={e => onChange(e.target.value)} aria-label={label}>
+        <option value="">{total == null ? allLabel : `${allLabel} (${total})`}</option>
+        {options.map(o => <option key={o.value} value={o.value}>{o.n == null ? o.label : `${o.label} (${o.n})`}</option>)}
+      </select>
+    </label>
   );
 }

@@ -177,10 +177,6 @@ export function useAdminOrders(props: AdminOrdersProps) {
   // Єдиний фільтр, що лишився клієнтським: ознака рахується з rozetka_data вже в
   // браузері, окремої колонки в базі під неї немає.
   const [cabinetAheadOnly, setCabinetAheadOnly] = useState(false);
-  // Групи фільтрів (канал / доставка / оплата): клік по підпису згортає групу
-  // до підпису й обраного значення, повторний — розгортає вправо. За
-  // замовчуванням усі розгорнуті (рішення власника 17.10.2026).
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['channel', 'carrier', 'pay']));
   // На десктопі фільтри каналу / перевізника / оплати живуть у шапці аркуша —
   // лійка в заголовку колонки відкриває меню значень (варіант 2, 18.10.2026).
   // Відкрите меню закривається кліком поза ним або Escape.
@@ -193,12 +189,6 @@ export function useAdminOrders(props: AdminOrdersProps) {
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [hdrMenu]);
-  const grpOpen = (g: string) => openGroups.has(g);
-  const toggleGroup = (g: string) => setOpenGroups(prev => {
-    const next = new Set(prev);
-    if (next.has(g)) next.delete(g); else next.add(g);
-    return next;
-  });
 
   // Пошук і фільтри каналу/перевізника живуть в URL, застосовує їх сервер по всій
   // базі. Локально тримаємо лише набране в полі, щоб не смикати навігацію на кожну
@@ -1940,8 +1930,6 @@ export function useAdminOrders(props: AdminOrdersProps) {
     setCabinetAheadOnly,
     hdrMenu,
     setHdrMenu,
-    grpOpen,
-    toggleGroup,
     searchInput,
     setSearchInput,
     searchInputRef,

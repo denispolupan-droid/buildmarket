@@ -113,10 +113,12 @@
   .cart-sec__tick, .cart-sec.is-collapsed.is-flash, .cart-field.is-valid::after { animation: none; }
 }
 
-/* На телефоні підсумок переходить під назву, а не стискається до «…» */
+/* На телефоні підсумок стоїть одразу після іконки (олівець — праворуч) і, якщо
+   довгий, переноситься в межах своєї колонки, а не стискається до «…».
+   Раніше він переходив окремим рядком під іконку — блок здавався порожнім
+   угорі, а в коментарі текст опинявся після олівця (06.11.2026). */
 @media (max-width: 768px) {
-  .cart-sec.is-collapsed .cart-sec__head { flex-wrap: wrap; }
-  .cart-sec__summary { order: 3; flex-basis: 100%; margin-left: 42px; white-space: normal; }
+  .cart-sec__summary { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 }
 
 /* Спосіб доставки, недоступний для цього замовлення (напр. ROZETKA понад ліміт ваги) */
@@ -227,6 +229,21 @@
 @media (max-width: 768px) {
   .cart-total-bar__btn { width: 100%; }
 }
+/* Короткі підписи — лише на телефоні (06.11.2026): «☑ Не передзвонювати» тягнеться на весь
+   залишок рядка, поруч «🎟 Промокод» — один рядок без порожнечі. Розгорнуте поле промокоду
+   на телефоні йде наступним рядком на всю ширину, щоб не стискати підпис ліворуч. */
+.cart-nocall__short, .cart-promo-toggle__short { display: none; }
+@media (max-width: 768px) {
+  .cart-total-extras { flex-wrap: nowrap; gap: 8px; }
+  .cart-nocall { flex: 1 1 auto; min-width: 0; }
+  .cart-nocall__full, .cart-promo-toggle__full { display: none; }
+  .cart-nocall__short { display: inline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cart-promo-toggle__short { display: inline; }
+  .cart-promo-toggle, .cart-promo-applied { flex-shrink: 0; }
+  .cart-total-extras.is-promo-open { flex-wrap: wrap; }
+  .cart-total-extras.is-promo-open .cart-promo-inline { flex: 1 1 100%; }
+  .cart-total-extras.is-promo-open .cart-promo-inline input { flex: 1 1 auto; width: auto !important; min-width: 0; font-size: 16px; }
+}
 
 /* Список «Ваше замовлення» у кошику. Префікс cart- — CSS сторінок глобальний, назви не мають збігатися.
    Шкала: мета 11.5 / назва 14 / ціна за од. 12 / сума 15 — лічильник 32px під цю шкалу. */
@@ -273,3 +290,16 @@
 .cart-qty-stepper input::-webkit-outer-spin-button,
 .cart-qty-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 [data-theme="dark"] .cart-qty-stepper input { background: #0F172A; border-color: #334155; }
+
+/* Шапка сторінки на телефоні (06.11.2026): «← До каталогу» — рядком-посиланням НАД
+   заголовком (як «хлібні крихти»): підписана, зручна під палець; заголовок «Оформлення
+   замовлення» — один рядок 20px (у крайньому разі «…»), підсумок «N товарів …» — під ним. */
+@media (max-width: 768px) {
+  .cart-head { flex-wrap: wrap; row-gap: 4px !important; margin-bottom: 14px !important; }
+  .cart-head__back {
+    order: -1; flex-basis: 100%; height: 32px !important; padding: 0 !important; margin-left: -2px;
+    border: none !important; background: none !important; font-size: 14px !important; color: var(--brand-blue) !important;
+  }
+  .cart-head__back svg { width: 16px; height: 16px; }
+  .cart-head__title { font-size: 20px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+}

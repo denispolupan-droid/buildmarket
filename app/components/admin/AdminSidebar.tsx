@@ -1,6 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
+
+const MOBILE_MQ = '(max-width: 768px)';
+function subscribeMobile(onChange: () => void) {
+  const mq = window.matchMedia(MOBILE_MQ);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
 import { usePathname } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
@@ -39,7 +46,13 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
   // the admin panel unusable on phones. Lazy-initialized (matching the same
   // pattern in CatalogClient.tsx) so mobile doesn't flash the desktop layout
   // before the effect below can run.
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
+  //
+  // 06.11.2026: лінива ініціалізація з window давала hydration mismatch —
+  // сервер малював десктопний <aside>, клієнт одразу кнопку меню, і React
+  // перемальовував дерево. useSyncExternalStore під час гідратації бере
+  // серверний знімок (false), одразу після — реальний; «спалах» десктопного
+  // меню на телефоні до гідратації гасить CSS (aside[data-admin-sidebar] у globals.css).
+  const isMobile = useSyncExternalStore(subscribeMobile, () => window.matchMedia(MOBILE_MQ).matches, () => false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -58,13 +71,6 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
   useEffect(() => {
     if (localStorage.getItem('admin_sidebar_collapsed') === '1') setCollapsed(true);
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
   }, []);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
@@ -145,7 +151,7 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
         </button>
       )}
 
-      <aside style={{
+      <aside data-admin-sidebar data-mobile={isMobile ? '1' : '0'} style={{
         width:      `${w}px`,
         flexShrink: 0,
         background: 'linear-gradient(180deg, #142844 0%, #1A3357 100%)',
