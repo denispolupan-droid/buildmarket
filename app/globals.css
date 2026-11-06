@@ -2408,7 +2408,8 @@ input, select { font-family: inherit; }
      Порядок читання зверху вниз повторює питання, які до картки ставлять:
      «що це і в якому воно стані» → «звідки і що за замовлення» → «хто клієнт і
      що веземо» → «куди» → «як їде».
-     Колонка 1 — чекбокс, колонка 2 — усе інше, тож ліві краї збігаються. */
+     Чекбокс — лише в першому рядку; рядки 2–6 ідуть від лівого краю картки
+     (1 / -1), а не від колонки 2: під квадратиком була порожня смуга (06.11.2026). */
   .order-compact-row {
     display: grid !important;
     /* Шапка рядка: № · дата · канал · статус притиснуті ліворуч, сума — до
@@ -2439,7 +2440,7 @@ input, select { font-family: inherit; }
   /* Джерело, номер у кабінеті МП, умови доставки й оплата — власним рядком під
      номером. У шапці вони змагалися за ширину з номером, датою і статусом. */
   .order-compact-row .oc-meta-m {
-    display: flex !important; grid-column: 2 / -1; grid-row: 2;
+    display: flex !important; grid-column: 1 / -1; grid-row: 2;
     flex-wrap: wrap; align-items: center; min-width: 0;
   }
   /* Статус — єдиний, хто підтискається, коли шапка не вміщає все: значення видно
@@ -2500,7 +2501,7 @@ input, select { font-family: inherit; }
      саме за ним замовлення й упізнають. Тому flex-shrink: 0 в обох, а перенос
      робить flex-wrap. Товар із мініатюрою — завжди власним рядком. */
   .order-compact-row .oc-cust {
-    grid-column: 2 / -1; grid-row: 3; min-width: 0;
+    grid-column: 1 / -1; grid-row: 3; min-width: 0;
     display: flex !important; flex-wrap: wrap; align-items: baseline; gap: 1px 8px;
   }
   .order-compact-row .oc-cust > .oc-nameline { flex: 0 0 auto; max-width: 100%; }
@@ -2517,7 +2518,7 @@ input, select { font-family: inherit; }
      (flex переносить елемент, а не текст) — саме через це сусідні картки
      виглядали по-різному. display: block повертає звичайний потік тексту. */
   .order-compact-row .oc-ship {
-    display: block !important; grid-column: 2 / -1; grid-row: 4;
+    display: block !important; grid-column: 1 / -1; grid-row: 4;
   }
   .order-compact-row .oc-ship > span { display: inline; }
   .order-compact-row .oc-ship > .oc-carrier { margin-right: 6px; }
@@ -2525,7 +2526,7 @@ input, select { font-family: inherit; }
      стан («Прибув у відділення», «Очікує в пункті самовивозу») підтискається
      багатокрапкою. Перенос тут зайвий — повний текст все одно в підказці й у
      розгорнутій картці, а зайвий рядок множився на всі відправлені замовлення. */
-  .order-compact-row .oc-track { display: flex !important; grid-column: 2 / -1; grid-row: 5; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+  .order-compact-row .oc-track { display: flex !important; grid-column: 1 / -1; grid-row: 5; gap: 8px; flex-wrap: nowrap; min-width: 0; }
   .order-compact-row .oc-track .oc-cstat { min-width: 0; flex: 0 1 auto; }
   /* Ні ТТН, ні статусу перевізника — рядка теж немає, інакше він з'їдав би
      вертикальний проміжок у кожного непроведеного замовлення. */
