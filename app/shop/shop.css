@@ -757,6 +757,9 @@ body:has(.shop-layout) { overflow-anchor: none; }
   .shop-mobile-filter-btn { display: flex; }
   .shop-title { display: none; }
   .shop-topbar { justify-content: flex-start; flex-wrap: wrap; }
+  /* Заголовок на телефоні схований — лишається один ряд кнопок, і 10px зверху/знизу
+     плюс 12px під смугою виглядали порожнечею (06.11.2026) */
+  .shop-topbar { padding: 6px 10px; margin-bottom: 2px; }
   /* Ряд контролів розтягуємо на всю ширину: селект сортування під ним займає
      100%, і без цього праві краї не збігались — блок читався кривим. */
   /* Один ряд на всю ширину (06.11.2026): сортування — іконкою .shop-msort у ряду,
