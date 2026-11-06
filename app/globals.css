@@ -3264,7 +3264,7 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
    Кожна кнопка — пігулка з прозорим нативним <select> поверх (системний список
    вибору). Ряд не переноситься; якщо поруч чіпи «Повернення»/«Кабінет» — скрол убік. */
 .oc-mfilter-bar {
-  display: flex; align-items: center; gap: 4px; width: 100%;
+  display: flex; align-items: center; gap: 3px; width: 100%;
   flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
 .oc-mfilter-bar::-webkit-scrollbar { display: none; }
@@ -3280,6 +3280,13 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
 /* Телефон: праворуч від суми — сортування */
 .oc-summary-tools { margin-left: auto; align-items: center; gap: 6px; flex-shrink: 0; }
 .oc-summary-tools .oc-mfilter { max-width: 150px; }
+/* Сортування на вузьких телефонах — лише іконка ⇅ (34px): інакше на «Всі» з шестизначною сумою
+   не вміщались «775 замовлень · чек 631 ₴» (виміряно на 360/375, 06.11.2026). Обране — підсвічене. */
+@media (max-width: 389px) {
+  .oc-msort { width: 34px; min-width: 34px; padding: 0 !important; justify-content: center; }
+  .oc-msort .oc-mfilter__text, .oc-msort > svg:not(.oc-msort__icon) { display: none; }
+  .oc-msort .oc-msort__icon { opacity: 1; }
+}
 .oc-mselect {
   /* Квадрат у рядку фільтрів; з вибраними — ширшає під лічильник */
   display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 34px; min-width: 34px; padding: 0 8px; flex-shrink: 0;
@@ -3302,13 +3309,26 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
   /* Сума, пошук, фільтри й картки — від одного лівого краю (рядок підсумку мав padding-left 12px) */
   .oc-summary-row { padding-left: 0; }
 }
-/* «Доставка ▾» потребує ≈82px на кнопку; на телефонах вужчих за ~410px її бракує (виміряно: 400 — «Достав…», 412 — ціла) —
-   там стрілку прибираємо (форма пігулки й так показує кнопку), підпис лишається цілим */
-@media (max-width: 409px) {
-  .oc-mfilter-bar > .oc-mfilter svg { display: none; }
+
+/* Реєстр НП у рядку фільтрів — після вертикальної риски, окремий блок (дія, не фільтр) */
+.oc-mfilter-sep { flex: 0 0 1px; align-self: stretch; margin: 5px 1px; background: var(--border); }
+.oc-mnp {
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  /* Лише іконка: на 360–412px поруч із 4 фільтрами на підпис місця немає (виміряно) */
+  width: 34px; height: 34px; padding: 0; border: 1.5px solid var(--border); border-radius: 999px; background: var(--bg-card);
+  color: #B91C1C; text-decoration: none;
 }
+.oc-mnp:hover { border-color: #B91C1C; }
 /* Рівні частки на всю ширину (рішення власника 06.11.2026); довгий підпис — з «…» */
-.oc-mfilter-bar > .oc-mfilter { flex: 1 1 0; max-width: none; justify-content: center; gap: 3px; padding: 0 4px; font-size: 12px; }
+.oc-mfilter-bar > .oc-mfilter { flex: 1 1 0; max-width: none; justify-content: center; gap: 3px; padding: 0 3px; font-size: 12px; }
+/* Шрифт фільтрів під ширину екрана — щоб «Доставка» лишалась цілою поруч із ☐ і кнопкою НП.
+   Виміряно 06.11.2026: текст «Доставка» 51/53/55/58px при 10.5/11/11.5/12px; ширина кнопки на
+   360/375/384/393/412 — 54/57/60/62/67px. Стрілок ▾ у цьому рядку немає: місця на них не лишається. */
+.oc-mfilter-bar > .oc-mfilter svg { display: none; }
+@media (max-width: 404px) { .oc-mfilter-bar > .oc-mfilter { font-size: 11.5px; } }
+@media (max-width: 389px) { .oc-mfilter-bar > .oc-mfilter { font-size: 11px; } }
+@media (max-width: 379px) { .oc-mfilter-bar > .oc-mfilter { font-size: 10.5px; } }
+@media (max-width: 369px) { .oc-mfilter-bar > .oc-mfilter { font-size: 10px; } }
 /* Свої дати — рядок під фільтрами: «з [дата] по [дата] ✕» */
 .oc-mfilter-dates { width: 100%; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--text-muted); }
 /* 2-й і 4-й — поля дат (SmartDateInput із кнопкою календаря) */
@@ -3491,6 +3511,16 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
   .oc-summary-row .oc-search-compact { border-top: none !important; padding-top: 0 !important; margin-top: 0 !important; flex: 1 1 100%; }
   .oc-toolbar { padding: 8px; }
   .oc-summary { min-width: 0; }
+  /* Кількість і чек — один рядок «4 замовлення · чек 416 ₴» замість двох (06.11.2026) */
+  .oc-summary-stats { flex-direction: row; align-items: baseline; gap: 0; }
+  .oc-summary-stat--avg::before { content: "·"; margin: 0 5px; }
+  .oc-summary-stat__long { display: none; }
+  /* Сума зі статистикою беруть залишок рядка (basis 0), сортування — завжди праворуч у тому ж рядку;
+     якщо тексту забагато — «…», а не перенос. Номер сторінки — у пагінації внизу. */
+  .oc-summary { flex: 1 1 0; }
+  .oc-summary-stats { min-width: 0; overflow: hidden; }
+  .oc-summary-stat { overflow: hidden; text-overflow: ellipsis; }
+  .oc-summary-page { display: none; }
 }
 
 /* ── «Усі товари розділу»: покажчик, згрупований за брендом ─────────────────

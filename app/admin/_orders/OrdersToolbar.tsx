@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { X, ChevronDown, Search, Check } from 'lucide-react';
+import Link from 'next/link';
+import { X, ChevronDown, Search, Check, ClipboardList, ArrowDownUp } from 'lucide-react';
 import SmartDateInput from '../../components/SmartDateInput';
 import { PAYMENT_GROUPS } from '../../../lib/payment-method';
 import { CHANNEL_LABEL } from './constants';
@@ -54,7 +55,8 @@ export function OrdersToolbar() {
           const fmt = (v: number) => v.toLocaleString('uk-UA', { maximumFractionDigits: 0 });
           const cnt = totalFound;
           const avg = cnt > 0 && summaryAmount > 0 ? Math.round(summaryAmount / cnt) : 0;
-          const noun = cnt % 10 === 1 && cnt % 100 !== 11 ? 'замовлення' : 'замовлень';
+          // 1–4 замовлення (крім 11–14) · 5+ замовлень; було «4 замовлень»
+          const noun = cnt % 10 >= 1 && cnt % 10 <= 4 && (cnt % 100 < 11 || cnt % 100 > 14) ? 'замовлення' : 'замовлень';
           // Скасовані — це не гроші: сума й середній чек по них означали б
           // «виручка, якої не було». Лишаємо тільки кількість. Під зрізом
           // «повернення без рішення» сума навпаки потрібна — це те, що зараз
@@ -75,7 +77,7 @@ export function OrdersToolbar() {
                     виручку, якої не було, тож грошей там не показуємо взагалі. */}
                 <span className="oc-summary-stats">
                   <span className="oc-summary-stat"><b>{cnt}</b> {noun}{totalPages > 1 && <span className="oc-summary-page"> · стор. {currentPage}/{totalPages}</span>}</span>
-                  {showMoney && avg > 0 && <span className="oc-summary-stat">середній чек <b>{fmt(avg)} ₴</b></span>}
+                  {showMoney && avg > 0 && <span className="oc-summary-stat oc-summary-stat--avg"><span className="oc-summary-stat__long">середній </span>чек <b>{fmt(avg)} ₴</b></span>}
                 </span>
               </div>
               {/* Телефон: праворуч від суми — сортування. Шапки
@@ -83,6 +85,8 @@ export function OrdersToolbar() {
               <div className="oc-summary-tools oc-only-m" style={{ display: 'none' }}>
                 <MobileFilterSelect
                   label="Нові" allLabel="Нові спочатку"
+                  className="oc-msort"
+                  icon={<ArrowDownUp size={14} strokeWidth={2.2} aria-hidden className="oc-msort__icon" />}
                   value={sortBy === 'created_at' && sortDir === 'desc' ? '' : `${sortBy}:${sortDir}`}
                   onChange={v => {
                     const [key, dir] = (v || 'created_at:desc').split(':');
@@ -251,6 +255,12 @@ export function OrdersToolbar() {
                 .filter(o => o.n > 0 || o.value === payFilter)}
               activeColor="#6D28D9" activeBg="#F3E8FF"
             />
+            {/* Реєстр НП — окремий блок після риски (дія, а не фільтр). На телефоні
+                кнопка тут, а не біля «Нове замовлення» в шапці (06.11.2026) */}
+            <span className="oc-mfilter-sep" aria-hidden />
+            <Link href="/admin/dispatch" className="oc-mnp" title="Реєстри відправлень Нової Пошти" aria-label="Реєстр НП">
+              <ClipboardList size={17} strokeWidth={2} aria-hidden />
+            </Link>
             {/* Повернення без рішення. Це не стан замовлення, а робота, яка
                 висить: посилка їде назад, а забирати її з пошти чи залишити —
                 ще ніхто не сказав. Серед десятків скасованих такі рядки
@@ -384,7 +394,7 @@ const CHANNEL_OPTIONS = [
  * а поверх неї — прозорий нативний <select>, тож дотик відкриває системний
  * список вибору. Перше значення списку скидає фільтр.
  */
-function MobileFilterSelect({ label, allLabel, value, onChange, options, total, activeColor, activeBg }: {
+function MobileFilterSelect({ label, allLabel, value, onChange, options, total, activeColor, activeBg, icon, className }: {
   label: string;
   allLabel: string;
   value: string;
@@ -394,12 +404,16 @@ function MobileFilterSelect({ label, allLabel, value, onChange, options, total, 
   total?: number;
   activeColor?: string;
   activeBg?: string;
+  /** Іконка перед підписом (сортування: на вузьких екранах лишається тільки вона) */
+  icon?: React.ReactNode;
+  className?: string;
 }) {
   const current = options.find(o => o.value === value);
   const active = Boolean(value);
   return (
-    <label className={`oc-mfilter${active ? ' is-active' : ''}`}
+    <label className={`oc-mfilter${active ? ' is-active' : ''}${className ? ' ' + className : ''}`} title={active ? (current?.label ?? value) : label}
       style={active ? { color: activeColor ?? 'var(--navy)', background: activeBg ?? '#EFF4FF', borderColor: activeColor ?? 'var(--navy)' } : undefined}>
+      {icon}
       <span className="oc-mfilter__text">{active ? (current?.label ?? value) : label}</span>
       <ChevronDown size={13} aria-hidden />
       <select value={value} onChange={e => onChange(e.target.value)} aria-label={label}>

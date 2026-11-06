@@ -377,8 +377,9 @@ export default async function AdminPage({
           Замовлення
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Реєстр НП — рідко потрібен, тож живе тут, а не в панелі фільтрів */}
-          <Link href="/admin/dispatch" className="admin-np-link" title="Реєстри відправлень Нової Пошти">
+          {/* Реєстр НП — рідко потрібен, тож живе тут, а не в панелі фільтрів. На телефоні
+              схована: там кнопка «НП» стоїть у рядку фільтрів (OrdersToolbar, .oc-mnp) */}
+          <Link href="/admin/dispatch" className="admin-np-link oc-hide-m" title="Реєстри відправлень Нової Пошти">
             Реєстр НП
           </Link>
           <NewOrderButton />
