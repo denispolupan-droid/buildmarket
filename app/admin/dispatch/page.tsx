@@ -15,7 +15,7 @@ export default async function DispatchPage() {
 
   const { data: orders } = await db
     .from('orders')
-    .select('id, order_number, contact, phone, total_price, payment_type, tracking_number, status, delivery_city_name, created_at')
+    .select('id, order_number, contact, phone, total_price, payment_type, tracking_number, status, delivery_city_name, created_at, carrier_accepted_at')
     .not('tracking_number', 'is', null)
     .not('status', 'in', '("delivered","cancelled")')
     .order('created_at', { ascending: false })

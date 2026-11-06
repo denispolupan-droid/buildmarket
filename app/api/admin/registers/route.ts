@@ -3,18 +3,23 @@ import { requireStaff } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
 import { getNpApiKey, npErrorText } from '../../../../lib/np-api';
+import { withNpRetry } from '../../../../lib/np-retry';
+import { buildRegisterViews, type NpDoc, type NpScanSheet, type OrderByTtn } from '../../../../lib/np-registers';
 
 const NP_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
 const serviceClient = createServiceClient();
 
+// Повтор при «To many requests» — через спільний withNpRetry (lib/np-retry)
 async function npCall(apiKey: string, modelName: string, calledMethod: string, methodProperties: object) {
-  const res = await fetch(NP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
+  return withNpRetry(async () => {
+    const res = await fetch(NP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey, modelName, calledMethod, methodProperties }),
+    });
+    return res.json();
   });
-  return res.json();
 }
 
 const fmtDate = (d: Date) =>
@@ -55,7 +60,27 @@ async function resolveTtnRef(apiKey: string, ttnNumber: string): Promise<string 
   return found?.Ref ?? null;
 }
 
-// GET — list of scan sheets, or details of a specific one
+// «2026-11-03 12:57:14» → Date (локальна дата реєстру)
+const sheetDate = (dt: string) => { const d = new Date((dt || '').replace(' ', 'T')); return isNaN(d.getTime()) ? new Date() : d; };
+const DAY = 24 * 60 * 60 * 1000;
+/** Скільки днів реєстрів показуємо з посилками; старіші — лише рядком, посилки на розгортання (?ref=) */
+const RECENT_DAYS = 14;
+/** Посилку часто створюють за день-два до реєстру — шукаємо документи з запасом */
+const DOC_LOOKBACK_DAYS = 7;
+
+async function ordersByTtn(ttns: string[]): Promise<Map<string, OrderByTtn>> {
+  const map = new Map<string, OrderByTtn>();
+  if (!ttns.length) return map;
+  const { data } = await serviceClient
+    .from('orders')
+    .select('id, order_number, contact, total_price, carrier_accepted_at, tracking_number')
+    .in('tracking_number', ttns)
+    .limit(1000);
+  for (const o of data ?? []) if (o.tracking_number) map.set(o.tracking_number, o as OrderByTtn);
+  return map;
+}
+
+// GET — реєстри списком (з посилками за останні RECENT_DAYS) або один реєстр (?ref=)
 async function _GET(req: NextRequest) {
   const auth = await requireStaff('admin');
   if (!auth.ok) return auth.response;
@@ -63,45 +88,38 @@ async function _GET(req: NextRequest) {
   const apiKey = await getNpApiKey();
   const ref = new URL(req.url).searchParams.get('ref');
 
-  // Return details + TTNs for a specific sheet
   if (ref) {
-    // Step 1: get sheet summary (Number + DateTime)
     const sheetRes = await npCall(apiKey, 'ScanSheet', 'getScanSheet', { Ref: ref });
-    const sheet = sheetRes.data?.[0];
-    const sheetNumber: string = sheet?.Number ?? '';
-    const sheetDateTime: string = sheet?.DateTime ?? '';
-
-    // Step 2: determine the date of the sheet
-    const datePart = sheetDateTime.split(' ')[0]; // "2026-05-13"
-    const [yr, mo, dy] = (datePart || new Date().toISOString().slice(0,10)).split('-');
-    const dateForApi = `${dy}.${mo}.${yr}`;
-
-    // Step 3: get documents for that date and filter by ScanSheetNumber
-    const docsRes = await npCall(apiKey, 'InternetDocument', 'getDocumentList', {
-      DateTimeFrom: dateForApi,
-      DateTimeTo:   dateForApi,
-      GetFullList:  '1',
-      Page:         '1',
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allDocs: any[] = docsRes.data ?? [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filtered = allDocs.filter((d: any) => d.ScanSheetNumber === sheetNumber);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ttns = filtered.map((d: any) => ({
-      ttn:     d.IntDocNumber ?? '',
-      contact: d.RecipientContactPerson ?? d.RecipientDescription ?? '',
-      amount:  parseFloat(d.BackwardDeliverySum ?? d.CostOnSite ?? '0') || 0,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    })).filter((t: any) => t.ttn);
-
-    return NextResponse.json({ number: sheetNumber, ttns });
+    const sheet = sheetRes.data?.[0] as NpScanSheet | undefined;
+    if (!sheet) return NextResponse.json({ error: 'Реєстр не знайдено в НП' }, { status: 404 });
+    const at = sheetDate(sheet.DateTime);
+    const docs: NpDoc[] = await npDocListWithRetry(apiKey, fmtDate(new Date(at.getTime() - DOC_LOOKBACK_DAYS * DAY)), fmtDate(new Date(at.getTime() + DAY)));
+    const mine = docs.filter(d => d.ScanSheetNumber === sheet.Number);
+    const [view] = buildRegisterViews([{ ...sheet, Ref: ref }], mine, await ordersByTtn(mine.map(d => String(d.IntDocNumber ?? '')).filter(Boolean)));
+    return NextResponse.json({ register: view });
   }
 
-  const res = await npCall(apiKey, 'ScanSheet', 'getScanSheetList', {});
-  return NextResponse.json({ sheets: res.data ?? [] });
+  const listRes = await npCall(apiKey, 'ScanSheet', 'getScanSheetList', {});
+  const sheets: NpScanSheet[] = listRes.data ?? [];
+  const now = Date.now();
+  const recent = sheets.filter(s => now - sheetDate(s.DateTime).getTime() <= RECENT_DAYS * DAY);
+  const older = sheets.filter(s => !recent.includes(s));
+
+  let registers = buildRegisterViews(recent, [], new Map());
+  if (recent.length) {
+    const oldest = Math.min(...recent.map(s => sheetDate(s.DateTime).getTime()));
+    const docs: NpDoc[] = await npDocListWithRetry(apiKey, fmtDate(new Date(oldest - DOC_LOOKBACK_DAYS * DAY)), fmtDate(new Date(now + DAY)));
+    const numbers = new Set(recent.map(s => s.Number));
+    const mine = docs.filter(d => d.ScanSheetNumber && numbers.has(d.ScanSheetNumber));
+    registers = buildRegisterViews(recent, mine, await ordersByTtn(mine.map(d => String(d.IntDocNumber ?? '')).filter(Boolean)));
+  }
+
+  return NextResponse.json({
+    registers,
+    older: older
+      .sort((a, b) => String(b.DateTime).localeCompare(String(a.DateTime)))
+      .map(s => ({ ref: s.Ref, number: s.Number, dateTime: s.DateTime, npCount: Number(s.Count) || 0 })),
+  });
 }
 
 export const GET = withApi('admin/registers', _GET);
