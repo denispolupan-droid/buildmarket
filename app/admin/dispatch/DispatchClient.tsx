@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import './dispatch.css';
 import { FileText, Printer, Mail, X, Loader2, Check, Truck, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Modal } from '../../components/admin/ui/Modal';
 
@@ -183,8 +184,8 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
   const ttnDateMap = new Map(orders.map(o => [o.tracking_number, o.created_at]));
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+    <div className="dsp-page" style={{ padding: '28px 32px', maxWidth: '1100px' }}>
+      <div className="dsp-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Link href="/admin" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', textDecoration: 'none' }}>
             <ArrowLeft size={16} />
@@ -192,22 +193,22 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
           <Truck size={18} color="#1E3A5F" />
           <div>
             <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Реєстр НП</h1>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            <p className="dsp-sub" style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Управління реєстром Нової Пошти та статусами відправлень
             </p>
           </div>
         </div>
-        <button onClick={handleRefresh} disabled={refreshing}
+        <button onClick={handleRefresh} disabled={refreshing} className="dsp-refresh" aria-label="Оновити" title="Оновити"
           style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}>
           <RefreshCw size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-          Оновити
+          <span className="dsp-refresh__text">Оновити</span>
         </button>
       </div>
 
       {/* Register block */}
       <div style={{ background: hasRegister ? 'var(--brand-blue-light)' : 'var(--bg-soft)', border: `1.5px solid ${hasRegister ? '#BFDBFE' : 'var(--border)'}`, borderRadius: '14px', marginBottom: '24px', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="dsp-reg-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+          <div className="dsp-reg-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <FileText size={18} color={hasRegister ? 'var(--brand-blue)' : 'var(--text-muted)'} />
             <span style={{ fontSize: '15px', fontWeight: 700, color: hasRegister ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
               {sheetsLoading ? 'Завантаження...' : currentNumber ? `Реєстр НП #${currentNumber}` : 'Реєстр НП'}
@@ -227,7 +228,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
             )}
           </div>
           {hasRegister && (
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="dsp-reg-actions" style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => currentRef && window.open(`/api/admin/registers/${currentRef}/pdf`, '_blank')}
                 style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 14px', borderRadius: '7px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-primary)' }}>
                 <Printer size={13} /> Роздрукувати
@@ -240,24 +241,24 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
                 title="Розформувати реєстр в НП"
                 style={{ display: 'flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #FECACA', background: 'var(--bg-danger)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: 'var(--color-danger)', opacity: deletingSheet ? 0.5 : 1 }}>
                 {deletingSheet ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <X size={13} />}
-                Розформувати
+                <span className="dsp-unform-text">Розформувати</span>
               </button>
             </div>
           )}
         </div>
 
         {ttns.length > 0 && (
-          <div style={{ borderTop: '1px solid #BFDBFE', padding: '8px 20px 12px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '160px 90px 1fr 100px 32px', gap: '8px', padding: '4px 0 6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
+          <div className="dsp-ttns" style={{ borderTop: '1px solid #BFDBFE', padding: '8px 20px 12px' }}>
+            <div className="dsp-ttn-thead" style={{ display: 'grid', gridTemplateColumns: '160px 90px 1fr 100px 32px', gap: '8px', padding: '4px 0 6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
               <span>ТТН</span><span>Дата</span><span>Отримувач</span><span style={{ textAlign: 'right' }}>Сума</span><span />
             </div>
             {ttns.map(t => (
-              <div key={t.ttn} style={{ display: 'grid', gridTemplateColumns: '160px 90px 1fr 100px 32px', gap: '8px', padding: '5px 0', alignItems: 'center', borderBottom: '1px solid var(--border-light)' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>{t.ttn}</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(ttnDateMap.get(t.ttn) ?? '')}</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.contact}</span>
-                <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, textAlign: 'right' }}>{t.amount} ₴</span>
-                <button
+              <div key={t.ttn} className="dsp-ttn-row" style={{ display: 'grid', gridTemplateColumns: '160px 90px 1fr 100px 32px', gap: '8px', padding: '5px 0', alignItems: 'center', borderBottom: '1px solid var(--border-light)' }}>
+                <span className="dsp-t-ttn" style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>{t.ttn}</span>
+                <span className="dsp-t-date" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(ttnDateMap.get(t.ttn) ?? '')}</span>
+                <span className="dsp-t-contact" style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.contact}</span>
+                <span className="dsp-t-sum" style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, textAlign: 'right' }}>{t.amount} ₴</span>
+                <button className="dsp-t-x" aria-label="Прибрати з реєстру" title="Прибрати з реєстру"
                   disabled={removingTtn === t.ttn}
                   onClick={async () => {
                     if (!currentRef) return;
@@ -290,7 +291,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
       </div>
 
       {/* Orders table */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+      <div className="dsp-orders-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
           Замовлення з ТТН
           <span style={{ marginLeft: '8px', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
@@ -311,7 +312,7 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
         </div>
       ) : (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 85px 80px 120px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+          <div className="dsp-thead" style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 85px 80px 120px', padding: '8px 16px', background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
             <span>№</span><span>Клієнт</span><span>ТТН</span><span>Статус</span><span>Дата</span><span style={{ textAlign: 'right' }}>Сума</span><span style={{ textAlign: 'center' }}>Реєстр</span>
           </div>
           {orders.map((order, idx) => {
@@ -319,17 +320,17 @@ export default function DispatchClient({ orders }: { orders: Order[] }) {
             const inReg = addedSet.has(order.tracking_number);
             const isAdding = adding === order.tracking_number;
             return (
-              <div key={order.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 85px 80px 120px', padding: '10px 16px', alignItems: 'center', borderBottom: idx < orders.length - 1 ? '1px solid var(--border-light)' : 'none', opacity: inReg ? 0.7 : 1 }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>#{order.order_number}</span>
-                <div>
+              <div key={order.id} className="dsp-row" style={{ display: 'grid', gridTemplateColumns: '80px 1fr 160px 90px 85px 80px 120px', padding: '10px 16px', alignItems: 'center', borderBottom: idx < orders.length - 1 ? '1px solid var(--border-light)' : 'none', opacity: inReg ? 0.7 : 1 }}>
+                <span className="dsp-c-num" style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>#{order.order_number}</span>
+                <div className="dsp-c-client">
                   <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{order.contact}</div>
                   {order.delivery_city_name && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{order.delivery_city_name}</div>}
                 </div>
-                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>{order.tracking_number}</span>
-                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: st.color, background: st.bg }}>{st.label}</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(order.created_at)}</span>
-                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{order.total_price} ₴</span>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <span className="dsp-c-ttn" style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--navy)', fontWeight: 600 }}>{order.tracking_number}</span>
+                <span className="dsp-c-status" style={{ display: 'inline-block', justifySelf: 'start', padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: st.color, background: st.bg }}>{st.label}</span>
+                <span className="dsp-c-date" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fmt(order.created_at)}</span>
+                <span className="dsp-c-sum" style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{order.total_price} ₴</span>
+                <div className="dsp-c-reg" style={{ display: 'flex', justifyContent: 'center' }}>
                   {inReg ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--color-success)', fontWeight: 600 }}>
                       <Check size={13} /> В реєстрі

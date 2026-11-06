@@ -3280,6 +3280,12 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
 /* Телефон: праворуч від суми — сортування */
 .oc-summary-tools { margin-left: auto; align-items: center; gap: 6px; flex-shrink: 0; }
 .oc-summary-tools .oc-mfilter { max-width: 150px; }
+/* «+» нового замовлення в рядку суми — шапка сторінки на телефоні схована (06.11.2026) */
+.oc-mnew {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, #162035 0%, var(--navy) 100%); box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
 /* Сортування на вузьких телефонах — лише іконка ⇅ (34px): інакше на «Всі» з шестизначною сумою
    не вміщались «775 замовлень · чек 631 ₴» (виміряно на 360/375, 06.11.2026). Обране — підсвічене. */
 @media (max-width: 389px) {
@@ -3333,6 +3339,8 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
 .oc-mfilter-dates { width: 100%; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--text-muted); }
 /* 2-й і 4-й — поля дат (SmartDateInput із кнопкою календаря) */
 .oc-mfilter-dates > span:nth-child(2), .oc-mfilter-dates > span:nth-child(4) { flex: 1 1 0; min-width: 0; }
+.oc-mfilter-dates input::placeholder { color: var(--text-muted); opacity: 0.6; font-weight: 400; letter-spacing: 0.04em; }
+.oc-mfilter-dates > span:first-child, .oc-mfilter-dates > span:nth-child(3) { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
 .oc-mfilter-dates > button { flex-shrink: 0; width: 34px; height: 34px; border: none; border-radius: 9px; background: #FEF2F2; color: #DC2626; font-weight: 700; cursor: pointer; }
 .oc-mfilter select {
   position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
@@ -3521,6 +3529,20 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
   .oc-summary-stats { min-width: 0; overflow: hidden; }
   .oc-summary-stat { overflow: hidden; text-overflow: ellipsis; }
   .oc-summary-page { display: none; }
+}
+/* Вузькі телефони: сума + «775 замовлень · чек 631 ₴» + ⇅ + «+» в одному рядку (виміряно 360/375) */
+@media (max-width: 389px) {
+  .oc-summary-amount { font-size: 18px !important; }
+  .oc-summary { gap: 7px !important; }
+  .oc-summary-stat { font-size: 11px !important; }
+  .oc-summary-stat--avg::before { margin: 0 3px !important; }
+  .oc-summary-tools { gap: 4px !important; }
+}
+/* «зам.» замість «замовлень» — лише на найвужчих (360px не вистачало 10px) */
+.oc-summary-noun-short { display: none; }
+@media (max-width: 369px) {
+  .oc-summary-noun { display: none; }
+  .oc-summary-noun-short { display: inline; }
 }
 
 /* ── «Усі товари розділу»: покажчик, згрупований за брендом ─────────────────

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { X, ChevronDown, Search, Check, ClipboardList, ArrowDownUp } from 'lucide-react';
+import { X, ChevronDown, Search, Check, ClipboardList, ArrowDownUp, Plus } from 'lucide-react';
 import SmartDateInput from '../../components/SmartDateInput';
 import { PAYMENT_GROUPS } from '../../../lib/payment-method';
 import { CHANNEL_LABEL } from './constants';
@@ -38,7 +38,8 @@ export function OrdersToolbar() {
   const [customDates, setCustomDates] = useState(false);
   const showCustom = customDates || (hasDateFilter && !periodPreset);
   // 16px — інакше iOS зумить сторінку на фокусі поля
-  const mDateStyle: React.CSSProperties = { height: '34px', width: '100%', minWidth: 0, fontSize: '16px', borderRadius: '9px', padding: '0 6px' };
+  // fontFamily: inherit — поле вводу інакше бере системний шрифт, не шрифт сайту (06.11.2026)
+  const mDateStyle: React.CSSProperties = { height: '36px', width: '100%', minWidth: 0, fontSize: '16px', fontFamily: 'inherit', fontWeight: 500, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em', textAlign: 'center', borderRadius: '9px', padding: '0 6px', border: '1.5px solid var(--border)' };
   const ddmm = (iso?: string | null) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}` : '…');
   return (
     <>
@@ -76,7 +77,7 @@ export function OrdersToolbar() {
                     На «Скасовано» другого немає: сума по скасованих означала б
                     виручку, якої не було, тож грошей там не показуємо взагалі. */}
                 <span className="oc-summary-stats">
-                  <span className="oc-summary-stat"><b>{cnt}</b> {noun}{totalPages > 1 && <span className="oc-summary-page"> · стор. {currentPage}/{totalPages}</span>}</span>
+                  <span className="oc-summary-stat"><b>{cnt}</b> <span className="oc-summary-noun">{noun}</span><span className="oc-summary-noun-short">зам.</span>{totalPages > 1 && <span className="oc-summary-page"> · стор. {currentPage}/{totalPages}</span>}</span>
                   {showMoney && avg > 0 && <span className="oc-summary-stat oc-summary-stat--avg"><span className="oc-summary-stat__long">середній </span>чек <b>{fmt(avg)} ₴</b></span>}
                 </span>
               </div>
@@ -94,6 +95,11 @@ export function OrdersToolbar() {
                   }}
                   options={SORT_OPTIONS}
                 />
+                {/* Нове замовлення — та сама подія, що й кнопка в шапці (NewOrderButton) */}
+                <button type="button" className="oc-mnew" aria-label="Нове замовлення" title="Нове замовлення"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-order-draft'))}>
+                  <Plus size={18} strokeWidth={2.5} aria-hidden />
+                </button>
               </div>
               {/* Порядок у рядку (рішення власника 20.10.2026): пошук → період →
                   повернення. Пошук перший, бо ним користуються найчастіше.
@@ -216,7 +222,7 @@ export function OrdersToolbar() {
               }}
               options={[
                 ...PERIODS.map(p => ({ value: p.value, label: p.label })),
-                { value: 'custom', label: hasDateFilter && !periodPreset ? `${ddmm(dateFrom)}–${ddmm(dateTo)}` : 'Свої дати…' },
+                { value: 'custom', label: hasDateFilter && !periodPreset ? `${ddmm(dateFrom)}–${ddmm(dateTo)}` : 'Свої дати…', short: hasDateFilter && !periodPreset ? undefined : 'Дати' },
               ]}
             />
             {/* Телефон: три кнопки в один ряд, кожна — нативний <select> (системний
@@ -399,7 +405,8 @@ function MobileFilterSelect({ label, allLabel, value, onChange, options, total, 
   allLabel: string;
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string; n?: number }[];
+  /** short — підпис на самій кнопці, коли повний не влазить («Свої дати…» → «Дати») */
+  options: { value: string; label: string; n?: number; short?: string }[];
   /** Скільки всього — у першому пункті «Усі …»; без нього лічильників немає (Період) */
   total?: number;
   activeColor?: string;
@@ -414,7 +421,7 @@ function MobileFilterSelect({ label, allLabel, value, onChange, options, total, 
     <label className={`oc-mfilter${active ? ' is-active' : ''}${className ? ' ' + className : ''}`} title={active ? (current?.label ?? value) : label}
       style={active ? { color: activeColor ?? 'var(--navy)', background: activeBg ?? '#EFF4FF', borderColor: activeColor ?? 'var(--navy)' } : undefined}>
       {icon}
-      <span className="oc-mfilter__text">{active ? (current?.label ?? value) : label}</span>
+      <span className="oc-mfilter__text">{active ? (current?.short ?? current?.label ?? value) : label}</span>
       <ChevronDown size={13} aria-hidden />
       <select value={value} onChange={e => onChange(e.target.value)} aria-label={label}>
         <option value="">{total == null ? allLabel : `${allLabel} (${total})`}</option>

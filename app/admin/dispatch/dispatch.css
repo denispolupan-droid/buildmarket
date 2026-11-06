@@ -1,0 +1,53 @@
+/* Реєстр НП (/admin/dispatch) на телефоні. Префікс dsp- — CSS сторінок глобальний.
+   Десктопна розмітка — інлайнові grid-колонки на 1100px; на телефоні вони стискали
+   все в стовпчик (06.11.2026), тож тут перекриваємо їх (!important — проти інлайну). */
+@media (max-width: 768px) {
+  .dsp-page { padding: 14px 12px 48px !important; }
+
+  /* Шапка: без підзаголовка, «Оновити» — іконкою */
+  .dsp-head { margin-bottom: 14px !important; gap: 10px; }
+  .dsp-sub { display: none; }
+  .dsp-refresh { width: 36px; padding: 0 !important; justify-content: center; flex-shrink: 0; }
+  .dsp-refresh__text { display: none; }
+
+  /* Блок реєстру: назва й дата — рядком, кнопки — рядком нижче на всю ширину */
+  .dsp-reg-head { flex-wrap: wrap; gap: 10px; padding: 12px 14px !important; }
+  .dsp-reg-title { flex-wrap: wrap; row-gap: 4px; min-width: 0; }
+  .dsp-reg-actions { width: 100%; }
+  .dsp-reg-actions > button { flex: 1 1 0; justify-content: center; padding: 0 8px !important; }
+  /* «Розформувати» — лише червоний ✕ (підпис у title): з трьома підписами кнопки не влазили в 360px */
+  .dsp-reg-actions > button:last-child { flex: 0 0 38px; padding: 0 !important; }
+  .dsp-unform-text { display: none; }
+
+  /* ТТН у реєстрі: «ТТН · сума · ✕» / «отримувач · дата» */
+  .dsp-ttns { padding: 6px 14px 10px !important; }
+  .dsp-ttn-thead { display: none !important; }
+  .dsp-ttn-row {
+    grid-template-columns: 1fr auto 28px !important;
+    grid-template-areas: "ttn sum x" "contact date x";
+    row-gap: 2px !important; padding: 7px 0 !important;
+  }
+  .dsp-t-ttn { grid-area: ttn; }
+  .dsp-t-sum { grid-area: sum; }
+  .dsp-t-x { grid-area: x; }
+  .dsp-t-contact { grid-area: contact; min-width: 0; }
+  .dsp-t-date { grid-area: date; text-align: right; }
+
+  /* Заголовок «Замовлення з ТТН» і «+ Додати до реєстру» — переносяться */
+  .dsp-orders-head { flex-wrap: wrap; gap: 8px; }
+
+  /* Замовлення — картки: «№ · статус · сума» / «клієнт, місто · реєстр» / «ТТН · дата» */
+  .dsp-thead { display: none !important; }
+  .dsp-row {
+    grid-template-columns: auto 1fr auto !important;
+    grid-template-areas: "num status sum" "client client reg" "ttn ttn date";
+    column-gap: 10px; row-gap: 6px; padding: 12px 14px !important;
+  }
+  .dsp-c-num { grid-area: num; }
+  .dsp-c-status { grid-area: status; }
+  .dsp-c-sum { grid-area: sum; }
+  .dsp-c-client { grid-area: client; min-width: 0; }
+  .dsp-c-reg { grid-area: reg; justify-content: flex-end !important; align-self: center; }
+  .dsp-c-ttn { grid-area: ttn; }
+  .dsp-c-date { grid-area: date; text-align: right; }
+}

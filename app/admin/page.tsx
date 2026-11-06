@@ -371,8 +371,9 @@ export default async function AdminPage({
   return (
     <div className="admin-orders-page" style={{ padding: '20px 16px 64px' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      {/* Header. На телефоні схований (06.11.2026): назву розділу видно в меню, а «+» нового
+          замовлення стоїть у рядку суми (OrdersToolbar, .oc-mnew) — економія цілого рядка */}
+      <div className="oc-hide-m" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Замовлення
         </h1>
