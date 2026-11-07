@@ -21,7 +21,7 @@ import { extractRzPayRegisterLink } from '../lib/mail-registers-rules';
 import { parseRzPayRegister } from '../lib/rozetkapay-register';
 import { allocateRzPayRegisterFees } from '../lib/rozetkapay-register-apply';
 import { allocateProportional } from '../lib/deal-costs-rules';
-import { writeRzPayFeeAllocation } from '../lib/deal-costs';
+import { writeRzPayFeeAllocation, allocateAcquiringFee } from '../lib/deal-costs';
 import { fetchWithTimeout } from '../lib/fetch-timeout';
 
 const WRITE = process.argv.includes('--write');
@@ -108,6 +108,24 @@ async function main() {
   console.log(`\nПереказів: ${lines.length} з ${ledger.size}. Проведено винагороди: ${totalLedger} ₴ (у звіті ${tot('ledger')}).`);
   console.log(`Рознесено по замовленнях: ${tot('allocated')} ₴ (реєстр ${r2(lines.filter(x => x.method === 'реєстр').reduce((s, x) => s + x.allocated, 0))}, пропорційно ${r2(lines.filter(x => x.method === 'пропорційно').reduce((s, x) => s + x.allocated, 0))}).`);
   console.log(`Лишається без замовлення: ${r2(totalLedger - tot('allocated'))} ₴.`);
+
+  // ── 3. Еквайринг Monobank: комісія одного платежу → його замовлення ─────────
+  console.log('\n=== Еквайринг ===');
+  const acq = await fetchAllRows<{ idempotency_key: string | null; amount: number; business_date: string }>((f, t) => db
+    .from('money_entries').select('idempotency_key, amount, business_date')
+    .like('idempotency_key', 'acq-fee:%').order('id').range(f, t));
+  let acqTotal = 0, acqAlloc = 0;
+  for (const r of acq) {
+    const id = String(r.idempotency_key).slice('acq-fee:'.length);
+    acqTotal = r2(acqTotal + Number(r.amount));
+    const res = await allocateAcquiringFee(db, id, { dryRun: !WRITE });
+    if (res.status === 'written') acqAlloc = r2(acqAlloc + res.amount);
+    const what = res.status === 'written' ? `→ #${res.orderNumber} (${res.by === 'number' ? 'за номером' : 'за сумою'})`
+      : res.status === 'topup' ? 'поповнення балансу партнера — без замовлення'
+      : res.status === 'no-order' ? `без замовлення: ${res.reason}` : res.status;
+    console.log(`${r.business_date}  ${Number(r.amount).toFixed(2).padStart(6)}  ${what}`);
+  }
+  console.log(`Еквайринг: проведено ${acqTotal} ₴, рознесено ${acqAlloc} ₴, без замовлення ${r2(acqTotal - acqAlloc)} ₴.`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

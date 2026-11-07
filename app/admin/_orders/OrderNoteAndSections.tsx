@@ -164,9 +164,9 @@ export function OrderNoteAndSections({ order }: {
                     {deliveryExp > 0 && row('Доставка НП (наш рахунок)', `−${fmtInt(deliveryExp)} ₴`, { color: '#C2410C' })}
                     {mpDelivery && row(mpDelivery.label, `−${fmtInt(mpDeliveryFee)} ₴`, { color: '#C2410C', title: mpDelivery.hint })}
                     {extraExp !== 0 && row('Еквайринг і збори НП', `−${fmtInt(extraExp)} ₴`, { color: '#C2410C', title: 'Еквайринг і збори Нової Пошти / Rozetka Доставки за це замовлення з бухгалтерських проводок (переказ наложки, утримання).' })}
-                    {payFeeAmt > 0 && row(payFee!.source === 'fact' ? 'Винагорода RozetkaPay' : 'Винагорода RozetkaPay ≈', `−${fmtInt(payFeeAmt)} ₴`, { color: '#C2410C',
+                    {payFeeAmt > 0 && row(payFee!.source === 'fact' ? 'Комісія за оплату (RozetkaPay, еквайринг)' : 'Комісія за оплату ≈', `−${fmtInt(payFeeAmt)} ₴`, { color: '#C2410C',
                       title: payFee!.source === 'fact'
-                        ? 'Комісія RozetkaPay за переказ оплати цього замовлення — точна, з реєстру виплати.'
+                        ? 'Комісія платіжного сервісу за оплату цього замовлення — точна: винагорода RozetkaPay з реєстру виплати або комісія банку за еквайринг (оплата карткою на сайті) з виписки Monobank.'
                         : 'RozetkaPay ще не виплатила гроші за це замовлення — оцінка за середньою ставкою винагороди за 90 днів.' })}
                     {row('Валовий прибуток', gross != null ? `${fmtInt(gross)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
                     {((commission ?? 0) > 0 || deliveryExp > 0 || mpDeliveryFee > 0 || extraExp !== 0 || payFeeAmt > 0) && row('Чистий прибуток', net != null ? `${fmtInt(net)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}

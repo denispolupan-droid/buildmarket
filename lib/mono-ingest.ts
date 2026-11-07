@@ -5,6 +5,8 @@ import { recordTxn } from './accounting/money';
 import { applyOrderPayment } from './accounting/order-payment';
 import { alertAdmin } from './alert';
 import { getMonoToken, getMonoFopAccount } from './mono-config';
+import { allocateAcquiringFee } from './deal-costs';
+import { log } from './log';
 
 // Обробка однієї транзакції виписки Monobank. Ідемпотентна: перший, хто «застовпить»
 // рядок у mono_bank_txns (PK = id транзакції), той і обробляє; повторні виклики
@@ -55,6 +57,15 @@ export async function postAcquiringSettlement(
     } catch (err) { if (!isDup(err)) throw err; }
   }
   if (posted) await db.from('mono_bank_txns').update({ posted_at: new Date().toISOString(), posted_by: createdBy, category: 'acquiring_settlement' }).eq('id', row.id);
+  // Комісію — на замовлення, за яке платили карткою (order_deal_costs, міграція 159).
+  // Леджер не змінюється; збій розбивки не має валити проведення покриття.
+  if (fee > 0) {
+    try {
+      await allocateAcquiringFee(db, row.id);
+    } catch (err) {
+      log.warn('mono.acquiring_alloc_failed', { id: row.id, err: err instanceof Error ? err.message : String(err) });
+    }
+  }
   return posted;
 }
 

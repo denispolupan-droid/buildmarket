@@ -474,7 +474,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
 
       {/* Факт обліку і як до нього доходять цифри по замовленнях — той самий блок, що на «Огляді» */}
-      <ProfitBridgeCard bridge={{ ...bridge, opex: pl.opex.total, taxes: pl.taxes, net: pl.netProfit }} periodLabel={curMonthLabel} />
+      <ProfitBridgeCard bridge={{ ...bridge, opex: pl.opex.total, opexBy: pl.opex.byAccount, taxes: pl.taxes, net: pl.netProfit }} periodLabel={curMonthLabel} />
 
       {/* Динаміка 6 місяців + комісії МП */}
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>

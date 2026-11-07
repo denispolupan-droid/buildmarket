@@ -68,7 +68,7 @@ async function _GET(req: NextRequest) {
     .order('id')
     .range(f, t)) as unknown as Promise<(Entry)[]>))).flat();
 
-  // Винагорода RozetkaPay по замовленню: у проводках вона без order_id, розбивка —
+  // Комісія за оплату (винагорода RozetkaPay, еквайринг): у проводках без order_id, розбивка —
   // order_deal_costs (міграція 158), та сама, що в «Огляді» й картці замовлення
   const payFees = await loadOrderDealCosts(db, ids);
   const entriesByOrder = new Map<string, Entry[]>();
@@ -103,7 +103,7 @@ async function _GET(req: NextRequest) {
       'Комісія МП':           pl.deal.marketplaceFee,
       'Еквайринг':            pl.deal.acquiringFee,
       'Доставка та збори НП': pl.deal.npDelivery,
-      'Винагорода RozetkaPay': payFee,
+      'Комісія за оплату (RozetkaPay, еквайринг)': payFee,
       'Валовий прибуток':     gross,
       'Валовий, %':           pl.revenue > 0 ? r2(gross / pl.revenue * 100) : 0,
       'Примітка':             noLedger ? 'немає проводок (РН не проведена)' : '',
@@ -122,7 +122,7 @@ async function _GET(req: NextRequest) {
     'Комісія МП': sum('Комісія МП'),
     'Еквайринг': sum('Еквайринг'),
     'Доставка та збори НП': sum('Доставка та збори НП'),
-    'Винагорода RozetkaPay': sum('Винагорода RozetkaPay'),
+    'Комісія за оплату (RozetkaPay, еквайринг)': sum('Комісія за оплату (RozetkaPay, еквайринг)'),
     'Валовий прибуток': totalGross,
     'Валовий, %': totalRevenue > 0 ? r2(totalGross / totalRevenue * 100) : 0,
     'Примітка': `без проводок: ${rows.filter(r => r['Примітка']).length}`,

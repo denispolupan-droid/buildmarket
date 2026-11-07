@@ -124,7 +124,7 @@ export type OverviewData = {
   };
   /* Міст «замовлення → облік» (lib/accounting/profit-bridge) — той самий, що в «Аналітиці»;
      net — чистий прибуток факт: валовий − операційні витрати − податки */
-  bridge: ProfitBridge & { opex: number; taxes: number; net: number };
+  bridge: ProfitBridge & { opex: number; opexBy: Record<string, number>; taxes: number; net: number };
   /* План виручки на поточний місяць (app_settings) проти факту з обліку */
   plan: {
     value: number | null;      // план, ₴ (null = не задано)
@@ -771,6 +771,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     },
     channels,
     plan, dynamics,
-    bridge: { ...bridge, opex: curPL.opex.total, taxes: curPL.taxes, net: curPL.netProfit },
+    bridge: { ...bridge, opex: curPL.opex.total, opexBy: curPL.opex.byAccount, taxes: curPL.taxes, net: curPL.netProfit },
   };
 }

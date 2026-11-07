@@ -49,6 +49,35 @@ describe('buildProfitBridge — замовлення періоду → факт
     expect(l.none).toBe(-120);
   });
 
+  it('розшифровка кожного рядка в сумі дорівнює рядку', () => {
+    const withNums = buildProfitBridge({
+      cohort, entries: entries.map(x => ({ ...x, cat: x.orderId === 'X' ? 'Rozetka Доставка: організація видачі' : x.orderId ? x.cat : 'Абонплата Rozetka' })),
+      others: [{ id: 'D', group: 'earlier' }, { id: 'X', group: 'cancelled' }],
+      orderNumbers: new Map([['A', 1], ['B', 2], ['C', 3], ['D', 4], ['X', 5]]),
+    });
+    for (const side of [withNums.revenue, withNums.profit]) {
+      for (const l of side.lines) {
+        if (!l.details?.length) continue;
+        expect(Math.round(l.details.reduce((s, d) => s + d.amount, 0) * 100) / 100, `${l.key}`).toBe(l.amount);
+      }
+    }
+    const diff = withNums.revenue.lines.find(l => l.key === 'diff')!;
+    expect(diff.details).toEqual([{ label: '№2', amount: -50, sub: 'сума замовлення 500 → проведено 450' }]);
+    const canc = withNums.profit.lines.find(l => l.key === 'cancelled')!;
+    expect(canc.details).toEqual([{ label: 'Rozetka Доставка: організація видачі', amount: -35, sub: '1 замовл.: №5' }]);
+  });
+
+  it('категорії проводок для розшифровки', async () => {
+    const { entryCategory } = await import('../lib/accounting/profit-bridge-rules');
+    expect(entryCategory('marketplace_fee', 'subscription_fee', 'Rozetka — абонплата за 2026-07', 'rz_subscription')).toBe('Абонплата Rozetka');
+    expect(entryCategory('marketplace_fee', 'commission', 'Винагорода RozetkaPay за переказ (операції 2026-11-05)', null)).toBe('Винагорода RozetkaPay');
+    expect(entryCategory('acquiring_fee', 'acquiring_fee', 'Комісія банку за еквайринг (1.25%)', null)).toBe('Еквайринг Monobank');
+    expect(entryCategory('marketplace_fee', 'commission', 'Rozetka Доставка — організація видачі відправлення (замовлення #26101209)', null)).toBe('Rozetka Доставка: організація видачі');
+    // борг за рахунками НП і сторно задвоєної суми — одна категорія (разом 381 − 230 = 151)
+    expect(entryCategory('logistics', 'delivery_cost', 'Борг Нова Пошта за договором 1082738 на 19.10.2026', null)).toBe('Нова Пошта: рахунки-фактури за договором (і їх сторно)');
+    expect(entryCategory('logistics', 'delivery_cost', 'Сторно: доставка НП за наш рахунок 09.08/11.08 (230) уже сплачена й проведена витратою в рахунках-фактурах НП серпня', null)).toBe('Нова Пошта: рахунки-фактури за договором (і їх сторно)');
+  });
+
   it('opex і податки у валовий не входять (entryEffect → null)', () => {
     expect(entryEffect('opex', null, 100)).toBeNull();
     expect(entryEffect('taxes', null, 100)).toBeNull();
