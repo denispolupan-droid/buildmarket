@@ -2297,6 +2297,7 @@ input, select { font-family: inherit; }
   .fin-two-col { grid-template-columns: 1fr !important; }
   /* Збиткові угоди: дві колонки → одна; канал ховаємо, щоб цифри лишились у своїх колонках */
   .fin-thin-grid { grid-template-columns: 1fr !important; }
+  .fin-thin-grid > div + div { border-left: none !important; padding-left: 0 !important; }
   .fin-thin-row { grid-template-columns: 10px 76px 36px 1fr 70px 44px !important; }
   .fin-thin-row > .fin-thin-ch, .fin-thin-head > span:nth-child(4) { display: none !important; }
 
@@ -2825,7 +2826,9 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 
 /* «Збиткові та тонкі угоди» («Аналітика», 07.11.2026): дві колонки, кожна цифра у
    своїй колонці фіксованої ширини з вирівнюванням праворуч — цифри не «танцюють» */
-.fin-thin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; margin-top: 6px; }
+.fin-thin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; margin-top: 6px; }
+/* вертикальна смуга-розділювач між двома колонками */
+.fin-thin-grid > div + div { border-left: 1px solid var(--border); padding-left: 16px; }
 .fin-thin-row {
   display: grid; grid-template-columns: 10px 76px 40px minmax(0, 1fr) 76px 72px 52px; align-items: center; gap: 8px;
   padding: 5px 4px; border-bottom: 1px solid var(--border-light, var(--border)); font-size: 12.5px;

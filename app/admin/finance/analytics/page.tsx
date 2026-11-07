@@ -12,15 +12,10 @@ import { resolvePeriod } from '../overview-data';
 import ProfitBridgeCard from '../ProfitBridgeCard';
 import OverviewSummary from '../OverviewSummary';
 import { attributeOwnSales } from '../../../../lib/accounting/stock-supplier';
-import { MonthFactChart, Donut } from '../analytics-charts';
-import { BarChart3, Percent, AlertTriangle, Package, Store, Users, LayoutGrid, Crown, Tag, Truck, type LucideIcon } from 'lucide-react';
+import { Donut } from '../analytics-charts';
 
 const db = createServiceClient();
 
-/** Іконка в заголовку картки (07.11.2026 — щоб сторінка не була суцільним текстом) */
-function TI({ icon: Icon, color = 'var(--brand-blue)' }: { icon: LucideIcon; color?: string }) {
-  return <Icon size={14} strokeWidth={2.2} aria-hidden style={{ verticalAlign: '-2px', marginRight: '6px', color }} />;
-}
 
 export const dynamic = 'force-dynamic';
 
@@ -320,7 +315,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     c.revenue += r.revenue; c.margin += r.margin; c.orders += 1;
     clientStats.set(key, c);
   }
-  const topClients = [...clientStats.values()].sort((a, b) => b.margin - a.margin).slice(0, 8);
+  const topClients = [...clientStats.values()].sort((a, b) => b.margin - a.margin).slice(0, 9);   // 9 — заповнює висоту поруч із категоріями (07.11.2026)
 
   // ── Валовий прибуток по постачальниках (факт: рядки проведених РН періоду) ──
   // supplier_id є лише в dropship-рядків; null = відвантаження з нашого складу.
@@ -522,7 +517,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               parts={[
                 {
                   label: 'Виручка', value: `${fmt(rev)} ₴`, cur: rev, prev: prevLedgerRevenue > 0 ? prevLedgerRevenue : null,
-                  spark: { values: monthsFact.map(m => m.revenue), title: 'Виручка по місяцях (6 міс.)' },
                   hint: 'Проведені продажі з обліку (продаж фіксується в день вручення). Розбір від суми замовлень — нижче.',
                   metrics: [
                     { label: `замовлено · ${fmt(thisMonthRows.length)}`, value: `${fmt(bridge.revenue.start)} ₴`, hint: 'Сума підтверджених замовлень, створених за період (без нових і скасованих)' },
@@ -531,7 +525,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                 },
                 {
                   label: 'Прибуток', value: `${fmt(gross)} ₴`, valueColor: gross >= 0 ? '#15803D' : '#DC2626', cur: gross, prev: prevPL.revenue > 0 ? prevPL.grossProfit : null,
-                  spark: { values: monthsFact.map(m => m.gross), color: '#16A34A', title: 'Валовий прибуток по місяцях (6 міс.)' },
                   hint: `Валовий — виручка мінус собівартість FIFO і всі прямі витрати на продажі (комісії й оплата ${pctOfRev(fees)} виручки). Чистий — ще мінус операційні витрати ${fmt(pl.opex.total)} ₴ і податки ${fmt(pl.taxes)} ₴. Розбір — нижче.`,
                   metrics: [
                     { label: 'маржа', value: rev > 0 ? `${Math.round(gross / rev * 1000) / 10}%` : '—' },
@@ -553,26 +546,38 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
       {/* Динаміка 6 місяців + комісії МП */}
       <div className="fin-grid-12" style={{ marginBottom: '6px' }}>
-        {/* Графік за обліком (07.11.2026, замість таблиці): стовпчик — виручка, зелена частина —
-            валовий прибуток, помаранчева лінія — маржа %; точні цифри — у підказці при наведенні */}
+        {/* Таблиця за обліком (графік власник відхилив 07.11.2026): місяці порівнюються
+            рядками, цифри ті самі, що в «Звітах» */}
         <div className="fin-card" style={{ gridColumn: 'span 7' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-            <div className="fin-card-title"><TI icon={BarChart3} />По місяцях · факт обліку <span className="fin-card-sub">· за датою проводки (продаж = вручення)</span></div>
-            <span className="fin-sum-legend" style={{ marginTop: 0 }}>
-              <span><i style={{ background: 'var(--brand-blue)', opacity: 0.55 }} />виручка</span>
-              <span><i style={{ background: '#16A34A' }} />валовий прибуток</span>
-              <span><i style={{ background: '#EA8A00', height: '3px', verticalAlign: '3px' }} />маржа %</span>
-            </span>
-          </div>
+          <div className="fin-card-title">По місяцях · факт обліку <span className="fin-card-sub">· за датою проводки (продаж = вручення): виручка, валовий прибуток і маржа, чистий після операційних витрат і податків</span></div>
           {monthsFactHasData ? (
-            <div style={{ marginTop: '8px' }}><MonthFactChart months={monthsFact} /></div>
+            <table className="fin-table fin-month-table">
+              <thead>
+                <tr>
+                  <th>Місяць</th><th className="num">Вручено</th><th className="num">Виручка</th>
+                  <th className="num">Валовий</th><th className="num">Маржа</th><th className="num">Чистий</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthsFact.map(m => (
+                  <tr key={m.key}>
+                    <td className="muted">{m.label}</td>
+                    <td className="num muted">{m.delivered > 0 ? fmt(m.delivered) : '—'}</td>
+                    <td className="num">{m.revenue !== 0 ? `${fmt(m.revenue)} ₴` : '—'}</td>
+                    <td className="num" style={{ color: m.gross < 0 ? 'var(--color-danger)' : undefined }}>{m.gross !== 0 ? `${fmt(m.gross)} ₴` : '—'}</td>
+                    <td className="num muted">{m.pct === null ? '—' : `${m.pct}%`}</td>
+                    <td className="num" style={{ color: m.net < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{m.net !== 0 ? `${fmt(m.net)} ₴` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           ) : (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
           )}
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>
-          <div className="fin-card-title"><TI icon={Percent} />Комісії маркетплейсів <span className="fin-card-sub">· факт з обліку за місяць: сума комісій і % від фактичної виручки каналу</span></div>
+          <div className="fin-card-title">Комісії маркетплейсів <span className="fin-card-sub">· факт з обліку за місяць: сума комісій і % від фактичної виручки каналу</span></div>
           {feeTrendHasData ? (
             <table className="fin-table">
               <tbody>
@@ -596,7 +601,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       {/* Збиткові / тонкі угоди (факт) */}
       {thinDeals.length > 0 && (
         <div className="fin-card" style={{ marginBottom: '6px' }}>
-          <div className="fin-card-title"><TI icon={AlertTriangle} color="var(--color-danger)" />Збиткові та тонкі угоди <span className="fin-card-sub">· замовлення: виручка → валовий прибуток після комісій і % від виручки · доставлені за {curMonthLabel} з прибутком &lt; {THIN_PCT}% — перевірте ціну/комісію</span></div>
+          <div className="fin-card-title">Збиткові та тонкі угоди <span className="fin-card-sub">· замовлення: виручка → валовий прибуток після комісій і % від виручки · доставлені за {curMonthLabel} з прибутком &lt; {THIN_PCT}% — перевірте ціну/комісію</span></div>
           {/* Компактно: дві колонки, кожна цифра у своїй колонці фіксованої ширини
               (раніше «прибуток · %» одним рядком різної довжини — цифри «танцювали») */}
           <div className="fin-thin-grid">
@@ -631,7 +636,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <div className="fin-grid-12" style={{ marginBottom: '6px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div className="fin-card-title">
-            <TI icon={Package} />Топ товарів за прибутком <span className="fin-card-sub">· виручка → собівартість (з комісіями) → валовий прибуток · доставлені за {curMonthLabel} · ABC: <b style={{ color: 'var(--color-success)' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: 'var(--color-warn)' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
+            Топ товарів за прибутком <span className="fin-card-sub">· виручка → собівартість (з комісіями) → валовий прибуток · доставлені за {curMonthLabel} · ABC: <b style={{ color: 'var(--color-success)' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: 'var(--color-warn)' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
           </div>
           {topProducts.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних за період</div>
@@ -669,7 +674,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
         <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div className="fin-card">
-            <div className="fin-card-title"><TI icon={Store} />По каналах <span className="fin-card-sub">· виручка і її частка, валовий прибуток після комісій, замовлень і прибуток на замовлення · доставлені за {curMonthLabel}</span></div>
+            <div className="fin-card-title">По каналах <span className="fin-card-sub">· виручка і її частка, валовий прибуток після комісій, замовлень і прибуток на замовлення · доставлені за {curMonthLabel}</span></div>
             {channels.length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
             ) : (
@@ -696,7 +701,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           </div>
 
           <div className="fin-card" style={{ flex: 1 }}>{/* тягнеться до низу — колонки рівні */}
-            <div className="fin-card-title"><TI icon={Users} />Клієнти <span className="fin-card-sub">· нові vs повторні: замовлень, виручка, валовий прибуток · доставлені за {curMonthLabel}</span></div>
+            <div className="fin-card-title">Клієнти <span className="fin-card-sub">· нові vs повторні: замовлень, виручка, валовий прибуток · доставлені за {curMonthLabel}</span></div>
             {/* Кільце: частка повторних у центрі; поруч — замовлень і прибуток по кожній групі */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '10px' }}>
               <Donut center={`${repeatShare}%`} parts={[
@@ -725,7 +730,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       {/* Категорії і топ клієнти — факт (доставлені за період) */}
       <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
         <div className="fin-card">
-          <div className="fin-card-title"><TI icon={LayoutGrid} />Валовий прибуток за категоріями <span className="fin-card-sub">· прибуток після комісій по кореневих категоріях · доставлені за {curMonthLabel}</span></div>
+          <div className="fin-card-title">Валовий прибуток за категоріями <span className="fin-card-sub">· прибуток після комісій по кореневих категоріях · доставлені за {curMonthLabel}</span></div>
           {categories.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
           ) : (
@@ -753,7 +758,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
         <div className="fin-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div className="fin-card-title"><TI icon={Crown} />Топ клієнти за прибутком <span className="fin-card-sub">· замовлень, виручка, валовий прибуток після комісій · доставлені за {curMonthLabel}</span></div>
+            <div className="fin-card-title">Топ клієнти за прибутком <span className="fin-card-sub">· замовлень, виручка, валовий прибуток після комісій · доставлені за {curMonthLabel}</span></div>
             <Link href="/admin/finance/mutual?group=customers" style={{ fontSize: '12px', color: 'var(--brand-blue)', textDecoration: 'none', fontWeight: 600 }}>всі клієнти →</Link>
           </div>
           {topClients.length === 0 ? (
@@ -781,16 +786,16 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
         {[
           {
-            title: 'Валовий прибуток по брендах', icon: Tag, sub: `· прибуток після комісій · доставлені за ${curMonthLabel}`,
+            title: 'Валовий прибуток по брендах', sub: `· прибуток після комісій · доставлені за ${curMonthLabel}`,
             rows: brands.map(([brand, s]) => ({ key: brand, name: brand, note: '', ...s })),
           },
           {
-            title: 'Валовий прибуток по постачальниках', icon: Truck, sub: `· прибуток ДО комісій · доставлені за ${curMonthLabel}; товар зі складу — за партіями FIFO`,
+            title: 'Валовий прибуток по постачальниках', sub: `· прибуток ДО комісій · доставлені за ${curMonthLabel}; товар зі складу — за партіями FIFO`,
             rows: suppliers.map(s => ({ ...s, note: s.stockQty > 0 && s.key !== 'own' ? `зі складу ${Math.round(s.stockQty * 100) / 100} шт` : '' })),
           },
         ].map(card => (
           <div key={card.title} className="fin-card">
-            <div className="fin-card-title"><TI icon={card.icon} />{card.title} <span className="fin-card-sub">{card.sub}</span></div>
+            <div className="fin-card-title">{card.title} <span className="fin-card-sub">{card.sub}</span></div>
             {card.rows.length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
             ) : (
