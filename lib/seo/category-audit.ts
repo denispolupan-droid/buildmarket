@@ -13,7 +13,7 @@ import { tokenSkus } from './guide-prices';
 // цьому проза на кшталт «конструкційних сталей» не читається як бренд «Сталь».
 
 export type AuditCategory = { slug: string; name: string; parent_slug: string | null };
-export type AuditProduct = { category_slug: string | null; brand: string | null; sku?: string };
+export type AuditProduct = { category_slug: string | null; brand: string | null; sku?: string; name?: string | null; created_at?: string | null };
 /** Попит зі Search Console за 28 днів: покази uk+ru сторінки й найчастіший запит */
 export type AuditDemand = { impressions: number; topQuery: string | null };
 
@@ -48,7 +48,14 @@ export type CategoryAuditGaps = {
   h1Mismatch: boolean;
   /** токен ціни {price:SKU}/{range:…} посилається на артикул, якого немає серед активних товарів */
   deadPriceSku: boolean;
+  /** гайд застарів: розповідає про бренд, якого в родині вже немає, або посилається на знятий товар */
+  guideStale: boolean;
+  /** гайд не знає асортименту: бренд родини ні разу не згаданий або нові товари (30 днів) без згадування */
+  guideMissing: boolean;
 };
+
+/** Скільки днів товар вважається «новим» для перевірки гайда. */
+export const NEW_PRODUCT_DAYS = 30;
 
 export type CategoryAuditRow = {
   slug: string;
@@ -70,6 +77,14 @@ export type CategoryAuditRow = {
   demand: AuditDemand | null;
   /** підкатегорії з 5+ товарами, на які гайд не посилається — їх і треба дописати */
   unlinkedChildren: string[];
+  /** Гайд (07.11.2026): бренди, про які він розповідає, а в родині їх уже немає */
+  guideStaleBrands: string[];
+  /** Гайд: бренди родини, які в тексті не згадані жодного разу (перелік {brands} не рахується) */
+  guideMissingBrands: { brand: string; count: number }[];
+  /** Гайд: посилання на товари, яких немає серед активних (на сайті вони вже ведуть на заміну) */
+  guideDeadLinks: { label: string; sku: string }[];
+  /** Гайд: нові товари родини (за NEW_PRODUCT_DAYS днів), на які в тексті немає посилання */
+  newProducts: { sku: string; name: string; brand: string | null }[];
   gaps: CategoryAuditGaps;
 };
 
@@ -137,8 +152,14 @@ export function auditCategories(input: {
   demand?: Record<string, AuditDemand>;
   /** російські назви категорій (lib/ru) — для перевірки H1 проти російського запиту */
   namesRu?: Record<string, string>;
+  /** Усі бренди, що колись були в каталозі (і неактивні) — щоб упізнати в гайді бренд, який пішов зовсім */
+  knownBrands?: string[];
+  /** «Зараз» для перевірки нових товарів (тести) */
+  now?: Date;
 }): CategoryAuditRow[] {
   const { categories, products, metaUa, metaRu, brands, blogSlugs, demand, namesRu } = input;
+  const guideBrandList = [...new Set([...(input.knownBrands ?? []), ...brands])].filter(b => b && b.toLowerCase() !== 'сталь');
+  const newSince = (input.now ?? new Date()).getTime() - NEW_PRODUCT_DAYS * 86_400_000;
   const knownBlog = blogSlugs ? new Set(blogSlugs) : null;
 
   // Товари прив'язані до підкатегорій — для батьківської беремо всю родину
@@ -233,6 +254,35 @@ export function auditCategories(input: {
           && !guideLinks.includes(`/shop/${kid}`))
       : [];
 
+    // Гайд проти асортименту (07.11.2026). Проза — без токенів і адрес посилань:
+    // {brands} сам іде за каталогом, а «/shop/brand/ceresit» — не згадування.
+    const prose = (m: CategoryMeta | undefined) => guideText(m).replace(/\{[^}]*\}/g, ' ').replace(/\]\([^)\s]+\)/g, ']');
+    const proseUa = prose(ua);
+    const linkedSkus = new Set([...(guideUa + ' ' + guideRu).matchAll(/\]\(\/product\/([^)\s]+)\)/g)].map(m => decodeURIComponent(m[1])));
+    // «Eskaro Aquastop» — лінійка Eskaro, а не бренд Aquastop: згадування одразу
+    // після назви іншого бренду брендом не рахуємо
+    const otherBrands = guideBrandList.map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const standalone = (text: string, b: string) => {
+      const e = b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`(?<!(?:${otherBrands})\\s+)(?<!\\p{L})${e}(?!\\p{L})`, 'iu').test(text);
+    };
+    const guideStaleBrands = hasGuide
+      ? guideBrandList.filter(b => !actualSet.has(b) && mentions(proseUa, b) && standalone(proseUa, b))
+      : [];
+    const guideMissingBrands = hasGuide
+      ? actualBrands.filter(b => !mentions(proseUa, b.brand))
+      : [];
+    const guideDeadLinks = hasGuide && skus
+      ? [...new Map([...(guideUa + ' ' + guideRu).matchAll(/\[([^\]]+)\]\(\/product\/([^)\s]+)\)/g)]
+          .map(m => [decodeURIComponent(m[2]), m[1]] as const)
+          .filter(([sku]) => !skus.has(sku))).entries()].map(([sku, label]) => ({ sku, label }))
+      : [];
+    const newProducts = hasGuide
+      ? items
+          .filter(p => p.sku && p.created_at && new Date(p.created_at).getTime() >= newSince && !linkedSkus.has(p.sku))
+          .map(p => ({ sku: p.sku!, name: p.name ?? p.sku!, brand: p.brand }))
+      : [];
+
     rows.push({
       slug,
       name: cat?.name ?? slug,
@@ -248,6 +298,10 @@ export function auditCategories(input: {
       guideWords,
       demand: d,
       unlinkedChildren,
+      guideStaleBrands,
+      guideMissingBrands,
+      guideDeadLinks,
+      newProducts,
       gaps: {
         noProducts: !!ua && productCount === 0,
         noMeta: !ua && productCount > 0,
@@ -264,6 +318,8 @@ export function auditCategories(input: {
         guideMissesChild: unlinkedChildren.length > 0,
         h1Mismatch: inDemand && !!d.topQuery && !nameCoversQuery(names, d.topQuery),
         deadPriceSku: deadPriceSkus.length > 0,
+        guideStale: guideStaleBrands.length > 0 || guideDeadLinks.length > 0,
+        guideMissing: guideMissingBrands.length > 0 || newProducts.length > 0,
       },
     });
   }

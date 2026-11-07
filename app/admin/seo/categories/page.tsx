@@ -49,14 +49,16 @@ export const dynamic = 'force-dynamic';
 export default async function SeoCategoriesPage() {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
   await requireStaffPage('admin');
-  const [products, categories, posts, demand] = await Promise.all([
-    fetchAllRows<{ sku: string; category_slug: string | null; brand: string | null }>((f, t) =>
-      db.from('products').select('sku, category_slug, brand').eq('is_active', true).order('id').range(f, t)),
+  const [products, categories, posts, demand, everBrands] = await Promise.all([
+    fetchAllRows<{ sku: string; category_slug: string | null; brand: string | null; name: string | null; created_at: string | null }>((f, t) =>
+      db.from('products').select('sku, category_slug, brand, name, created_at').eq('is_active', true).order('id').range(f, t)),
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
       db.from('categories').select('slug, name, parent_slug').order('id').range(f, t)),
     fetchAllRows<{ slug: string }>((f, t) =>
       db.from('blog_posts').select('slug').eq('is_published', true).order('id').range(f, t)),
     loadDemand(),
+    // Бренди й знятих товарів — щоб гайд, який розповідає про бренд, що пішов зовсім, позначався застарілим
+    fetchAllRows<{ brand: string | null }>((f, t) => db.from('products').select('brand').order('id').range(f, t)),
   ]);
   const [metaUa, metaRu] = await Promise.all([getCategoryContentCached('uk'), getCategoryContentCached('ru')]);
 
@@ -69,6 +71,7 @@ export default async function SeoCategoriesPage() {
     blogSlugs: posts.map(p => p.slug),
     demand,
     namesRu: CATEGORY_NAMES_RU,
+    knownBrands: [...new Set(everBrands.map(p => p.brand?.trim()).filter(Boolean))] as string[],
   });
 
   return <CategoryAudit rows={rows} />;

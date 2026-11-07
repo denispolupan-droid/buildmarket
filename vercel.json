@@ -80,6 +80,10 @@
       "schedule": "20 5 * * 1"
     },
     {
+      "path": "/api/cron/guide-staleness",
+      "schedule": "40 5 * * 1"
+    },
+    {
       "path": "/api/cron/metric-watch?scope=daily",
       "schedule": "10 7 * * *"
     },
