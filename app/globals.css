@@ -2779,6 +2779,35 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .fin-kpi-cmp { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
 .fin-kpi-spark { margin-top: 8px; }
 
+/* Картка показника (07.11.2026, «Огляд» і «Аналітика»): однакова сітка в ряду —
+   підпис в один рядок, цифра, динаміка, дві строки розшифровки, притиснуті донизу.
+   Без міні-графіків (вони є в «Динаміці» нижче) і без абзаців тексту: пояснення —
+   у підказці ⓘ. Висота в ряду однакова, рядки розшифровки на одній лінії. */
+.fin-stat { display: flex; flex-direction: column; padding: 16px 18px; min-width: 0; }
+.fin-stat-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fin-stat-label {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.fin-stat-tag {
+  flex-shrink: 0; font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 999px; color: var(--color-warn); background: #FEF3C7;
+}
+.fin-stat-tag.fact { color: var(--color-success); background: #DCFCE7; }
+.fin-stat-info { flex-shrink: 0; margin-left: auto; color: var(--text-muted); font-size: 12px; cursor: help; }
+.fin-stat-value {
+  font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary);
+  margin-top: 6px; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.fin-stat-delta { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; min-height: 18px; white-space: nowrap; min-width: 0; }
+.fin-stat-rows { margin-top: auto; padding-top: 12px; }
+.fin-stat-row {
+  display: flex; justify-content: space-between; gap: 10px; padding: 6px 0 0; margin-top: 6px;
+  border-top: 1px solid var(--border-light, var(--border)); font-size: 12px; white-space: nowrap; min-width: 0;
+}
+.fin-stat-row > span:first-child { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.fin-stat-row > span:last-child { font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
 .fin-trend { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 .fin-trend.up { color: #15803D; }
 .fin-trend.down { color: #DC2626; }

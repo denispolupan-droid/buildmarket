@@ -11,6 +11,7 @@ import { fmtInt as fmt } from '../../../../lib/format';
 import { loadProfitBridge } from '../../../../lib/accounting/profit-bridge';
 import { resolvePeriod } from '../overview-data';
 import ProfitBridgeCard from '../ProfitBridgeCard';
+import StatCard from '../StatCard';
 
 const db = createServiceClient();
 
@@ -110,11 +111,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     delivery:   pl.deal.total - pl.deal.marketplaceFee,
   };
   const ledgerGross = pl.grossProfit;
+  const prevPL = summarizePL(ledgerPrevRows);
   const prevLedgerRevenue = -ledgerPrevRows.filter(r => r.account_type === 'revenue')
     .reduce((s, r) => s + Number(r.amount), 0);
-  const revFactDelta = prevLedgerRevenue > 0
-    ? Math.round((ledger.revenue - prevLedgerRevenue) / prevLedgerRevenue * 100)
-    : null;
 
   // ── Прибуток по кожному замовленню: факт із леджера (COGS FIFO нетто повернень,
   // комісія МП з доп. зборами, еквайринг/збори НП) або, поки не вручено, прогноз
@@ -438,39 +437,34 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </a>
       </div>
 
-      {/* Воронка угоди: замовлення за період → в роботі → в дорозі → доставлено (факт).
-          Одна логіка: «оцінка» = прогноз по замовленнях, «факт» = проводки обліку. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
-        {[
-          {
-            label: `Виручка · факт · ${curMonthLabel}`, value: `${fmt(ledger.revenue)} ₴`, color: 'var(--text-primary)',
-            sub: revFactDelta !== null ? `${revFactDelta >= 0 ? '+' : ''}${revFactDelta}% до попереднього періоду` : 'попередній період без продажів',
-            hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення. Як до неї доходить сума замовлень періоду — блок «Від замовлень до обліку» нижче.',
-          },
-          {
-            label: 'В роботі · зараз · прогноз прибутку', value: `${fmt(inWork.margin)} ₴`, color: 'var(--text-primary)',
-            sub: `${inWork.count} замовл. · виручка ${fmt(inWork.revenue)} ₴${inWork.commission > 0 ? ` · комісії −${fmt(inWork.commission)} ₴` : ''}`,
-            hint: 'Підтверджені, ще не відвантажені замовлення: їхня виручка і прогноз валового прибутку (собівартість за закупівлею, комісії за ставками маркетплейсів).',
-          },
-          {
-            label: 'В дорозі · зараз · прогноз прибутку', value: `${fmt(transit.margin)} ₴`, color: 'var(--text-primary)',
-            sub: `${transit.count} замовл. · виручка ${fmt(transit.revenue)} ₴${transit.commission > 0 ? ` · комісії −${fmt(transit.commission)} ₴` : ''}`,
-            hint: 'Усі відправлені, ще не вручені посилки незалежно від того, чи гроші вже в нас: їхня виручка і прогноз валового прибутку (собівартість за закупівлею, комісії за ставками). Проведеться в облік після вручення (продаж = доставка). Скільки грошей за ці посилки ще не дійшло до нас — на «Огляді», рядок «Ще їде до покупця».',
-          },
-          {
-            label: `Валовий прибуток · факт · ${curMonthLabel}`, value: `${fmt(ledgerGross)} ₴`,
-            color: ledgerGross >= 0 ? '#15803D' : '#DC2626',
-            sub: `${factPct}% від виручки · виручка ${fmt(ledger.revenue)} ₴ · комісії −${fmt(ledger.commission)} ₴${ledger.delivery > 0 ? ` · еквайринг і збори НП −${fmt(ledger.delivery)} ₴` : ''}`,
-            hint: 'Валовий прибуток з бухгалтерських проводок: виручка проведених РН − FIFO-собівартість − комісії маркетплейсів − еквайринг і збори НП. Те саме визначення і ті самі цифри, що «факт за обліком» на «Огляді» та у «Звітах».',
-          },
-        ].map(card => (
-          <div key={card.label} className="fin-card fin-kpi">
-            <div className="fin-kpi-label">{card.label}</div>
-            <div className="fin-kpi-value" style={{ color: card.color }}>{card.value}</div>
-            <div className="fin-kpi-cmp" style={{ marginTop: '4px' }}>{card.sub}</div>
-            <div className="fin-hint">{card.hint}</div>
-          </div>
-        ))}
+      {/* Картки — та сама сітка StatCard, що на «Огляді»: факт обліку і знімок «зараз» (прогноз) */}
+      <div className="fin-kpi-row cols-4" style={{ marginBottom: '16px' }}>
+        <StatCard label={`Виручка · ${curMonthLabel}`} kind="fact" value={`${fmt(ledger.revenue)} ₴`}
+          cur={ledger.revenue} prev={prevLedgerRevenue > 0 ? prevLedgerRevenue : null} deltaLabel="до попереднього періоду"
+          hint="Проведені продажі з обліку: фіксуються в день вручення замовлення. Як до неї доходить сума замовлень — блок «Від замовлень до обліку» нижче."
+          rows={[
+            { label: 'сума замовлень періоду', value: `${fmt(bridge.revenue.start)} ₴` },
+            { label: 'попередній період', value: `${fmt(prevLedgerRevenue)} ₴` },
+          ]} />
+        <StatCard label="Валовий прибуток" kind="fact" value={`${fmt(ledgerGross)} ₴`} valueColor={ledgerGross >= 0 ? '#15803D' : '#DC2626'}
+          cur={ledgerGross} prev={prevPL.revenue > 0 ? prevPL.grossProfit : null} deltaLabel="до попереднього періоду"
+          hint="З бухгалтерських проводок: виручка − собівартість FIFO − комісії площадок − еквайринг − збори НП. Чистий — ще мінус операційні витрати й податки. Ті самі цифри, що на «Огляді» та у «Звітах»."
+          rows={[
+            { label: 'маржа від виручки', value: `${factPct}%` },
+            { label: 'чистий прибуток', value: `${fmt(pl.netProfit)} ₴`, color: pl.netProfit >= 0 ? '#15803D' : '#DC2626' },
+          ]} />
+        <StatCard label="В роботі · прибуток" kind="forecast" value={`${fmt(inWork.margin)} ₴`} deltaLabel="зараз, незалежно від періоду"
+          hint="Підтверджені, ще не відвантажені замовлення: прогноз валового прибутку (собівартість за закупівлею, комісії за ставками площадок)."
+          rows={[
+            { label: `замовлень · ${fmt(inWork.count)}`, value: `${fmt(inWork.revenue)} ₴` },
+            { label: 'комісії площадок', value: inWork.commission > 0 ? `−${fmt(inWork.commission)} ₴` : '—' },
+          ]} />
+        <StatCard label="В дорозі · прибуток" kind="forecast" value={`${fmt(transit.margin)} ₴`} deltaLabel="зараз, незалежно від періоду"
+          hint="Відправлені, ще не вручені посилки: прогноз валового прибутку. Проведеться в облік у день вручення. Скільки грошей за них ще не дійшло — на «Огляді», «Ще їде до покупця»."
+          rows={[
+            { label: `замовлень · ${fmt(transit.count)}`, value: `${fmt(transit.revenue)} ₴` },
+            { label: 'комісії площадок', value: transit.commission > 0 ? `−${fmt(transit.commission)} ₴` : '—' },
+          ]} />
       </div>
 
       {/* Факт обліку і як до нього доходять цифри по замовленнях — той самий блок, що на «Огляді» */}

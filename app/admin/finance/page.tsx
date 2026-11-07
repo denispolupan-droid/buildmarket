@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { ShoppingCart, Truck, Coins, Receipt, AlertTriangle } from 'lucide-react';
 import FinanceTabs from './FinanceTabs';
 import FinanceActions from './FinanceActions';
 import PlanCard from './PlanCard';
 import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
-import { MonthBars, TrendBadge } from './overview-charts';
 import ProfitBridgeCard from './ProfitBridgeCard';
+import StatCard from './StatCard';
 import { requireStaffPage } from '../../../lib/auth-guard';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
@@ -87,67 +86,48 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         </a>
       </div>
 
-      {/* KPI */}
-      <div className="fin-kpi-row">
-        {([
-          { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
-            hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
-          { key: 'prof', label: 'Прибуток по замовленнях · прогноз', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
-            hint: `Валовий прибуток по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: вручені — ${fmt(ov.kpi.profitEst.delivered)} ₴, ще в роботі й у дорозі — ${fmt(ov.kpi.profitEst.forecast)} ₴ (прогноз). Факт обліку — у блоці «Від замовлень до обліку» нижче.`,
-            more: (
-              <>
-                <div className="fin-hint-h">Враховано</div>
-                <ul className="fin-hint-list">
-                  <li>ціна продажу замовлення;</li>
-                  <li>собівартість товару: у вручених — з обліку, в решти — за поточною закупівельною ціною;</li>
-                  <li>комісія маркетплейсу за замовлення: списана або, якщо ще ні, за ставкою категорії;</li>
-                  <li>збори Нової Пошти за замовлення, якщо вже проведені;</li>
-                  <li>комісія за оплату: винагорода RozetkaPay (по виплачених — точна з реєстру, по ще не виплачених — за середньою ставкою) і еквайринг банку за оплату карткою на сайті.</li>
-                </ul>
-                <div className="fin-hint-h">Не враховано</div>
-                <ul className="fin-hint-list">
-                  <li>списання маркетплейсів і банку без прив&apos;язки до замовлення{ov.kpi.profitEst.unattributed > 0 ? ` (${fmt(ov.kpi.profitEst.unattributed)} ₴ за ${dmy(ov.from)}–${dmy(ov.to)}: абонплата, Smart без замовлення, НП за договором — розшифровка в блоці «Від замовлень до обліку»)` : ''};</li>
-                  <li>операційні витрати ({fmt(ov.kpi.netProfit.opex)} ₴) і податки ({fmt(ov.kpi.netProfit.taxes)} ₴);</li>
-                  <li>скасовані замовлення.</li>
-                </ul>
-                <div className="fin-hint-h">Облік за {dmy(ov.from)}–{dmy(ov.to)} — окрема цифра, не додається</div>
-                <div>
-                  Валовий {fmt(ov.kpi.profit.value)} ₴, чистий {fmt(ov.kpi.netProfit.value)} ₴ — як у «Звітах» і «Аналітиці».
-                  Там продаж рахується в день вручення: замовлень у дорозі ще немає, зате є давніші, вручені в ці дні,
-                  а валовий уже враховує списання без прив&apos;язки до замовлення. Чистий — це валовий мінус операційні витрати й податки.
-                </div>
-              </>
-            ) },
-          { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,
-            hint: 'Валовий прибуток ÷ сума замовлень періоду (та сама база — всі замовлення)' },
-          { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, months: ov.monthly.orders, mFmt: (v: number) => fmt(v), color: 'var(--brand-blue)',
-            hint: 'Створені за період, без нових (непідтверджених) і скасованих — включно з ще не відвантаженими' },
-          { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev, months: ov.monthly.avgCheck, mFmt: (v: number) => `${fmt(v)} ₴`,
-            hint: 'Сума створених замовлень ÷ їх кількість (оцінка до доставки)' },
-        ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; months: (number | null)[]; mFmt: (v: number) => string; color?: string; pp?: boolean; hint: string; more?: ReactNode }[]).map(k => (
-          <div key={k.key} className="fin-card fin-kpi">
-            <div className="fin-kpi-label">{k.label}</div>
-            <div className="fin-kpi-value">{k.value}</div>
-            <div className="fin-kpi-foot">
-              <TrendBadge cur={k.cur} prev={k.prev} pp={k.pp} />
-              <span className="fin-kpi-cmp" title={ov.prevLabel}>{ov.prevLabel}</span>
-            </div>
-            <div className="fin-kpi-spark" title="Останні 6 місяців; кольоровий — поточний">
-              <MonthBars values={k.months} labels={ov.monthly.labels} color={k.color} format={k.mFmt} />
-            </div>
-            {/* Довге пояснення — під «детальніше»: розгорнутий текст розтягував усі
-                картки ряду до висоти найдовшої. <details> без JS, стан не зберігається. */}
-            {k.more ? (
-              <details className="fin-hint fin-hint-more">
-                <summary>{k.hint} <span className="fin-hint-toggle">детальніше</span></summary>
-                <div style={{ marginTop: 6 }}>{k.more}</div>
-              </details>
-            ) : (
-              <div className="fin-hint">{k.hint}</div>
-            )}
+      {/* KPI — рівна сітка карток (StatCard): цифра, динаміка, дві строки розшифровки.
+          Міні-графіки прибрано — помісячна динаміка є в блоці «Динаміка» нижче. */}
+      {(() => {
+        const k = ov.kpi;
+        const factMargin = k.revenue.value > 0 ? Math.round(k.profit.value / k.revenue.value * 1000) / 10 : null;
+        const delivAvg = k.orderSum.deliveredCount > 0 ? Math.round(k.orderSum.delivered / k.orderSum.deliveredCount) : null;
+        const prevLbl = ov.prevLabel;
+        return (
+          <div className="fin-kpi-row">
+            <StatCard label="Сума замовлень" value={`${fmt(k.orderSum.value)} ₴`} cur={k.orderSum.value} prev={k.orderSum.prev} deltaLabel={prevLbl}
+              hint={`Підтверджені замовлення, створені ${dmy(ov.from)}–${dmy(ov.to)} (без нових і скасованих), за цінами продажу. Виручка за обліком — у блоці «Від замовлень до обліку».`}
+              rows={[
+                { label: `вручено · ${fmt(k.orderSum.deliveredCount)}`, value: `${fmt(k.orderSum.delivered)} ₴` },
+                { label: `в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴` },
+              ]} />
+            <StatCard label="Прибуток по замовленнях" kind="forecast" value={`${fmt(k.profitEst.value)} ₴`} valueColor="#15803D" cur={k.profitEst.value} prev={k.profitEst.prev} deltaLabel={prevLbl}
+              hint="Валовий прибуток по замовленнях періоду: у вручених — з обліку (собівартість FIFO, комісії площадок, НП, RozetkaPay, еквайринг), у решти — оцінка за закупівлею і ставками. Факт обліку з усіма витратами — у блоці «Від замовлень до обліку»."
+              rows={[
+                { label: 'вручені (факт)', value: `${fmt(k.profitEst.delivered)} ₴` },
+                { label: 'в роботі й у дорозі', value: `${fmt(k.profitEst.forecast)} ₴` },
+              ]} />
+            <StatCard label="Маржа" kind="forecast" value={k.margin.value === null ? '—' : `${k.margin.value}%`} cur={k.margin.value} prev={k.margin.prev} pp deltaLabel={prevLbl}
+              hint="Прибуток по замовленнях ÷ сума замовлень. Нижче — та сама маржа за обліком: валовий факт ÷ виручка факт."
+              rows={[
+                { label: 'за обліком (факт)', value: factMargin === null ? '—' : `${factMargin}%` },
+                { label: 'попередній період', value: k.margin.prev === null ? '—' : `${k.margin.prev}%` },
+              ]} />
+            <StatCard label="Замовлень" value={fmt(k.orders.value)} cur={k.orders.value} prev={k.orders.prev} deltaLabel={prevLbl}
+              hint="Створені за період, без нових (непідтверджених) і скасованих — включно з ще не відвантаженими."
+              rows={[
+                { label: 'вручено', value: fmt(k.orderSum.deliveredCount) },
+                { label: 'в роботі й у дорозі', value: fmt(k.orderSum.openCount) },
+              ]} />
+            <StatCard label="Середній чек" value={k.avgCheck.value === null ? '—' : `${fmt(k.avgCheck.value)} ₴`} cur={k.avgCheck.value} prev={k.avgCheck.prev} deltaLabel={prevLbl}
+              hint="Сума замовлень періоду ÷ їх кількість."
+              rows={[
+                { label: 'вручених', value: delivAvg === null ? '—' : `${fmt(delivAvg)} ₴` },
+                { label: 'попередній період', value: k.avgCheck.prev === null ? '—' : `${fmt(k.avgCheck.prev)} ₴` },
+              ]} />
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* Факт обліку і як до нього доходять цифри по замовленнях — той самий блок, що в «Аналітиці» */}
       <div style={{ marginTop: '16px' }}>

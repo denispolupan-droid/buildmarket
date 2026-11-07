@@ -41,7 +41,8 @@ export type OverviewData = {
     profitEst: { value: number; prev: number; delivered: number; forecast: number; unattributed: number };
     margin: { value: number | null; prev: number | null };      // від оцінки (profitEst / orderSum)
     orders: KpiSeries;    // к-ть замовлень (когорта періоду, без скасованих)
-    orderSum: { value: number; prev: number };  // сума створених замовлень (оцінка до доставки)
+    /** delivered* — вручені (собівартість проведена), open* — ще в роботі й у дорозі */
+    orderSum: { value: number; prev: number; delivered: number; deliveredCount: number; open: number; openCount: number };  // сума створених замовлень (оцінка до доставки)
     avgCheck: { value: number | null; prev: number | null };
   };
   /* Останні 6 місяців (старіший → поточний) для стовпчиків у KPI-картках —
@@ -559,6 +560,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const curProfitEst  = (curOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   // Розбивка для підказки картки: вручені (собівартість уже проведена) — факт, решта — прогноз
   const curProfitDelivered = (curOrders as EstOrder[]).filter(hasFactCogs).reduce((s, o) => s + orderMargin(o), 0);
+  const curDelivOrders = (curOrders as EstOrder[]).filter(hasFactCogs);
+  const curDelivSum = curDelivOrders.reduce((s, o) => s + Number(o.total_price ?? 0), 0);
   const prevProfitEst = (prevOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   const prevOrdSum    = sum(prevOrders);
 
@@ -738,7 +741,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       profitEst: { value: curProfitEst, prev: prevProfitEst, delivered: curProfitDelivered, forecast: curProfitEst - curProfitDelivered, unattributed: curUnattributedDeal },
       margin:   { value: pct(curProfitEst, curOrdSum), prev: pct(prevProfitEst, prevOrdSum) },
       orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },
-      orderSum: { value: curOrdSum, prev: prevOrdSum },
+      orderSum: { value: curOrdSum, prev: prevOrdSum, delivered: curDelivSum, deliveredCount: curDelivOrders.length, open: curOrdSum - curDelivSum, openCount: curOrders.length - curDelivOrders.length },
       avgCheck: {
         value: curOrders.length ? Math.round(curOrdSum / curOrders.length) : null,
         prev:  prevOrders.length ? Math.round(sum(prevOrders) / prevOrders.length) : null,
