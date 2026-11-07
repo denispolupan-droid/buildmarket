@@ -2880,7 +2880,15 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
   .fin-sum-part + .fin-sum-part { border-top: 1px solid var(--border-light, var(--border)); padding-top: 12px; }
 }
 
-/* Частка в прибутку (бренди, постачальники) — тонка смужка під назвою */
+/* Смужки в клітинках таблиці «По місяцях» (07.11.2026): тонкі, світлі, без осей */
+.fin-inbar { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%; }
+.fin-inbar-track { flex: 1; min-width: 40px; max-width: 160px; height: 6px; border-radius: 3px; background: var(--bg-soft); overflow: hidden; display: flex; }
+.fin-inbar-track > span { display: block; height: 100%; border-radius: 3px; background: var(--brand-blue); opacity: 0.45; }
+.fin-inbar.small .fin-inbar-track { max-width: 44px; min-width: 28px; }
+.fin-inbar > span:last-child { min-width: 64px; text-align: right; }
+.fin-inbar.small > span:last-child { min-width: 36px; }
+
+&
 .fin-share-bar { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: var(--bg-soft); max-width: 220px; }
 .fin-share-bar > span { display: block; height: 100%; border-radius: 2px; background: #16A34A; opacity: 0.75; }
 

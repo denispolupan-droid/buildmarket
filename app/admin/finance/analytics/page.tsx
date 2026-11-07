@@ -559,16 +559,31 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                 </tr>
               </thead>
               <tbody>
-                {monthsFact.map(m => (
+                {monthsFact.map(m => {
+                  // Смужки в клітинках (вибір власника 07.11.2026): виручка — від найбільшого місяця,
+                  // маржа — від 0 до 10 %; без осей і легенд, місяці порівнюються оком
+                  const maxRev = Math.max(1, ...monthsFact.map(x => x.revenue));
+                  return (
                   <tr key={m.key}>
                     <td className="muted">{m.label}</td>
                     <td className="num muted">{m.delivered > 0 ? fmt(m.delivered) : '—'}</td>
-                    <td className="num">{m.revenue !== 0 ? `${fmt(m.revenue)} ₴` : '—'}</td>
+                    <td className="num">
+                      <span className="fin-inbar">
+                        <span className="fin-inbar-track"><span style={{ width: `${Math.max(0, m.revenue) / maxRev * 100}%` }} /></span>
+                        <span>{m.revenue !== 0 ? `${fmt(m.revenue)} ₴` : '—'}</span>
+                      </span>
+                    </td>
                     <td className="num" style={{ color: m.gross < 0 ? 'var(--color-danger)' : undefined }}>{m.gross !== 0 ? `${fmt(m.gross)} ₴` : '—'}</td>
-                    <td className="num muted">{m.pct === null ? '—' : `${m.pct}%`}</td>
+                    <td className="num muted">
+                      <span className="fin-inbar small">
+                        <span className="fin-inbar-track"><span style={{ width: `${Math.min(100, Math.max(0, m.pct ?? 0) * 10)}%`, background: '#16A34A' }} /></span>
+                        <span>{m.pct === null ? '—' : `${m.pct}%`}</span>
+                      </span>
+                    </td>
                     <td className="num" style={{ color: m.net < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{m.net !== 0 ? `${fmt(m.net)} ₴` : '—'}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           ) : (
