@@ -515,19 +515,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           ]} />
       </div>
 
-      {/* Розбір факту: виручка від суми замовлень, валовий і ЧИСТИЙ прибуток — той самий компонент, що на «Огляді» (одне читання леджера:
-          чистий = валовий цього ж мосту − опер. витрати − податки) */}
+      {/* Розбір: від суми замовлень до виручки і до ЧИСТОГО прибутку — відкритий одразу (одне читання
+          леджера: чистий = валовий цього ж мосту − опер. витрати − податки) */}
       <ProfitBridgeCard
         bridge={{ ...bridge, opex: pl.opex.total, opexBy: pl.opex.byAccount, taxes: pl.taxes, net: netFact }}
-        periodLabel={curMonthLabel}
-        extras={{
-          revenuePrev: prevLedgerRevenue > 0 ? prevLedgerRevenue : null,
-          grossPrev: prevPL.revenue > 0 ? prevPL.grossProfit : null,
-          netPrev: prevPL.revenue > 0 ? prevPL.netProfit : null,
-          orders: thisMonthRows.length,
-          avgCheck: thisMonthRows.length ? Math.round(bridge.revenue.start / thisMonthRows.length) : null,
-          forecastProfit: Math.round((inWork.margin + transit.margin) * 100) / 100,
-        }} />
+        periodLabel={curMonthLabel} />
 
       {/* Динаміка 6 місяців + комісії МП */}
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>

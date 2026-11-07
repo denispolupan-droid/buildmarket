@@ -5,7 +5,7 @@ import FinanceActions from './FinanceActions';
 import PlanCard from './PlanCard';
 import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
-import ProfitBridgeCard from './ProfitBridgeCard';
+import StatCard from './StatCard';
 import { requireStaffPage } from '../../../lib/auth-guard';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
@@ -83,13 +83,36 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         </a>
       </div>
 
-      {/* Дві картки ФАКТУ обліку (рішення власника 07.11.2026): «Виручка» — шлях від суми
-          замовлень, «Валовий прибуток» — розрахунок по кліку; чистий — в «Аналітиці». Усе з одного читання
-          леджера; прогноз — лише рядком «очікується з доставок». Той самий компонент — в «Аналітиці». */}
-      <ProfitBridgeCard bridge={ov.bridge} periodLabel={ov.periodLabel} extras={{
-        revenuePrev: ov.kpi.revenue.prev, grossPrev: ov.kpi.profit.prev, netPrev: ov.kpi.netProfit.prev,
-        orders: ov.kpi.orders.value, avgCheck: ov.kpi.avgCheck.value, forecastProfit: ov.kpi.profitEst.forecast,
-      }} showNet={false} />
+      {/* Поточний стан коротко (рішення власника 07.11.2026: «Огляд» — зрозуміти стан за
+          секунди, детальний розбір — в «Аналітиці»). Обидві цифри — з одного читання леджера. */}
+      {(() => {
+        const k = ov.kpi;
+        const margin = k.revenue.value > 0 ? Math.round(k.profit.value / k.revenue.value * 1000) / 10 : null;
+        return (
+          <>
+            <div className="fin-kpi-row cols-2">
+              <StatCard label="Виручка" kind="fact" value={`${fmt(k.revenue.value)} ₴`} cur={k.revenue.value} prev={k.revenue.prev} deltaLabel={ov.prevLabel}
+                hint="Проведені продажі з обліку (продаж фіксується в день вручення). Детальний розбір від суми замовлень — в «Аналітиці»."
+                rows={[
+                  { label: `замовлено за період · ${fmt(k.orders.value)}`, value: `${fmt(k.orderSum.value)} ₴` },
+                  { label: `ще в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴` },
+                ]} />
+              <StatCard label="Валовий прибуток" kind="fact" value={`${fmt(k.profit.value)} ₴`} valueColor={k.profit.value >= 0 ? '#15803D' : '#DC2626'} cur={k.profit.value} prev={k.profit.prev} deltaLabel={ov.prevLabel}
+                hint="Виручка мінус собівартість і всі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата). Чистий прибуток і розбір — в «Аналітиці»."
+                rows={[
+                  { label: 'маржа від виручки', value: margin === null ? '—' : `${margin}%` },
+                  { label: 'очікується з доставок (прогноз)', value: `+${fmt(k.profitEst.forecast)} ₴`, color: 'var(--text-muted)' },
+                ]} />
+            </div>
+            <div style={{ textAlign: 'right', margin: '8px 2px 0' }}>
+              <Link href={ov.preset === 'cur_month' ? '/admin/finance/analytics' : `/admin/finance/analytics?p=${ov.preset}`}
+                style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--brand-blue)', textDecoration: 'none' }}>
+                Детально: чистий прибуток і розбір — в «Аналітиці» →
+              </Link>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Стадії зараз · Динаміка */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>

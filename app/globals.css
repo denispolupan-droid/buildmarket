@@ -2839,18 +2839,6 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
 .fin-thin-ch { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .fin-thin-why { color: var(--text-muted); }
 .fin-thin-date { color: var(--text-muted); font-variant-numeric: tabular-nums; }
-/* Дві картки факту («Виручка» | «Прибуток») на «Огляді» й «Аналітиці» */
-.fin-fact-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }   /* обидві картки однієї висоти */
-
-/* «Від замовлень до обліку»: блок згорнутий до підсумкових рядків, розрахунок — по кліку */
-.fin-bridge-sum { list-style: none; cursor: pointer; }
-.fin-bridge-sum::-webkit-details-marker { display: none; }
-.fin-bridge-toggle { display: inline-block; margin: 6px 0 2px; font-size: 12px; font-weight: 600; color: var(--brand-blue); }
-.fin-bridge-toggle .when-open { display: none; }
-.fin-bridge-block[open] .fin-bridge-toggle .when-open { display: inline; }
-.fin-bridge-block[open] .fin-bridge-toggle .when-closed { display: none; }
-.fin-bridge-block[open] .fin-bridge-compact { display: none; }
-
 /* «По місяцях · факт обліку» — заголовки колонок таблиці */
 .fin-month-table th {
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600;
