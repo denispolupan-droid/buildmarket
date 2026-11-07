@@ -101,10 +101,10 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 { label: `вручено · ${fmt(k.orderSum.deliveredCount)}`, value: `${fmt(k.orderSum.delivered)} ₴` },
                 { label: `в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴` },
               ]} />
-            <StatCard label="Прибуток по замовленнях" kind="forecast" value={`${fmt(k.profitEst.value)} ₴`} valueColor="#15803D" cur={k.profitEst.value} prev={k.profitEst.prev} deltaLabel={prevLbl}
-              hint="Валовий прибуток по замовленнях періоду: у вручених — з обліку (собівартість FIFO, комісії площадок, НП, RozetkaPay, еквайринг), у решти — оцінка за закупівлею і ставками. Факт обліку з усіма витратами — у блоці «Від замовлень до обліку»."
+            <StatCard label="Прибуток замовлень" kind="forecast" value={`${fmt(k.profitEst.value)} ₴`} valueColor="#15803D" cur={k.profitEst.value} prev={k.profitEst.prev} deltaLabel={prevLbl}
+              hint="Валовий прибуток по замовленнях періоду. Вручені — з обліку по кожному замовленню (собівартість FIFO, комісії площадок, НП, RozetkaPay, еквайринг); якщо комісію ще не провели — її оцінка. В роботі й у дорозі — прогноз за закупівлею і ставками. Це НЕ факт обліку: туди ще входять збори по скасованих, витрати без замовлення і вже списані збори по замовленнях у дорозі — див. «Від замовлень до обліку»."
               rows={[
-                { label: 'вручені (факт)', value: `${fmt(k.profitEst.delivered)} ₴` },
+                { label: 'вручені замовлення', value: `${fmt(k.profitEst.delivered)} ₴` },
                 { label: 'в роботі й у дорозі', value: `${fmt(k.profitEst.forecast)} ₴` },
               ]} />
             <StatCard label="Маржа" kind="forecast" value={k.margin.value === null ? '—' : `${k.margin.value}%`} cur={k.margin.value} prev={k.margin.prev} pp deltaLabel={prevLbl}
