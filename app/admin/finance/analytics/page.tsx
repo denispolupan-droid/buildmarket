@@ -549,7 +549,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         {/* Таблиця за обліком (графік власник відхилив 07.11.2026): місяці порівнюються
             рядками, цифри ті самі, що в «Звітах» */}
         <div className="fin-card" style={{ gridColumn: 'span 7' }}>
-          <div className="fin-card-title">По місяцях · факт обліку <span className="fin-card-sub">· за датою проводки (продаж = вручення): виручка, валовий прибуток і маржа, чистий після операційних витрат і податків</span></div>
+          <div className="fin-card-title" title="За датою проводки (продаж = вручення). Чистий — після операційних витрат і податків.">По місяцях · факт обліку <span className="fin-card-sub">· за датою вручення</span></div>
           {monthsFactHasData ? (
             <table className="fin-table fin-month-table">
               <thead>
@@ -592,17 +592,22 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>
-          <div className="fin-card-title">Комісії маркетплейсів <span className="fin-card-sub">· факт з обліку за місяць: сума комісій і % від фактичної виручки каналу</span></div>
+          {/* Та сама «шапка», що в «По місяцях» поруч (підзаголовок в один рядок + рядок
+              назв колонок) — місяці двох таблиць стоять рядок у рядок (07.11.2026) */}
+          <div className="fin-card-title">Комісії маркетплейсів <span className="fin-card-sub">· факт обліку, % від виручки</span></div>
           {feeTrendHasData ? (
-            <table className="fin-table">
+            <table className="fin-table fin-month-table">
+              <thead>
+                <tr><th>Місяць</th><th className="num">% виручки</th><th className="num">Разом</th><th className="num">Rozetka</th><th className="num">Prom</th></tr>
+              </thead>
               <tbody>
                 {feeTrend.map(m => (
                   <tr key={m.label}>
-                    <td className="muted" style={{ width: '70px' }}>{m.label}</td>
-                    <td className="num" style={{ color: m.fee > 0 ? '#C2410C' : 'var(--text-muted)', width: '60px' }}>{m.fee > 0 ? `${m.pct}%` : '—'}</td>
-                    <td className="num">{m.fee > 0 ? `−${fmt(m.fee)} ₴` : ''}</td>
-                    <td className="num muted" style={{ fontWeight: 500 }}>{m.roz > 0 ? `Rozetka ${fmt(m.roz)}` : ''}</td>
-                    <td className="num muted" style={{ fontWeight: 500 }}>{m.prom > 0 ? `Prom ${fmt(m.prom)}` : ''}</td>
+                    <td className="muted">{m.label}</td>
+                    <td className="num" style={{ color: m.fee > 0 ? '#C2410C' : 'var(--text-muted)' }}>{m.fee > 0 ? `${m.pct}%` : '—'}</td>
+                    <td className="num">{m.fee > 0 ? `−${fmt(m.fee)} ₴` : '—'}</td>
+                    <td className="num muted" style={{ fontWeight: 500 }}>{m.roz > 0 ? fmt(m.roz) : '—'}</td>
+                    <td className="num muted" style={{ fontWeight: 500 }}>{m.prom > 0 ? fmt(m.prom) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
