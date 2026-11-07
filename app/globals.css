@@ -2877,7 +2877,11 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
   .fin-sum-part + .fin-sum-part { border-top: 1px solid var(--border-light, var(--border)); padding-top: 12px; }
 }
 
-/* «План на місяць» — шкала з віхами (07.11.2026) */
+/* Частка в прибутку (бренди, постачальники) — тонка смужка під назвою */
+.fin-share-bar { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: var(--bg-soft); max-width: 220px; }
+.fin-share-bar > span { display: block; height: 100%; border-radius: 2px; background: #16A34A; opacity: 0.75; }
+
+&
 .fin-plan-scale { margin-top: 12px; }
 .fin-plan-track { position: relative; display: flex; height: 12px; border-radius: 6px; background: var(--bg-soft); }
 .fin-plan-track > div:first-child { border-radius: 6px 0 0 6px; }

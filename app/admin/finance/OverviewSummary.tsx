@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Info } from 'lucide-react';
 import { TrendBadge } from './overview-charts';
+import { Sparkline } from './analytics-charts';
 
 /**
  * «Підсумок» на «Огляді» — поточний стан за секунди (рішення власника 07.11.2026):
@@ -17,6 +18,8 @@ export type SummaryPart = {
   /** forecast — прогноз (жовта позначка), за замовчуванням факт; deltaText — замість динаміки, коли порівнювати нема з чим */
   kind?: 'fact' | 'forecast'; deltaText?: string;
   cur?: number | null; prev?: number | null; metrics: SummaryMetric[];
+  /** міні-тренд біля цифри (напр. 6 місяців) */
+  spark?: { values: number[]; color?: string; title?: string };
   bar?: { title: string; segments: SummarySegment[] };
 };
 
@@ -64,6 +67,7 @@ export default function OverviewSummary({ title, parts, detailsHref, prevLabel, 
                 <TrendBadge cur={p.cur ?? null} prev={p.prev ?? null} />
                 <span className="fin-kpi-cmp">{prevLabel}</span>
               </>}
+              {p.spark && <Sparkline values={p.spark.values} color={p.spark.color} title={p.spark.title} />}
             </div>
             <div className="fin-sum-metrics" style={{ gridTemplateColumns: `repeat(${metricCols}, minmax(0, 1fr))` }}>
               {p.metrics.map(m => (
