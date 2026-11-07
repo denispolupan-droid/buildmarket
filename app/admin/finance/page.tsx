@@ -92,7 +92,10 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
             hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
           { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
-            hint: `Прибуток по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: вручені — ${fmt(ov.kpi.profitEst.delivered)} ₴, ще в роботі й у дорозі — ${fmt(ov.kpi.profitEst.forecast)} ₴ (прогноз).`,
+            hint: `Прибуток по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: вручені — ${fmt(ov.kpi.profitEst.delivered)} ₴, ще в роботі й у дорозі — ${fmt(ov.kpi.profitEst.forecast)} ₴ (прогноз).`
+              + (ov.kpi.profitEst.unattributed > 0
+                ? ` Мінус витрати без прив'язки до замовлення ${fmt(ov.kpi.profitEst.unattributed)} ₴ = ${fmt(ov.kpi.profitEst.value - ov.kpi.profitEst.unattributed)} ₴.`
+                : ''),
             more: (
               <>
                 <div className="fin-hint-h">Враховано</div>
