@@ -96,28 +96,32 @@ export default function PlanCard({ plan, sales: sales0 }: {
         </div>
       ) : (
         <>
-          <div className="fin-funnel-track" style={{ marginTop: '12px', position: 'relative', height: '12px', borderRadius: '7px', display: 'flex', overflow: 'visible' }}>
-            <div title={`Виручка (вручено): ${fmt(plan.fact)} ₴`}
-              style={{ width: `${pctOf(plan.fact)}%`, background: 'var(--brand-blue)', borderRadius: '7px 0 0 7px' }} />
-            <div title={`Ще в роботі й у дорозі: ${fmt(inFlight)} ₴`}
-              style={{ width: `${pctOf(inFlight)}%`, background: 'var(--brand-blue)', opacity: 0.35, borderRadius: '0 7px 7px 0' }} />
-            {/* риска: де мав би бути рівномірний темп (скільки місяця минуло) */}
-            <div title={`Минуло ${plan.daysPassed} з ${plan.daysInMonth} днів (${timePct}%) — тут має бути темп`}
-              style={{ position: 'absolute', top: '-4px', bottom: '-4px', left: `${timePct}%`, width: '2px', background: 'var(--text-primary)', opacity: 0.55, borderRadius: '1px' }} />
+          {/* Шкала з віхами (вибір власника 07.11.2026): 25/50/75/100 %, ▲ — де має бути
+              темп сьогодні; темна частина — виручка (вручено), світла — ще в роботі й у дорозі */}
+          <div className="fin-plan-scale">
+            <div className="fin-plan-track">
+              <div title={`Виручка (вручено): ${fmt(plan.fact)} ₴`} style={{ width: `${pctOf(plan.fact)}%`, background: 'var(--brand-blue)' }} />
+              <div title={`Ще в роботі й у дорозі: ${fmt(inFlight)} ₴`} style={{ width: `${pctOf(inFlight)}%`, background: 'var(--brand-blue)', opacity: 0.35 }} />
+              {[25, 50, 75].map(t => <span key={t} className="fin-plan-tick" style={{ left: `${t}%` }} />)}
+              <span className="fin-plan-pace" style={{ left: `${timePct}%` }} title={`Минуло ${plan.daysPassed} з ${plan.daysInMonth} днів — тут має бути темп`} />
+            </div>
+            <div className="fin-plan-axis">
+              {[0, 25, 50, 75, 100].map(t => <span key={t} style={{ left: `${t}%` }}>{t === 0 ? '0' : `${t}%`}</span>)}
+              <b className="fin-plan-pace-label" style={{ left: `${timePct}%`, color: paceOk ? 'var(--color-success)' : 'var(--color-danger)' }}>▲ темп</b>
+            </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'baseline' }}>
-            <span className="fin-sum-legend" style={{ marginTop: 0 }}>
-              <span><i style={{ background: 'var(--brand-blue)' }} />виручка <b>{fmt(plan.fact)} ₴</b></span>
-              <span><i style={{ background: 'var(--brand-blue)', opacity: 0.35 }} />ще в роботі й у дорозі <b>{fmt(inFlight)} ₴</b></span>
-              <span style={{ color: 'var(--text-muted)' }}>риска — темп ({plan.daysPassed}/{plan.daysInMonth} дн.)</span>
-            </span>
-            <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-              {left > 0 ? (
-                <>До плану ще <b>{fmt(left)} ₴</b> за {daysLeft} дн.: треба <b style={{ color: paceOk ? 'var(--color-success)' : 'var(--color-danger)' }}>≈{fmt(needDay)} ₴/день</b>, зараз {fmt(nowDay)} ₴/день</>
-              ) : (
-                <b style={{ color: 'var(--color-success)' }}>План виконано</b>
-              )}
-            </span>
+          <div className="fin-plan-stats">
+            <div title={`Виручка ${fmt(plan.fact)} ₴ + ще в роботі й у дорозі ${fmt(inFlight)} ₴`}>
+              <span>Зроблено</span><b>{fmt(sales)} ₴</b>
+            </div>
+            <div>
+              <span>Лишилось</span><b>{left > 0 ? `${fmt(left)} ₴` : 'план виконано'}</b>
+            </div>
+            <div title={`Щоб виконати план за ${daysLeft} дн., що лишились`}>
+              <span>Треба на день</span>
+              <b style={{ color: left > 0 ? (paceOk ? 'var(--color-success)' : 'var(--color-danger)') : 'var(--color-success)' }}>{left > 0 ? `${fmt(needDay)} ₴` : '—'}</b>
+              <em>зараз {fmt(nowDay)} ₴</em>
+            </div>
           </div>
         </>
       )}

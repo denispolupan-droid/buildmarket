@@ -2877,6 +2877,24 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
   .fin-sum-part + .fin-sum-part { border-top: 1px solid var(--border-light, var(--border)); padding-top: 12px; }
 }
 
+/* «План на місяць» — шкала з віхами (07.11.2026) */
+.fin-plan-scale { margin-top: 12px; }
+.fin-plan-track { position: relative; display: flex; height: 12px; border-radius: 6px; background: var(--bg-soft); }
+.fin-plan-track > div:first-child { border-radius: 6px 0 0 6px; }
+.fin-plan-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.9); box-shadow: 0 0 0 0.5px var(--border); }
+.fin-plan-pace { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text-primary); opacity: 0.6; border-radius: 1px; }
+.fin-plan-axis { position: relative; height: 16px; margin-top: 4px; font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.fin-plan-axis > span { position: absolute; transform: translateX(-50%); }
+.fin-plan-axis > span:first-child { transform: none; }
+.fin-plan-axis > span:last-of-type { transform: translateX(-100%); }
+.fin-plan-pace-label { position: absolute; transform: translateX(-50%); top: 0; font-weight: 700; font-size: 10.5px; white-space: nowrap; background: var(--bg-card, #fff); padding: 0 3px; }
+.fin-plan-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-light, var(--border)); }
+.fin-plan-stats > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
+.fin-plan-stats span { font-size: 11.5px; color: var(--text-muted); }
+.fin-plan-stats b { font-size: 15px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.fin-plan-stats em { font-style: normal; font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) { .fin-plan-stats { grid-template-columns: 1fr; gap: 4px; } }
+
 /* «Огляд» і «Аналітика» — щільніші проміжки між блоками (07.11.2026); інші вкладки фінансів не чіпаємо */
 .fin-dense .fin-grid-12, .fin-dense .fin-kpi-row, .fin-dense .fin-two-col { gap: 6px; }
 
