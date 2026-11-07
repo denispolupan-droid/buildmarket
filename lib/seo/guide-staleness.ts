@@ -33,32 +33,38 @@ export function buildGuideStalenessMessage(rows: CategoryAuditRow[], siteUrl: st
   const head = `<b>📚 Тексти категорій: що оновити</b>\nЗастарілих: <b>${list.filter(textStale).length}</b> · без нового асортименту: <b>${list.filter(r => !textStale(r)).length}</b>`;
   const blocks: string[] = [];
   for (const r of list) {
-    const lines = [`\n<a href="${siteUrl}/admin/seo/categories/${encodeURIComponent(r.slug)}">${escTg(r.name)}</a>`];
+    // Кожен рядок веде прямо в розділ редактора, де це правиться: #guide або #seo-text
+    const editor = `${siteUrl}/admin/seo/categories/${encodeURIComponent(r.slug)}`;
+    const guide = `<a href="${editor}#guide">гайд</a>`;
+    const about = `<a href="${editor}#seo-text">опис</a>`;
+    const lines = [`\n<a href="${editor}">${escTg(r.name)}</a> · <a href="${siteUrl}/shop/${encodeURIComponent(r.slug)}">на сайті</a>`];
     // Гайд «Як вибрати»
-    if (r.guideStaleBrands.length) lines.push(`⛔ гайд: бренду вже немає — ${escTg(r.guideStaleBrands.join(', '))}`);
-    if (r.guideDeadLinks.length) lines.push(`⛔ гайд: знято з продажу — ${escTg(r.guideDeadLinks.map(l => l.label).join(', '))}`);
-    if (r.guideMissingBrands.length) lines.push(`➕ гайд: бренди без згадки — ${escTg(r.guideMissingBrands.map(b => `${b.brand} (${b.count})`).join(', '))}`);
+    if (r.guideStaleBrands.length) lines.push(`⛔ ${guide}: бренду вже немає — ${escTg(r.guideStaleBrands.join(', '))}`);
+    if (r.guideDeadLinks.length) lines.push(`⛔ ${guide}: знято з продажу — ${escTg(r.guideDeadLinks.map(l => l.label).join(', '))}`);
+    if (r.guideMissingBrands.length) lines.push(`➕ ${guide}: бренди без згадки — ${escTg(r.guideMissingBrands.map(b => `${b.brand} (${b.count})`).join(', '))}`);
     if (r.newProducts.length) {
       const names = r.newProducts.slice(0, 5).map(p => p.name).join('; ');
-      lines.push(`🆕 гайд: нові товари без згадки — ${escTg(names)}${r.newProducts.length > 5 ? ` … ще ${r.newProducts.length - 5}` : ''}`);
+      lines.push(`🆕 ${guide}: нові товари без згадки — ${escTg(names)}${r.newProducts.length > 5 ? ` … ще ${r.newProducts.length - 5}` : ''}`);
     }
     // Опис категорії («Про категорію»)
-    if (r.staleBrands.length) lines.push(`⛔ опис: бренду вже немає — ${escTg(r.staleBrands.join(', '))}`);
-    if (r.seoGoneProducts.length) lines.push(`⛔ опис: знято з продажу — ${escTg(r.seoGoneProducts.join(', '))}`);
+    if (r.staleBrands.length) lines.push(`⛔ ${about}: бренду вже немає — ${escTg(r.staleBrands.join(', '))}`);
+    if (r.seoGoneProducts.length) lines.push(`⛔ ${about}: знято з продажу — ${escTg(r.seoGoneProducts.join(', '))}`);
     if (r.missingBrands.length) {
-      lines.push(`➕ опис: бренди без згадки — ${escTg(r.missingBrands.map(b => `${b} (${r.actualBrands.find(a => a.brand === b)?.count ?? 0})`).join(', '))}`);
+      lines.push(`➕ ${about}: бренди без згадки — ${escTg(r.missingBrands.map(b => `${b} (${r.actualBrands.find(a => a.brand === b)?.count ?? 0})`).join(', '))}`);
     }
     blocks.push(lines.join('\n'));
   }
 
+  // Ліміт Telegram рахується по тексту ПІСЛЯ розбору розмітки — теги посилань не враховуються
+  const visible = (s: string) => s.replace(/<[^>]+>/g, '').length;
   let out = head;
   let shown = 0;
   for (const b of blocks) {
-    if (out.length + b.length > MAX_LEN) break;
+    if (visible(out) + visible(b) > MAX_LEN) break;
     out += '\n' + b;
     shown++;
   }
   if (shown < blocks.length) out += `\n\n… ще ${blocks.length - shown} — <a href="${siteUrl}/admin/seo/categories">усі в адмінці</a>`;
-  out += '\n\nОновити — у редакторі категорії («Згенерувати» або вручну).';
+  out += '\n\n«гайд» / «опис» — посилання на розділ редактора; там «Згенерувати» або правка вручну, потім «Зберегти».';
   return out;
 }

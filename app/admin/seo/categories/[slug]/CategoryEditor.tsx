@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import type { CategoryFaq, CategoryGuide, CategoryRelated, CategoryMeta } from '../../../../../lib/category-descriptions';
 import { resolveGuidePrices, type PricedProduct } from '../../../../../lib/seo/guide-prices';
@@ -93,6 +93,13 @@ export default function CategoryEditor(props: Props) {
     const meta: CategoryMeta = { description: c.description, seoText: c.seoText || undefined, faq: c.faq, guide: c.guide ?? undefined, related: c.related };
     return resolveGuidePrices(meta, priced, family, lang);
   }, [c, priced, family, lang]);
+
+  // Посилання з тижневої зведення в Telegram ведуть на розділ: #seo-text («Про категорію») чи #guide.
+  // Браузер не завжди докручує до якоря в адмінці (прокрутка всередині layout) — докручуємо самі.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (id === 'seo-text' || id === 'guide') document.getElementById(id)?.scrollIntoView({ block: 'start' });
+  }, []);
 
   const prefix = lang === 'ru' ? '/ru' : '';
   const catName = (x: { name: string; nameRu: string }) => (lang === 'ru' ? x.nameRu : x.name);
@@ -192,7 +199,7 @@ export default function CategoryEditor(props: Props) {
           <div style={label}><span>Опис (meta description)</span><span style={{ ...small, color: c.description.length > 160 ? 'var(--color-danger)' : undefined }}>{c.description.length}/160</span></div>
           <textarea style={{ ...inp, minHeight: 56 }} value={c.description} onChange={e => set({ description: e.target.value })} />
 
-          <div style={label}><span>Про категорію (seoText)</span><span style={small}>{words(c.seoText)} слів · норма 60–100, речення «У каталозі FIXLINE — …»</span></div>
+          <div id="seo-text" style={{ ...label, scrollMarginTop: 16 }}><span>Про категорію (seoText)</span><span style={small}>{words(c.seoText)} слів · норма 60–100, речення «У каталозі FIXLINE — …»</span></div>
           <textarea style={{ ...inp, minHeight: 120 }} value={c.seoText} onChange={e => set({ seoText: e.target.value })} />
 
           <div style={label}><span>Профільна стаття (кнопка «Читати статтю»)</span></div>
@@ -215,7 +222,7 @@ export default function CategoryEditor(props: Props) {
           ))}
           <button style={btnGhost} onClick={() => set({ faq: [...c.faq, { q: '', a: '' }] })}>+ питання</button>
 
-          <div style={label}><span>Гайд «Як вибрати»</span><span style={small}>{guideWords(c.guide)} слів · норма 350–600, 5–6 розділів, останній — «Де купити»</span></div>
+          <div id="guide" style={{ ...label, scrollMarginTop: 16 }}><span>Гайд «Як вибрати»</span><span style={small}>{guideWords(c.guide)} слів · норма 350–600, 5–6 розділів, останній — «Де купити»</span></div>
           <input style={{ ...inp, marginBottom: 8 }} value={guide.title} placeholder="Заголовок гайда, напр.: Як вибрати ґрунтовку-концентрат" onChange={e => setGuide({ ...guide, title: e.target.value })} />
           {guide.sections.map((s, i) => (
             <div key={i} style={sectionBox}>

@@ -39,6 +39,6 @@ describe('аудит і зведення: опис категорії', () => {
     expect(r.seoGoneProducts).toEqual(['Knauf Super Finish', 'Lacrysil «60 секунд»']);
     expect(r.gaps.seoGoneProduct).toBe(true);
     const msg = buildGuideStalenessMessage(rows, 'https://fixline.com.ua')!;
-    expect(msg).toContain('⛔ опис: знято з продажу — Knauf Super Finish, Lacrysil «60 секунд»');
+    expect(msg).toContain('⛔ <a href="https://fixline.com.ua/admin/seo/categories/shpaklivky#seo-text">опис</a>: знято з продажу — Knauf Super Finish, Lacrysil «60 секунд»');
   });
 });

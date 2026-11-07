@@ -49,10 +49,13 @@ describe('застарілі гайди (07.11.2026)', () => {
     const rows = audit(guide(['[Lacrysil «60 секунд»](/product/1802-002) і Ceresit TS 62.']));
     const msg = buildGuideStalenessMessage(rows, 'https://fixline.com.ua')!;
     expect(msg).toContain('href="https://fixline.com.ua/admin/seo/categories/pina">Монтажна піна</a>');
-    expect(msg).toContain('⛔ гайд: бренду вже немає — Lacrysil');
-    expect(msg).toContain('⛔ гайд: знято з продажу — Lacrysil «60 секунд»');
-    expect(msg).toContain('➕ гайд: бренди без згадки — Akfix (2)');
-    expect(msg).toContain('🆕 гайд: нові товари без згадки — Піна Akfix 805');
+    expect(msg).toContain('<a href="https://fixline.com.ua/shop/pina">на сайті</a>');
+    // «гайд» у кожному рядку — посилання на розділ гайда в редакторі
+    const g = '<a href="https://fixline.com.ua/admin/seo/categories/pina#guide">гайд</a>';
+    expect(msg).toContain(`⛔ ${g}: бренду вже немає — Lacrysil`);
+    expect(msg).toContain(`⛔ ${g}: знято з продажу — Lacrysil «60 секунд»`);
+    expect(msg).toContain(`➕ ${g}: бренди без згадки — Akfix (2)`);
+    expect(msg).toContain(`🆕 ${g}: нові товари без згадки — Піна Akfix 805`);
     expect(buildGuideStalenessMessage(audit(guide(['[Akfix 805](/product/A-1), Akfix, Ceresit.'])), 'x')).toBeNull();
   });
 });
