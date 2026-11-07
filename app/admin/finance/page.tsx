@@ -91,39 +91,38 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       {(() => {
         const k = ov.kpi;
         const factMargin = k.revenue.value > 0 ? Math.round(k.profit.value / k.revenue.value * 1000) / 10 : null;
-        const delivAvg = k.orderSum.deliveredCount > 0 ? Math.round(k.orderSum.delivered / k.orderSum.deliveredCount) : null;
         const prevLbl = ov.prevLabel;
         return (
           <div className="fin-kpi-row">
             <StatCard label="Сума замовлень" value={`${fmt(k.orderSum.value)} ₴`} cur={k.orderSum.value} prev={k.orderSum.prev} deltaLabel={prevLbl}
-              hint={`Підтверджені замовлення, створені ${dmy(ov.from)}–${dmy(ov.to)} (без нових і скасованих), за цінами продажу. Виручка за обліком — у блоці «Від замовлень до обліку».`}
+              hint={`Обсяг продажів: підтверджені замовлення, створені ${dmy(ov.from)}–${dmy(ov.to)} (без нових і скасованих), за цінами продажу. Це ще не виручка — вона проводиться в день вручення.`}
               rows={[
                 { label: `вручено · ${fmt(k.orderSum.deliveredCount)}`, value: `${fmt(k.orderSum.delivered)} ₴` },
                 { label: `в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴` },
               ]} />
-            <StatCard label="Прибуток замовлень" kind="forecast" value={`${fmt(k.profitEst.value)} ₴`} valueColor="#15803D" cur={k.profitEst.value} prev={k.profitEst.prev} deltaLabel={prevLbl}
-              hint="Валовий прибуток по замовленнях періоду. Вручені — з обліку по кожному замовленню (собівартість FIFO, комісії площадок, НП, RozetkaPay, еквайринг); якщо комісію ще не провели — її оцінка. В роботі й у дорозі — прогноз за закупівлею і ставками. Це НЕ факт обліку: туди ще входять збори по скасованих, витрати без замовлення і вже списані збори по замовленнях у дорозі — див. «Від замовлень до обліку»."
+            <StatCard label="Виручка" kind="fact" value={`${fmt(k.revenue.value)} ₴`} cur={k.revenue.value} prev={k.revenue.prev} deltaLabel={prevLbl}
+              hint="Проведені продажі з обліку за датою вручення. Як до неї доходить сума замовлень — блок «Від замовлень до обліку»."
               rows={[
-                { label: 'вручені замовлення', value: `${fmt(k.profitEst.delivered)} ₴` },
-                { label: 'в роботі й у дорозі', value: `${fmt(k.profitEst.forecast)} ₴` },
+                { label: 'попередній період', value: k.revenue.prev == null ? '—' : `${fmt(k.revenue.prev)} ₴` },
+                { label: 'очікується з доставок', value: `+${fmt(k.orderSum.open)} ₴`, color: 'var(--text-muted)' },
               ]} />
-            <StatCard label="Маржа" kind="forecast" value={k.margin.value === null ? '—' : `${k.margin.value}%`} cur={k.margin.value} prev={k.margin.prev} pp deltaLabel={prevLbl}
-              hint="Прибуток по замовленнях ÷ сума замовлень. Нижче — та сама маржа за обліком: валовий факт ÷ виручка факт."
+            <StatCard label="Валовий прибуток" kind="fact" value={`${fmt(k.profit.value)} ₴`} valueColor={k.profit.value >= 0 ? '#15803D' : '#DC2626'} cur={k.profit.value} prev={k.profit.prev} deltaLabel={prevLbl}
+              hint="З бухгалтерських проводок: виручка − собівартість FIFO − усі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата, Smart). «Очікується» — прогноз по замовленнях у роботі й у дорозі, у факт ще не входить."
               rows={[
-                { label: 'за обліком (факт)', value: factMargin === null ? '—' : `${factMargin}%` },
-                { label: 'попередній період', value: k.margin.prev === null ? '—' : `${k.margin.prev}%` },
+                { label: 'маржа від виручки', value: factMargin === null ? '—' : `${factMargin}%` },
+                { label: 'очікується з доставок', value: `+${fmt(k.profitEst.forecast)} ₴`, color: 'var(--text-muted)' },
+              ]} />
+            <StatCard label="Чистий прибуток" kind="fact" value={`${fmt(k.netProfit.value)} ₴`} valueColor={k.netProfit.value >= 0 ? '#15803D' : '#DC2626'} cur={k.netProfit.value} prev={k.netProfit.prev} deltaLabel={prevLbl}
+              hint="Валовий прибуток мінус операційні витрати (оренда, зарплата, реклама, пакування; компенсації їх зменшують) і податки."
+              rows={[
+                { label: 'операційні витрати', value: `${k.netProfit.opex > 0 ? '−' : '+'}${fmt(Math.abs(k.netProfit.opex))} ₴` },
+                { label: 'податки', value: `${k.netProfit.taxes > 0 ? '−' : ''}${fmt(k.netProfit.taxes)} ₴` },
               ]} />
             <StatCard label="Замовлень" value={fmt(k.orders.value)} cur={k.orders.value} prev={k.orders.prev} deltaLabel={prevLbl}
-              hint="Створені за період, без нових (непідтверджених) і скасованих — включно з ще не відвантаженими."
+              hint="Створені за період, без нових (непідтверджених) і скасованих. Середній чек — сума замовлень ÷ їх кількість."
               rows={[
+                { label: 'середній чек', value: k.avgCheck.value === null ? '—' : `${fmt(k.avgCheck.value)} ₴` },
                 { label: 'вручено', value: fmt(k.orderSum.deliveredCount) },
-                { label: 'в роботі й у дорозі', value: fmt(k.orderSum.openCount) },
-              ]} />
-            <StatCard label="Середній чек" value={k.avgCheck.value === null ? '—' : `${fmt(k.avgCheck.value)} ₴`} cur={k.avgCheck.value} prev={k.avgCheck.prev} deltaLabel={prevLbl}
-              hint="Сума замовлень періоду ÷ їх кількість."
-              rows={[
-                { label: 'вручених', value: delivAvg === null ? '—' : `${fmt(delivAvg)} ₴` },
-                { label: 'попередній період', value: k.avgCheck.prev === null ? '—' : `${fmt(k.avgCheck.prev)} ₴` },
               ]} />
           </div>
         );

@@ -123,8 +123,8 @@ export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: Brid
   return (
     <div className="fin-card" style={{ marginBottom: '16px' }}>
       <div className="fin-card-title">
-        Від замовлень до обліку · {periodLabel}
-        <span className="fin-card-sub"> · як сума замовлень і прибуток по них доходять до факту з бухгалтерських проводок; «показати розрахунок» — усі рядки з розшифровкою до замовлень і видів зборів</span>
+        Факт обліку · {periodLabel}
+        <span className="fin-card-sub"> · виручка, валовий і чистий прибуток з бухгалтерських проводок; «показати розрахунок» — з чого складаються, до замовлень і видів зборів</span>
       </div>
       <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '6px', alignItems: 'start' }}>
         <Block title="Виручка" startLabel="Замовлення · сума (створені за період)" b={bridge.revenue} factLabel="Виручка · факт обліку"
@@ -132,9 +132,10 @@ export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: Brid
             { label: 'Замовлення · сума (створені за період)', value: bridge.revenue.start },
             { label: 'Виручка · факт обліку', value: bridge.revenue.fact },
           ]} />
-        <Block title="Прибуток" startLabel="Прибуток вручених замовлень періоду" b={bridge.profit} factLabel="Валовий прибуток · факт обліку" tail={netRows}
+        {/* Прибуток вручених замовлень — не підсумок, а перша складова валового: далі
+            прямі витрати на продажі, які не лягли на конкретне замовлення (рішення власника 07.11.2026) */}
+        <Block title="Прибуток" startLabel="з вручених замовлень періоду (до витрат без замовлення)" b={bridge.profit} factLabel="Валовий прибуток · факт обліку" tail={netRows}
           compact={[
-            { label: 'Прибуток вручених замовлень періоду', value: bridge.profit.start },
             { label: 'Валовий прибуток · факт обліку', value: bridge.profit.fact },
             { label: 'Чистий прибуток · факт обліку', value: bridge.net, color: bridge.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' },
           ]} />
