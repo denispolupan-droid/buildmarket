@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { fmtInt as fmt } from '../../../lib/format';
+import { SOURCE_META } from './channel-meta';
 
 // Карусель «Динаміка» на «Огляді»: три погляди в одному вікні.
 //   Дні     — щоденні стовпчики виручки/прибутку + тренд (ковзне середнє)
@@ -17,18 +18,7 @@ type Dynamics = {
   months: { labels: string[]; years: string[]; revenue: number[]; profit: number[]; counts: number[] };
 };
 
-// Ті самі кольори каналів, що в журналі замовлень (упізнаваність важливіша
-// за палітру: Prom скрізь теракотовий, Rozetka скрізь зелений)
-const SOURCE_META: Record<string, { label: string; color: string }> = {
-  website:  { label: 'Магазин',  color: '#1E5AA8' },
-  b2b:      { label: 'Опт',      color: '#6B21A8' },
-  dropship: { label: 'Дроп',     color: '#0E7490' },
-  retail:   { label: 'Роздріб',  color: '#B45309' },
-  phone:    { label: 'Телефон',  color: '#334155' },
-  prom:     { label: 'Prom',     color: '#C2410C' },
-  rozetka:  { label: 'Rozetka',  color: '#15803D' },
-  other:    { label: 'Інше',     color: '#94A3B8' },
-};
+// Кольори каналів — спільні з панеллю «Підсумок» (./channel-meta)
 
 /* ── Дні: дві панелі зі своїми шкалами (виручка ↑ / прибуток ↓) ───────────
    Одна шкала ховала прибуток біля нуля поруч із виручкою; окрема нижня

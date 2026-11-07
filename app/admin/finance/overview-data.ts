@@ -32,6 +32,8 @@ export type OverviewData = {
     revenue: KpiSeries;   // факт з леджера
     profit: KpiSeries;    // валовий факт (єдине визначення lib/accounting/profit-rules): revenue − cogs − витрати угод
     netProfit: { value: number; prev: number; opex: number; taxes: number };   // чистий факт = валовий − опер. витрати − податки
+    /** Структура витрат угод у факті періоду (та сама вибірка леджера): собівартість, комісії площадок і RozetkaPay, НП, еквайринг */
+    costs: { cogs: number; fees: number; delivery: number; acquiring: number };
     /* Очікуваний валовий прибуток по ВСІХ замовленнях періоду (та сама база,
        що «Замовлення · сума»): доставлені — факт з леджера, решта — оцінка */
     /** delivered — частина value по вже вручених (є проведена собівартість), forecast — по решті */
@@ -725,6 +727,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       revenue:  { value: curRev, prev: prevRev, daily: revDaily, prevDaily: prevRevDaily },
       profit:   { value: curProfit, prev: prevProfit, daily: profDaily, prevDaily: prevProfDaily },
       netProfit: { value: curPL.netProfit, prev: prevPL.netProfit, opex: curPL.opex.total, taxes: curPL.taxes },
+      costs: { cogs: curPL.cogs, fees: curPL.deal.marketplaceFee, delivery: curPL.deal.npDelivery, acquiring: curPL.deal.acquiringFee },
       profitEst: { value: curProfitEst, prev: prevProfitEst, delivered: curProfitDelivered, forecast: curProfitEst - curProfitDelivered, unattributed: curUnattributedDeal },
       margin:   { value: pct(curProfitEst, curOrdSum), prev: pct(prevProfitEst, prevOrdSum) },
       orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },

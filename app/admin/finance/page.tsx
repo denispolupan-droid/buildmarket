@@ -6,6 +6,7 @@ import PlanCard from './PlanCard';
 import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
 import OverviewSummary from './OverviewSummary';
+import { SOURCE_META } from './channel-meta';
 import { requireStaffPage } from '../../../lib/auth-guard';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
@@ -87,7 +88,13 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           секунди, детальний розбір — в «Аналітиці»). Обидві цифри — з одного читання леджера. */}
       {(() => {
         const k = ov.kpi;
-        const margin = k.revenue.value > 0 ? Math.round(k.profit.value / k.revenue.value * 1000) / 10 : null;
+        const rev = k.revenue.value;
+        const pctOfRev = (v: number) => (rev > 0 ? `${Math.round(v / rev * 1000) / 10}%` : '—');
+        const margin = rev > 0 ? Math.round(k.profit.value / rev * 1000) / 10 : null;
+        const c = k.costs;
+        // «Інші витрати угод» — те, що у валовому, але не собівартість/комісії/НП/еквайринг
+        // (сюди нічого не має падати; рахуємо залишком, щоб смуга завжди складалась у 100 %)
+        const otherDeal = Math.max(0, Math.round((rev - k.profit.value - c.cogs - c.fees - c.delivery - c.acquiring) * 100) / 100);
         return (
           <OverviewSummary
             title={`Підсумок · ${ov.periodLabel}`}
@@ -98,17 +105,36 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 label: 'Виручка', value: `${fmt(k.revenue.value)} ₴`, cur: k.revenue.value, prev: k.revenue.prev,
                 hint: 'Проведені продажі з обліку (продаж фіксується в день вручення). Розбір від суми замовлень — в «Аналітиці».',
                 metrics: [
-                  { label: `замовлено за період · ${fmt(k.orders.value)}`, value: `${fmt(k.orderSum.value)} ₴` },
-                  { label: `ще в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴` },
+                  { label: `замовлено · ${fmt(k.orders.value)}`, value: `${fmt(k.orderSum.value)} ₴`, hint: 'Сума підтверджених замовлень, створених за період (без нових і скасованих)' },
+                  { label: `в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴`, hint: 'Ще не вручені — виручкою стануть у день вручення' },
+                  { label: 'середній чек', value: k.avgCheck.value === null ? '—' : `${fmt(k.avgCheck.value)} ₴` },
+                  { label: 'викуп', value: ov.buyout.pct === null ? '—' : `${ov.buyout.pct}%`,
+                    hint: `Вручено ${ov.buyout.delivered}, відмов ${ov.buyout.refused} (на ${fmt(ov.buyout.refusedSum)} ₴) — по замовленнях, яким уже вистачило часу доїхати` },
                 ],
+                bar: {
+                  title: 'замовлення за каналами',
+                  segments: ov.channels.map(ch => ({ label: SOURCE_META[ch.code]?.label ?? ch.code, amount: ch.revenue, color: (SOURCE_META[ch.code] ?? SOURCE_META.other).color })),
+                },
               },
               {
                 label: 'Валовий прибуток', value: `${fmt(k.profit.value)} ₴`, valueColor: k.profit.value >= 0 ? '#15803D' : '#DC2626', cur: k.profit.value, prev: k.profit.prev,
                 hint: 'Виручка мінус собівартість і всі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата). Чистий прибуток і розбір — в «Аналітиці».',
                 metrics: [
                   { label: 'маржа від виручки', value: margin === null ? '—' : `${margin}%` },
-                  { label: 'очікується з доставок (прогноз)', value: `+${fmt(k.profitEst.forecast)} ₴`, muted: true },
+                  { label: 'собівартість', value: pctOfRev(c.cogs), hint: `${fmt(c.cogs)} ₴ — FIFO-собівартість проданого` },
+                  { label: 'комісії й оплата', value: pctOfRev(c.fees + c.acquiring), hint: `${fmt(c.fees + c.acquiring)} ₴ — комісії площадок, RozetkaPay, еквайринг, збори Rozetka Доставки` },
+                  { label: 'очікується (прогноз)', value: `+${fmt(k.profitEst.forecast)} ₴`, muted: true, hint: 'Прогноз валового по замовленнях у роботі й у дорозі — у факт ще не входить' },
                 ],
+                bar: {
+                  title: 'куди йде кожна гривня виручки',
+                  segments: [
+                    { label: 'собівартість', amount: c.cogs, color: '#94A3B8' },
+                    { label: 'комісії й оплата', amount: c.fees + c.acquiring, color: '#EA8A00' },
+                    { label: 'НП', amount: c.delivery, color: '#8B5CF6' },
+                    ...(otherDeal > 0.5 ? [{ label: 'інше', amount: otherDeal, color: '#CBD5E1' }] : []),
+                    { label: 'валовий прибуток', amount: Math.max(0, k.profit.value), color: '#16A34A' },
+                  ],
+                },
               },
             ]} />
         );
