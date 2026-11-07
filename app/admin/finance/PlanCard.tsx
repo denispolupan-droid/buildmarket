@@ -57,7 +57,7 @@ export default function PlanCard({ plan, sales: sales0 }: {
   const paceOk   = plan.value ? nowDay >= needDay : null;
 
   return (
-    <div className="fin-card" style={{ marginTop: '10px' }}>
+    <div className="fin-card" style={{ marginTop: '6px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
         <div className="fin-card-title">План на місяць <span className="fin-card-sub">· продажі · {plan.monthLabel}</span></div>
         {!editing && plan.value != null && (
@@ -87,7 +87,7 @@ export default function PlanCard({ plan, sales: sales0 }: {
           </button>
         </div>
       ) : plan.value == null ? (
-        <div style={{ marginTop: '10px', fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ marginTop: '6px', fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           План не задано — натисніть олівець і введіть цільову виручку на місяць.
           <button onClick={() => { setDraft(''); setEditing(true); }} title="Задати план"
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px' }}>

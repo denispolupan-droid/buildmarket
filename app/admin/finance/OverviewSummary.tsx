@@ -9,7 +9,8 @@ import { TrendBadge } from './overview-charts';
  * каналами / куди йде кожна гривня виручки). Детальний розбір і чистий
  * прибуток — в «Аналітиці» (посилання в заголовку).
  */
-export type SummaryMetric = { label: string; value: string; muted?: boolean; hint?: string };
+/** info — значок ⓘ біля підпису з підказкою (напр. «прогноз: …»): підпис лишається в один рядок */
+export type SummaryMetric = { label: string; value: string; muted?: boolean; hint?: string; info?: string };
 export type SummarySegment = { label: string; amount: number; color: string };
 export type SummaryPart = {
   label: string; hint: string; value: string; valueColor?: string;
@@ -38,8 +39,10 @@ function Bar({ title, segments }: { title: string; segments: SummarySegment[] })
   );
 }
 
-export default function OverviewSummary({ title, parts, detailsHref, prevLabel }: {
+export default function OverviewSummary({ title, parts, detailsHref, prevLabel, metricCols = 4 }: {
   title: string; parts: SummaryPart[]; detailsHref?: string; prevLabel: string;
+  /** скільки показників у рядку під цифрою (4 — «Огляд», 2 — компактні 4 блоки «Аналітики») */
+  metricCols?: number;
 }) {
   return (
     <div className="fin-card fin-sum">
@@ -47,7 +50,7 @@ export default function OverviewSummary({ title, parts, detailsHref, prevLabel }
         <span className="fin-sum-title">{title}</span>
         {detailsHref && <Link href={detailsHref} className="fin-sum-link">Детально й чистий прибуток — в «Аналітиці» →</Link>}
       </div>
-      <div className="fin-sum-grid">
+      <div className="fin-sum-grid" style={{ gridTemplateColumns: `repeat(${parts.length}, minmax(0, 1fr))` }}>
         {parts.map(p => (
           <div key={p.label} className="fin-sum-part">
             <div className="fin-stat-head">
@@ -62,10 +65,13 @@ export default function OverviewSummary({ title, parts, detailsHref, prevLabel }
                 <span className="fin-kpi-cmp">{prevLabel}</span>
               </>}
             </div>
-            <div className="fin-sum-metrics">
+            <div className="fin-sum-metrics" style={{ gridTemplateColumns: `repeat(${metricCols}, minmax(0, 1fr))` }}>
               {p.metrics.map(m => (
                 <div key={m.label} className="fin-sum-metric" title={m.hint}>
-                  <span className="fin-sum-mlabel">{m.label}</span>
+                  <span className="fin-sum-mlabel">
+                    <span className="fin-sum-mlabel-text">{m.label}</span>
+                    {m.info && <span className="fin-sum-minfo" title={m.info} aria-label={m.info}><Info size={11} strokeWidth={2.2} aria-hidden /></span>}
+                  </span>
                   <span className={`fin-sum-mvalue${m.muted ? ' muted' : ''}`}>{m.value}</span>
                 </div>
               ))}

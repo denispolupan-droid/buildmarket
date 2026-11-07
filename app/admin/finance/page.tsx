@@ -53,7 +53,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
     <div className="fin-dense" style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '10px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '6px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Фінанси</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
@@ -106,7 +106,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 hint: 'Проведені продажі з обліку (продаж фіксується в день вручення). Розбір від суми замовлень — в «Аналітиці».',
                 metrics: [
                   { label: `замовлено · ${fmt(k.orders.value)}`, value: `${fmt(k.orderSum.value)} ₴`, hint: 'Сума підтверджених замовлень, створених за період (без нових і скасованих)' },
-                  { label: `в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴`, hint: 'Ще не вручені — виручкою стануть у день вручення' },
+                  { label: `в роботі/дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴`, hint: 'Ще не вручені — виручкою стануть у день вручення' },
                   { label: 'середній чек', value: k.avgCheck.value === null ? '—' : `${fmt(k.avgCheck.value)} ₴` },
                   { label: 'викуп', value: ov.buyout.pct === null ? '—' : `${ov.buyout.pct}%`,
                     hint: `Вручено ${ov.buyout.delivered}, відмов ${ov.buyout.refused} (на ${fmt(ov.buyout.refusedSum)} ₴) — по замовленнях, яким уже вистачило часу доїхати` },
@@ -123,7 +123,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                   { label: 'маржа від виручки', value: margin === null ? '—' : `${margin}%` },
                   { label: 'собівартість', value: pctOfRev(c.cogs), hint: `${fmt(c.cogs)} ₴ — FIFO-собівартість проданого` },
                   { label: 'комісії й оплата', value: pctOfRev(c.fees + c.acquiring), hint: `${fmt(c.fees + c.acquiring)} ₴ — комісії площадок, RozetkaPay, еквайринг, збори Rozetka Доставки` },
-                  { label: `в роботі й у дорозі · прогноз`, value: `+${fmt(k.profitEst.forecast)} ₴`, hint: 'Прогноз валового по замовленнях у роботі й у дорозі — у факт ще не входить' },
+                  { label: 'в роботі/дорозі', value: `+${fmt(k.profitEst.forecast)} ₴`, info: 'Прогноз: валовий прибуток по замовленнях у роботі й у дорозі (собівартість за закупівлею, комісії за ставками) — у факт ще не входить' },
                 ],
                 bar: {
                   title: 'куди йде кожна гривня виручки',
@@ -141,7 +141,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       })()}
 
       {/* Стадії зараз · Динаміка */}
-      <div className="fin-grid-12" style={{ marginTop: '10px' }}>
+      <div className="fin-grid-12" style={{ marginTop: '6px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
             <div className="fin-card-title">У роботі <span className="fin-card-sub">· де гроші зараз</span></div>
@@ -214,14 +214,14 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               })}
             </div>
           </div>
-          <div style={{ marginTop: '10px' }}>
+          <div style={{ marginTop: '6px' }}>
             <DynamicsCarousel data={ov.dynamics} />
           </div>
         </div>
       </div>
 
       {/* Фінанси · Сьогодні */}
-      <div className="fin-grid-12" style={{ marginTop: '10px' }}>
+      <div className="fin-grid-12" style={{ marginTop: '6px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div className="fin-card-title">Гроші та борги <span className="fin-card-sub">· залишки з проводок обліку, станом на зараз</span></div>
           <div className="fin-money-grid">
