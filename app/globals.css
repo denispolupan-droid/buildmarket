@@ -3456,7 +3456,9 @@ html:has(dialog.ui-modal[open]) { overflow: hidden; }
 /* Збережені зрізи журналу (app/admin/_orders/SavedFilters.tsx) */
 .oc-saved { position: relative; }
 .oc-saved-menu {
-  position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 220px;
+  /* right: 0 — кнопка «Зрізи» стоїть біля правого краю, і меню з left: 0 вилазило
+     за межі екрана (07.11.2026); тепер розкривається ліворуч від кнопки */
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; min-width: 220px;
   padding: 6px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border);
   box-shadow: 0 10px 30px rgba(15,23,42,0.18);
 }

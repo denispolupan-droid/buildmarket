@@ -78,7 +78,7 @@ export function SaveFilterButton() {
   if (!editing) {
     return (
       <button type="button" className="oc-active-filters-clear" onClick={() => setEditing(true)} title="Запамʼятати цей зріз під назвою">
-        <Bookmark size={12} style={{ verticalAlign: '-2px', marginRight: '3px' }} />Зберегти зріз…
+        <Bookmark size={12} style={{ verticalAlign: '-2px', marginRight: '3px' }} />Зберегти зріз
       </button>
     );
   }
