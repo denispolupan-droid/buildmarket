@@ -139,8 +139,11 @@ for (const r of (rows as Row[]).sort((a, b) => a.slug.localeCompare(b.slug) || a
   if (!r.guide) continue;
   const lines: string[] = [];
   const sections = r.guide.sections.map(sec => {
-    const seen = new Set<string>();
-    let count = 0;
+    // Повторний запуск не має лінкувати друге згадування: наявні посилання на товари
+    // розділу вже рахуються («перше» вже зайняте) і входять у ліміт 3
+    const existing = [...sec.p.join('\n').matchAll(/\]\(\/product\/([^)\s]+)\)/g)].map(m => decodeURIComponent(m[1]));
+    const seen = new Set<string>(existing);
+    let count = existing.length;
     const p = sec.p.map(para => {
       const hits = findHits(para, r.slug).filter(h => {
         if (seen.has(h.sku) || count >= 3) return false;

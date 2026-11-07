@@ -90,8 +90,8 @@ export default function CategoryEditor(props: Props) {
   // Прев'ю — ті самі підстановки, що на сайті (lib/seo/guide-prices)
   const resolved = useMemo(() => {
     const meta: CategoryMeta = { description: c.description, seoText: c.seoText || undefined, faq: c.faq, guide: c.guide ?? undefined, related: c.related };
-    return resolveGuidePrices(meta, priced, family);
-  }, [c, priced, family]);
+    return resolveGuidePrices(meta, priced, family, lang);
+  }, [c, priced, family, lang]);
 
   const prefix = lang === 'ru' ? '/ru' : '';
   const catName = (x: { name: string; nameRu: string }) => (lang === 'ru' ? x.nameRu : x.name);

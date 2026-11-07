@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 const db = createServiceClient();
 
-type ProductRow = { sku: string; name: string; brand: string | null; volume: string | null; category_slug: string | null; stock: { price_retail: number | null; price_promo: number | null } | null };
+type ProductRow = { sku: string; name: string; brand: string | null; volume: string | null; category_slug: string | null; stock: { price_retail: number | null; price_promo: number | null; stock_status: string | null; stock_qty: number | null } | null };
 
 /**
  * Редактор контенту категорії: опис, seoText, FAQ, гайд «Як вибрати»,
@@ -33,7 +33,7 @@ export default async function CategoryEditorPage({ params, searchParams }: { par
     fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
       db.from('categories').select('slug, name, parent_slug').order('name').order('slug').range(f, t)),
     fetchAllRows<ProductRow>((f, t) =>
-      db.from('products').select('sku, name, brand, volume, category_slug, stock:product_stock(price_retail, price_promo)').eq('is_active', true).order('sku').range(f, t) as unknown as PromiseLike<{ data: ProductRow[] | null; error: unknown }>),
+      db.from('products').select('sku, name, brand, volume, category_slug, stock:product_stock(price_retail, price_promo, stock_status, stock_qty)').eq('is_active', true).order('sku').range(f, t) as unknown as PromiseLike<{ data: ProductRow[] | null; error: unknown }>),
     fetchAllRows<{ slug: string; title: string }>((f, t) =>
       db.from('blog_posts').select('slug, title').eq('is_published', true).order('title').order('slug').range(f, t)),
     getCategoryContentRows(slug),
@@ -46,7 +46,14 @@ export default async function CategoryEditorPage({ params, searchParams }: { par
 
   const family = categoryFamilySlugs(categories, slug);
   const famSet = new Set(family);
-  const priced: PricedProduct[] = products.map(p => ({ sku: p.sku, category_slug: p.category_slug, price: p.stock?.price_promo ?? p.stock?.price_retail ?? null }));
+  // Бренд/назва/наявність — лише для родини: їх читають {brands}/{top:N} у прев'ю,
+  // а слати назви всього каталогу в клієнт ні до чого
+  const priced: PricedProduct[] = products.map(p => ({
+    sku: p.sku, category_slug: p.category_slug, price: p.stock?.price_promo ?? p.stock?.price_retail ?? null,
+    ...(p.category_slug && famSet.has(p.category_slug)
+      ? { brand: p.brand, name: p.name, inStock: p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1 }
+      : {}),
+  }));
   // Пробіли карток родини (вкладка «Товари»): без характеристик/витрати гайд писати нема з чого
   const familySkus = new Set(products.filter(p => p.category_slug && famSet.has(p.category_slug)).map(p => p.sku));
   const queueItems = queue.items.filter(i => familySkus.has(i.sku));

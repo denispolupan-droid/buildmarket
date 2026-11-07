@@ -25,11 +25,23 @@ import type { CategoryMeta } from '../category-descriptions';
  * саме не розв'язалось — повертається окремо, для аудиту категорій.
  */
 
-export type PricedProduct = { sku: string; category_slug: string | null; price: number | null };
+export type PricedProduct = {
+  sku: string; category_slug: string | null; price: number | null;
+  /** Для {brands} і {top:N} (07.11.2026) */
+  brand?: string | null; name?: string | null; inStock?: boolean;
+};
 
 export type ResolvedMeta = { meta: CategoryMeta; unresolved: string[] };
 
-const TOKEN = /\{(price|range|min|max|count)(?::([^}\/]+))?(?:\s*\/\s*([\d.,]+))?\}/g;
+/*
+ * Асортимент у тексті (07.11.2026) — щоб гайд не застарівав, коли бренди
+ * приходять і йдуть:
+ *   {brands}   → «Ceresit, Lacrysil, Pattex і Soudal» — бренди, що зараз
+ *                продаються в родині категорії (за кількістю товарів)
+ *   {top:3}    → три товари родини в наявності, різних брендів, посиланнями
+ *                [назва](/product/SKU) — їх далі «оживляє» lib/seo/guide-links
+ */
+const TOKEN = /\{(price|range|min|max|count|brands|top)(?::([^}\/]+))?(?:\s*\/\s*([\d.,]+))?\}/g;
 
 /** «1 586 грн» — тисячі через пробіл, як у написаних текстах гайдів. */
 function num(n: number): string {
@@ -39,9 +51,24 @@ export function formatUah(n: number): string {
   return `${num(n)} грн`;
 }
 
+/** «A, B і C» (uk) / «A, B и C» (ru) */
+export function joinList(items: string[], lang: 'uk' | 'ru' = 'uk'): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} ${lang === 'ru' ? 'и' : 'і'} ${items[items.length - 1]}`;
+}
+
 function resolveToken(kind: string, arg: string | undefined, div: string | undefined, ctx: {
   bySku: Map<string, number>; family: number[]; count: number;
+  brands?: string[]; top?: { sku: string; name: string; brand: string }[]; lang?: 'uk' | 'ru';
 }): string | null {
+  if (kind === 'brands') {
+    return ctx.brands?.length ? joinList(ctx.brands.slice(0, 8), ctx.lang) : null;
+  }
+  if (kind === 'top') {
+    const n = Math.min(Math.max(parseInt(arg ?? '3', 10) || 3, 1), 6);
+    const items = (ctx.top ?? []).slice(0, n);
+    return items.length ? joinList(items.map(p => `[${p.name}](/product/${p.sku})`), ctx.lang) : null;
+  }
   const d = div ? Number(div.replace(',', '.')) : 1;
   if (!d || d <= 0) return null;
   const fmt = (n: number) => formatUah(n / d);
@@ -89,7 +116,7 @@ export function resolveText(text: string, ctx: Parameters<typeof resolveToken>[3
  * (для {price}/{range} за артикулом), family — слаги родини категорії (для
  * {min}/{max}/{count}). Без токенів повертає мету як є — дешево.
  */
-export function resolveGuidePrices(meta: CategoryMeta, products: PricedProduct[], family: string[]): ResolvedMeta {
+export function resolveGuidePrices(meta: CategoryMeta, products: PricedProduct[], family: string[], lang: 'uk' | 'ru' = 'uk'): ResolvedMeta {
   const hasTokens = new RegExp(TOKEN.source, 'u').test(JSON.stringify(meta));
   if (!hasTokens) return { meta, unresolved: [] };
 
@@ -97,7 +124,10 @@ export function resolveGuidePrices(meta: CategoryMeta, products: PricedProduct[]
   for (const p of products) if (p.price && p.price > 0) bySku.set(p.sku, p.price);
   const fam = new Set(family);
   const famProducts = products.filter(p => p.category_slug && fam.has(p.category_slug));
-  const ctx = { bySku, family: famProducts.map(p => p.price ?? 0).filter(p => p > 0), count: famProducts.length };
+  const ctx = {
+    bySku, family: famProducts.map(p => p.price ?? 0).filter(p => p > 0), count: famProducts.length,
+    brands: familyBrands(famProducts), top: familyTop(famProducts), lang,
+  };
   const unresolved: string[] = [];
   const r = (s: string) => resolveText(s, ctx, unresolved);
 
@@ -121,6 +151,36 @@ export function resolveGuidePrices(meta: CategoryMeta, products: PricedProduct[]
     },
     unresolved,
   };
+}
+
+/** Бренди родини категорії з ціною, від більшої кількості товарів до меншої. */
+export function familyBrands(famProducts: PricedProduct[]): string[] {
+  const n = new Map<string, number>();
+  for (const p of famProducts) {
+    const b = (p.brand ?? '').trim();
+    if (b && p.price && p.price > 0) n.set(b, (n.get(b) ?? 0) + 1);
+  }
+  return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([b]) => b);
+}
+
+/**
+ * Товари для {top:N}: лише в наявності й з ціною, по одному на бренд (по черзі
+ * від найбільшого бренду), у бренді — базовий варіант (найкоротша назва).
+ */
+export function familyTop(famProducts: PricedProduct[]): { sku: string; name: string; brand: string }[] {
+  const ok = famProducts.filter(p => p.inStock && p.price && p.price > 0 && p.name && p.brand);
+  const byBrand = new Map<string, PricedProduct[]>();
+  for (const p of ok) byBrand.set(p.brand!.trim(), [...(byBrand.get(p.brand!.trim()) ?? []), p]);
+  for (const list of byBrand.values()) list.sort((a, b) => a.name!.length - b.name!.length || a.sku.localeCompare(b.sku));
+  const order = familyBrands(ok).filter(b => byBrand.has(b));
+  const out: { sku: string; name: string; brand: string }[] = [];
+  for (let round = 0; out.length < 6 && order.some(b => byBrand.get(b)!.length > round); round++) {
+    for (const b of order) {
+      const p = byBrand.get(b)![round];
+      if (p && out.length < 6) out.push({ sku: p.sku, name: p.name!.trim(), brand: b });
+    }
+  }
+  return out;
 }
 
 /** Артикули, на які посилаються токени мети (для аудиту: чи існують такі товари). */

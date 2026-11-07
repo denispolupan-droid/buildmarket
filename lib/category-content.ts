@@ -148,12 +148,15 @@ export async function resolveCategoryMeta(
   const meta = await getCategoryMeta(slug, lang);
   if (!meta) return null;
   const family = categoryFamilySlugs(categories, slug);
-  const priced = products.map(p => ({ sku: p.sku, category_slug: p.category_slug, price: retailPrice(p) }));
-  // Посилання на товари (за артикулом) і бренди в гайді — див. lib/seo/guide-links.
   // «У наявності» — як у фільтрі каталогу: статус in_stock або залишок ≥ 1.
-  const linkable = products.map(p => ({
-    sku: p.sku, slug: p.slug, brand: p.brand, name: p.name, category_slug: p.category_slug,
-    inStock: p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1,
+  const inStock = (p: (typeof products)[number]) => p.stock?.stock_status === 'in_stock' || (p.stock?.stock_qty ?? 0) >= 1;
+  const priced = products.map(p => ({
+    sku: p.sku, category_slug: p.category_slug, price: retailPrice(p),
+    brand: p.brand, name: p.name, inStock: inStock(p),
   }));
-  return resolveGuideLinks(resolveGuidePrices(meta, priced, family).meta, linkable, family);
+  // Посилання на товари (за артикулом) і бренди в гайді — див. lib/seo/guide-links
+  const linkable = products.map(p => ({
+    sku: p.sku, slug: p.slug, brand: p.brand, name: p.name, category_slug: p.category_slug, inStock: inStock(p),
+  }));
+  return resolveGuideLinks(resolveGuidePrices(meta, priced, family, lang).meta, linkable, family);
 }
