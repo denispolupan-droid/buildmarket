@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import FinanceTabs from '../FinanceTabs';
-import { DualLineChart } from '../overview-charts';
 import { fetchAllRows } from '../../../../lib/db-paginate';
 import { loadOrderLines, linesOf } from '../../../../lib/orders/lines-read';
 import { loadProfitEstimates } from '../../../../lib/accounting/estimate';
@@ -214,14 +213,23 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     months.push({ label, key, revenue: sumRevenue(mRows), margin: sumMargin(mRows), count: mRows.length });
   }
 
-  // ── Тренд комісій МП по місяцях (факт із леджера): скільки % виручки з'їдає маркетплейс ──
-  const feeTrendRows = await fetchAllRows<{ account_type: string; amount: number; counterparty_id: string | null; business_date: string }>((f, t) => db
+  // ── Помісячно за обліком (6 міс.): P&L-проводки за датою проводки — для таблиці
+  // «По місяцях · факт обліку» і тренду комісій МП (скільки % виручки з'їдає площадка) ──
+  const feeTrendRows = await fetchAllRows<{ account_type: string; amount: number; counterparty_id: string | null; business_date: string; doc_type: string | null; order_id: string | null }>((f, t) => db
     .from('money_entries')
-    .select('account_type, amount, counterparty_id, business_date')
-    .in('account_type', ['marketplace_fee', 'revenue'])
+    .select('account_type, amount, counterparty_id, business_date, doc_type, order_id')
+    .in('account_type', PL_ACCOUNTS)
     .gte('business_date', kyivYmd(sixAgo))
     .order('id')
     .range(f, t));
+  const monthsFact = months.map(m => {
+    const inMonth = feeTrendRows.filter(r => r.business_date.slice(0, 7) === m.key);
+    const mpl = summarizePL(inMonth);
+    const delivered = new Set(inMonth.filter(r => r.account_type === 'revenue' && r.doc_type === 'sale' && r.order_id).map(r => r.order_id)).size;
+    return { label: m.label, key: m.key, revenue: mpl.revenue, gross: mpl.grossProfit, net: mpl.netProfit, delivered,
+      pct: mpl.revenue > 0 ? Math.round(mpl.grossProfit / mpl.revenue * 1000) / 10 : null };
+  });
+  const monthsFactHasData = monthsFact.some(m => m.revenue !== 0 || m.gross !== 0);
   const feeTrend = months.map(m => {
     const inMonth = feeTrendRows.filter(r => r.business_date.slice(0, 7) === m.key);
     const rev  = -inMonth.filter(r => r.account_type === 'revenue').reduce((s, r) => s + Number(r.amount), 0);
@@ -472,17 +480,34 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
       {/* Динаміка 6 місяців + комісії МП */}
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
+        {/* Замість графіка «за датою створення» (змішував факт із прогнозом) — таблиця
+            за обліком: місяці порівнюються рядками, цифри ті самі, що в «Звітах» */}
         <div className="fin-card" style={{ gridColumn: 'span 7' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="fin-card-title">Оборот і прибуток по місяцях <span className="fin-card-sub">· оборот = сума замовлень, прибуток = валовий після комісій (доставлені — факт, решта — прогноз) · за датою створення замовлення</span></div>
-            <div style={{ display: 'flex', gap: '14px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-              <span><span className="fin-dot" style={{ background: 'var(--brand-blue)' }} /> Виручка</span>
-              <span><span className="fin-dot" style={{ background: 'var(--color-success)' }} /> Прибуток</span>
-            </div>
-          </div>
-          <div style={{ marginTop: '12px' }}>
-            <DualLineChart a={months.map(m => m.revenue)} b={months.map(m => m.margin)} labels={months.map(m => m.label)} aLabel="Виручка" bLabel="Прибуток" />
-          </div>
+          <div className="fin-card-title">По місяцях · факт обліку <span className="fin-card-sub">· за датою проводки (продаж = вручення): виручка, валовий прибуток і маржа, чистий після операційних витрат і податків</span></div>
+          {monthsFactHasData ? (
+            <table className="fin-table fin-month-table">
+              <thead>
+                <tr>
+                  <th>Місяць</th><th className="num">Вручено</th><th className="num">Виручка</th>
+                  <th className="num">Валовий</th><th className="num">Маржа</th><th className="num">Чистий</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthsFact.map(m => (
+                  <tr key={m.key}>
+                    <td className="muted">{m.label}</td>
+                    <td className="num muted">{m.delivered > 0 ? fmt(m.delivered) : '—'}</td>
+                    <td className="num">{m.revenue !== 0 ? `${fmt(m.revenue)} ₴` : '—'}</td>
+                    <td className="num" style={{ color: m.gross < 0 ? 'var(--color-danger)' : undefined }}>{m.gross !== 0 ? `${fmt(m.gross)} ₴` : '—'}</td>
+                    <td className="num muted">{m.pct === null ? '—' : `${m.pct}%`}</td>
+                    <td className="num" style={{ color: m.net < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{m.net !== 0 ? `${fmt(m.net)} ₴` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+          )}
         </div>
 
         <div className="fin-card" style={{ gridColumn: 'span 5' }}>
@@ -511,19 +536,27 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       {thinDeals.length > 0 && (
         <div className="fin-card" style={{ marginBottom: '16px' }}>
           <div className="fin-card-title">Збиткові та тонкі угоди <span className="fin-card-sub">· замовлення: виручка → валовий прибуток після комісій і % від виручки · доставлені за {curMonthLabel} з прибутком &lt; {THIN_PCT}% — перевірте ціну/комісію</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginTop: '6px' }}>
-            {thinDeals.map(d => (
-              <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-attn">
-                <span className={`fin-dot big ${d.margin < 0 ? 'red' : 'orange'}`} />
-                <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', fontVariantNumeric: 'tabular-nums' }}>#{d.order_number}</span>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>виручка {fmt(d.revenue)} ₴</span>
-                  <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: d.margin < 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>
-                    {d.margin < 0 ? '' : '+'}{fmt(d.margin)} ₴ · {d.pct}%
-                  </span>
-                </span>
-              </Link>
+          {/* Компактно: дві колонки, кожна цифра у своїй колонці фіксованої ширини
+              (раніше «прибуток · %» одним рядком різної довжини — цифри «танцювали») */}
+          <div className="fin-thin-grid">
+            {[thinDeals.slice(0, Math.ceil(thinDeals.length / 2)), thinDeals.slice(Math.ceil(thinDeals.length / 2))].map((col, ci) => (
+              <div key={ci}>
+                {ci === 0 || col.length ? (
+                  <div className="fin-thin-row fin-thin-head">
+                    <span /><span>Замовлення</span><span>Канал</span><span className="num">Виручка</span><span className="num">Прибуток</span><span className="num">%</span>
+                  </div>
+                ) : null}
+                {col.map(d => (
+                  <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-thin-row">
+                    <span className={`fin-dot ${d.margin < 0 ? 'red' : 'orange'}`} />
+                    <span className="fin-thin-num">#{d.order_number}</span>
+                    <span className="fin-thin-ch">{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
+                    <span className="num">{fmt(d.revenue)} ₴</span>
+                    <span className="num" style={{ fontWeight: 700, color: d.margin < 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>{d.margin < 0 ? '−' : '+'}{fmt(Math.abs(d.margin))} ₴</span>
+                    <span className="num" style={{ color: d.margin < 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>{d.pct < 0 ? '−' : ''}{Math.abs(d.pct)}%</span>
+                  </Link>
+                ))}
+              </div>
             ))}
           </div>
         </div>

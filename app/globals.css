@@ -2295,10 +2295,10 @@ input, select { font-family: inherit; }
   .fin-fee-trend { grid-template-columns: repeat(3, 1fr) !important; }
   /* Бренди | Постачальники → у стовпчик */
   .fin-two-col { grid-template-columns: 1fr !important; }
-  /* Рядок збиткової угоди: суми переносяться під № замовлення, фікс-ширини знімаємо */
-  .fin-thin-row { flex-wrap: wrap !important; gap: 6px 10px !important; }
-  .fin-thin-row > span { width: auto !important; }
-  .fin-thin-row > span:nth-child(3) { margin-left: 0 !important; }
+  /* Збиткові угоди: дві колонки → одна; канал ховаємо, щоб цифри лишились у своїх колонках */
+  .fin-thin-grid { grid-template-columns: 1fr !important; }
+  .fin-thin-row { grid-template-columns: 10px 76px 1fr 70px 44px !important; }
+  .fin-thin-row > .fin-thin-ch, .fin-thin-head > span:nth-child(3) { display: none !important; }
 
   /* ── Замовлення (AdminOrders) ── */
   .oc-hide-m { display: none !important; }
@@ -2821,6 +2821,36 @@ a.fin-kpi:hover { border-color: var(--brand-blue); box-shadow: 0 2px 12px rgba(0
 .fin-funnel-fill { height: 100%; border-radius: 5px; background: var(--brand-blue); opacity: 0.85; }
 
 .fin-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+
+/* «Збиткові та тонкі угоди» («Аналітика», 07.11.2026): дві колонки, кожна цифра у
+   своїй колонці фіксованої ширини з вирівнюванням праворуч — цифри не «танцюють» */
+.fin-thin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; margin-top: 6px; }
+.fin-thin-row {
+  display: grid; grid-template-columns: 10px 84px minmax(0, 1fr) 88px 80px 56px; align-items: center; gap: 8px;
+  padding: 5px 4px; border-bottom: 1px solid var(--border-light, var(--border)); font-size: 12.5px;
+  text-decoration: none; color: inherit;
+}
+a.fin-thin-row:hover { background: var(--bg-soft); }
+.fin-thin-head { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600; padding-top: 0; }
+.fin-thin-row .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin-thin-row .fin-dot { margin: 0; }
+.fin-thin-num { font-weight: 700; color: var(--brand-blue); font-variant-numeric: tabular-nums; }
+.fin-thin-ch { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* «Від замовлень до обліку»: блок згорнутий до підсумкових рядків, розрахунок — по кліку */
+.fin-bridge-sum { list-style: none; cursor: pointer; }
+.fin-bridge-sum::-webkit-details-marker { display: none; }
+.fin-bridge-toggle { display: inline-block; margin: 6px 0 2px; font-size: 12px; font-weight: 600; color: var(--brand-blue); }
+.fin-bridge-toggle .when-open { display: none; }
+.fin-bridge-block[open] .fin-bridge-toggle .when-open { display: inline; }
+.fin-bridge-block[open] .fin-bridge-toggle .when-closed { display: none; }
+.fin-bridge-block[open] .fin-bridge-compact { display: none; }
+
+/* «По місяцях · факт обліку» — заголовки колонок таблиці */
+.fin-month-table th {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600;
+  text-align: left; padding: 0 8px 6px 0; border-bottom: 1px solid var(--border);
+}
+.fin-month-table th.num { text-align: right; }
 .fin-dot.big { width: 9px; height: 9px; margin: 5px 10px 0 0; flex-shrink: 0; }
 .fin-dot.red { background: #DC2626; }
 .fin-dot.orange { background: #EA8A00; }

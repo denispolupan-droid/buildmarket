@@ -53,10 +53,36 @@ function Line({ l }: { l: BridgeLine }) {
   );
 }
 
-function Block({ title, startLabel, b, factLabel, tail }: { title: string; startLabel: string; b: ProfitBridge['revenue']; factLabel: string; tail?: React.ReactNode }) {
+type CompactRow = { label: string; value: number; color?: string };
+
+/**
+ * Згорнутий вигляд (за замовчуванням, рішення власника 07.11.2026): лише підсумкові
+ * рядки (жирні). «Показати розрахунок» розгортає всі проміжні рядки з розшифровками.
+ */
+function Block({ title, startLabel, b, factLabel, tail, compact }: {
+  title: string; startLabel: string; b: ProfitBridge['revenue']; factLabel: string; tail?: React.ReactNode; compact: CompactRow[];
+}) {
   return (
-    <div style={{ minWidth: 0 }}>
-      <div className="fin-card-title" style={{ fontSize: '13px' }}>{title}</div>
+    <details className="fin-bridge-block" style={{ minWidth: 0 }}>
+      <summary className="fin-bridge-sum">
+        <div className="fin-card-title" style={{ fontSize: '13px' }}>{title}</div>
+        <div className="fin-bridge-compact">
+          {compact.map((r, i) => (
+            <div key={r.label} style={{ ...rowStyle, fontWeight: 700, borderBottom: i === compact.length - 1 ? 'none' : rowStyle.borderBottom }}>
+              <span>{r.label}</span><span style={{ ...numStyle, fontWeight: 800, color: r.color }}>{fmtInt(r.value)} ₴</span>
+            </div>
+          ))}
+        </div>
+        <span className="fin-bridge-toggle">
+          <span className="when-closed">показати розрахунок ▾</span><span className="when-open">згорнути розрахунок ▴</span>
+        </span>
+      </summary>
+      {fullRows()}
+    </details>
+  );
+
+  function fullRows() {
+    return (<>
       <div style={{ ...rowStyle, fontWeight: 600 }}>
         <span>{startLabel}</span><span style={{ ...numStyle, fontWeight: 700 }}>{fmtInt(b.start)} ₴</span>
       </div>
@@ -70,8 +96,8 @@ function Block({ title, startLabel, b, factLabel, tail }: { title: string; start
         <span>{factLabel}</span><span style={{ ...numStyle, fontWeight: 800 }}>{fmtInt(b.fact)} ₴</span>
       </div>
       {tail}
-    </div>
-  );
+    </>);
+  }
 }
 
 export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: BridgeWithNet; periodLabel: string }) {
@@ -98,11 +124,20 @@ export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: Brid
     <div className="fin-card" style={{ marginBottom: '16px' }}>
       <div className="fin-card-title">
         Від замовлень до обліку · {periodLabel}
-        <span className="fin-card-sub"> · чому сума замовлень і прибуток по них не дорівнюють факту з бухгалтерських проводок — по рядках; кожен рядок розгортається до замовлень і видів зборів</span>
+        <span className="fin-card-sub"> · як сума замовлень і прибуток по них доходять до факту з бухгалтерських проводок; «показати розрахунок» — усі рядки з розшифровкою до замовлень і видів зборів</span>
       </div>
-      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '6px' }}>
-        <Block title="Виручка" startLabel="Замовлення · сума (створені за період)" b={bridge.revenue} factLabel="Виручка · факт обліку" />
-        <Block title="Прибуток" startLabel="Прибуток вручених замовлень періоду" b={bridge.profit} factLabel="Валовий прибуток · факт обліку" tail={netRows} />
+      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '6px', alignItems: 'start' }}>
+        <Block title="Виручка" startLabel="Замовлення · сума (створені за період)" b={bridge.revenue} factLabel="Виручка · факт обліку"
+          compact={[
+            { label: 'Замовлення · сума (створені за період)', value: bridge.revenue.start },
+            { label: 'Виручка · факт обліку', value: bridge.revenue.fact },
+          ]} />
+        <Block title="Прибуток" startLabel="Прибуток вручених замовлень періоду" b={bridge.profit} factLabel="Валовий прибуток · факт обліку" tail={netRows}
+          compact={[
+            { label: 'Прибуток вручених замовлень періоду', value: bridge.profit.start },
+            { label: 'Валовий прибуток · факт обліку', value: bridge.profit.fact },
+            { label: 'Чистий прибуток · факт обліку', value: bridge.net, color: bridge.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' },
+          ]} />
       </div>
     </div>
   );
