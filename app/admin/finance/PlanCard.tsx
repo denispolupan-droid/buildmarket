@@ -11,8 +11,10 @@ import { fmtInt as fmt } from '../../../lib/format';
 // (заливка лівіше риски = темп відстає), праворуч прогноз за поточним темпом.
 // Редагування — олівець → інпут → Enter.
 
-export default function PlanCard({ plan }: {
+export default function PlanCard({ plan, sales: sales0 }: {
   plan: { value: number | null; fact: number; forecast: number; daysPassed: number; daysInMonth: number; monthLabel: string };
+  /** продажі місяця (створені замовлення, вкл. в роботі й у дорозі) — та сама база, що графік «План» */
+  sales?: number;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -40,17 +42,27 @@ export default function PlanCard({ plan }: {
     }
   }
 
-  const donePct = plan.value ? Math.min(100, Math.round(plan.fact / plan.value * 100)) : null;
-  const paceOk  = plan.value ? plan.forecast >= plan.value : null;
+  // Смуга (07.11.2026, без дубля з графіком «План»): виручка факт (темна) + ще в
+  // роботі й у дорозі (світла) = продажі місяця; риска — де має бути темп. Праворуч —
+  // нове: скільки лишилось до плану і скільки це на день проти поточного темпу.
+  const sales   = Math.max(plan.fact, sales0 ?? plan.fact);
+  const inFlight = Math.max(0, sales - plan.fact);
+  const pctOf   = (v: number) => (plan.value ? Math.min(100, v / plan.value * 100) : 0);
+  const donePct = plan.value ? Math.round(sales / plan.value * 100) : null;
   const timePct = Math.round(plan.daysPassed / plan.daysInMonth * 100);
+  const daysLeft = Math.max(0, plan.daysInMonth - plan.daysPassed);
+  const left     = plan.value ? Math.max(0, plan.value - sales) : 0;
+  const needDay  = daysLeft > 0 ? Math.round(left / daysLeft) : left;
+  const nowDay   = plan.daysPassed > 0 ? Math.round(sales / plan.daysPassed) : 0;
+  const paceOk   = plan.value ? nowDay >= needDay : null;
 
   return (
     <div className="fin-card" style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-        <div className="fin-card-title">План на місяць <span className="fin-card-sub">· виручка · {plan.monthLabel}</span></div>
+        <div className="fin-card-title">План на місяць <span className="fin-card-sub">· продажі · {plan.monthLabel}</span></div>
         {!editing && plan.value != null && (
           <span style={{ display: 'flex', alignItems: 'baseline', gap: '8px', fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>{fmt(plan.fact)} ₴</span>
+            <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>{fmt(sales)} ₴</span>
             <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>з {fmt(plan.value)} ₴ · {donePct}%</span>
             <button onClick={() => { setDraft(String(plan.value)); setEditing(true); }} title="Змінити план"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '2px', alignSelf: 'center' }}>
@@ -84,19 +96,27 @@ export default function PlanCard({ plan }: {
         </div>
       ) : (
         <>
-          <div className="fin-funnel-track" style={{ marginTop: '12px', position: 'relative', height: '12px', borderRadius: '7px' }}>
-            <div className="fin-funnel-fill" style={{ width: `${Math.max(1, donePct ?? 0)}%`, borderRadius: '7px' }} />
-            {/* риска: скільки місяця вже минуло — заливка лівіше риски = темп відстає */}
-            <div title={`Минуло ${plan.daysPassed} з ${plan.daysInMonth} днів (${timePct}%)`}
+          <div className="fin-funnel-track" style={{ marginTop: '12px', position: 'relative', height: '12px', borderRadius: '7px', display: 'flex', overflow: 'visible' }}>
+            <div title={`Виручка (вручено): ${fmt(plan.fact)} ₴`}
+              style={{ width: `${pctOf(plan.fact)}%`, background: 'var(--brand-blue)', borderRadius: '7px 0 0 7px' }} />
+            <div title={`Ще в роботі й у дорозі: ${fmt(inFlight)} ₴`}
+              style={{ width: `${pctOf(inFlight)}%`, background: 'var(--brand-blue)', opacity: 0.35, borderRadius: '0 7px 7px 0' }} />
+            {/* риска: де мав би бути рівномірний темп (скільки місяця минуло) */}
+            <div title={`Минуло ${plan.daysPassed} з ${plan.daysInMonth} днів (${timePct}%) — тут має бути темп`}
               style={{ position: 'absolute', top: '-4px', bottom: '-4px', left: `${timePct}%`, width: '2px', background: 'var(--text-primary)', opacity: 0.55, borderRadius: '1px' }} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
-            <span className="fin-hint" style={{ marginTop: 0 }}>
-              Риска — скільки місяця минуло ({plan.daysPassed}/{plan.daysInMonth} дн., {timePct}%): заливка лівіше риски = темп відстає.
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <span className="fin-sum-legend" style={{ marginTop: 0 }}>
+              <span><i style={{ background: 'var(--brand-blue)' }} />виручка <b>{fmt(plan.fact)} ₴</b></span>
+              <span><i style={{ background: 'var(--brand-blue)', opacity: 0.35 }} />ще в роботі й у дорозі <b>{fmt(inFlight)} ₴</b></span>
+              <span style={{ color: 'var(--text-muted)' }}>риска — темп ({plan.daysPassed}/{plan.daysInMonth} дн.)</span>
             </span>
             <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-              Прогноз за темпом: <b style={{ color: paceOk ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmt(plan.forecast)} ₴</b>
-              {paceOk ? ' — план виконується' : ` — не вистачає ${fmt(plan.value - plan.forecast)} ₴`}
+              {left > 0 ? (
+                <>До плану ще <b>{fmt(left)} ₴</b> за {daysLeft} дн.: треба <b style={{ color: paceOk ? 'var(--color-success)' : 'var(--color-danger)' }}>≈{fmt(needDay)} ₴/день</b>, зараз {fmt(nowDay)} ₴/день</>
+              ) : (
+                <b style={{ color: 'var(--color-success)' }}>План виконано</b>
+              )}
             </span>
           </div>
         </>

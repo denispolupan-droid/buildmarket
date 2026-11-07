@@ -37,13 +37,13 @@ function Bar({ title, segments }: { title: string; segments: SummarySegment[] })
 }
 
 export default function OverviewSummary({ title, parts, detailsHref, prevLabel }: {
-  title: string; parts: SummaryPart[]; detailsHref: string; prevLabel: string;
+  title: string; parts: SummaryPart[]; detailsHref?: string; prevLabel: string;
 }) {
   return (
     <div className="fin-card fin-sum">
       <div className="fin-sum-top">
         <span className="fin-sum-title">{title}</span>
-        <Link href={detailsHref} className="fin-sum-link">Детально й чистий прибуток — в «Аналітиці» →</Link>
+        {detailsHref && <Link href={detailsHref} className="fin-sum-link">Детально й чистий прибуток — в «Аналітиці» →</Link>}
       </div>
       <div className="fin-sum-grid">
         {parts.map(p => (

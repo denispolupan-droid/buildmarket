@@ -10,7 +10,8 @@ import { fmtInt as fmt } from '../../../../lib/format';
 import { loadProfitBridge } from '../../../../lib/accounting/profit-bridge';
 import { resolvePeriod } from '../overview-data';
 import ProfitBridgeCard from '../ProfitBridgeCard';
-import StatCard from '../StatCard';
+import OverviewSummary from '../OverviewSummary';
+import { SOURCE_META } from '../channel-meta';
 import { attributeOwnSales } from '../../../../lib/accounting/stock-supplier';
 
 const db = createServiceClient();
@@ -190,15 +191,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   const cur = { revenue: sumRevenue(thisMonthRows), cost: sumCost(thisMonthRows), commission: sumCommission(thisMonthRows), margin: sumMargin(thisMonthRows), count: thisMonthRows.length };
   const prv = { revenue: sumRevenue(prevMonthRows), cost: sumCost(prevMonthRows), commission: sumCommission(prevMonthRows), margin: sumMargin(prevMonthRows), count: prevMonthRows.length };
-
-  // ── Воронка угод: знімок «зараз», незалежно від місяця створення ──────────
-  // «В дорозі» — відвантажені, ще не доставлені: очікуваний прибуток і комісії
-  // (те, що просив бачити окремо). «В роботі» — підтверджені, ще не відвантажені.
-  const stageAgg = (arr: OrderRow[]) => ({
-    revenue: sumRevenue(arr), commission: sumCommission(arr), margin: sumMargin(arr), count: arr.length,
-  });
-  const transit = stageAgg(rows.filter(r => r.status === 'shipped'));
-  const inWork  = stageAgg(rows.filter(r => ['confirmed', 'awaiting_stock', 'picking', 'pending_payment'].includes(r.status)));
 
 
   // ── Щомісячні дані (останні 6 місяців) ────────────────────────────────────
@@ -422,7 +414,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       abc:        abcClass.get(sku) ?? 'C',
     }))
     .sort((a, b) => b.margin - a.margin)
-    .slice(0, 8);
+    .slice(0, 15);   // 15 — заповнює висоту поруч із «По каналах» і «Клієнти» (07.11.2026)
 
   // ── По каналах ────────────────────────────────────────────────────────────
 
@@ -485,35 +477,60 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </a>
       </div>
 
-      {/* Картки (як були): факт — з того ж читання леджера, що й розбір нижче */}
-      <div className="fin-kpi-row cols-4" style={{ marginBottom: '16px' }}>
-        <StatCard label={`Виручка · ${curMonthLabel}`} kind="fact" value={`${fmt(bridge.revenue.fact)} ₴`}
-          cur={bridge.revenue.fact} prev={prevLedgerRevenue > 0 ? prevLedgerRevenue : null} deltaLabel="до попереднього періоду"
-          hint="Проведені продажі з обліку: фіксуються в день вручення замовлення. Як до неї доходить сума замовлень — розбір нижче."
-          rows={[
-            { label: 'сума замовлень періоду', value: `${fmt(bridge.revenue.start)} ₴` },
-            { label: 'попередній період', value: `${fmt(prevLedgerRevenue)} ₴` },
-          ]} />
-        <StatCard label="Валовий прибуток" kind="fact" value={`${fmt(bridge.profit.fact)} ₴`} valueColor={bridge.profit.fact >= 0 ? '#15803D' : '#DC2626'}
-          cur={bridge.profit.fact} prev={prevPL.revenue > 0 ? prevPL.grossProfit : null} deltaLabel="до попереднього періоду"
-          hint="З бухгалтерських проводок: виручка − собівартість FIFO − усі прямі витрати на продажі. Чистий — ще мінус операційні витрати й податки (розбір нижче)."
-          rows={[
-            { label: 'маржа від виручки', value: bridge.revenue.fact > 0 ? `${Math.round(bridge.profit.fact / bridge.revenue.fact * 1000) / 10}%` : '—' },
-            { label: 'чистий прибуток', value: `${fmt(netFact)} ₴`, color: netFact >= 0 ? '#15803D' : '#DC2626' },
-          ]} />
-        <StatCard label="В роботі · прибуток" kind="forecast" value={`${fmt(inWork.margin)} ₴`} deltaLabel="зараз, незалежно від періоду"
-          hint="Підтверджені, ще не відвантажені замовлення: прогноз валового прибутку (собівартість за закупівлею, комісії за ставками площадок)."
-          rows={[
-            { label: `замовлень · ${fmt(inWork.count)}`, value: `${fmt(inWork.revenue)} ₴` },
-            { label: 'комісії площадок', value: inWork.commission > 0 ? `−${fmt(inWork.commission)} ₴` : '—' },
-          ]} />
-        <StatCard label="В дорозі · прибуток" kind="forecast" value={`${fmt(transit.margin)} ₴`} deltaLabel="зараз, незалежно від періоду"
-          hint="Відправлені, ще не вручені посилки: прогноз валового прибутку. Проведеться в облік у день вручення. Скільки грошей за них ще не дійшло — на «Огляді», «Ще їде до покупця»."
-          rows={[
-            { label: `замовлень · ${fmt(transit.count)}`, value: `${fmt(transit.revenue)} ₴` },
-            { label: 'комісії площадок', value: transit.commission > 0 ? `−${fmt(transit.commission)} ₴` : '—' },
-          ]} />
-      </div>
+      {/* «Підсумок» — той самий стиль, що на «Огляді»; тут ще й чистий прибуток.
+          Усе факту — з того ж читання леджера, що й розбір нижче */}
+      {(() => {
+        const rev = bridge.revenue.fact;
+        const gross = bridge.profit.fact;
+        const pctOfRev = (v: number) => (rev > 0 ? `${Math.round(v / rev * 1000) / 10}%` : '—');
+        const openRows = thisMonthRows.filter(r => estimates.get(r.id)?.cogsSource !== 'fact');
+        const openSum = openRows.reduce((s, r) => s + Number(r.total_price), 0);
+        const openProfit = openRows.reduce((s, r) => s + r.margin, 0);
+        const fees = pl.deal.marketplaceFee + pl.deal.acquiringFee;
+        return (
+          <div style={{ marginBottom: '16px' }}>
+            <OverviewSummary
+              title={`Підсумок · ${curMonthLabel}`}
+              prevLabel="до попереднього періоду"
+              parts={[
+                {
+                  label: 'Виручка', value: `${fmt(rev)} ₴`, cur: rev, prev: prevLedgerRevenue > 0 ? prevLedgerRevenue : null,
+                  hint: 'Проведені продажі з обліку (продаж фіксується в день вручення). Розбір від суми замовлень — нижче.',
+                  metrics: [
+                    { label: `замовлено · ${fmt(thisMonthRows.length)}`, value: `${fmt(bridge.revenue.start)} ₴`, hint: 'Сума підтверджених замовлень, створених за період (без нових і скасованих)' },
+                    { label: `в роботі й у дорозі · ${fmt(openRows.length)}`, value: `${fmt(openSum)} ₴`, hint: 'Ще не вручені — виручкою стануть у день вручення' },
+                    { label: 'середній чек', value: thisMonthRows.length ? `${fmt(bridge.revenue.start / thisMonthRows.length)} ₴` : '—' },
+                    { label: 'вручено замовлень', value: fmt(deliveredMonthRows.length) },
+                  ],
+                  bar: {
+                    title: 'виручка вручених за каналами',
+                    segments: channels.map(([ch, st]) => ({ label: SOURCE_META[ch]?.label ?? CHANNEL_LABELS[ch] ?? ch, amount: st.revenue, color: (SOURCE_META[ch] ?? SOURCE_META.other).color })),
+                  },
+                },
+                {
+                  label: 'Прибуток', value: `${fmt(gross)} ₴`, valueColor: gross >= 0 ? '#15803D' : '#DC2626', cur: gross, prev: prevPL.revenue > 0 ? prevPL.grossProfit : null,
+                  hint: 'Валовий — виручка мінус собівартість FIFO і всі прямі витрати на продажі. Чистий — ще мінус операційні витрати й податки. Розбір по рядках — нижче.',
+                  metrics: [
+                    { label: 'маржа від виручки', value: rev > 0 ? `${Math.round(gross / rev * 1000) / 10}%` : '—' },
+                    { label: 'комісії й оплата', value: pctOfRev(fees), hint: `${fmt(fees)} ₴ — комісії площадок, RozetkaPay, еквайринг, збори Rozetka Доставки` },
+                    { label: `в роботі й у дорозі · прогноз`, value: `+${fmt(openProfit)} ₴`, hint: 'Прогноз валового по замовленнях періоду, ще не вручених — у факт ще не входить' },
+                    { label: 'чистий прибуток', value: `${fmt(netFact)} ₴`, hint: `Валовий − операційні витрати ${fmt(pl.opex.total)} ₴ − податки ${fmt(pl.taxes)} ₴` },
+                  ],
+                  bar: {
+                    title: 'куди йде кожна гривня виручки',
+                    segments: [
+                      { label: 'собівартість', amount: pl.cogs, color: '#94A3B8' },
+                      { label: 'комісії й оплата', amount: fees, color: '#EA8A00' },
+                      { label: 'НП', amount: pl.deal.npDelivery, color: '#8B5CF6' },
+                      { label: 'опер. витрати', amount: Math.max(0, pl.opex.total + pl.taxes), color: '#64748B' },
+                      { label: 'чистий прибуток', amount: Math.max(0, netFact), color: '#16A34A' },
+                    ],
+                  },
+                },
+              ]} />
+          </div>
+        );
+      })()}
 
       {/* Розбір: від суми замовлень до виручки і до ЧИСТОГО прибутку — згорнутий, «розгорнути» (одне читання
           леджера: чистий = валовий цього ж мосту − опер. витрати − податки) */}

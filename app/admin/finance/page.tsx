@@ -123,7 +123,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                   { label: 'маржа від виручки', value: margin === null ? '—' : `${margin}%` },
                   { label: 'собівартість', value: pctOfRev(c.cogs), hint: `${fmt(c.cogs)} ₴ — FIFO-собівартість проданого` },
                   { label: 'комісії й оплата', value: pctOfRev(c.fees + c.acquiring), hint: `${fmt(c.fees + c.acquiring)} ₴ — комісії площадок, RozetkaPay, еквайринг, збори Rozetka Доставки` },
-                  { label: 'очікується (прогноз)', value: `+${fmt(k.profitEst.forecast)} ₴`, muted: true, hint: 'Прогноз валового по замовленнях у роботі й у дорозі — у факт ще не входить' },
+                  { label: `в роботі й у дорозі · прогноз`, value: `+${fmt(k.profitEst.forecast)} ₴`, hint: 'Прогноз валового по замовленнях у роботі й у дорозі — у факт ще не входить' },
                 ],
                 bar: {
                   title: 'куди йде кожна гривня виручки',
@@ -411,7 +411,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
 
       {/* План на місяць — прогрес-бар на всю ширину. Канали звідси прибрані:
           їх показує «Джерела» в каруселі динаміки, деталі — в «Аналітиці». */}
-      <PlanCard plan={ov.plan} />
+      {/* Продажі місяця — остання точка графіка «План» (та сама база: створені, вкл. в роботі й у дорозі) */}
+      <PlanCard plan={ov.plan} sales={[...ov.dynamics.planCum.fact].reverse().find((v): v is number => v != null) ?? undefined} />
 
     </div>
   );

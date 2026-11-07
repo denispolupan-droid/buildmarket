@@ -334,11 +334,13 @@ function PlanCumChart({ p }: { p: Dynamics['planCum'] }) {
         <polyline points={line(p.fact)} fill="none" stroke="var(--brand-blue)" strokeWidth="2.2" strokeLinejoin="round" />
         <circle cx={x(lastIdx)} cy={y(lastVal)} r="3.2" fill="var(--brand-blue)" />
       </svg>
+      {/* Висновок «випереджаємо / відстаємо на N» — у картці «План на місяць» нижче
+          (07.11.2026: не дублюємо); тут лише короткий статус кольором */}
       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
         {p.plan
-          ? <>Продажі {fmt(lastVal)} ₴ (створені, вкл. в дорозі) проти темпу плану {fmt(p.plan[lastIdx] ?? 0)} ₴ — {onTrack
-              ? <b style={{ color: 'var(--color-success)' }}>випереджаємо</b>
-              : <b style={{ color: 'var(--color-danger)' }}>відстаємо на {fmt((p.plan[lastIdx] ?? 0) - lastVal)} ₴</b>}</>
+          ? <>Темп: {onTrack
+              ? <b style={{ color: 'var(--color-success)' }}>випереджаємо план</b>
+              : <b style={{ color: 'var(--color-danger)' }}>відстаємо від плану</b>} · деталі — «План на місяць» нижче</>
           : 'План не задано — введіть його у віджеті «План на місяць», і тут з’явиться лінія темпу.'}
       </div>
     </div>
@@ -353,7 +355,8 @@ const SLIDES = [
 ] as const;
 
 export default function DynamicsCarousel({ data }: { data: Dynamics }) {
-  const [slide, setSlide] = useState<(typeof SLIDES)[number]['key']>('daily');
+  // За замовчуванням — «План» (рішення власника 07.11.2026); без плану — «Дні»
+  const [slide, setSlide] = useState<(typeof SLIDES)[number]['key']>(data.planCum.plan ? 'plan' : 'daily');
   return (
     <div>
       <div style={{ display: 'flex', gap: '3px', marginBottom: '10px', alignItems: 'center' }}>
