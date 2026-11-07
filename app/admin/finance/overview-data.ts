@@ -8,6 +8,8 @@ import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
 import { PL_ACCOUNTS, classifyPLEntry, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
 import { createServiceClient } from '../../../lib/supabase-service';
 import { sumDealCostsByDate } from '../../../lib/deal-costs';
+import { loadProfitBridge } from '../../../lib/accounting/profit-bridge';
+import type { ProfitBridge } from '../../../lib/accounting/profit-bridge-rules';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -120,6 +122,9 @@ export type OverviewData = {
        створення (до 12, порожні місяці на початку відкинуто; останній — поточний, неповний) */
     months: { labels: string[]; years: string[]; revenue: number[]; profit: number[]; counts: number[] };
   };
+  /* Міст «замовлення → облік» (lib/accounting/profit-bridge) — той самий, що в «Аналітиці»;
+     net — чистий прибуток факт: валовий − операційні витрати − податки */
+  bridge: ProfitBridge & { opex: number; taxes: number; net: number };
   /* План виручки на поточний місяць (app_settings) проти факту з обліку */
   plan: {
     value: number | null;      // план, ₴ (null = не задано)
@@ -220,7 +225,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     fetchAllRows<any>((f, t) => {
       let q = db.from('orders')
         .select('id, status, total_price, created_at, confirmed_at, shipped_at, delivered_at, payment_confirmed, amount_paid, channel_code, customer_id, phone, company, contact')
-        .neq('status', 'cancelled')
+        // Без нових і скасованих — як обіцяє підказка картки і як рахує «Аналітика»
+        // (до 07.11.2026 нові, ще не підтверджені замовлення потрапляли в суму)
+        .not('status', 'in', '(new,cancelled)')
         .gte('created_at', prevFrom.toISOString());
       if (periodTo) q = q.lt('created_at', periodTo.toISOString());
       return q.order('id').range(f, t);
@@ -555,6 +562,14 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const prevProfitEst = (prevOrders as EstOrder[]).reduce((s, o) => s + orderMargin(o), 0);
   const prevOrdSum    = sum(prevOrders);
 
+  // Міст «замовлення → облік»: той самий модуль і той самий блок, що в «Аналітиці»
+  const bridge = await loadProfitBridge(db, {
+    fromYmd: fromStr, toYmd: periodTo ? endStr : null, fromIso,
+    cohort: (curOrders as (EstOrder & { status: string })[]).map(o => ({
+      id: o.id, status: o.status, total: Number(o.total_price ?? 0), hasFact: hasFactCogs(o), estGross: orderMargin(o),
+    })),
+  });
+
   // Деталі по каналах для слайда «Джерела» (прибуток — тим же orderMargin)
   const chProfit = new Map<string, number>();
   for (const o of curOrders as EstOrder[]) {
@@ -756,5 +771,6 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     },
     channels,
     plan, dynamics,
+    bridge: { ...bridge, opex: curPL.opex.total, taxes: curPL.taxes, net: curPL.netProfit },
   };
 }

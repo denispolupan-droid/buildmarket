@@ -8,6 +8,9 @@ import { summarizePL, PL_ACCOUNTS } from '../../../../lib/accounting/profit-rule
 import { requireStaffPage } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { fmtInt as fmt } from '../../../../lib/format';
+import { loadProfitBridge } from '../../../../lib/accounting/profit-bridge';
+import { resolvePeriod } from '../overview-data';
+import ProfitBridgeCard from '../ProfitBridgeCard';
 
 const db = createServiceClient();
 
@@ -36,27 +39,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   sixAgo.setDate(1); sixAgo.setHours(0, 0, 0, 0);
 
   // ── Період дашборда: пресет через ?p= (місяць за замовчуванням) ──────────
+  // Ті самі межі періоду, що на «Огляді» (resolvePeriod): інакше одна й та сама
+  // цифра «факт» розходилась між вкладками через межі доби (07.11.2026)
   const { p } = await searchParams;
-  const preset = ['cur_month', 'prev_month', 'quarter', 'ytd'].includes(p ?? '') ? p! : 'cur_month';
-  let periodFrom: Date, periodTo: Date | null = null;  // null = відкритий період (до сьогодні)
-  if (preset === 'prev_month') {
-    periodFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    periodTo   = new Date(now.getFullYear(), now.getMonth(), 1);
-  } else if (preset === 'quarter') {
-    periodFrom = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-  } else if (preset === 'ytd') {
-    periodFrom = new Date(now.getFullYear(), 0, 1);
-  } else {
-    periodFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-  }
-  // Попередній період тієї ж довжини — для порівняння
-  const periodEnd = periodTo ?? now;
-  const spanMs    = periodEnd.getTime() - periodFrom.getTime();
-  const prevFrom  = new Date(periodFrom.getTime() - spanMs);
-  const periodLabel = preset === 'cur_month'  ? `${UA_MONTHS[now.getMonth()]} ${now.getFullYear()}`
-                    : preset === 'prev_month' ? `${UA_MONTHS[(now.getMonth() + 11) % 12]} ${now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()}`
-                    : preset === 'quarter'    ? `${Math.floor(now.getMonth() / 3) + 1}-й квартал ${now.getFullYear()}`
-                    : `${now.getFullYear()} рік`;
+  const { preset, periodFrom, periodTo, prevFrom, periodLabel } = resolvePeriod(p);
+  const kyivYmd = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' });
 
   const monthStart = periodFrom.toISOString();
 
@@ -92,9 +79,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   // ── Фактичний облік за поточний місяць — з леджера money_entries ──────────
   // Дашборд нижче — оперативна оцінка по замовленнях (вкл. невідвантажені).
   // Ця смужка — точні цифри з проведених документів, ті самі, що у «Звітах».
-  const monthStartDate = monthStart.slice(0, 10);
+  const monthStartDate = kyivYmd(periodFrom);
   // Вікно: попередній період + поточний — щоб картка «Виручка · факт» мала дельту
-  const prevFromDate = prevFrom.toISOString().slice(0, 10);
+  const prevFromDate = kyivYmd(prevFrom);
   // Пагінація обов'язкова: два місяці P&L-проводок — це > 1000 рядків (вересень 2026:
   // 1637 у вікні), без fetchAllRows PostgREST мовчки віддавав перші 1000 — картки
   // «Виручка · факт» показували 0, а «Валовий прибуток» −121 746 замість +11 403.
@@ -104,7 +91,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       .select('account_type, amount, doc_type, business_date')
       .in('account_type', PL_ACCOUNTS)
       .gte('business_date', prevFromDate);
-    if (periodTo) q = q.lt('business_date', periodTo.toISOString().slice(0, 10));
+    if (periodTo) q = q.lt('business_date', kyivYmd(periodTo));
     return q.order('id').range(f, t);
   });
   const ledgerRows     = ledgerAllRows.filter(r => r.business_date >= monthStartDate);
@@ -233,7 +220,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     .from('money_entries')
     .select('account_type, amount, counterparty_id, business_date')
     .in('account_type', ['marketplace_fee', 'revenue'])
-    .gte('business_date', sixAgo.toISOString().slice(0, 10))
+    .gte('business_date', kyivYmd(sixAgo))
     .order('id')
     .range(f, t));
   const feeTrend = months.map(m => {
@@ -322,7 +309,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     (accDocs ?? [])
       .filter(d => {
         const dd = String(d.doc_date ?? '');
-        return dd >= monthStartDate && (!periodTo || dd < periodTo.toISOString().slice(0, 10));
+        return dd >= monthStartDate && (!periodTo || dd < kyivYmd(periodTo));
       })
       .map(d => d.id as string),
   );
@@ -405,6 +392,14 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const channels = Object.entries(channelStats).sort((a, b) => b[1].revenue - a[1].revenue);
   const totalRevenue = channels.reduce((s, [, c]) => s + c.revenue, 0) || 1;
 
+  // ── Міст «замовлення → облік» — той самий модуль і блок, що на «Огляді» ──
+  const bridge = await loadProfitBridge(db, {
+    fromYmd: monthStartDate, toYmd: periodTo ? kyivYmd(periodTo) : null, fromIso: monthStart,
+    cohort: thisMonthRows.map(r => ({
+      id: r.id, status: r.status, total: Number(r.total_price), hasFact: estimates.get(r.id)?.cogsSource === 'fact', estGross: r.margin,
+    })),
+  });
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const curMonthLabel = periodLabel;
@@ -437,7 +432,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {pr.label}
           </Link>
         ))}
-        <a href={`/api/admin/finance/profit-export?from=${monthStartDate}&to=${(periodTo ? new Date(periodTo.getTime() - 86400000) : now).toISOString().slice(0, 10)}`}
+        <a href={`/api/admin/finance/profit-export?from=${monthStartDate}&to=${kyivYmd(periodTo ? new Date(periodTo.getTime() - 86400000) : now)}`}
           download className="fin-pill export">
           ↓ Excel · прибуток по угодах
         </a>
@@ -450,7 +445,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           {
             label: `Виручка · факт · ${curMonthLabel}`, value: `${fmt(ledger.revenue)} ₴`, color: 'var(--text-primary)',
             sub: revFactDelta !== null ? `${revFactDelta >= 0 ? '+' : ''}${revFactDelta}% до попереднього періоду` : 'попередній період без продажів',
-            hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення. Сума створених замовлень періоду — на «Огляді».',
+            hint: 'Проведені продажі з обліку: фіксується в момент доставки замовлення. Як до неї доходить сума замовлень періоду — блок «Від замовлень до обліку» нижче.',
           },
           {
             label: 'В роботі · зараз · прогноз прибутку', value: `${fmt(inWork.margin)} ₴`, color: 'var(--text-primary)',
@@ -477,6 +472,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           </div>
         ))}
       </div>
+
+      {/* Факт обліку і як до нього доходять цифри по замовленнях — той самий блок, що на «Огляді» */}
+      <ProfitBridgeCard bridge={{ ...bridge, opex: pl.opex.total, taxes: pl.taxes, net: pl.netProfit }} periodLabel={curMonthLabel} />
 
       {/* Динаміка 6 місяців + комісії МП */}
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>

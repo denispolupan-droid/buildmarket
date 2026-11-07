@@ -7,6 +7,7 @@ import PlanCard from './PlanCard';
 import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
 import { MonthBars, TrendBadge } from './overview-charts';
+import ProfitBridgeCard from './ProfitBridgeCard';
 import { requireStaffPage } from '../../../lib/auth-guard';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
@@ -91,11 +92,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         {([
           { key: 'ordsum', label: 'Замовлення · сума', value: `${fmt(ov.kpi.orderSum.value)} ₴`, cur: ov.kpi.orderSum.value, prev: ov.kpi.orderSum.prev, months: ov.monthly.orderSum, mFmt: (v: number) => `${fmt(v)} ₴`, color: 'var(--brand-blue)',
             hint: 'Усі підтверджені замовлення, створені за період (без нових і скасованих): в роботі, відвантажені й доставлені. Сума за цінами продажу.' },
-          { key: 'prof', label: 'Валовий прибуток', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
-            hint: `Прибуток по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: вручені — ${fmt(ov.kpi.profitEst.delivered)} ₴, ще в роботі й у дорозі — ${fmt(ov.kpi.profitEst.forecast)} ₴ (прогноз).`
-              + (ov.kpi.profitEst.unattributed > 0
-                ? ` Мінус витрати без прив'язки до замовлення ${fmt(ov.kpi.profitEst.unattributed)} ₴ = ${fmt(ov.kpi.profitEst.value - ov.kpi.profitEst.unattributed)} ₴.`
-                : ''),
+          { key: 'prof', label: 'Прибуток по замовленнях · прогноз', value: `${fmt(ov.kpi.profitEst.value)} ₴`, cur: ov.kpi.profitEst.value, prev: ov.kpi.profitEst.prev, months: ov.monthly.profitEst, mFmt: (v: number) => `${fmt(v)} ₴`, color: '#15803D',
+            hint: `Валовий прибуток по замовленнях, створених ${dmy(ov.from)}–${dmy(ov.to)}: вручені — ${fmt(ov.kpi.profitEst.delivered)} ₴, ще в роботі й у дорозі — ${fmt(ov.kpi.profitEst.forecast)} ₴ (прогноз). Факт обліку — у блоці «Від замовлень до обліку» нижче.`,
             more: (
               <>
                 <div className="fin-hint-h">Враховано</div>
@@ -123,7 +121,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           { key: 'mrg',  label: 'Маржа',            value: ov.kpi.margin.value === null ? '—' : `${ov.kpi.margin.value}%`, cur: ov.kpi.margin.value, prev: ov.kpi.margin.prev, months: ov.monthly.margin, mFmt: (v: number) => `${v}%`, pp: true,
             hint: 'Валовий прибуток ÷ сума замовлень періоду (та сама база — всі замовлення)' },
           { key: 'ord',  label: 'Замовлень',        value: fmt(ov.kpi.orders.value), cur: ov.kpi.orders.value, prev: ov.kpi.orders.prev, months: ov.monthly.orders, mFmt: (v: number) => fmt(v), color: 'var(--brand-blue)',
-            hint: 'Створені за період, без скасованих — включно з ще не відвантаженими' },
+            hint: 'Створені за період, без нових (непідтверджених) і скасованих — включно з ще не відвантаженими' },
           { key: 'chk',  label: 'Середній чек',     value: ov.kpi.avgCheck.value === null ? '—' : `${fmt(ov.kpi.avgCheck.value)} ₴`, cur: ov.kpi.avgCheck.value, prev: ov.kpi.avgCheck.prev, months: ov.monthly.avgCheck, mFmt: (v: number) => `${fmt(v)} ₴`,
             hint: 'Сума створених замовлень ÷ їх кількість (оцінка до доставки)' },
         ] as { key: string; label: string; value: string; cur: number | null; prev: number | null; months: (number | null)[]; mFmt: (v: number) => string; color?: string; pp?: boolean; hint: string; more?: ReactNode }[]).map(k => (
@@ -149,6 +147,11 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
             )}
           </div>
         ))}
+      </div>
+
+      {/* Факт обліку і як до нього доходять цифри по замовленнях — той самий блок, що в «Аналітиці» */}
+      <div style={{ marginTop: '16px' }}>
+        <ProfitBridgeCard bridge={ov.bridge} periodLabel={ov.periodLabel} />
       </div>
 
       {/* Стадії зараз · Динаміка */}
