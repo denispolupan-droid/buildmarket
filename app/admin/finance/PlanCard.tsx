@@ -57,7 +57,7 @@ export default function PlanCard({ plan, sales: sales0 }: {
   const paceOk   = plan.value ? nowDay >= needDay : null;
 
   return (
-    <div className="fin-card" style={{ marginTop: '16px' }}>
+    <div className="fin-card" style={{ marginTop: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
         <div className="fin-card-title">План на місяць <span className="fin-card-sub">· продажі · {plan.monthLabel}</span></div>
         {!editing && plan.value != null && (

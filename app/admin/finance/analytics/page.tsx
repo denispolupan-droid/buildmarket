@@ -444,10 +444,10 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const curMonthLabel = periodLabel;
 
   return (
-    <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
+    <div className="fin-dense" style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: '16px' }}>
+      <div style={{ marginBottom: '10px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Аналітика продажів
         </h1>
@@ -485,10 +485,29 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         const pctOfRev = (v: number) => (rev > 0 ? `${Math.round(v / rev * 1000) / 10}%` : '—');
         const openRows = thisMonthRows.filter(r => estimates.get(r.id)?.cogsSource !== 'fact');
         const openSum = openRows.reduce((s, r) => s + Number(r.total_price), 0);
-        const openProfit = openRows.reduce((s, r) => s + r.margin, 0);
         const fees = pl.deal.marketplaceFee + pl.deal.acquiringFee;
+        // Знімок «зараз» (незалежно від періоду): підтверджені, ще не відвантажені / відправлені, ще не вручені
+        const stage = (statuses: string[]) => {
+          const arr = rows.filter(r => statuses.includes(r.status));
+          const revenue = arr.reduce((s, r) => s + Number(r.total_price), 0);
+          const cost = arr.reduce((s, r) => s + r.cost, 0);
+          const commission = arr.reduce((s, r) => s + r.commission, 0);
+          const margin = arr.reduce((s, r) => s + r.margin, 0);
+          return { count: arr.length, revenue, cost, commission, margin, pct: revenue > 0 ? Math.round(margin / revenue * 1000) / 10 : null };
+        };
+        const inWork  = stage(['confirmed', 'awaiting_stock', 'picking', 'pending_payment']);
+        const transit = stage(['shipped']);
+        const stagePart = (label: string, st: ReturnType<typeof stage>, hint: string) => ({
+          label, kind: 'forecast' as const, value: `${fmt(st.margin)} ₴`, deltaText: 'прогноз прибутку · зараз, незалежно від періоду', hint,
+          metrics: [
+            { label: `замовлень · ${fmt(st.count)}`, value: `${fmt(st.revenue)} ₴` },
+            { label: 'собівартість', value: `−${fmt(st.cost)} ₴`, hint: 'За поточною закупівельною ціною' },
+            { label: 'комісії площадок', value: st.commission > 0 ? `−${fmt(st.commission)} ₴` : '—', hint: 'За ставками площадок (або вже списані)' },
+            { label: 'маржа', value: st.pct === null ? '—' : `${st.pct}%` },
+          ],
+        });
         return (
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: '10px' }}>
             <OverviewSummary
               title={`Підсумок · ${curMonthLabel}`}
               prevLabel="до попереднього періоду"
@@ -513,7 +532,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                   metrics: [
                     { label: 'маржа від виручки', value: rev > 0 ? `${Math.round(gross / rev * 1000) / 10}%` : '—' },
                     { label: 'комісії й оплата', value: pctOfRev(fees), hint: `${fmt(fees)} ₴ — комісії площадок, RozetkaPay, еквайринг, збори Rozetka Доставки` },
-                    { label: `в роботі й у дорозі · прогноз`, value: `+${fmt(openProfit)} ₴`, hint: 'Прогноз валового по замовленнях періоду, ще не вручених — у факт ще не входить' },
+                    { label: 'собівартість', value: pctOfRev(pl.cogs), hint: `${fmt(pl.cogs)} ₴ — FIFO-собівартість проданого` },
                     { label: 'чистий прибуток', value: `${fmt(netFact)} ₴`, hint: `Валовий − операційні витрати ${fmt(pl.opex.total)} ₴ − податки ${fmt(pl.taxes)} ₴` },
                   ],
                   bar: {
@@ -528,6 +547,16 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                   },
                 },
               ]} />
+            {/* Ті самі «В роботі» і «В дорозі», що були картками, — у тому ж дизайні */}
+            <div style={{ marginTop: '10px' }}>
+              <OverviewSummary
+                title="Зараз · у роботі й у дорозі"
+                prevLabel=""
+                parts={[
+                  stagePart('В роботі', inWork, 'Підтверджені, ще не відвантажені замовлення: прогноз валового прибутку (собівартість за закупівлею, комісії за ставками площадок).'),
+                  stagePart('В дорозі', transit, 'Відправлені, ще не вручені посилки: прогноз валового прибутку. Проведеться в облік у день вручення.'),
+                ]} />
+            </div>
           </div>
         );
       })()}
@@ -539,7 +568,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         periodLabel={curMonthLabel} />
 
       {/* Динаміка 6 місяців + комісії МП */}
-      <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
+      <div className="fin-grid-12" style={{ marginBottom: '10px' }}>
         {/* Замість графіка «за датою створення» (змішував факт із прогнозом) — таблиця
             за обліком: місяці порівнюються рядками, цифри ті самі, що в «Звітах» */}
         <div className="fin-card" style={{ gridColumn: 'span 7' }}>
@@ -594,7 +623,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
       {/* Збиткові / тонкі угоди (факт) */}
       {thinDeals.length > 0 && (
-        <div className="fin-card" style={{ marginBottom: '16px' }}>
+        <div className="fin-card" style={{ marginBottom: '10px' }}>
           <div className="fin-card-title">Збиткові та тонкі угоди <span className="fin-card-sub">· замовлення: виручка → валовий прибуток після комісій і % від виручки · доставлені за {curMonthLabel} з прибутком &lt; {THIN_PCT}% — перевірте ціну/комісію</span></div>
           {/* Компактно: дві колонки, кожна цифра у своїй колонці фіксованої ширини
               (раніше «прибуток · %» одним рядком різної довжини — цифри «танцювали») */}
@@ -627,7 +656,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       )}
 
       {/* Топ товарів + канали/клієнти */}
-      <div className="fin-grid-12" style={{ marginBottom: '16px' }}>
+      <div className="fin-grid-12" style={{ marginBottom: '10px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div className="fin-card-title">
             Топ товарів за прибутком <span className="fin-card-sub">· виручка → собівартість (з комісіями) → валовий прибуток · доставлені за {curMonthLabel} · ABC: <b style={{ color: 'var(--color-success)' }}>A {abcCounts.A}</b> (80% прибутку) / <b style={{ color: 'var(--color-warn)' }}>B {abcCounts.B}</b> / C {abcCounts.C}</span>
@@ -666,7 +695,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           )}
         </div>
 
-        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="fin-card">
             <div className="fin-card-title">По каналах <span className="fin-card-sub">· виручка і її частка, валовий прибуток після комісій, замовлень і прибуток на замовлення · доставлені за {curMonthLabel}</span></div>
             {channels.length === 0 ? (
@@ -719,7 +748,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
 
       {/* Категорії і топ клієнти — факт (доставлені за період) */}
-      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
         <div className="fin-card">
           <div className="fin-card-title">Валовий прибуток за категоріями <span className="fin-card-sub">· прибуток після комісій по кореневих категоріях · доставлені за {curMonthLabel}</span></div>
           {categories.length === 0 ? (
@@ -774,7 +803,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
       {/* Прибуток по брендах і постачальниках — факт (доставлені за період). Кожна
           цифра у своїй колонці (шт / виручка / прибуток / %), як у «тонких угодах» */}
-      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         {[
           {
             title: 'Валовий прибуток по брендах', sub: `· прибуток після комісій · доставлені за ${curMonthLabel}`,

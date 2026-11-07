@@ -13,7 +13,9 @@ export type SummaryMetric = { label: string; value: string; muted?: boolean; hin
 export type SummarySegment = { label: string; amount: number; color: string };
 export type SummaryPart = {
   label: string; hint: string; value: string; valueColor?: string;
-  cur: number | null; prev: number | null; metrics: SummaryMetric[];
+  /** forecast — прогноз (жовта позначка), за замовчуванням факт; deltaText — замість динаміки, коли порівнювати нема з чим */
+  kind?: 'fact' | 'forecast'; deltaText?: string;
+  cur?: number | null; prev?: number | null; metrics: SummaryMetric[];
   bar?: { title: string; segments: SummarySegment[] };
 };
 
@@ -50,13 +52,15 @@ export default function OverviewSummary({ title, parts, detailsHref, prevLabel }
           <div key={p.label} className="fin-sum-part">
             <div className="fin-stat-head">
               <span className="fin-stat-label">{p.label}</span>
-              <span className="fin-stat-tag fact">факт</span>
+              {p.kind === 'forecast' ? <span className="fin-stat-tag">прогноз</span> : <span className="fin-stat-tag fact">факт</span>}
               <span className="fin-stat-info" title={p.hint} aria-label={p.hint}><Info size={14} strokeWidth={2} aria-hidden /></span>
             </div>
             <div className="fin-sum-valrow">
               <span className="fin-sum-value" style={p.valueColor ? { color: p.valueColor } : undefined}>{p.value}</span>
-              <TrendBadge cur={p.cur} prev={p.prev} />
-              <span className="fin-kpi-cmp">{prevLabel}</span>
+              {p.deltaText ? <span className="fin-kpi-cmp">{p.deltaText}</span> : <>
+                <TrendBadge cur={p.cur ?? null} prev={p.prev ?? null} />
+                <span className="fin-kpi-cmp">{prevLabel}</span>
+              </>}
             </div>
             <div className="fin-sum-metrics">
               {p.metrics.map(m => (

@@ -72,7 +72,7 @@ export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: Brid
     <Plain label={<span style={{ color: 'var(--color-danger)' }}>нерозкладено (помилка звірки)</span>} value={signed(n)} color="var(--color-danger)" />
   );
   return (
-    <details className="fin-card fin-collapse" style={{ marginBottom: '16px' }}>
+    <details className="fin-card fin-collapse" style={{ marginBottom: '10px' }}>
       <summary>
         <span className="fin-card-title" style={{ margin: 0 }}>
           Розбір: від замовлень до виручки і прибутку · {periodLabel}

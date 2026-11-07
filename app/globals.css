@@ -2861,8 +2861,10 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
 .fin-sum-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); }
 .fin-sum-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
 .fin-sum-legend b { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.fin-sum-metric { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.fin-sum-mlabel { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Підпис показника переноситься (до 2 рядків), значення притиснуте донизу —
+   у всіх показниках ряду цифри на одній лінії, підпис читається повністю */
+.fin-sum-metric { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; min-width: 0; }
+.fin-sum-mlabel { font-size: 11.5px; line-height: 1.3; color: var(--text-muted); overflow-wrap: anywhere; }
 .fin-sum-mvalue { font-size: 14px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fin-sum-mvalue.muted { color: var(--text-muted); font-weight: 600; }
 @media (max-width: 720px) {
@@ -2871,6 +2873,9 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
   .fin-sum-part, .fin-sum-part + .fin-sum-part { padding: 0; border-left: none; }
   .fin-sum-part + .fin-sum-part { border-top: 1px solid var(--border-light, var(--border)); padding-top: 12px; }
 }
+
+/* «Огляд» і «Аналітика» — щільніші проміжки між блоками (07.11.2026); інші вкладки фінансів не чіпаємо */
+.fin-dense .fin-grid-12, .fin-dense .fin-kpi-row, .fin-dense .fin-two-col { gap: 10px; }
 
 /* «Розбір» в «Аналітиці»: згорнутий за замовчуванням (рішення власника 07.11.2026) */
 .fin-collapse > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }

@@ -50,10 +50,10 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
   }));
 
   return (
-    <div style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
+    <div className="fin-dense" style={{ padding: '28px 32px 64px', maxWidth: '1400px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '16px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '10px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Фінанси</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
@@ -141,7 +141,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       })()}
 
       {/* Стадії зараз · Динаміка */}
-      <div className="fin-grid-12" style={{ marginTop: '16px' }}>
+      <div className="fin-grid-12" style={{ marginTop: '10px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 4' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
             <div className="fin-card-title">У роботі <span className="fin-card-sub">· де гроші зараз</span></div>
@@ -221,7 +221,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       </div>
 
       {/* Фінанси · Сьогодні */}
-      <div className="fin-grid-12" style={{ marginTop: '16px' }}>
+      <div className="fin-grid-12" style={{ marginTop: '10px' }}>
         <div className="fin-card" style={{ gridColumn: 'span 8' }}>
           <div className="fin-card-title">Гроші та борги <span className="fin-card-sub">· залишки з проводок обліку, станом на зараз</span></div>
           <div className="fin-money-grid">
