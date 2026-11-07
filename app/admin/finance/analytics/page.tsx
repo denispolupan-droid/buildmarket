@@ -515,7 +515,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           ]} />
       </div>
 
-      {/* Розбір: від суми замовлень до виручки і до ЧИСТОГО прибутку — відкритий одразу (одне читання
+      {/* Розбір: від суми замовлень до виручки і до ЧИСТОГО прибутку — згорнутий, «розгорнути» (одне читання
           леджера: чистий = валовий цього ж мосту − опер. витрати − податки) */}
       <ProfitBridgeCard
         bridge={{ ...bridge, opex: pl.opex.total, opexBy: pl.opex.byAccount, taxes: pl.taxes, net: netFact }}

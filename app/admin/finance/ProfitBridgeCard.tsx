@@ -5,7 +5,7 @@ import { fmtInt, fmtMoney } from '../../../lib/format';
 /**
  * «Розбір: від замовлень до виручки і прибутку» — лише в «Аналітиці» (рішення
  * власника 07.11.2026: «Огляд» — поточний стан коротко, «Аналітика» — детально).
- * Відкритий одразу: ліворуч шлях «сума замовлень → виручка», праворуч «з вручених
+ * Згорнутий за замовчуванням (рішення власника 07.11.2026), «розгорнути»: ліворуч шлях «сума замовлень → виручка», праворуч «з вручених
  * замовлень → валовий → операційні витрати за статтями → податки → чистий».
  * Кожен рядок розгортається до замовлень і видів зборів. Усе з одного читання
  * леджера (lib/accounting/profit-bridge); чистий = валовий цього ж читання −
@@ -72,11 +72,14 @@ export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: Brid
     <Plain label={<span style={{ color: 'var(--color-danger)' }}>нерозкладено (помилка звірки)</span>} value={signed(n)} color="var(--color-danger)" />
   );
   return (
-    <div className="fin-card" style={{ marginBottom: '16px' }}>
-      <div className="fin-card-title">
-        Розбір: від замовлень до виручки і прибутку · {periodLabel}
-        <span className="fin-card-sub"> · з бухгалтерських проводок; кожен рядок розгортається до замовлень і видів зборів</span>
-      </div>
+    <details className="fin-card fin-collapse" style={{ marginBottom: '16px' }}>
+      <summary>
+        <span className="fin-card-title" style={{ margin: 0 }}>
+          Розбір: від замовлень до виручки і прибутку · {periodLabel}
+          <span className="fin-card-sub"> · з бухгалтерських проводок; кожен рядок розгортається до замовлень і видів зборів</span>
+        </span>
+        <span className="fin-collapse-toggle"><span className="when-closed">розгорнути ▾</span><span className="when-open">згорнути ▴</span></span>
+      </summary>
       <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginTop: '8px', alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
           <div className="fin-card-title" style={{ fontSize: '12.5px' }}>Виручка</div>
@@ -101,6 +104,6 @@ export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: Brid
           <Plain label="= чистий прибуток" value={`${fmtInt(b.net)} ₴`} bold color={b.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
         </div>
       </div>
-    </div>
+    </details>
   );
 }

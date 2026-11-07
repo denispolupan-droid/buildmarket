@@ -2839,6 +2839,38 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
 .fin-thin-ch { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .fin-thin-why { color: var(--text-muted); }
 .fin-thin-date { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* «Підсумок» на «Огляді» (07.11.2026): одна компактна панель, дві половини */
+.fin-sum { padding: 14px 20px 16px; }
+.fin-sum-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.fin-sum-title { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); }
+.fin-sum-link { font-size: 12px; font-weight: 600; color: var(--brand-blue); text-decoration: none; }
+.fin-sum-link:hover { text-decoration: underline; }
+.fin-sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.fin-sum-part { min-width: 0; padding: 0 24px; }
+.fin-sum-part:first-child { padding-left: 0; }
+.fin-sum-part + .fin-sum-part { border-left: 1px solid var(--border-light, var(--border)); padding-right: 0; }
+.fin-sum-valrow { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; white-space: nowrap; min-width: 0; }
+.fin-sum-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.fin-sum-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+.fin-sum-metric { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fin-sum-mlabel { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin-sum-mvalue { font-size: 14px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin-sum-mvalue.muted { color: var(--text-muted); font-weight: 600; }
+@media (max-width: 720px) {
+  .fin-sum-grid { grid-template-columns: 1fr; gap: 14px; }
+  .fin-sum-part, .fin-sum-part + .fin-sum-part { padding: 0; border-left: none; }
+  .fin-sum-part + .fin-sum-part { border-top: 1px solid var(--border-light, var(--border)); padding-top: 12px; }
+}
+
+/* «Розбір» в «Аналітиці»: згорнутий за замовчуванням (рішення власника 07.11.2026) */
+.fin-collapse > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.fin-collapse > summary::-webkit-details-marker { display: none; }
+.fin-collapse-toggle { flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--brand-blue); white-space: nowrap; }
+.fin-collapse-toggle .when-open { display: none; }
+.fin-collapse[open] .fin-collapse-toggle .when-open { display: inline; }
+.fin-collapse[open] .fin-collapse-toggle .when-closed { display: none; }
+
 /* «По місяцях · факт обліку» — заголовки колонок таблиці */
 .fin-month-table th {
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600;
