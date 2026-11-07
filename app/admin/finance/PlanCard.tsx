@@ -119,8 +119,14 @@ export default function PlanCard({ plan, sales: sales0 }: {
             </div>
           </div>
           <div className="fin-plan-stats">
-            <div title={`Виручка ${fmt(plan.fact)} ₴ + ще в роботі й у дорозі ${fmt(inFlight)} ₴`}>
-              <span>Зроблено</span><b>{fmt(sales)} ₴</b>
+            {/* Зроблено = факт (вручено, у виручці) + в процесі (в роботі й у дорозі) — окремо, як на шкалі */}
+            <div title={`Виручка: замовлення вже вручені й проведені. Разом із тими, що в процесі, — ${fmt(sales)} ₴ (${donePct}% плану)`}>
+              <i className="fin-plan-dot" style={{ background: 'var(--brand-blue)' }} />
+              <span>Вручено (факт)</span><b>{fmt(plan.fact)} ₴</b>
+            </div>
+            <div title="Створені цього місяця, ще не вручені: в роботі й у дорозі — стануть виручкою після вручення">
+              <i className="fin-plan-dot" style={{ background: 'var(--brand-blue)', opacity: 0.35 }} />
+              <span>В процесі</span><b>{fmt(inFlight)} ₴</b>
             </div>
             <div>
               <span>Лишилось</span><b>{left > 0 ? `${fmt(left)} ₴` : 'план виконано'}</b>

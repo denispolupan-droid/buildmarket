@@ -2888,12 +2888,13 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
 .fin-plan-axis > span:first-child { transform: none; }
 .fin-plan-axis > span:last-of-type { transform: translateX(-100%); }
 .fin-plan-pace-label { position: absolute; transform: translateX(-50%); top: 0; font-weight: 700; font-size: 10.5px; white-space: nowrap; background: var(--bg-card, #fff); padding: 0 3px; }
-.fin-plan-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-light, var(--border)); }
+.fin-plan-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-light, var(--border)); }
 .fin-plan-stats > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
 .fin-plan-stats span { font-size: 11.5px; color: var(--text-muted); }
 .fin-plan-stats b { font-size: 15px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .fin-plan-stats em { font-style: normal; font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-@media (max-width: 720px) { .fin-plan-stats { grid-template-columns: 1fr; gap: 4px; } }
+.fin-plan-dot { flex-shrink: 0; align-self: center; width: 9px; height: 9px; border-radius: 2px; }
+@media (max-width: 720px) { .fin-plan-stats { grid-template-columns: 1fr 1fr; gap: 6px; } }
 
 /* «Огляд» і «Аналітика» — щільніші проміжки між блоками (07.11.2026); інші вкладки фінансів не чіпаємо */
 .fin-dense .fin-grid-12, .fin-dense .fin-kpi-row, .fin-dense .fin-two-col { gap: 6px; }
