@@ -5,6 +5,7 @@ import { cronAuthorized } from '../../../../lib/cron-auth';
 import { alertAdmin } from '../../../../lib/alert';
 import { createServiceClient, type TableUpdate } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
+import { log } from '../../../../lib/log';
 
 const admin = createServiceClient();
 
@@ -50,7 +51,17 @@ async function sendReminder(cart: CartRow, step: 1 | 2 | 3, field: string): Prom
   });
 
   if (error) {
-    console.error('[abandoned-cart] send failed:', cart.email, error);
+    // Resend відбив адресу назавжди (validation_error: example.com, зіпсований
+    // домен) — повтор щопівгодини нічого не змінить (test@example.com, 78 помилок
+    // за 06–07.11.2026). Ставимо мітку кроку, щоб ланцюжок по цій адресі закрився.
+    const permanent = (error as { name?: string }).name === 'validation_error';
+    log.warn('abandoned_cart.send_failed', { email: cart.email, step, permanent, err: error });
+    if (permanent) {
+      await admin
+        .from('abandoned_carts')
+        .update({ [field]: new Date().toISOString() } as TableUpdate<'abandoned_carts'>)
+        .eq('id', cart.id);
+    }
     return false;
   }
   await admin

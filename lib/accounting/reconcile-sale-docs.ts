@@ -71,15 +71,24 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
   const withOrder = docs.filter(d => d.order_id);
   if (withOrder.length === 0) return [];
 
+  // `.in()` зі списком id іде в URL PostgREST: з ~650 uuid за 120 днів (04.11.2026)
+  // запит став повертати 400 Bad Request, і звірка чотири дні мовчки не працювала
+  // (помилку ковтав catch у крон-роуті). Тому пачками.
+  const CHUNK = 150;
+  const chunks = <T,>(arr: T[]): T[][] => { const out: T[][] = []; for (let i = 0; i < arr.length; i += CHUNK) out.push(arr.slice(i, i + CHUNK)); return out; };
+
   const docIds = withOrder.map(d => d.id);
-  const lines = await fetchAllRows<{ document_id: string; qty: number; price: number }>(
-    (from, to) => db
-      .from('acc_document_lines')
-      .select('document_id, qty, price')
-      .in('document_id', docIds)
-      .order('id')
-      .range(from, to),
-  );
+  const lines: { document_id: string; qty: number; price: number }[] = [];
+  for (const part of chunks(docIds)) {
+    lines.push(...await fetchAllRows<{ document_id: string; qty: number; price: number }>(
+      (from, to) => db
+        .from('acc_document_lines')
+        .select('document_id, qty, price')
+        .in('document_id', part)
+        .order('id')
+        .range(from, to),
+    ));
+  }
 
   const byDoc = new Map<string, number>();
   for (const l of lines) {
@@ -87,14 +96,17 @@ export async function findSaleDivergences(sinceDays = 120): Promise<SaleDivergen
   }
 
   const orderIds = [...new Set(withOrder.map(d => d.order_id!))];
-  const orders = await fetchAllRows<{ id: string; order_number: number | null; status: string | null; items: unknown; channel_code: string | null }>(
-    (from, to) => db
-      .from('orders')
-      .select('id, order_number, status, items, channel_code')
-      .in('id', orderIds)
-      .order('id')
-      .range(from, to),
-  );
+  const orders: { id: string; order_number: number | null; status: string | null; items: unknown; channel_code: string | null }[] = [];
+  for (const part of chunks(orderIds)) {
+    orders.push(...await fetchAllRows<{ id: string; order_number: number | null; status: string | null; items: unknown; channel_code: string | null }>(
+      (from, to) => db
+        .from('orders')
+        .select('id, order_number, status, items, channel_code')
+        .in('id', part)
+        .order('id')
+        .range(from, to),
+    ));
+  }
   const orderMap = new Map(orders.map(o => [o.id, o]));
 
   const agg = new Map<string, { docAmount: number; docNumbers: string[] }>();

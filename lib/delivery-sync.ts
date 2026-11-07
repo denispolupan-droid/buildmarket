@@ -65,7 +65,17 @@ type SalesCheckOrder = { id: string; order_number: number; flags: unknown };
  */
 async function salesPostedOrAlert(o: SalesCheckOrder): Promise<boolean> {
   const { confirmed, draft } = await saleDocCounts(o.id);
-  if (draft === 0 && confirmed > 0) return true;
+  if (draft === 0 && confirmed > 0) {
+    // Полагодили (РН створили й провели) — прапорець «сповіщено» більше не потрібен,
+    // інакше він висить назавжди (#26111003, 04–05.11.2026)
+    const flags = Array.isArray(o.flags) ? (o.flags as string[]) : [];
+    if (flags.includes(SALE_DOC_MISSING_FLAG)) {
+      const next = flags.filter(f => f !== SALE_DOC_MISSING_FLAG);
+      await serviceClient.from('orders').update({ flags: next }).eq('id', o.id);
+      o.flags = next;
+    }
+    return true;
+  }
   if (confirmed === 0 && draft === 0) {
     const flags = Array.isArray(o.flags) ? (o.flags as string[]) : [];
     if (!flags.includes(SALE_DOC_MISSING_FLAG)) {
