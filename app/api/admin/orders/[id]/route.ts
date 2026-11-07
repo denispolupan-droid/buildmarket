@@ -1,33 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { requireStaff } from '../../../../../lib/auth-guard';
-import { createServiceClient, type TableUpdate, asJson } from '../../../../../lib/supabase-service';
+import { createServiceClient, asJson } from '../../../../../lib/supabase-service';
 import { reverseDropshipLedgerExtras, syncSaleDraftLines } from '../../../../../lib/accounting/dropship';
-import { cancelDocument, resolveSaleDebitParty } from '../../../../../lib/accounting/documents';
-import { isSpecialDebtor } from '../../../../../lib/accounting/sale-party';
+import { cancelDocument } from '../../../../../lib/accounting/documents';
 import { releaseReservation } from '../../../../../lib/accounting/reservations';
-import { notifyCustomerStatus } from '../../../../../lib/telegram';
-import { buildCustomerStatusEmail } from '../../../../../lib/invoice-email';
 import { applyOrderPayment } from '../../../../../lib/accounting/order-payment';
-import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../lib/prom-api';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../../../../../lib/rozetka-api';
 import { alertAdmin } from '../../../../../lib/alert';
 import { partnerCancelRefund } from '../../../../../lib/dropship-order';
 import { computePromCommission } from '../../../../../lib/prom-commission';
 import { computeRozetkaCommission } from '../../../../../lib/rozetka-commission';
 import { computeEpicentrCommission, getEpicentrFallbackPct } from '../../../../../lib/epicentr-commission';
-import { ourStatusToEpicentrStatus, setEpicentrOrderStatus, setEpicentrTTN } from '../../../../../lib/epicentr-api';
 import { completeOrderDelivery, syncDraftShipmentTracking } from '../../../../../lib/accounting/completion';
-import { notifyCustomer } from '../../../../../lib/notify/send';
 import { checkOrderCredit } from '../../../../../lib/accounting/credit-guard';
 import { parseSaleLines } from '../../../../../lib/accounting/sale-lines';
 import { checkSaleEdit, recordSaleEdit } from '../../../../../lib/accounting/edit-journal';
 import { manualStatusWithoutSaleError } from '../../../../../lib/orders/ship-guards';
-import { isOrderStatus, transitionVerdict, buildStatusPatch } from '../../../../../lib/orders/status';
+import { isOrderStatus, transitionVerdict, buildStatusPatch, applyOrderPatch } from '../../../../../lib/orders/status';
+import { orderSnapshot, statusPushEvents, customerNotifyEvents } from '../../../../../lib/outbox/enqueue';
+import type { OutboxEventInput } from '../../../../../lib/outbox/types';
 import { withApi } from '../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../lib/orders/lines-read';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // РН — кінцевий фінансовий документ виконаного замовлення. Ідемпотентно фіксує
 // продаж (документ + виручка + COGS + борг постачальнику), якщо підтвердженої
@@ -237,8 +229,40 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
     }
   }
 
-  const { error } = await db.from('orders').update(update as TableUpdate<'orders'>).eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // ── Побічні ефекти зміни статусу — події outbox у тій самій транзакції ───
+  // (фаза 2, docs/OUTBOX-PLAN.md): статус на площадку (mp.push_status) і
+  // сповіщення покупцю (Telegram, email, SMS «прийнято») доставляє крон
+  // outbox-sweep з повторами; слід — у картці («Доставка подій»).
+  const events: OutboxEventInput[] = [];
+  if (status) {
+    const { data: ord } = await db.from('orders')
+      .select('order_number, prom_order_id, rozetka_order_id, epicentr_order_id, rozetka_data, delivery_type, tracking_number, telegram_chat_id, email, phone, contact, company, channel_code, total_price')
+      .eq('id', id).maybeSingle();
+    if (ord) {
+      const ttn = (update.tracking_number as string | undefined) ?? (ord.tracking_number as string | null) ?? null;
+      // Rozetka: скасування пушиться лише з причиною, обраною менеджером (статус
+      // групи 3). Причину зберігаємо ДО події — без неї повторити скасування не
+      // було б чим, і замовлення місяцями висіло в кабінеті «в обробці» (903252921).
+      const cancelReason = status === 'cancelled' && typeof rozetka_cancel_reason === 'number' ? rozetka_cancel_reason : null;
+      if (cancelReason != null && ord.rozetka_order_id) {
+        update.rozetka_data = asJson({ ...((ord.rozetka_data ?? {}) as Record<string, unknown>), _cancel_reason: cancelReason });
+      }
+      events.push(...statusPushEvents(id, orderSnapshot(ord as Record<string, unknown>), status, { ttn, cancelReason }));
+      // Покупцю: Telegram і email — про ключові статуси; SMS/Viber — лише «прийнято»
+      const notifiable = ['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status);
+      const via: Array<'telegram' | 'email' | 'sms'> = [
+        ...(notifiable ? ['telegram' as const, 'email' as const] : []),
+        ...(status === 'confirmed' ? ['sms' as const] : []),
+      ];
+      events.push(...customerNotifyEvents(id, { ...(ord as unknown as Parameters<typeof customerNotifyEvents>[1]), tracking_number: ttn }, status, via));
+    }
+  }
+
+  try {
+    await applyOrderPatch(db, id, update, events);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
 
   if (editCtx) {
     await recordSaleEdit(editCtx, {
@@ -488,164 +512,6 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
   // перехід у delivered трактуємо як повну доставку.
   if (status === 'delivered') {
     await completeOrderDelivery(id, user.email ?? 'admin');
-  }
-
-  // «Підтверджено» — момент, коли ми беремо замовлення в роботу, і перше, що
-  // покупець має від нас почути. Далі його чекають «відправлено, ТТН …» і
-  // «прибуло у відділення» з крона доставки. Повтор виключено на рівні БД
-  // (UNIQUE order_id+event), тож повторне натискання статусу нічого не надішле.
-  if (status === 'confirmed') {
-    const { data: o } = await db
-      .from('orders').select('order_number, phone, total_price, channel_code').eq('id', id).single();
-    // Дропшип: телефон — клієнта партнера, йому від FIXLINE не пишемо
-    if (o && o.channel_code !== 'dropship') {
-      notifyCustomer({
-        orderId: id,
-        phone:   o.phone as string,
-        event:   'accepted',
-        ctx:     { orderNumber: o.order_number as number, total: Number(o.total_price) },
-      }).catch(err => console.error('[orders] notify accepted failed:', id, err));
-    }
-  }
-
-  // Telegram notifications (fire-and-forget)
-  if (status) {
-    try {
-      const { data: order } = await db
-        .from('orders')
-        .select('order_number, contact, company, phone, email, telegram_chat_id, tracking_number, delivery_type')
-        .eq('id', id)
-        .single();
-
-      if (order) {
-        // Both channels, same as on order creation — Telegram when linked, email always
-        // (email is the one channel every customer has, so it never gets skipped here).
-        if (order.telegram_chat_id && ['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) {
-          notifyCustomerStatus(order.telegram_chat_id, order.order_number, status, order.tracking_number, order.delivery_type);
-        }
-        const statusEmailHtml = order.email
-          ? buildCustomerStatusEmail({
-              orderNumber: order.order_number, contact: order.contact, company: order.company ?? '',
-              status, trackingNumber: order.tracking_number, deliveryType: order.delivery_type,
-              siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://fixline.com.ua',
-            })
-          : null;
-        if (statusEmailHtml) {
-          resend.emails.send({
-            from: 'FIXLINE <noreply@fixline.com.ua>', to: order.email,
-            subject: `Замовлення №${order.order_number} — оновлення статусу`,
-            html: statusEmailHtml,
-          }).catch(e => console.error('[status email]', e));
-        }
-      }
-    } catch (err) {
-      console.error('[telegram]', err);
-    }
-  }
-
-  // Push status to Prom.ua (fire-and-forget) if this is a Prom order
-  if (status) {
-    try {
-      const { data: promOrder } = await db
-        .from('orders')
-        .select('prom_order_id, channel_code')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (promOrder?.channel_code === 'prom' && promOrder.prom_order_id) {
-        const promStatus = ourStatusToPromStatus(status);
-        if (promStatus) {
-          setPromOrderStatus(Number(promOrder.prom_order_id), promStatus).catch(err =>
-            console.error('[prom] setPromOrderStatus failed:', err),
-          );
-        }
-      }
-    } catch (err) {
-      console.error('[prom] status push lookup failed:', err);
-    }
-  }
-
-  // Push status to Rozetka (fire-and-forget) if this is a Rozetka order
-  if (status) {
-    try {
-      const { data: rozOrder } = await db
-        .from('orders')
-        .select('rozetka_order_id, channel_code, tracking_number')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (rozOrder?.channel_code === 'rozetka' && rozOrder.rozetka_order_id) {
-        // Скасування: статус 13 продавцю недоступний, тому мапа дає null —
-        // пушимо конкретну причину, обрану менеджером (rozetka_cancel_reason)
-        const rozStatus = status === 'cancelled'
-          ? (typeof rozetka_cancel_reason === 'number' ? rozetka_cancel_reason : null)
-          : ourStatusToRozetkaStatus(status);
-
-        // Причину зберігаємо ДО пушу. Без неї повторити скасування не було чим:
-        // у мапі статусів cancelled → null, тож самолікування в кроні його не
-        // бачило, і замовлення, чиє скасування не доїхало, місяцями висіло в
-        // кабінеті як «в обробці» (живий кейс 903252921).
-        if (status === 'cancelled' && typeof rozetka_cancel_reason === 'number') {
-          const { data: cur } = await db.from('orders').select('rozetka_data').eq('id', id).maybeSingle();
-          await db.from('orders').update({
-            rozetka_data: { ...((cur?.rozetka_data ?? {}) as Record<string, unknown>), _cancel_reason: rozetka_cancel_reason },
-          }).eq('id', id);
-        }
-
-        if (rozStatus) {
-          // status 3 (shipped) requires ttn — include it when already known, either from this
-          // same request or a previously saved tracking_number.
-          const ttn = (update.tracking_number as string | undefined) ?? (rozOrder.tracking_number as string | null) ?? undefined;
-          setRozetkaOrderStatusChained(Number(rozOrder.rozetka_order_id), rozStatus, ttn ? { ttn } : undefined).catch(err => {
-            console.error('[rozetka] setRozetkaOrderStatus failed:', err);
-            // Скасування, яке не доїхало, покупець бачить як активне замовлення —
-            // мовчати про це не можна. Решта статусів самолікується в кроні.
-            if (status === 'cancelled') {
-              alertAdmin(
-                `Rozetka: скасування замовлення ${rozOrder.rozetka_order_id} не доїхало`,
-                err instanceof Error ? err.message : String(err),
-              );
-            }
-          });
-        }
-      }
-    } catch (err) {
-      console.error('[rozetka] status push lookup failed:', err);
-    }
-  }
-
-  // Push status to Epicentr (fire-and-forget). Скасування вимагає причину —
-  // за замовчуванням «товару немає в наявності»; відправка — попередньо ТТН.
-  if (status) {
-    try {
-      const { data: epiOrder } = await db
-        .from('orders')
-        .select('epicentr_order_id, channel_code, tracking_number')
-        .eq('id', id)
-        .maybeSingle();
-      if (epiOrder?.channel_code === 'epicentr' && epiOrder.epicentr_order_id) {
-        const epiId = String(epiOrder.epicentr_order_id);
-        const epiStatus = ourStatusToEpicentrStatus(status);
-        if (epiStatus) {
-          const ttn = (update.tracking_number as string | undefined) ?? (epiOrder.tracking_number as string | null) ?? null;
-          const push = async () => {
-            if (epiStatus === 'sent') {
-              if (!ttn) return;   // без ТТН Епіцентр «Відправлено» не приймає; допушить крон
-              await setEpicentrTTN(epiId, ttn);
-            }
-            await setEpicentrOrderStatus(epiId, epiStatus, epiStatus === 'canceled_by_merchant' ? { reason: 'product_not_available' } : undefined);
-          };
-          push().catch(err => {
-            console.error('[epicentr] status push failed:', err);
-            if (status === 'cancelled') {
-              alertAdmin(`Епіцентр: скасування замовлення ${epiId} не доїхало`, err instanceof Error ? err.message : String(err));
-            }
-          });
-        }
-      }
-    } catch (err) {
-      console.error('[epicentr] status push lookup failed:', err);
-    }
   }
 
   return NextResponse.json({

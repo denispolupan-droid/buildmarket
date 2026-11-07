@@ -10,36 +10,13 @@ import { resolveRozetkaDeliveryFee, getRozetkaDeliveryTariff } from '../../../..
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
 import { alertAdmin } from '../../../../../../lib/alert';
 import { checkOrderCredit } from '../../../../../../lib/accounting/credit-guard';
-import { setPromTTN, promAcceptsTtnFor } from '../../../../../../lib/prom-api';
-import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
 import { orderItemSources, modeFromSources } from '../../../../../../lib/orders/item-sources';
 import { pickupWithTtnError, ttnReuseError, sameBuyerPhone, ttnConfirmConflict } from '../../../../../../lib/orders/ship-guards';
 import { redirectTransit } from '../../../../../../lib/accounting/transit';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
+import { ourStatusToRozetkaStatus, rozetkaNeedsTtn } from '../../../../../../lib/rozetka-api';
 import { withApi } from '../../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
-import { ttnPushEvents, type ShipSnapshot } from '../../../../../../lib/outbox/enqueue';
-
-// Таймаут чи збій Prom при пуші ЕН — не втрата: крон prom-orders (кожні 5 хв)
-// звіряє наш номер із тим, що бачить Prom, і досилає. Алерт має це казати,
-// інакше власник біжить перевіряти (03.11.2026, #26111012 — крон допушив за 30 с).
-function promTtnAlertDetails(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err);
-  return `${msg}. Крон Prom допушить номер протягом ≤5 хв — перевіряйте в кабінеті Prom, лише якщо його там не буде.`;
-}
-
-// Знімок полів площадок для подій outbox (lib/outbox/enqueue)
-function shipSnapshot(order: Record<string, unknown>): ShipSnapshot {
-  const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
-  return {
-    order_number:     Number(order.order_number),
-    prom_order_id:    (order.prom_order_id as number | null) ?? null,
-    rozetka_order_id: (order.rozetka_order_id as number | null) ?? null,
-    epicentr_order_id:(order.epicentr_order_id as string | null) ?? null,
-    delivery_type:    (order.delivery_type as string | null) ?? null,
-    rozetka_cabinet_status: typeof cabinet.status === 'number' ? cabinet.status : null,
-  };
-}
+import { ttnPushEvents, orderSnapshot } from '../../../../../../lib/outbox/enqueue';
 
 async function _POST(
   req: NextRequest,
@@ -221,39 +198,16 @@ async function _POST(
     // transitionOrder для delivered проставляє лише delivered_at.
     // Фаза 1 outbox (docs/OUTBOX-PLAN.md): подія записується разом зі статусом;
     // прямі пуші нижче поки лишаються — обробник ідемпотентний, подвійний пуш безпечний.
-    await transitionOrder(db, id, reStatus, user.email ?? 'admin', 'ship', { shipped_at: reNow },
-      ttnPushEvents(order.id, shipSnapshot(order), reTtn, reStatus, true));
-
-    const rePromId = order.prom_order_id as number | null;
-    // «Магазини Rozetka» (PRM-…) Prom веде сам — пуш туди він відхиляє
-    if (rePromId && reTtn && promAcceptsTtnFor(order.delivery_type as string | null)) {
-      setPromTTN(rePromId, reTtn, (order.delivery_type as string | null) ?? 'nova_poshta')
-        .catch(err => {
-          console.warn('[ship] setPromTTN failed (re-ship):', err);
-          alertAdmin(`⚠ ЕН ${reTtn} не передана в Prom для #${order.order_number}`, promTtnAlertDetails(err));
-        });
-    }
-    const reEpiId = order.epicentr_order_id as string | null;
-    if (reEpiId && reTtn) {
-      setEpicentrTTN(reEpiId, reTtn).then(() => setEpicentrOrderStatus(reEpiId, 'sent')).catch(err => {
-        console.warn('[ship] epicentr TTN/sent failed (re-ship):', err);
-        alertAdmin(`⚠ ЕН ${reTtn} не передана в Епіцентр для #${order.order_number}`, err instanceof Error ? err.message : String(err));
-      });
-    }
-    const reRozId = order.rozetka_order_id as number | null;
-    const reRozStatus = reRozId ? ourStatusToRozetkaStatus(reStatus) : null;
-    if (reRozId && reRozStatus) {
-      const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
-      setRozetkaOrderStatusChained(reRozId, reRozStatus, {
-        ...(reTtn ? { ttn: reTtn } : {}),
-        currentStatus: typeof cabinet.status === 'number' ? cabinet.status : null,
-      }).catch(err => console.warn('[ship] setRozetkaOrderStatus failed (re-ship):', err));
-    }
+    // Фаза 2 outbox: ЕН і статус на площадки доставляє крон outbox-sweep (повтори,
+    // слід у картці); прямих пушів з роуту більше немає.
+    const reEvents = ttnPushEvents(order.id, orderSnapshot(order), reTtn, reStatus, true);
+    await transitionOrder(db, id, reStatus, user.email ?? 'admin', 'ship', { shipped_at: reNow }, reEvents);
 
     return NextResponse.json({
       ok: true,
       fully_shipped: true,
       status: reStatus,
+      ttn_queued: reEvents.length > 0,
       reused_drafts: true,
       shipped_items: allOrderItems.map(i => ({ sku: i.sku, qty: i.qty })),
     });
@@ -402,10 +356,14 @@ async function _POST(
   // Часткова відгрузка статус не міняє (transitionOrder при тому самому статусі
   // пише лише extra). Повна — shipped (або delivered для самовивозу) з міткою
   // shipped_at, як і раніше.
+  // Фаза 2 outbox: ЕН (+ статус) на Prom/Епіцентр/Rozetka — події в тій самій
+  // транзакції, що й статус; доставляє крон outbox-sweep з повторами й слідом у
+  // картці («Доставка подій»). Прямих пушів з роуту більше немає.
+  const shipEvents = ttnPushEvents(order.id, orderSnapshot(order), effectiveTtn, isPickup ? 'delivered' : 'shipped', fullyShipped);
   await transitionOrder(db, id, finalStatus as OrderStatus, user.email ?? 'admin', 'ship', {
     ...(fullyShipped ? { shipped_at: now } : {}),
     ...(orderContractId ? { contract_id: orderContractId } : {}),
-  }, ttnPushEvents(order.id, shipSnapshot(order), effectiveTtn, isPickup ? 'delivered' : 'shipped', fullyShipped));
+  }, shipEvents);
 
   // Режим виконання за ФАКТОМ, а не за вибором менеджера при підтвердженні:
   // роутер міг перерішити (товар знайшовся на своєму складі), і тоді посилка
@@ -427,64 +385,20 @@ async function _POST(
     .eq('id', saleDocId)
     .single();
 
-  // Push TTN to Prom.ua after successful shipment (fire-and-forget — don't fail the response)
-  let ttnPushed = false;
-  const promOrderId = order.prom_order_id as number | null;
-  // Лише для типів, які save_declaration_id приймає (НП / Укрпошта / Meest).
-  // Декларацію «Магазинів Rozetka» (PRM-…) створює сам кабінет Prom, а наш пуш
-  // того ж номера він відхиляє «накладная уже сгенерирована» (#26091243) — крон
-  // Prom так само пропускає ці типи, тут було розходження.
-  if (promOrderId && effectiveTtn && promAcceptsTtnFor(order.delivery_type as string | null)) {
-    const deliveryType = (order.delivery_type as string | null) ?? 'nova_poshta';
-    setPromTTN(promOrderId, effectiveTtn, deliveryType).then(() => {
-      ttnPushed = true;
-    }).catch(err => {
-      console.warn('[ship] setPromTTN failed:', err);
-      // Відповідь уже пішла менеджеру — єдиний спосіб не загубити відмову
-      alertAdmin(`⚠ ЕН ${effectiveTtn} не передана в Prom для #${order.order_number}`, promTtnAlertDetails(err));
-    });
-  }
-
-  // Епіцентр: ТТН, потім «Відправлено» (без ТТН статус не приймається). Крон
-  // синку допушить обидва, якщо тут не доїхало.
-  const epicentrOrderId = order.epicentr_order_id as string | null;
-  if (epicentrOrderId && effectiveTtn) {
-    setEpicentrTTN(epicentrOrderId, effectiveTtn)
-      .then(() => (fullyShipped ? setEpicentrOrderStatus(epicentrOrderId, 'sent') : undefined))
-      .catch(err => {
-        console.warn('[ship] epicentr TTN/sent failed:', err);
-        alertAdmin(`⚠ ЕН ${effectiveTtn} не передана в Епіцентр для #${order.order_number}`, err instanceof Error ? err.message : String(err));
-      });
-  }
-
-  // Push status(+TTN) to Rozetka after successful shipment (fire-and-forget)
+  // Rozetka: відвантаження без накладної кабінет не приймає — так і лишиться
+  // «Обробляється менеджером», скільки не пушити. Сказати про це треба саме
+  // зараз — менеджер стоїть над замовленням і може внести номер, а не через
+  // три доби, коли покупець спитає, чому замовлення «в обробці».
   const rozetkaOrderId = order.rozetka_order_id as number | null;
   let rozetkaWarning: string | null = null;
   if (fullyShipped && rozetkaOrderId) {
     const rozStatus = ourStatusToRozetkaStatus(finalStatus);
-    if (rozStatus) {
-      // Останній відомий статус кабінету. ТТН тепер їде в Rozetka ще при
-      // створенні накладної, тож тут пуш часто повторний — без цієї підказки
-      // драбина «полікувала» б відмову переходу кроком назад, на 26.
-      const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
-      const cabinetStatus = typeof cabinet.status === 'number' ? cabinet.status : null;
-
-      // Відвантаження без накладної Rozetka не приймає: кабінет так і лишиться
-      // «Обробляється менеджером», скільки не пушити. Сказати про це треба саме
-      // зараз — менеджер стоїть над замовленням і може внести номер, а не через
-      // три доби, коли покупець спитає, чому замовлення «в обробці».
-      if (rozetkaNeedsTtn(rozStatus, cabinetStatus, !!effectiveTtn)) {
-        rozetkaWarning = 'Замовлення Rozetka відвантажено без ТТН — кабінет залишиться в статусі '
-          + '«Обробляється менеджером». Внесіть номер накладної в замовлення, і статус доїде сам '
-          + 'протягом 5 хвилин. Якщо покупець забрав сам — закрийте замовлення вручну в кабінеті Rozetka.';
-      } else {
-        setRozetkaOrderStatusChained(rozetkaOrderId, rozStatus, {
-          ...(effectiveTtn ? { ttn: effectiveTtn } : {}),
-          currentStatus: cabinetStatus,
-        }).catch(err => {
-          console.warn('[ship] setRozetkaOrderStatus failed:', err);
-        });
-      }
+    const cabinet = (order.rozetka_data as Record<string, unknown> | null) ?? {};
+    const cabinetStatus = typeof cabinet.status === 'number' ? cabinet.status : null;
+    if (rozStatus && rozetkaNeedsTtn(rozStatus, cabinetStatus, !!effectiveTtn)) {
+      rozetkaWarning = 'Замовлення Rozetka відвантажено без ТТН — кабінет залишиться в статусі '
+        + '«Обробляється менеджером». Внесіть номер накладної в замовлення, і статус доїде сам '
+        + 'протягом 5 хвилин. Якщо покупець забрав сам — закрийте замовлення вручну в кабінеті Rozetka.';
     }
   }
 
@@ -495,7 +409,7 @@ async function _POST(
     fully_shipped:   fullyShipped,
     shipped_items:   itemsToShip.map(i => ({ sku: i.sku, qty: i.qty })),
     status:          finalStatus,
-    ttn_pushed:      ttnPushed,
+    ttn_queued:      shipEvents.length > 0,
     rozetka_warning: rozetkaWarning,
     redirect_warning: redirectWarning,
   });

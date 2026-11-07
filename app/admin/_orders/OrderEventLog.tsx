@@ -1,8 +1,93 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Package, Truck, X, Check, ShoppingCart, Mail, ClipboardList, Clock, FileText, House, RefreshCw } from 'lucide-react';
 import type { Order } from './types';
 import { useOrdersCtx } from './OrdersContext';
+
+type OutboxEv = {
+  id: number; event: string; handler: string; status: 'pending' | 'done' | 'failed' | 'skipped';
+  attempts: number; next_at: string; last_error: string | null; created_at: string; done_at: string | null;
+  channel: string | null; ttn: string | null; target_status: string | null;
+};
+
+const HANDLER_LABEL: Record<string, string> = {
+  'mp.push_ttn': 'ЕН на площадку',
+  'mp.push_status': 'статус на площадку',
+  'customer.notify_status': 'сповіщення покупцю',
+};
+const CHANNEL_LABEL: Record<string, string> = {
+  prom: 'Prom', rozetka: 'Rozetka', epicentr: 'Епіцентр', telegram: 'Telegram', email: 'email', sms: 'SMS/Viber',
+};
+const STATUS_LABEL: Record<OutboxEv['status'], { text: string; color: string }> = {
+  pending: { text: 'в черзі',   color: '#B45309' },
+  done:    { text: 'доставлено', color: '#15803D' },
+  failed:  { text: 'не доставлено', color: '#DC2626' },
+  skipped: { text: 'пропущено', color: 'var(--text-muted)' },
+};
+const fmtAt = (s: string) => new Date(s).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+/**
+ * «Доставка подій» (outbox, фаза 2): що з цього замовлення пішло на площадки й
+ * покупцю, коли, скільки спроб, яка помилка. failed/skipped можна повторити.
+ */
+function OutboxDelivery({ orderId }: { orderId: string }) {
+  const [rows, setRows] = useState<OutboxEv[] | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);   // перезавантаження після «Повторити»
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/orders/${orderId}/outbox`).then(r => r.json())
+      .then(d => { if (alive) setRows(d.events ?? []); })
+      .catch(() => { if (alive) setRows([]); });
+    return () => { alive = false; };
+  }, [orderId, tick]);
+  if (!rows || rows.length === 0) return null;
+  async function retry(id: number) {
+    setBusy(id);
+    try {
+      await fetch(`/api/admin/orders/${orderId}/outbox`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event_id: id }) });
+      setTick(t => t + 1);
+    } finally { setBusy(null); }
+  }
+  return (
+    <div style={{ marginTop: '10px', padding: '8px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+        Доставка подій
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        {rows.map(ev => {
+          const st = STATUS_LABEL[ev.status];
+          return (
+            <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtAt(ev.created_at)}</span>
+              <span style={{ color: 'var(--text-primary)' }}>
+                {HANDLER_LABEL[ev.handler] ?? ev.handler}
+                {ev.channel ? ` · ${CHANNEL_LABEL[ev.channel] ?? ev.channel}` : ''}
+                {ev.target_status ? ` · ${ev.target_status}` : ''}
+                {ev.ttn && ev.handler === 'mp.push_ttn' ? ` · ${ev.ttn}` : ''}
+              </span>
+              <span style={{ fontWeight: 700, color: st.color }}>{st.text}</span>
+              {ev.status === 'done' && ev.done_at && <span style={{ color: 'var(--text-muted)' }}>{fmtAt(ev.done_at)}</span>}
+              {ev.status === 'pending' && ev.attempts > 0 && <span style={{ color: 'var(--text-muted)' }}>спроба {ev.attempts}, наступна {fmtAt(ev.next_at)}</span>}
+              {ev.last_error && ev.status !== 'done' && (
+                <span style={{ color: 'var(--text-muted)' }} title={ev.last_error}>
+                  — {ev.last_error.length > 90 ? ev.last_error.slice(0, 90) + '…' : ev.last_error}
+                </span>
+              )}
+              {(ev.status === 'failed' || ev.status === 'skipped') && (
+                <button type="button" onClick={e => { e.stopPropagation(); retry(ev.id); }} disabled={busy === ev.id}
+                  style={{ height: '22px', padding: '0 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                  {busy === ev.id ? '…' : 'Повторити'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function OrderEventLog({ order, isRozetkaPoint }: {
   order: Order;
@@ -154,6 +239,7 @@ export function OrderEventLog({ order, isRozetkaPoint }: {
               </div>
               )}
             </div>
+            <OutboxDelivery orderId={order.id} />
           </div>
         );
       })()}

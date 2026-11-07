@@ -194,3 +194,24 @@ export async function transitionOrder(
   if (upErr) throw new Error(`transitionOrder: ${orderId} → ${to}: ${upErr.message}`);
   return { from: current.status, to, changed: current.status !== to };
 }
+
+/**
+ * Записати довільний patch замовлення разом із подіями outbox однією транзакцією
+ * (для роутів, які будують UPDATE самі — картка замовлення через buildStatusPatch,
+ * заміна ЕН). Без подій — звичайний UPDATE.
+ */
+export async function applyOrderPatch(
+  db: SupabaseClient,
+  orderId: string,
+  patch: Record<string, unknown>,
+  events: OutboxEventInput[] = [],
+): Promise<void> {
+  if (events.length > 0) {
+    const { error } = await db.rpc('order_transition_outbox', { p_order_id: orderId, p_patch: patch, p_events: events });
+    if (error) throw new Error(`applyOrderPatch: ${orderId} (outbox): ${error.message}`);
+    return;
+  }
+  if (Object.keys(patch).length === 0) return;
+  const { error } = await db.from('orders').update(patch).eq('id', orderId);
+  if (error) throw new Error(`applyOrderPatch: ${orderId}: ${error.message}`);
+}

@@ -170,6 +170,25 @@ describe('архітектурні межі (AGENTS.md)', () => {
     expect(offenders, 'бери прогноз через loadProfitEstimates (lib/accounting/estimate):\n' + offenders.join('\n')).toEqual([]);
   });
 
+  it('пуші статусу/ЕН на площадки з роутів замовлень — лише подіями outbox (lib/outbox/handlers)', () => {
+    // 08.11.2026 (outbox, фаза 2): /ship, /confirm, картка й заміна ЕН пишуть події
+    // (transitionOrder/applyOrderPatch), а виклики площадок робить обробник з
+    // повторами і слідом. Прямий виклик з роуту повертає «вистрілив і забув».
+    // Винятки: ручні кнопки «допушити зараз» (push-*-ttn), створення накладної
+    // Rozetka Доставки і крони самолікування.
+    const re = /\b(setPromTTN|setPromOrderStatus|setRozetkaOrderStatus|setRozetkaOrderStatusChained|setEpicentrOrderStatus|setEpicentrTTN)\s*\(/;
+    const allow = new Set([
+      'app/api/admin/orders/[id]/push-prom-ttn/route.ts',
+      'app/api/admin/orders/[id]/push-rozetka-ttn/route.ts',
+      'app/api/admin/orders/[id]/push-epicentr-ttn/route.ts',
+      'app/api/admin/orders/[id]/rozetka-delivery-ttn/route.ts',
+    ]);
+    const offenders = files.map(rel)
+      .filter(r => r.startsWith('app/api/admin/orders/') && !allow.has(r))
+      .filter(r => re.test(read(path.join(ROOT, r)).replace(/\/\/[^\n]*/g, '')));
+    expect(offenders, 'запиши подію через statusPushEvents/ttnPushEvents (lib/outbox/enqueue):\n' + offenders.join('\n')).toEqual([]);
+  });
+
   it('ключ НП — лише через getNpApiKey (lib/np-api), не через process.env напряму', () => {
     // 03.11.2026: /api/novaposhta, delivery-sync і np-debug читали ЛИШЕ
     // process.env.NOVA_POSHTA_API_KEY (ключ іншого кабінету). Коли змінну прибрали,

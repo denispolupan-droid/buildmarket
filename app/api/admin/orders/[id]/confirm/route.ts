@@ -3,10 +3,8 @@ import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { createReservation, getReservationTtlDays, computeExpiresAt } from '../../../../../../lib/accounting/reservations';
 import { createDocument } from '../../../../../../lib/accounting/documents';
-import { notifyCustomerStatus } from '../../../../../../lib/telegram';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatus } from '../../../../../../lib/rozetka-api';
-import { ourStatusToPromStatus, setPromOrderStatus } from '../../../../../../lib/prom-api';
 import { transitionOrder } from '../../../../../../lib/orders/status';
+import { orderSnapshot, statusPushEvents, customerNotifyEvents } from '../../../../../../lib/outbox/enqueue';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
@@ -30,13 +28,26 @@ async function _POST(
 
   const { data: order, error: orderError } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone, rozetka_order_id, prom_order_id, telegram_chat_id, delivery_type')
+    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone, email, company, total_price, rozetka_order_id, prom_order_id, epicentr_order_id, rozetka_data, telegram_chat_id, delivery_type')
     .eq('id', id)
     .single();
 
   if (orderError || !order) {
     return NextResponse.json({ error: orderError?.message ?? 'Not found' }, { status: 404 });
   }
+
+  // Побічні ефекти підтвердження — події outbox у тій самій транзакції, що й статус
+  // (фаза 2): статус на Prom/Rozetka/Епіцентр і Telegram покупцю (підтвердження
+  // історично йшло лише в Telegram; адміну зміну статусу не шлемо — рішення власника).
+  const eventsFor = (st: string) => [
+    ...statusPushEvents(id, orderSnapshot(order as Record<string, unknown>), st, { ttn: order.tracking_number as string | null }),
+    ...customerNotifyEvents(id, {
+      order_number: order.order_number as number, tracking_number: order.tracking_number as string | null,
+      delivery_type: order.delivery_type as string | null, telegram_chat_id: order.telegram_chat_id as string | null,
+      email: order.email as string | null, phone: order.phone as string | null, contact: order.contact as string | null,
+      company: order.company as string | null, channel_code: order.channel_code as string | null, total_price: Number(order.total_price ?? 0),
+    }, st, ['telegram']),
+  ];
 
   // Idempotency: не підтверджувати вже підтверджене
   if (order.status === 'confirmed' || order.status === 'picking' || order.status === 'shipped') {
@@ -60,7 +71,7 @@ async function _POST(
 
   const actor = user.email ?? 'admin';
   if (fulfillment_mode === 'supplier') {
-    await transitionOrder(db, id, 'confirmed', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt });
+    await transitionOrder(db, id, 'confirmed', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt }, eventsFor('confirmed'));
 
   // ── Own: резервуємо весь товар зі свого складу ────────────────────────────────
   } else if (fulfillment_mode === 'own') {
@@ -107,7 +118,7 @@ async function _POST(
       );
     }
 
-    await transitionOrder(db, id, 'confirmed', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt });
+    await transitionOrder(db, id, 'confirmed', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt }, eventsFor('confirmed'));
 
   // ── Mixed: резервуємо своє + purchase_order для постачальника ────────────────
   } else {
@@ -176,39 +187,7 @@ async function _POST(
       }
     }
 
-    await transitionOrder(db, id, newStatus as 'confirmed' | 'awaiting_stock', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt });
-  }
-
-  // Telegram клієнту (best-effort): підтвердження йде через цей роут, а не
-  // через загальний PATCH статусу, тож без цього виклику покупець з
-  // прив'язаним ботом не отримував «Замовлення підтверджено».
-  // Адміну зміну статусу не шлемо — рішення власника, він сам її і зробив.
-  try {
-    if (order.telegram_chat_id) {
-      notifyCustomerStatus(order.telegram_chat_id, order.order_number, newStatus, order.tracking_number, order.delivery_type);
-    }
-  } catch { /* не критично */ }
-
-  // Push status to Rozetka (fire-and-forget) if this is a Rozetka order
-  const rozetkaOrderId = order.rozetka_order_id as number | null;
-  if (rozetkaOrderId) {
-    const rozStatus = ourStatusToRozetkaStatus(newStatus);
-    if (rozStatus) {
-      setRozetkaOrderStatus(rozetkaOrderId, rozStatus).catch(err =>
-        console.error('[rozetka] setRozetkaOrderStatus failed:', err),
-      );
-    }
-  }
-
-  // Push status to Prom.ua (fire-and-forget) if this is a Prom order
-  const promOrderId = order.prom_order_id as number | null;
-  if (promOrderId) {
-    const promStatus = ourStatusToPromStatus(newStatus);
-    if (promStatus) {
-      setPromOrderStatus(Number(promOrderId), promStatus).catch(err =>
-        console.error('[prom] setPromOrderStatus failed:', err),
-      );
-    }
+    await transitionOrder(db, id, newStatus as 'confirmed' | 'awaiting_stock', actor, 'confirm', { fulfillment_mode, confirmed_at: confirmedAt }, eventsFor(newStatus));
   }
 
   return NextResponse.json({

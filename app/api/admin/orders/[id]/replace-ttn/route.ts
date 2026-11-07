@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, type TableUpdate } from '../../../../../../lib/supabase-service';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { syncDraftShipmentTracking } from '../../../../../../lib/accounting/completion';
-import { ourStatusToRozetkaStatus, setRozetkaOrderStatusChained, getRozetkaOrderStatusInfo } from '../../../../../../lib/rozetka-api';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../../lib/rozetka-delivery';
-import { setPromTTN } from '../../../../../../lib/prom-api';
-import { setEpicentrTTN } from '../../../../../../lib/epicentr-api';
+import { applyOrderPatch } from '../../../../../../lib/orders/status';
+import { ttnReplacedEvents, orderSnapshot } from '../../../../../../lib/outbox/enqueue';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
 
@@ -63,60 +62,26 @@ async function _POST(
   // «висить N днів» від її дати означало б лякати себе неіснуючим простроченням.
   if (order.status === 'shipped') update.shipped_at = now;
 
-  const { error: upErr } = await db.from('orders').update(update as TableUpdate<'orders'>).eq('id', id);
-  if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+  // Номер у маркетплейс — подією outbox у тій самій транзакції, що й запис номера
+  // (фаза 2): обробник mp.push_ttn бере живий статус Rozetka і пушить з forceTtn —
+  // при незмінному статусі PUT інакше номер не оновлює. Доставляє крон за ≤1 хв,
+  // з повторами; слід — у картці («Доставка подій»). Накладну «Rozetka Доставки»
+  // веде сам кабінет, туди не пушимо.
+  const events = ttnReplacedEvents(id, orderSnapshot(order as Record<string, unknown>), ttn)
+    .filter(e => !((e.payload as { channel?: string }).channel === 'rozetka' && order.delivery_type === ROZETKA_DELIVERY_TYPE));
+  try {
+    await applyOrderPatch(db, id, update, events);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
 
   await syncDraftShipmentTracking(id, ttn);
-
-  // Пуш у маркетплейс — не критичний для збереження: якщо кабінет недоступний,
-  // номер уже правильний у нас, а пуш можна повторити кнопкою.
-  const pushErrors: string[] = [];
-  if (order.channel_code === 'rozetka' && order.rozetka_order_id && order.delivery_type !== ROZETKA_DELIVERY_TYPE) {
-    try {
-      const rozStatus = ourStatusToRozetkaStatus('shipped');
-      if (rozStatus) {
-        // Статус беремо живий, а не з rozetka_data: коли накладну видаляють,
-        // Rozetka сама переводить замовлення в «Некоректна ТТН» (15), а в нашому
-        // кеші лишається старий. Саме на цьому пуш і мовчав — драбина будувалася
-        // від вигаданої точки.
-        const live = await getRozetkaOrderStatusInfo(order.rozetka_order_id as number).catch(() => null);
-        if (live?.ttn !== ttn) {
-          await setRozetkaOrderStatusChained(order.rozetka_order_id as number, rozStatus, {
-            ttn,
-            currentStatus: live?.status ?? null,
-            // Номер міняється при незмінному статусі — без цього прапорця пуш
-            // або пропускається, або тихо не доїжджає (PUT з тим самим статусом
-            // Rozetka приймає, але ТТН не оновлює).
-            forceTtn: true,
-          });
-        }
-      }
-    } catch (e) {
-      pushErrors.push(`Rozetka: ${(e as Error).message}`);
-    }
-  }
-  if (order.channel_code === 'prom' && order.prom_order_id) {
-    try {
-      // Тип доставки — із замовлення: без нього номер Укрпошти/Meest ішов би в Prom як ЕН НП
-      await setPromTTN(order.prom_order_id as number, ttn, (order.delivery_type as string | null) ?? undefined);
-    } catch (e) {
-      pushErrors.push(`Prom: ${(e as Error).message}`);
-    }
-  }
-  if (order.channel_code === 'epicentr' && order.epicentr_order_id) {
-    try {
-      await setEpicentrTTN(String(order.epicentr_order_id), ttn);
-    } catch (e) {
-      pushErrors.push(`Епіцентр: ${(e as Error).message}`);
-    }
-  }
 
   return NextResponse.json({
     ok: true,
     oldTtn,
     ttn,
-    pushed: pushErrors.length === 0,
-    pushErrors,
+    queued: events.length,
   });
 }
 

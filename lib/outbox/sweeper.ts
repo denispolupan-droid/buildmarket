@@ -32,6 +32,33 @@ export async function sweepOutbox(db: Db = createServiceClient(), limit = 20): P
   return res;
 }
 
+/** Події замовлення для картки («Доставка подій»): найновіші зверху. */
+export async function listOutboxEvents(db: Db, orderId: string): Promise<OutboxRow[]> {
+  const { data, error } = await db.from('outbox_events')
+    .select('id, aggregate, aggregate_id, event, handler, payload, dedupe_key, status, attempts, next_at, locked_until, last_error, created_at, done_at')
+    .eq('aggregate_id', orderId)
+    .order('id', { ascending: false })
+    .limit(100);
+  if (error) throw new Error(`outbox list: ${error.message}`);
+  return (data ?? []) as OutboxRow[];
+}
+
+/**
+ * Повторити подію руками (кнопка в картці): failed/skipped → pending, лічильник
+ * спроб з нуля, наступний тік крону її забере. Єдине місце, де код міняє статус
+ * рядка поза sweeper-ом (AGENTS.md: у outbox_events напряму не писати).
+ */
+export async function retryOutboxEvent(db: Db, id: number): Promise<OutboxRow | null> {
+  const { data, error } = await db.from('outbox_events')
+    .update({ status: 'pending', attempts: 0, next_at: new Date().toISOString(), locked_until: null, last_error: null })
+    .eq('id', id)
+    .in('status', ['failed', 'skipped'])
+    .select('id, aggregate, aggregate_id, event, handler, payload, dedupe_key, status, attempts, next_at, locked_until, last_error, created_at, done_at')
+    .maybeSingle();
+  if (error) throw new Error(`outbox retry: ${error.message}`);
+  return (data as OutboxRow | null) ?? null;
+}
+
 /** Запис результату; помилка запису — у лог, рядок лишиться в оренді до її кінця й повториться. */
 async function mark(db: Db, id: number, patch: TableUpdate<'outbox_events'>): Promise<void> {
   const { error } = await db.from('outbox_events').update(patch).eq('id', id);

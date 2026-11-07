@@ -1583,9 +1583,11 @@ export function useAdminOrders(props: AdminOrdersProps) {
       setOrders(prev => prev.map(o => o.id === id
         ? { ...o, tracking_number: next, carrier_status_text: null, carrier_accepted_at: null }
         : o));
-      showToast(data.pushErrors?.length
-        ? `ТТН замінено, але кабінет не оновився: ${data.pushErrors.join('; ')}`
-        : 'ТТН замінено і передано в кабінет');
+      // Номер у кабінет площадки доставляє outbox (крон раз на хвилину); збій
+      // буде видно в «Історії замовлення» → «Доставка подій»
+      showToast(data.queued > 0
+        ? 'ТТН замінено; кабінет площадки оновиться протягом хвилини'
+        : 'ТТН замінено');
     } finally {
       setTtnSaving(null);
     }

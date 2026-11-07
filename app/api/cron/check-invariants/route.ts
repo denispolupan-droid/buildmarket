@@ -89,6 +89,29 @@ async function _GET(req: NextRequest) {
     );
   }
 
+  // I13 (outbox, фаза 2): площадки й покупець дізнаються про статус ЛИШЕ через
+  // outbox — «подія висить» або «крон не тікає» означає, що в кабінетах не той
+  // статус. pending старше 30 хв, failed за добу, sweep > 5 хв → порушення.
+  try {
+    const halfHourAgo = new Date(Date.now() - 30 * 60_000).toISOString();
+    const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const [{ count: stuck }, { count: failedDay }, { data: sweep }] = await Promise.all([
+      serviceClient.from('outbox_events').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('created_at', halfHourAgo),
+      serviceClient.from('outbox_events').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', dayAgo),
+      serviceClient.from('app_settings').select('value').eq('key', 'outbox_sweep_last_run').maybeSingle(),
+    ]);
+    const sweepAgeMin = sweep?.value ? Math.round((Date.now() - Date.parse(String(sweep.value))) / 60_000) : null;
+    const problems: string[] = [];
+    if ((stuck ?? 0) > 0) problems.push(`pending старше 30 хв: ${stuck}`);
+    if ((failedDay ?? 0) > 0) problems.push(`failed за добу: ${failedDay}`);
+    if (sweepAgeMin === null || sweepAgeMin > 5) problems.push(`outbox-sweep не тікав ${sweepAgeMin ?? '—'} хв`);
+    const i13 = { invariant: 'I13: outbox delivered (pending ≤30m, no failed 24h, sweep ≤5m)', status: problems.length ? 'FAIL' : 'OK', details: problems.join('; ') || undefined };
+    rows.push(i13);
+    if (problems.length) failed.push(i13);
+  } catch (err) {
+    log.warn('invariants.i13_failed', { err: err instanceof Error ? err.message : String(err) });
+  }
+
   if (failed.length) {
     alertAdmin(
       '🔴 Облік: порушено інваріанти БД',
