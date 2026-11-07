@@ -7,6 +7,7 @@ import { getNovapayLiveBalance, getNovapayRegistersCache } from '../../../lib/no
 import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
 import { PL_ACCOUNTS, classifyPLEntry, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
 import { createServiceClient } from '../../../lib/supabase-service';
+import { sumDealCostsByDate } from '../../../lib/deal-costs';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
 // сервері, з тих самих джерел, що й наявні звіти:
@@ -314,9 +315,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   // абонплата, Smart без замовлення, еквайринг/збори НП без замовлення): у факті
   // вони є, у «прибутку по замовленнях» — ні. Показуємо в підказці, щоб різницю
   // між картою і «фактом» було видно цифрою (розбір 07.11.2026).
-  const curUnattributedDeal = Math.round(curRows
+  // Винагорода RozetkaPay, рознесена по замовленнях (order_deal_costs, міграція 158),
+  // уже сидить у прибутку цих замовлень — з «без замовлення» її віднімаємо за тією
+  // самою датою проводки (межі — як у curRows), щоб не врахувати двічі.
+  const curAllocatedDeal = await sumDealCostsByDate(db, fromStr, periodTo ? endStr : null);
+  const curUnattributedDeal = Math.max(0, Math.round((curRows
     .filter(r => !r.order_id && classifyPLEntry(r.account_type, r.doc_type) === 'deal')
-    .reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
+    .reduce((s, r) => s + Number(r.amount), 0) - curAllocatedDeal) * 100) / 100);
   const curProfit  = curPL.grossProfit;
   const prevProfit = prevPL.grossProfit;
 

@@ -10,6 +10,8 @@ import { computeEpicentrCommission, getEpicentrFallbackPct } from '../../../../.
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
+import { classifyPLEntry } from '../../../../../../lib/accounting/profit-rules';
+import { loadOrderDealCosts, loadRzPayRate, paidViaRzPay } from '../../../../../../lib/deal-costs';
 
 async function _GET(
   _req: NextRequest,
@@ -23,7 +25,7 @@ async function _GET(
 
   const { data: order } = await db
     .from('orders')
-    .select('items, channel_code')
+    .select('items, channel_code, payment_type, delivery_type, total_price')
     .eq('id', id)
     .single();
 
@@ -62,7 +64,7 @@ async function _GET(
     db.from('money_entries')
       .select('account_type, amount, doc_type')
       .eq('order_id', id)
-      .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'logistics']),
+      .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'acquiring_fee', 'logistics']),
     // Кількість проведених РН — ознака, що факт існує
     db.from('acc_documents')
       .select('id')
@@ -73,10 +75,10 @@ async function _GET(
   ]);
 
   // ── Факт з проводок (тільки якщо є хоча б одна проведена РН) ──
-  let fact: { revenue: number; cogs: number; commission: number; delivery: number; posted_docs: number } | null = null;
+  let fact: { revenue: number; cogs: number; commission: number; delivery: number; extra: number; posted_docs: number } | null = null;
   const postedDocs = (confirmedSales.data ?? []).length;
   if (postedDocs > 0) {
-    let rev = 0, cogs = 0, fee = 0, delivery = 0;
+    let rev = 0, cogs = 0, fee = 0, delivery = 0, extra = 0;
     for (const e of ledgerRows.data ?? []) {
       const amt = Number(e.amount);
       if (e.account_type === 'revenue') rev -= amt;        // revenue у леджері з мінусом (кредит)
@@ -84,14 +86,31 @@ async function _GET(
       else if (e.account_type === 'marketplace_fee') fee += amt;
       // logistics ділиться з landed-cost закупівель — доставку клієнту відокремлює doc_type
       else if (e.account_type === 'logistics' && e.doc_type === 'delivery_cost') delivery += amt;
+      // Решта витрат угоди за profit-rules: еквайринг і збори НП (переказ наложки,
+      // утримання, збір Rozetka Доставки). До 07.11.2026 картка їх не віднімала —
+      // і її прибуток був вищим, ніж у «Огляді» та «Звітах».
+      else if (classifyPLEntry(e.account_type, e.doc_type) === 'deal') extra += amt;
     }
     fact = {
       revenue:    Math.round(rev * 100) / 100,
       cogs:       Math.round(cogs * 100) / 100,
       commission: Math.round(fee * 100) / 100,
       delivery:   Math.round(delivery * 100) / 100,
+      extra:      Math.round(extra * 100) / 100,
       posted_docs: postedDocs,
     };
+  }
+
+  // Винагорода RozetkaPay за переказ: у леджері вона без замовлення, розбивка —
+  // order_deal_costs (точна з реєстру); ще не виплачене — оцінка за середньою ставкою.
+  // Те саме правило, що в lib/accounting/estimate («Огляд», «Аналітика»).
+  let paymentFee: { amount: number; source: 'fact' | 'estimate' } | null = null;
+  const factPay = (await loadOrderDealCosts(db, [id])).get(id);
+  if (factPay != null) paymentFee = { amount: factPay, source: 'fact' };
+  else if (paidViaRzPay({ channel_code: order.channel_code, payment_type: order.payment_type, delivery_type: order.delivery_type })) {
+    const rate = await loadRzPayRate(db);
+    const base = fact ? fact.revenue : Number(order.total_price ?? 0);
+    if (rate && base > 0) paymentFee = { amount: Math.round(base * rate * 100) / 100, source: 'estimate' };
   }
 
   // ── Оцінка комісії для НЕпроведених замовлень — тими ж модулями, що рахують факт
@@ -157,6 +176,7 @@ async function _GET(
     reservations,
     fact,
     commission_estimate: commissionEstimate,
+    payment_fee: paymentFee,
     // Джерело зафіксоване документами — картка може показати його як факт,
     // а не як щось, що зараз перераховується.
     source_fixed: allFixed,

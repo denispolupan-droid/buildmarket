@@ -7,6 +7,7 @@ import { log } from '../../../../lib/log';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { withApi } from '../../../../lib/api-handler';
+import { findDealCostMismatches, type DealCostMismatch } from '../../../../lib/deal-costs';
 
 // Перевірка інваріантів обліку на БОЙОВІЙ базі (той самий check_invariants, що ганяється
 // в тестах). Виконується на проді, де вже є service-role креденшели — не потрібно класти
@@ -61,6 +62,24 @@ async function _GET(req: NextRequest) {
     );
   }
 
+  // Четверта — розбивка винагороди RozetkaPay по замовленнях (order_deal_costs,
+  // міграція 158) не більша за проведену в леджері: інакше прибуток по
+  // замовленнях занижено на витрату, якої в обліку немає.
+  let dealCostMismatches: DealCostMismatch[] = [];
+  try {
+    dealCostMismatches = await findDealCostMismatches(serviceClient);
+  } catch (err) {
+    log.warn('invariants.deal_costs_failed', { err: err instanceof Error ? err.message : String(err) });
+  }
+  if (dealCostMismatches.length) {
+    alertAdmin(
+      `🟠 Облік: розбивка винагороди RozetkaPay по замовленнях більша за проведену (${dealCostMismatches.length})`,
+      dealCostMismatches.slice(0, 15).map(m =>
+        `переказ ${m.sourceRef}: рознесено ${m.allocated} ₴, у леджері ${m.ledger == null ? 'проводки немає' : m.ledger + ' ₴'}`,
+      ).join('\n'),
+    );
+  }
+
   if (divergences.length) {
     alertAdmin(
       `🟠 Облік: замовлення розійшлись із проведеними накладними (${divergences.length})`,
@@ -75,10 +94,10 @@ async function _GET(req: NextRequest) {
       '🔴 Облік: порушено інваріанти БД',
       failed.map(f => `${f.invariant}: ${f.details ?? f.status}`).join('\n'),
     );
-    return NextResponse.json({ ok: false, failed, divergences, drift }, { status: 500 });
+    return NextResponse.json({ ok: false, failed, divergences, drift, dealCostMismatches }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, checked: rows.length, divergences, drift });
+  return NextResponse.json({ ok: true, checked: rows.length, divergences, drift, dealCostMismatches });
 }
 
 export const GET = withApi('cron/check-invariants', _GET);

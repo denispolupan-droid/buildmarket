@@ -6,6 +6,7 @@ import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { kyivDayBounds, kyivMonthStart, kyivYmd } from '../../../../../lib/kyiv-date';
 import { summarizePL } from '../../../../../lib/accounting/profit-rules';
 import { withApi } from '../../../../../lib/api-handler';
+import { loadOrderDealCosts } from '../../../../../lib/deal-costs';
 
 /**
  * Excel-експорт прибутку по угодах (ФАКТ): доставлені замовлення періоду з цифрами
@@ -67,6 +68,9 @@ async function _GET(req: NextRequest) {
     .order('id')
     .range(f, t)) as unknown as Promise<(Entry)[]>))).flat();
 
+  // Винагорода RozetkaPay по замовленню: у проводках вона без order_id, розбивка —
+  // order_deal_costs (міграція 158), та сама, що в «Огляді» й картці замовлення
+  const payFees = await loadOrderDealCosts(db, ids);
   const entriesByOrder = new Map<string, Entry[]>();
   for (const e of entries) {
     const arr = entriesByOrder.get(e.order_id) ?? [];
@@ -86,6 +90,8 @@ async function _GET(req: NextRequest) {
     // потрапляло в експорт як «виручка = total_price, собівартість 0» → 100 % маржі.
     // Тепер — нулі й примітка; у підсумок воно не додає нічого.
     const noLedger = es.length === 0;
+    const payFee = noLedger ? 0 : (payFees.get(o.id) ?? 0);
+    const gross = r2(pl.grossProfit - payFee);
     return {
       '№ замовлення':         o.order_number,
       'Дата доставки':        kyivYmd(new Date(o.delivered_at ?? o.created_at)),
@@ -97,8 +103,9 @@ async function _GET(req: NextRequest) {
       'Комісія МП':           pl.deal.marketplaceFee,
       'Еквайринг':            pl.deal.acquiringFee,
       'Доставка та збори НП': pl.deal.npDelivery,
-      'Валовий прибуток':     pl.grossProfit,
-      'Валовий, %':           pl.revenue > 0 ? r2(pl.grossProfit / pl.revenue * 100) : 0,
+      'Винагорода RozetkaPay': payFee,
+      'Валовий прибуток':     gross,
+      'Валовий, %':           pl.revenue > 0 ? r2(gross / pl.revenue * 100) : 0,
       'Примітка':             noLedger ? 'немає проводок (РН не проведена)' : '',
     };
   });
@@ -115,13 +122,14 @@ async function _GET(req: NextRequest) {
     'Комісія МП': sum('Комісія МП'),
     'Еквайринг': sum('Еквайринг'),
     'Доставка та збори НП': sum('Доставка та збори НП'),
+    'Винагорода RozetkaPay': sum('Винагорода RozetkaPay'),
     'Валовий прибуток': totalGross,
     'Валовий, %': totalRevenue > 0 ? r2(totalGross / totalRevenue * 100) : 0,
     'Примітка': `без проводок: ${rows.filter(r => r['Примітка']).length}`,
   });
 
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 26 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 11 }, { wch: 11 }, { wch: 18 }, { wch: 15 }, { wch: 10 }, { wch: 30 }];
+  ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 26 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 11 }, { wch: 11 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 10 }, { wch: 30 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Прибуток');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;

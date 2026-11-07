@@ -3,8 +3,9 @@
  * «Аналітики» й звірки «прогноз vs факт». Правила — estimate-rules.ts.
  *
  * Що читає: рядки з order_lines, поточну закупівельну з product_stock, факт із
- * money_entries (COGS, комісія площадки, еквайринг/збори НП), оцінку комісії —
- * з lib/marketplace/fees (той самий оцінювач, що й при проведенні РН).
+ * money_entries (виручка, COGS, комісія площадки, еквайринг/збори НП), оцінку комісії —
+ * з lib/marketplace/fees (той самий оцінювач, що й при проведенні РН), винагороду
+ * RozetkaPay по замовленню — з order_deal_costs (lib/deal-costs, міграція 158).
  */
 import { createServiceClient } from '../supabase-service';
 import { fetchAllRows } from '../db-paginate';
@@ -13,6 +14,7 @@ import { isMarketplace, estimateChannelCommissionPerItem, estimateOrderLevelFees
 import type { MarketplaceCode } from '../marketplace/adapter';
 import { classifyPLEntry } from './profit-rules';
 import { estimateOrderProfit, summarizeDrift, type DriftRow, type DriftSummary, type LineEstimate, type OrderFact, type ProfitEstimate } from './estimate-rules';
+import { loadOrderDealCosts, loadRzPayRate, paidViaRzPay } from '../deal-costs';
 
 type Db = ReturnType<typeof createServiceClient>;
 
@@ -43,7 +45,7 @@ export async function loadProfitEstimates(
   const lines = opts.lines ?? await loadOrderLines(db, ids);
   const skus = [...new Set(ids.flatMap(id => (lines.get(id) ?? []).map(l => l.sku)))];
 
-  const [costRows, factRows] = await Promise.all([
+  const [costRows, factRows, dealCosts, rzPayRate] = await Promise.all([
     Promise.all(chunk(skus, SKU_CHUNK).map(c => db.from('product_stock').select('sku, price_cost').in('sku', c).limit(SKU_CHUNK).then(r => r.data ?? []))).then(a => a.flat()),
     Promise.all(chunk(ids, ORDER_CHUNK).map(c => fetchAllRows<{ order_id: string | null; account_type: string; doc_type: string | null; amount: number }>((f, t) => db
       .from('money_entries')
@@ -51,6 +53,9 @@ export async function loadProfitEstimates(
       .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'acquiring_fee', 'logistics'])
       .in('order_id', c)
       .order('id').range(f, t)))).then(a => a.flat()),
+    // Винагорода RozetkaPay по замовленнях (у леджері — без order_id, розбивка в order_deal_costs)
+    loadOrderDealCosts(db, ids),
+    loadRzPayRate(db),
   ]);
 
   // Закупівельна: null, якщо немає рядка або ціна порожня/0 (0 — це «невідомо», не «безкоштовно»)
@@ -126,19 +131,36 @@ export async function loadProfitEstimates(
 
   // Збори рівня замовлення (Smart, видача Rozetka Доставки, «Дешева доставка» Prom):
   // потрібні лише поля payload, читаємо їх точково, а не весь jsonb
-  const mpIds = ids.filter(id => isMarketplace(byId.get(id)!.channel_code));
-  const extraRows = (await Promise.all(chunk(mpIds, ORDER_CHUNK).map(c => db
+  // payment_type/delivery_type — ще й для всіх замовлень: через RozetkaPay платять
+  // і замовлення сайту з наложкою перевізником Rozetka (rz_delivery)
+  type ExtraRow = Omit<OrderForLevelFees, 'channel_code' | 'total_price'> & { payment_type: string | null };
+  const extraRows = (await Promise.all(chunk(ids, ORDER_CHUNK).map(c => db
     .from('orders')
-    .select('id, delivery_type, is_smart:rozetka_data->is_smart, ps_promotion:prom_data->ps_promotion, rz_delivery_price:rozetka_data->_rz_delivery_price')
+    .select('id, delivery_type, payment_type, is_smart:rozetka_data->is_smart, ps_promotion:prom_data->ps_promotion, rz_delivery_price:rozetka_data->_rz_delivery_price')
     .in('id', c).limit(ORDER_CHUNK)
-    .then(r => (r.data ?? []) as unknown as Omit<OrderForLevelFees, 'channel_code' | 'total_price'>[])))).flat();
-  const orderFees = await estimateOrderLevelFees(db, extraRows.map(r => ({
-    ...r, channel_code: byId.get(r.id)!.channel_code, total_price: byId.get(r.id)!.total_price,
-  })));
+    .then(r => (r.data ?? []) as unknown as ExtraRow[])))).flat();
+  const orderFees = await estimateOrderLevelFees(db, extraRows
+    .filter(r => isMarketplace(byId.get(r.id)!.channel_code))
+    .map(r => ({
+      ...r, channel_code: byId.get(r.id)!.channel_code, total_price: byId.get(r.id)!.total_price,
+    })));
+  const extraById = new Map(extraRows.map(r => [r.id, r]));
 
   const out = new Map<string, ProfitEstimate>();
   for (const id of ids) {
-    out.set(id, estimateOrderProfit(Number(byId.get(id)!.total_price ?? 0), lineEst.get(id)!, facts.get(id), orderFees.get(id) ?? 0));
+    const o = byId.get(id)!;
+    const fact = facts.get(id);
+    // Винагорода RozetkaPay: факт із розбивки виплати, інакше — оцінка за
+    // середньою ставкою для замовлень, які виплачує RozetkaPay (ще не виплачені)
+    const factPay = dealCosts.get(id);
+    const x = extraById.get(id);
+    let paymentFee: { amount: number; source: 'fact' | 'estimate' } | null = null;
+    if (factPay != null) paymentFee = { amount: factPay, source: 'fact' };
+    else if (rzPayRate && x && paidViaRzPay({ channel_code: o.channel_code, payment_type: x.payment_type, delivery_type: x.delivery_type })) {
+      const base = fact?.revenue != null ? fact.revenue : Number(o.total_price ?? 0);
+      paymentFee = { amount: Math.round(base * rzPayRate * 100) / 100, source: 'estimate' };
+    }
+    out.set(id, estimateOrderProfit(Number(o.total_price ?? 0), lineEst.get(id)!, fact, orderFees.get(id) ?? 0, paymentFee));
   }
   return out;
 }
@@ -161,10 +183,11 @@ export async function profitEstimateDrift(db: Db, days = 30): Promise<DriftSumma
   for (const o of orders) {
     const e = est.get(o.id);
     if (!e || e.cogsSource !== 'fact') continue;
-    // Однакові складові з обох боків: dealExtra (еквайринг, збори НП) прогноз не оцінює
+    // Однакові складові з обох боків: dealExtra (еквайринг, збори НП) і винагорода
+    // RozetkaPay у чисту оцінку не входять — тож і з факту їх прибираємо
     rows.push({
       orderNumber: o.order_number, revenue: e.revenue,
-      estGross: e.estimated.gross, factGross: e.gross + e.dealExtra,
+      estGross: e.estimated.gross, factGross: e.gross + e.dealExtra + e.paymentFee,
       estCogs: e.estimated.cogs, factCogs: e.cogs, estFee: e.estimated.fee, factFee: e.fee,
     });
   }

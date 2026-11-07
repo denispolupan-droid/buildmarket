@@ -103,11 +103,12 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                   <li>ціна продажу замовлення;</li>
                   <li>собівартість товару: у вручених — з обліку, в решти — за поточною закупівельною ціною;</li>
                   <li>комісія маркетплейсу за замовлення: списана або, якщо ще ні, за ставкою категорії;</li>
-                  <li>еквайринг і збори Нової Пошти за замовлення, якщо вже проведені.</li>
+                  <li>еквайринг і збори Нової Пошти за замовлення, якщо вже проведені;</li>
+                  <li>винагорода RozetkaPay за переказ: по виплачених — точна з реєстру, по ще не виплачених — за середньою ставкою.</li>
                 </ul>
                 <div className="fin-hint-h">Не враховано</div>
                 <ul className="fin-hint-list">
-                  <li>списання маркетплейсів і банку без прив&apos;язки до замовлення{ov.kpi.profitEst.unattributed > 0 ? ` (${fmt(ov.kpi.profitEst.unattributed)} ₴ за ${dmy(ov.from)}–${dmy(ov.to)}: винагорода RozetkaPay, абонплата, Smart без замовлення)` : ''};</li>
+                  <li>списання маркетплейсів і банку без прив&apos;язки до замовлення{ov.kpi.profitEst.unattributed > 0 ? ` (${fmt(ov.kpi.profitEst.unattributed)} ₴ за ${dmy(ov.from)}–${dmy(ov.to)}: абонплата, Smart без замовлення, винагорода RozetkaPay за платежі без нашого замовлення)` : ''};</li>
                   <li>операційні витрати ({fmt(ov.kpi.netProfit.opex)} ₴) і податки ({fmt(ov.kpi.netProfit.taxes)} ₴);</li>
                   <li>скасовані замовлення.</li>
                 </ul>

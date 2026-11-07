@@ -22,9 +22,12 @@ export type FulfillmentData = OrderFulfillmentInfo & {
   plan?: { items: EnrichedFulfillmentSource[]; has_own: boolean; has_dropship: boolean; unresolved: string[] };
   reservations?: { sku: string; qty: number; warehouse_id: number; reservation_status: string }[];
   /** Факт з леджера (є, коли проведена ≥1 РН): виручка/COGS/комісія/доставка за проводками */
-  fact?: { revenue: number; cogs: number; commission: number; delivery: number; posted_docs: number } | null;
+  /** extra — еквайринг і збори НП (переказ наложки, утримання, збір Rozetka Доставки), крім доставки */
+  fact?: { revenue: number; cogs: number; commission: number; delivery: number; extra?: number; posted_docs: number } | null;
   /** Серверна оцінка комісії МП (брекети Rozetka / категорійні ставки Prom) для непроведених */
   commission_estimate?: number | null;
+  /** Винагорода RozetkaPay за переказ: fact — з реєстру виплати, estimate — за середньою ставкою */
+  payment_fee?: { amount: number; source: 'fact' | 'estimate' } | null;
   /** Джерело всіх позицій уже зафіксоване документами — сервер не питав роутер заново */
   source_fixed?: boolean;
 };

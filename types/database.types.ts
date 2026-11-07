@@ -3253,6 +3253,50 @@ export type Database = {
         }
         Relationships: []
       }
+      order_deal_costs: {
+        Row: {
+          amount: number
+          business_date: string
+          created_at: string
+          id: number
+          meta: Json
+          method: string
+          order_id: string
+          source: string
+          source_ref: string
+        }
+        Insert: {
+          amount: number
+          business_date: string
+          created_at?: string
+          id?: number
+          meta?: Json
+          method: string
+          order_id: string
+          source: string
+          source_ref: string
+        }
+        Update: {
+          amount?: number
+          business_date?: string
+          created_at?: string
+          id?: number
+          meta?: Json
+          method?: string
+          order_id?: string
+          source?: string
+          source_ref?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_deal_costs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_lines: {
         Row: {
           amount: number | null
@@ -7091,6 +7135,16 @@ export type Database = {
       release_cron_lock: { Args: { p_name: string }; Returns: undefined }
       release_order_reservations: {
         Args: { p_order_id: string; p_reason?: string }
+        Returns: number
+      }
+      replace_order_deal_costs: {
+        Args: {
+          p_business_date: string
+          p_method: string
+          p_ref: string
+          p_rows: Json
+          p_source: string
+        }
         Returns: number
       }
       reserve_order_items:

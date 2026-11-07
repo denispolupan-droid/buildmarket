@@ -127,9 +127,14 @@ export function OrderNoteAndSections({ order }: {
                 // і окремий рядок задвоїв би витрату.
                 const mpDelivery = isFact ? null : estimateMarketplaceDeliveryFee(order, feeTariffs);
                 const mpDeliveryFee = mpDelivery?.amount ?? 0;
+                // Еквайринг і збори НП (лише факт) + винагорода RozetkaPay (факт з
+                // реєстру або оцінка) — ті самі витрати угоди, що в «Огляді» й «Звітах»
+                const extraExp = isFact ? (fact.extra ?? 0) : 0;
+                const payFee = fi?.payment_fee ?? null;
+                const payFeeAmt = payFee?.amount ?? 0;
                 const gross = isFact ? fact.revenue - fact.cogs : fi?.total_margin;
                 const grossPct = gross != null && revenue > 0 ? Math.round((gross / revenue) * 1000) / 10 : undefined;
-                const net = gross != null && commission != null ? gross - commission - deliveryExp - mpDeliveryFee : undefined;
+                const net = gross != null && commission != null ? gross - commission - deliveryExp - mpDeliveryFee - extraExp - payFeeAmt : undefined;
                 const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
                 const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
                 const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean; sub?: string; title?: string } = {}) => (
@@ -158,8 +163,13 @@ export function OrderNoteAndSections({ order }: {
                     {(commission ?? 0) > 0 && row('Комісія маркетплейсу', `−${fmtInt(commission!)} ₴`, { color: '#C2410C' })}
                     {deliveryExp > 0 && row('Доставка НП (наш рахунок)', `−${fmtInt(deliveryExp)} ₴`, { color: '#C2410C' })}
                     {mpDelivery && row(mpDelivery.label, `−${fmtInt(mpDeliveryFee)} ₴`, { color: '#C2410C', title: mpDelivery.hint })}
+                    {extraExp !== 0 && row('Еквайринг і збори НП', `−${fmtInt(extraExp)} ₴`, { color: '#C2410C', title: 'Еквайринг і збори Нової Пошти / Rozetka Доставки за це замовлення з бухгалтерських проводок (переказ наложки, утримання).' })}
+                    {payFeeAmt > 0 && row(payFee!.source === 'fact' ? 'Винагорода RozetkaPay' : 'Винагорода RozetkaPay ≈', `−${fmtInt(payFeeAmt)} ₴`, { color: '#C2410C',
+                      title: payFee!.source === 'fact'
+                        ? 'Комісія RozetkaPay за переказ оплати цього замовлення — точна, з реєстру виплати.'
+                        : 'RozetkaPay ще не виплатила гроші за це замовлення — оцінка за середньою ставкою винагороди за 90 днів.' })}
                     {row('Валовий прибуток', gross != null ? `${fmtInt(gross)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
-                    {((commission ?? 0) > 0 || deliveryExp > 0 || mpDeliveryFee > 0) && row('Чистий прибуток', net != null ? `${fmtInt(net)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
+                    {((commission ?? 0) > 0 || deliveryExp > 0 || mpDeliveryFee > 0 || extraExp !== 0 || payFeeAmt > 0) && row('Чистий прибуток', net != null ? `${fmtInt(net)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
                   </div>
                 );
               })()}

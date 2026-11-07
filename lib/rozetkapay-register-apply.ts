@@ -18,10 +18,16 @@ import { SALE_DEBTOR, saleDebitPartyFor } from './accounting/sale-party';
 import { parseRzPayPayout } from './rozetkapay-statement';
 import { parseRzPayRegister, parseRzPayTransactionsCsv, planRzPayRegisterApply, type RzPayKnownOrder, type RzPayLookup, type RzPayRegister, type RzPayRegisterRow } from './rozetkapay-register';
 import { fetchAllRows } from './db-paginate';
+import { allocateRegisterFees } from './deal-costs-rules';
+import { writeRzPayFeeAllocation, type RzPayFeeWriteResult } from './deal-costs';
 
 export type RzPayRegisterApplyResult = {
   register: { contract: string | null; periodFrom: string; periodTo: string; rows: number; totalGross: number; totalNet: number; pending: number };
-  payouts: { payoutDate: string; monoTxnId: string | null; gross: number; net: number | null; rows: number; changed: boolean }[];
+  payouts: {
+    payoutDate: string; monoTxnId: string | null; gross: number; net: number | null; rows: number; changed: boolean;
+    /** Розбивка винагороди RozetkaPay по замовленнях (order_deal_costs). no-ledger-fee — проводки винагороди ще немає, повторити. */
+    feeAlloc?: RzPayFeeWriteResult;
+  }[];
   posted: { orderNumber: number; amount: number; payoutDate: string }[];
   undone: { orderNumber: number; amount: number; payoutDate: string }[];
   /** повернення покупцю в переказі за оплату з попереднього переказу */
@@ -95,6 +101,34 @@ export async function applyRzPayRegisterFile(buffer: Buffer, filename: string, c
   return applyParsedRzPayRegister(readRzPayFile(buffer, filename), createdBy, opts);
 }
 
+/**
+ * ЛИШЕ розбивка винагороди по замовленнях за реєстром — без рознесення виплати
+ * в леджері (рядки rzpay-alloc не чіпаються). Для разового перерахунку історії
+ * (scripts/backfill-rzpay-fees.ts): реєстр уже проведений раніше, міняти склад
+ * виплат у леджері тут не можна.
+ */
+export async function allocateRzPayRegisterFees(register: RzPayRegister, opts: { dryRun?: boolean } = {}): Promise<{ payoutDate: string; monoTxnId: string | null; gross: number; fee: RzPayFeeWriteResult | null; unmatchedFee: number }[]> {
+  const db = createServiceClient();
+  const lookup = await buildLookup(db, register.rows);
+  const groups = new Map<string, RzPayRegisterRow[]>();
+  for (const row of register.rows) groups.set(row.payoutDate, [...(groups.get(row.payoutDate) ?? []), row]);
+  const out: { payoutDate: string; monoTxnId: string | null; gross: number; fee: RzPayFeeWriteResult | null; unmatchedFee: number }[] = [];
+  for (const [payoutDate, rows] of [...groups.entries()].sort()) {
+    const gross = r2(rows.reduce((s, r) => s + r.gross, 0));
+    const found = await findPayout(db, payoutDate, gross);
+    if (!found) { out.push({ payoutDate, monoTxnId: null, gross, fee: null, unmatchedFee: 0 }); continue; }
+    let unmatchedFee = 0;
+    const feeRows = rows.flatMap(r => {
+      const o = lookup(r.marketplace, r.marketplaceOrderId, r.ref);
+      if (!o) { unmatchedFee = r2(unmatchedFee + (r.kind === 'refund' ? -r.fee : r.fee)); return []; }
+      return [{ orderId: o.id, fee: r.fee, gross: r.gross, marketplaceOrderId: r.marketplaceOrderId, kind: r.kind }];
+    });
+    const fee = await writeRzPayFeeAllocation(db, { monoTxnId: found.row.id as string, allocs: allocateRegisterFees(feeRows), method: 'register', dryRun: opts.dryRun });
+    out.push({ payoutDate, monoTxnId: found.row.id as string, gross, fee, unmatchedFee });
+  }
+  return out;
+}
+
 /** Зворотна сумісність: XLSX-реєстр. */
 export async function applyRzPayRegister(buffer: Buffer, createdBy: string, opts: { dryRun?: boolean } = {}): Promise<RzPayRegisterApplyResult> {
   return applyParsedRzPayRegister(readRzPayRegisterXlsx(buffer), createdBy, opts);
@@ -149,7 +183,22 @@ export async function applyParsedRzPayRegister(register: RzPayRegister, createdB
       res.warnings.push(`${payoutDate}: платіж ${o.amount} ₴ на #${o.orderNumber} більший за суму замовлення ${o.total} ₴ — на нього проведено ${o.total} ₴, решта ${o.leftover} ₴ (інші замовлення того ж рахунку) лишається на клірингу`);
     }
     const changed = plan.post.length > 0 || plan.undo.length > 0 || plan.refund.length > 0;
-    res.payouts.push({ payoutDate, monoTxnId: txn, gross: found.parsed!.gross, net: Number(found.row.amount), rows: rows.length, changed });
+    const payoutEntry: RzPayRegisterApplyResult['payouts'][number] = { payoutDate, monoTxnId: txn, gross: found.parsed!.gross, net: Number(found.row.amount), rows: rows.length, changed };
+    res.payouts.push(payoutEntry);
+
+    // Винагорода RozetkaPay по замовленнях — точна комісія з рядків реєстру.
+    // Розбивка цілої виплати замінюється атомарно (склад виплати міг змінитись),
+    // леджер не чіпається; рядки без нашого замовлення лишаються «без замовлення».
+    const feeRows = rows.flatMap(r => {
+      const o = lookup(r.marketplace, r.marketplaceOrderId, r.ref);
+      return o ? [{ orderId: o.id, fee: r.fee, gross: r.gross, marketplaceOrderId: r.marketplaceOrderId, kind: r.kind }] : [];
+    });
+    payoutEntry.feeAlloc = await writeRzPayFeeAllocation(db, { monoTxnId: txn, allocs: allocateRegisterFees(feeRows), method: 'register', dryRun: dry });
+    if (payoutEntry.feeAlloc.status === 'no-ledger-fee') {
+      res.warnings.push(`${payoutDate}: винагорода RozetkaPay у леджері ще не проведена — розбивку по замовленнях буде зроблено при повторній обробці`);
+    } else if (payoutEntry.feeAlloc.status === 'written' && payoutEntry.feeAlloc.capped) {
+      res.warnings.push(`${payoutDate}: комісії реєстру більші за проведену винагороду ${payoutEntry.feeAlloc.ledgerFee} ₴ — розбито в межах проведеної`);
+    }
     const period = found.parsed!.periodFrom === found.parsed!.periodTo ? found.parsed!.periodFrom : `${found.parsed!.periodFrom}…${found.parsed!.periodTo}`;
     const businessDate = String(found.row.txn_time).slice(0, 10);
 

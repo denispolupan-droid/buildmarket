@@ -120,8 +120,11 @@ export async function importMailRegisters(opts: { days?: number; createdBy: stri
         if (!dl.ok) { await save('error', null, `завантаження ${dl.status}`); res.errors.push(`${m.subject}: HTTP ${dl.status}`); continue; }
         const buf = Buffer.from(await dl.arrayBuffer());
         const r = await applyRzPayRegisterFile(buf, `rzpay-${cls.registerNo ?? m.messageId}.xlsx`, opts.createdBy, { dryRun: opts.dryRun });
-        const missing = r.payouts.some(p => !p.monoTxnId);
-        await save(missing ? 'no-doc' : 'done', { register: r.register, payouts: r.payouts.length, posted: r.posted.length, undone: r.undone.length, refunded: r.refunded.length, kept: r.kept, unknown: r.unknown, warnings: r.warnings });
+        // no-doc → лист оброблять повторно: переказу ще немає у виписці або його
+        // винагорода ще не проведена (тоді нема що розбивати по замовленнях)
+        const missing = r.payouts.some(p => !p.monoTxnId || p.feeAlloc?.status === 'no-ledger-fee');
+        const feeAllocated = r.payouts.reduce((s, p) => s + (p.feeAlloc?.status === 'written' ? p.feeAlloc.allocated : 0), 0);
+        await save(missing ? 'no-doc' : 'done', { register: r.register, payouts: r.payouts.length, posted: r.posted.length, undone: r.undone.length, refunded: r.refunded.length, kept: r.kept, unknown: r.unknown, feeAllocated: Math.round(feeAllocated * 100) / 100, warnings: r.warnings });
         res.processed.push({ messageId: m.messageId, kind: cls.kind, registerNo: cls.registerNo, status: missing ? 'no-doc' : 'done', summary: summarizeRz(r) });
         continue;
       }

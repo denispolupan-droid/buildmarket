@@ -42,6 +42,13 @@ export type ProfitEstimate = {
   orderFee: number;
   /** Еквайринг і збори НП, уже проведені по замовленню (лише факт; оцінки немає). */
   dealExtra: number;
+  /**
+   * Винагорода платіжного сервісу за переказ (RozetkaPay). Факт — розбивка з
+   * order_deal_costs (міграція 158): у леджері ця сума лежить без замовлення.
+   * Оцінка — середня ставка для ще не виплачених. 0 — замовлення не через RozetkaPay.
+   */
+  paymentFee: number;
+  paymentFeeSource: 'fact' | 'estimate' | null;
   gross: number;
   cogsSource: 'fact' | 'estimate';
   feeSource: 'fact' | 'estimate';
@@ -54,7 +61,10 @@ export type ProfitEstimate = {
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-export function estimateOrderProfit(totalPrice: number, lines: LineEstimate[], fact?: OrderFact | null, orderFee = 0): ProfitEstimate {
+export function estimateOrderProfit(
+  totalPrice: number, lines: LineEstimate[], fact?: OrderFact | null, orderFee = 0,
+  paymentFee?: { amount: number; source: 'fact' | 'estimate' } | null,
+): ProfitEstimate {
   // Виручка: проведена (факт) має пріоритет над сумою замовлення — інакше
   // собівартість нетто повернень віднімається від повної суми замовлення.
   // Чиста оцінка (estimated) рахується від тієї ж виручки, щоб звірка
@@ -70,10 +80,12 @@ export function estimateOrderProfit(totalPrice: number, lines: LineEstimate[], f
   const cogs = cogsSource === 'fact' ? r2(fact!.cogs!) : estCogs;
   const fee  = feeSource  === 'fact' ? r2(fact!.fee!)  : estFee;
   const dealExtra = r2(fact?.dealExtra ?? 0);
+  const payFee = paymentFee && paymentFee.amount > 0 ? r2(paymentFee.amount) : 0;
 
   return {
     revenue, revenueSource, cogs, fee, orderFee: r2(Number(orderFee) || 0), dealExtra,
-    gross: r2(revenue - cogs - fee - dealExtra),
+    paymentFee: payFee, paymentFeeSource: payFee > 0 ? paymentFee!.source : null,
+    gross: r2(revenue - cogs - fee - dealExtra - payFee),
     cogsSource, feeSource,
     estimated: { cogs: estCogs, fee: estFee, gross: r2(revenue - estCogs - estFee) },
     unknownCostSkus,
