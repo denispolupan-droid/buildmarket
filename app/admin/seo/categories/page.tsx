@@ -58,7 +58,8 @@ export default async function SeoCategoriesPage() {
       db.from('blog_posts').select('slug').eq('is_published', true).order('id').range(f, t)),
     loadDemand(),
     // Бренди й знятих товарів — щоб гайд, який розповідає про бренд, що пішов зовсім, позначався застарілим
-    fetchAllRows<{ brand: string | null }>((f, t) => db.from('products').select('brand').order('id').range(f, t)),
+    fetchAllRows<{ brand: string | null; name: string | null; is_active: boolean | null }>((f, t) =>
+      db.from('products').select('brand, name, is_active').order('id').range(f, t)),
   ]);
   const [metaUa, metaRu] = await Promise.all([getCategoryContentCached('uk'), getCategoryContentCached('ru')]);
 
@@ -72,6 +73,7 @@ export default async function SeoCategoriesPage() {
     demand,
     namesRu: CATEGORY_NAMES_RU,
     knownBrands: [...new Set(everBrands.map(p => p.brand?.trim()).filter(Boolean))] as string[],
+    allProducts: everBrands.map(p => ({ name: p.name, brand: p.brand, active: !!p.is_active })),
   });
 
   return <CategoryAudit rows={rows} />;

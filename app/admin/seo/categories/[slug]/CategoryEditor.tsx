@@ -45,7 +45,7 @@ const GAP_LABEL: Record<string, { label: string; tone: Tone }> = {
   noMeta: { label: 'немає тексту', tone: 'danger' }, noProducts: { label: 'порожня сторінка', tone: 'danger' },
   staleBrands: { label: 'бренд зник', tone: 'danger' }, deadBlogLink: { label: 'стаття в 404', tone: 'danger' },
   deadPriceSku: { label: 'ціна на знятий товар', tone: 'danger' }, missingBrands: { label: 'бренд не згаданий', tone: 'warn' },
-  guideStale: { label: 'гайд застарів', tone: 'danger' }, guideMissing: { label: 'гайд не знає асортименту', tone: 'warn' },
+  guideStale: { label: 'гайд застарів', tone: 'danger' }, seoGoneProduct: { label: 'товар зник з опису', tone: 'danger' }, guideMissing: { label: 'гайд не знає асортименту', tone: 'warn' },
   noCatalogLine: { label: 'немає переліку', tone: 'warn' }, noGuide: { label: 'немає гайда', tone: 'warn' },
   guideNoBuy: { label: 'гайд без «купити»', tone: 'warn' }, h1Mismatch: { label: 'H1 ≠ запит', tone: 'warn' },
   thinCategory: { label: 'тонка категорія', tone: 'info' }, thinFaq: { label: 'мало FAQ', tone: 'info' },

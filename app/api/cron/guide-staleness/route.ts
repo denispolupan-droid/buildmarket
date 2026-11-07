@@ -34,7 +34,8 @@ async function _GET(req: NextRequest) {
         db.from('products').select('sku, category_slug, brand, name, created_at').eq('is_active', true).order('id').range(f, t)),
       fetchAllRows<{ slug: string; name: string; parent_slug: string | null }>((f, t) =>
         db.from('categories').select('slug, name, parent_slug').order('id').range(f, t)),
-      fetchAllRows<{ brand: string | null }>((f, t) => db.from('products').select('brand').order('id').range(f, t)),
+      fetchAllRows<{ brand: string | null; name: string | null; is_active: boolean | null }>((f, t) =>
+        db.from('products').select('brand, name, is_active').order('id').range(f, t)),
       getCategoryContentCached('uk'),
       getCategoryContentCached('ru'),
     ]);
@@ -42,6 +43,7 @@ async function _GET(req: NextRequest) {
       categories, products, metaUa, metaRu,
       brands: [...new Set(products.map(p => p.brand).filter(Boolean))] as string[],
       knownBrands: [...new Set(everBrands.map(p => p.brand?.trim()).filter(Boolean))] as string[],
+      allProducts: everBrands.map(p => ({ name: p.name, brand: p.brand, active: !!p.is_active })),
     });
     const html = buildGuideStalenessMessage(rows, SITE_URL);
     const n = guideStalenessRows(rows).length;

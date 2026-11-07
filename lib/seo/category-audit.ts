@@ -1,5 +1,6 @@
 import type { CategoryMeta } from '../category-descriptions';
 import { tokenSkus } from './guide-prices';
+import { goneModelMentions, type MentionProduct } from './model-mentions';
 
 // Аудит категорійного контенту: чи не розійшовся текст категорії з фактичним
 // асортиментом і чи відповідає категорія стандарту контенту
@@ -52,6 +53,8 @@ export type CategoryAuditGaps = {
   guideStale: boolean;
   /** гайд не знає асортименту: бренд родини ні разу не згаданий або нові товари (30 днів) без згадування */
   guideMissing: boolean;
+  /** опис категорії (seoText) називає товар, якого вже немає в продажу */
+  seoGoneProduct: boolean;
 };
 
 /** Скільки днів товар вважається «новим» для перевірки гайда. */
@@ -85,6 +88,8 @@ export type CategoryAuditRow = {
   guideDeadLinks: { label: string; sku: string }[];
   /** Гайд: нові товари родини (за NEW_PRODUCT_DAYS днів), на які в тексті немає посилання */
   newProducts: { sku: string; name: string; brand: string | null }[];
+  /** Опис категорії (07.11.2026): моделі, названі в тексті, яких уже немає в продажу */
+  seoGoneProducts: string[];
   gaps: CategoryAuditGaps;
 };
 
@@ -156,6 +161,8 @@ export function auditCategories(input: {
   knownBrands?: string[];
   /** «Зараз» для перевірки нових товарів (тести) */
   now?: Date;
+  /** Усі товари (і неактивні) з назвами — щоб упізнати в описі модель, яку зняли з продажу */
+  allProducts?: MentionProduct[];
 }): CategoryAuditRow[] {
   const { categories, products, metaUa, metaRu, brands, blogSlugs, demand, namesRu } = input;
   const guideBrandList = [...new Set([...(input.knownBrands ?? []), ...brands])].filter(b => b && b.toLowerCase() !== 'сталь');
@@ -283,6 +290,11 @@ export function auditCategories(input: {
           .map(p => ({ sku: p.sku!, name: p.name ?? p.sku!, brand: p.brand }))
       : [];
 
+    // Опис обіцяє конкретні моделі («Knauf Super Finish 28 кг») — чи вони ще в продажу
+    const seoGoneProducts = input.allProducts && ua
+      ? goneModelMentions([ua.description, ua.seoText ?? ''].join(' '), input.allProducts)
+      : [];
+
     rows.push({
       slug,
       name: cat?.name ?? slug,
@@ -302,6 +314,7 @@ export function auditCategories(input: {
       guideMissingBrands,
       guideDeadLinks,
       newProducts,
+      seoGoneProducts,
       gaps: {
         noProducts: !!ua && productCount === 0,
         noMeta: !ua && productCount > 0,
@@ -320,6 +333,7 @@ export function auditCategories(input: {
         deadPriceSku: deadPriceSkus.length > 0,
         guideStale: guideStaleBrands.length > 0 || guideDeadLinks.length > 0,
         guideMissing: guideMissingBrands.length > 0 || newProducts.length > 0,
+        seoGoneProduct: seoGoneProducts.length > 0,
       },
     });
   }

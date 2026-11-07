@@ -18,6 +18,7 @@ const GAP_LABELS: { key: keyof CategoryAuditGaps; label: string; tone: Tone; exp
   { key: 'guideNoBuy',    label: 'гайд без «купити»', tone: 'warn',  explain: 'У гайді немає розділу «Де купити» — ні «купити», ні «ціна». Сторінка комерційна, текст — порада' },
   { key: 'deadPriceSku',  label: 'ціна на знятий товар', tone: 'danger', explain: 'Токен {price:SKU} у гайді/FAQ посилається на артикул, якого немає серед активних товарів — речення з ним не показується. Замінити артикул' },
   { key: 'h1Mismatch',    label: 'H1 ≠ запит',       tone: 'warn',   explain: 'Слова найчастішого запиту сторінки не входять у назву категорії (uk або ru) — стандарт 1.2' },
+  { key: 'seoGoneProduct', label: 'товар зник з опису', tone: 'danger', explain: 'Опис «Про категорію» називає модель, якої вже немає в продажу — покупець читає про те, чого не купити' },
   { key: 'guideStale',    label: 'гайд застарів',    tone: 'danger', explain: 'Гайд розповідає про бренд, якого в категорії вже немає, або посилається на знятий товар (на сайті посилання вже веде на заміну, але текст — про старе). Переписати: кнопка «Згенерувати» в редакторі' },
   { key: 'guideMissing',  label: 'гайд не знає асортименту', tone: 'warn', explain: 'Бренд категорії ні разу не згаданий у гайді або є нові товари (30 днів) без посилання. Перелік {brands} і «у наявності» {top} оновлюються самі — це про пояснювальний текст' },
   { key: 'guideMissesChild', label: 'гайд не знає підкатегорію', tone: 'warn', explain: 'У родині зʼявилась підкатегорія з 5+ товарами, на яку гайд не посилається. Дописати абзац і посилання — стандарт 1.4' },
@@ -131,6 +132,11 @@ export default function CategoryAudit({ rows }: { rows: CategoryAuditRow[] }) {
                   {row.missingBrands
                     .map(b => `${b} (${row.actualBrands.find(a => a.brand === b)?.count ?? 0})`)
                     .join(', ')}
+                </div>
+              )}
+              {row.seoGoneProducts.length > 0 && (
+                <div style={line}>
+                  <b style={{ color: TONE.danger }}>Опис називає знятий товар:</b> {row.seoGoneProducts.join(', ')}
                 </div>
               )}
               {(row.guideStaleBrands.length > 0 || row.guideDeadLinks.length > 0) && (
