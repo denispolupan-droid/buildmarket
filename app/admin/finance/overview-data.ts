@@ -18,7 +18,10 @@ import { sumDealCostsByDate } from '../../../lib/deal-costs';
 
 const db = createServiceClient();
 
-export type Preset = 'cur_month' | 'prev_month' | 'quarter' | 'ytd';
+// Межі періоду — app/admin/finance/period.ts (київський календар, чиста логіка під тести)
+import { resolvePeriod, monthStartYmd, kyivStart, addDays, ymdRange, UA_MONTHS, type Preset } from './period';
+export { resolvePeriod };
+export type { Preset };
 
 export type KpiSeries = { value: number; prev: number | null; daily: number[]; prevDaily: number[] };
 
@@ -136,7 +139,6 @@ export type OverviewData = {
 
 const MONTHS = 12;      // помісячне вікно (слайд «Місяці»)
 const KPI_MONTHS = 6;   // стовпчики під KPI — останні 6 з них
-const UA_MONTHS = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Серп','Вер','Жов','Лис','Гру'];
 
 // Календарна дата за Києвом (toISOString зсував би 1-ше число місяця на «31-ше»)
 function dstr(d: Date) { return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' }); }
@@ -150,62 +152,23 @@ function kyivMidnightUtc(now: Date): { iso: string; ymd: string } {
   return { iso: new Date(Date.parse(`${ymd}T00:00:00Z`) - offsetMs).toISOString(), ymd };
 }
 
-export function resolvePeriod(p?: string) {
-  const now = new Date();
-  const preset: Preset = (['cur_month', 'prev_month', 'quarter', 'ytd'] as const).includes(p as Preset) ? p as Preset : 'cur_month';
-  let periodFrom: Date, periodTo: Date | null = null;
-  if (preset === 'prev_month') {
-    periodFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    periodTo   = new Date(now.getFullYear(), now.getMonth(), 1);
-  } else if (preset === 'quarter') {
-    periodFrom = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-  } else if (preset === 'ytd') {
-    periodFrom = new Date(now.getFullYear(), 0, 1);
-  } else {
-    periodFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-  }
-  const periodEnd = periodTo ?? now;
-  const spanMs    = periodEnd.getTime() - periodFrom.getTime();
-  const prevFrom  = new Date(periodFrom.getTime() - spanMs);
-  const periodLabel = preset === 'cur_month'  ? `${UA_MONTHS[now.getMonth()]} ${now.getFullYear()}`
-                    : preset === 'prev_month' ? `${UA_MONTHS[(now.getMonth() + 11) % 12]} ${now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()}`
-                    : preset === 'quarter'    ? `${Math.floor(now.getMonth() / 3) + 1}-й квартал ${now.getFullYear()}`
-                    : `${now.getFullYear()} рік`;
-  return { now, preset, periodFrom, periodTo, periodEnd, prevFrom, periodLabel };
-}
-
 export async function getOverview(p?: string, chartDays?: number): Promise<OverviewData & { preset: Preset }> {
-  const { now, preset, periodFrom, periodTo, periodEnd, prevFrom, periodLabel } = resolvePeriod(p);
+  const { now, preset, periodFrom, periodTo, periodEnd, prevFrom, periodLabel, days, prevDays, kyivYear, kyivMonth0, todayYmd } = resolvePeriod(p);
   const fromStr = dstr(periodFrom);
   const endStr  = dstr(periodEnd);      // ексклюзивна межа для prev/поділу
   const prevStr = dstr(prevFrom);
   const today   = kyivMidnightUtc(now);
 
-  // Дні періоду для щоденних рядів
-  const days: string[] = [];
-  for (let d = new Date(periodFrom); d < periodEnd || days.length === 0; d.setDate(d.getDate() + 1)) {
-    days.push(dstr(d));
-    if (days.length > 370) break;
-  }
+  // Дні періоду (київські календарні) для щоденних рядів; prevDays — «привид» у спарклайнах
   const dayIdx = new Map(days.map((d, i) => [d, i]));
-  // Дні попереднього періоду — для «привида» в спарклайнах (накопичення)
-  const prevDays: string[] = [];
-  for (let d = new Date(prevFrom); d < periodFrom; d.setDate(d.getDate() + 1)) {
-    prevDays.push(dstr(d));
-    if (prevDays.length > 370) break;
-  }
   const prevDayIdx = new Map(prevDays.map((d, i) => [d, i]));
 
-  // Вікно помісячних агрегатів: 12 календарних місяців включно з поточним
+  // Вікно помісячних агрегатів: 12 київських календарних місяців включно з поточним
   // (слайд «Місяці»); стовпчики KPI беруть останні 6
-  const monthlyFrom = new Date(now.getFullYear(), now.getMonth() - (MONTHS - 1), 1);
-  const monthlyFromStr = dstr(monthlyFrom);
-  const monthlyFromIso = monthlyFrom.toISOString();
+  const monthlyFromStr = monthStartYmd(kyivYear, kyivMonth0 - (MONTHS - 1));
+  const monthlyFromIso = kyivStart(monthlyFromStr).toISOString();
   const monthKeys: string[] = [];
-  for (let i = MONTHS - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
+  for (let i = MONTHS - 1; i >= 0; i--) monthKeys.push(monthStartYmd(kyivYear, kyivMonth0 - i).slice(0, 7));
 
   const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, promBal, rozetkaBal, todayRows, monthlyLedger, monthlyOrders, payToday, pipelineRows, refusedRows] = await Promise.all([
     // 1. Леджер за поточний + попередній період (для дельт) — щоденні ряди
@@ -261,7 +224,9 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     fetchAllRows<any>((f, t) => db
       .from('orders')
       .select('id, created_at, total_price, channel_code')
-      .neq('status', 'cancelled')
+      // Та сама база, що й когорта KPI (без нових і скасованих): інакше «План на
+      // місяць», стовпчики KPI і слайд «Місяці» рахували й непідтверджені (08.11.2026)
+      .not('status', 'in', '(new,cancelled)')
       .gte('created_at', monthlyFromIso)
       .order('id').range(f, t)),
     // 9. Оплати клієнтів сьогодні + вчора (кредит рахунку customer)
@@ -335,14 +300,16 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   const fromIso = periodFrom.toISOString();
   const curOrders  = orderRows.filter(o => o.created_at >= fromIso);
   const prevOrders = orderRows.filter(o => o.created_at < fromIso);
+  // День — за Києвом (dstr), а не перші 10 символів ISO (UTC): замовлення о 01:30
+  // ночі інакше потрапляло в попередню добу
   const ordDaily = new Array(days.length).fill(0);
   for (const o of curOrders) {
-    const i = dayIdx.get(String(o.created_at).slice(0, 10));
+    const i = dayIdx.get(dstr(new Date(o.created_at)));
     if (i !== undefined) ordDaily[i] += 1;
   }
   const prevOrdDaily = new Array(prevDays.length).fill(0);
   for (const o of prevOrders) {
-    const i = prevDayIdx.get(String(o.created_at).slice(0, 10));
+    const i = prevDayIdx.get(dstr(new Date(o.created_at)));
     if (i !== undefined) prevOrdDaily[i] += 1;
   }
   const sum = (arr: { total_price: number }[]) => arr.reduce((s, o) => s + Number(o.total_price ?? 0), 0);
@@ -617,12 +584,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
   };
 
   // ── Вікно 7/30/90 днів для великого графіка (незалежно від пресета) ────────
-  const chartWinDays: string[] = [];
-  if (chartDays) {
-    const start = new Date(now);
-    start.setDate(start.getDate() - (chartDays - 1));
-    for (let d = new Date(start), i = 0; i < chartDays; d.setDate(d.getDate() + 1), i++) chartWinDays.push(dstr(d));
-  }
+  // Київські календарні дні (арифметика на датах, а не на мітках часу — без дублів у DST)
+  const chartWinDays: string[] = chartDays ? ymdRange(addDays(todayYmd, -(chartDays - 1)), todayYmd) : [];
 
   const planRow = await db.from('app_settings').select('value').eq('key', 'finance_month_plan').maybeSingle().then(r => r.data);
 

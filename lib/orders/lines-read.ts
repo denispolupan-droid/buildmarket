@@ -56,6 +56,35 @@ export async function loadOrderLines(db: Db, orderIds: string[]): Promise<Map<st
 export const linesOf = (map: Map<string, OrderLine[]>, orderId: string): OrderLine[] => map.get(orderId) ?? [];
 
 /**
+ * Відкритий попит покупців по SKU: скільки замовлень у заданих статусах містять
+ * SKU і скільки штук разом (закупівля: «Треба докупити», /procurement/demand).
+ * Замовлення рахується раз на SKU, кількість — сума рядків.
+ */
+export async function loadDemandBySku(
+  db: Db, skus: string[], statuses: string[],
+): Promise<Map<string, { orders: number; qty: number }>> {
+  const agg = new Map<string, { orders: Set<string>; qty: number }>();
+  const uniq = [...new Set(skus)];
+  for (let i = 0; i < uniq.length; i += CHUNK) {
+    const part = uniq.slice(i, i + CHUNK);
+    const rows = await fetchAllRows((f, t) => db
+      .from('order_lines')
+      .select('sku, qty, order_id, orders!inner(status)')
+      .in('sku', part)
+      .in('orders.status', statuses)
+      .order('id')
+      .range(f, t));
+    for (const r of rows) {
+      const a = agg.get(r.sku) ?? { orders: new Set<string>(), qty: 0 };
+      a.orders.add(r.order_id);
+      a.qty += Number(r.qty) || 0;
+      agg.set(r.sku, a);
+    }
+  }
+  return new Map([...agg].map(([sku, a]) => [sku, { orders: a.orders.size, qty: a.qty }]));
+}
+
+/**
  * Позиція у формі jsonb-елемента orders.items — для облікових читачів (резерв,
  * планування виконання, відгрузка), які досі очікують { sku, qty, price, name,
  * brand, cost_price?, … }. Допоміжні ключі (cost_price, volume, imageUrl …)

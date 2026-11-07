@@ -3,6 +3,7 @@ import SectionBar, { plural } from '../SectionBar';
 import ReorderClient from './ReorderClient';
 import { requireStaffPage } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { loadDemandBySku } from '../../../../lib/orders/lines-read';
 
 const db = createServiceClient();
 
@@ -70,25 +71,10 @@ export default async function ReorderPage() {
     .in('document_id', openPOIds)
   : { data: [] };
 
-  // Відкритий попит з замовлень покупців — з order_lines по потрібних SKU
-  // (етап B order_lines, як /api/admin/procurement/demand), а не перебір jsonb
-  // items усіх відкритих замовлень без ліміту.
-  const { data: demandLines } = await db
-    .from('order_lines')
-    .select('sku, qty, order_id, orders!inner(status)')
-    .in('sku', skus)
-    .in('orders.status', ['confirmed', 'awaiting_stock'])
-    .limit(5000);
-
-  const demandAgg = new Map<string, { orders: Set<string>; qty: number }>();
-  for (const l of demandLines ?? []) {
-    const a = demandAgg.get(l.sku) ?? { orders: new Set<string>(), qty: 0 };
-    a.orders.add(l.order_id);
-    a.qty += Number(l.qty) || 0;
-    demandAgg.set(l.sku, a);
-  }
-  const demandMap: Record<string, { orders: number; qty: number }> = {};
-  for (const [sku, a] of demandAgg) demandMap[sku] = { orders: a.orders.size, qty: a.qty };
+  // Відкритий попит з замовлень покупців — з order_lines через lib/orders/lines-read
+  // (єдине місце читання таблиці; те саме правило, що в /api/admin/procurement/demand)
+  const demandMap: Record<string, { orders: number; qty: number }> =
+    Object.fromEntries(await loadDemandBySku(db, skus, ['confirmed', 'awaiting_stock']));
 
   // Скільки вже замовлено у відкритих ЗП
   const orderedMap: Record<string, number> = {};

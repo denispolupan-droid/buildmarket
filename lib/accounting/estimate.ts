@@ -36,7 +36,17 @@ function chunk<T>(arr: T[], n: number): T[][] {
 export async function loadProfitEstimates(
   db: Db,
   orders: EstimateOrder[],
-  opts: { lines?: Map<string, OrderLine[]> } = {},
+  opts: {
+    lines?: Map<string, OrderLine[]>;
+    /**
+     * Звідки брати закупівельну рядка: 'missing-fact' (типово) — з рядків РН лише
+     * для замовлень без факту COGS (відвантажені, не вручені); 'all' — для всіх, що
+     * мають РН: тоді для вручених рядок несе собівартість з накладної, і розрізи по
+     * SKU/бренду/категорії («Аналітика») рахуються з того самого числа, що й леджер,
+     * а не з поточної price_cost чи середньої за півроку.
+     */
+    docCost?: 'missing-fact' | 'all';
+  } = {},
 ): Promise<Map<string, ProfitEstimate>> {
   const byId = new Map(orders.map(o => [o.id, o]));
   const ids = [...byId.keys()];
@@ -81,7 +91,7 @@ export async function loadProfitEstimates(
   // на момент відвантаження (саме вона й проведеться в COGS для дропшипу) — вона
   // точніша за поточну price_cost. Читаємо лише для замовлень без факту COGS.
   const docCost = new Map<string, Map<string, { cost: number; qty: number }>>();
-  const noFactIds = ids.filter(id => facts.get(id)?.cogs == null);
+  const noFactIds = opts.docCost === 'all' ? ids : ids.filter(id => facts.get(id)?.cogs == null);
   if (noFactIds.length) {
     const docs = (await Promise.all(chunk(noFactIds, ORDER_CHUNK).map(c => db
       .from('acc_documents').select('id, order_id')

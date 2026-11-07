@@ -8,7 +8,7 @@ import { requireStaffPage } from '../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { fmtInt as fmt } from '../../../../lib/format';
 import { loadProfitBridge } from '../../../../lib/accounting/profit-bridge';
-import { resolvePeriod } from '../overview-data';
+import { resolvePeriod, monthStartYmd, kyivStart, UA_MONTHS } from '../period';
 import ProfitBridgeCard from '../ProfitBridgeCard';
 import OverviewSummary from '../OverviewSummary';
 import { attributeOwnSales } from '../../../../lib/accounting/stock-supplier';
@@ -18,8 +18,6 @@ const db = createServiceClient();
 
 
 export const dynamic = 'force-dynamic';
-
-const UA_MONTHS = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Серп','Вер','Жов','Лис','Гру'];
 
 const CHANNEL_LABELS: Record<string, string> = {
   website:  'Сайт',
@@ -35,18 +33,14 @@ const CHANNEL_LABELS: Record<string, string> = {
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)
   await requireStaffPage('admin');
-  // Останні 6 місяців
-  const now      = new Date();
-  const sixAgo   = new Date(now);
-  sixAgo.setMonth(sixAgo.getMonth() - 5);
-  sixAgo.setDate(1); sixAgo.setHours(0, 0, 0, 0);
-
   // ── Період дашборда: пресет через ?p= (місяць за замовчуванням) ──────────
-  // Ті самі межі періоду, що на «Огляді» (resolvePeriod): інакше одна й та сама
-  // цифра «факт» розходилась між вкладками через межі доби (07.11.2026)
+  // Ті самі межі періоду, що на «Огляді» (resolvePeriod, київський календар):
+  // інакше одна й та сама цифра «факт» розходилась між вкладками через межі доби (07.11.2026)
   const { p } = await searchParams;
-  const { preset, periodFrom, periodTo, prevFrom, periodLabel } = resolvePeriod(p);
+  const { preset, periodFrom, periodTo, prevFrom, periodLabel, kyivYear, kyivMonth0 } = resolvePeriod(p);
   const kyivYmd = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' });
+  // Останні 6 київських місяців (до 08.11.2026 — місяць сервера, тобто UTC)
+  const sixAgo = kyivStart(monthStartYmd(kyivYear, kyivMonth0 - 5));
 
   const monthStart = periodFrom.toISOString();
 
@@ -114,17 +108,17 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   };
   const ledgerGross = pl.grossProfit;
   const prevPL = summarizePL(ledgerPrevRows);
-  const prevLedgerRevenue = -ledgerPrevRows.filter(r => r.account_type === 'revenue')
-    .reduce((s, r) => s + Number(r.amount), 0);
 
   // ── Прибуток по кожному замовленню: факт із леджера (COGS FIFO нетто повернень,
   // комісія МП з доп. зборами, еквайринг/збори НП) або, поки не вручено, прогноз
   // (поточна закупівля + оцінювач комісій каналу). Один модуль на всі екрани —
   // lib/accounting/estimate; до 04.11.2026 тут була своя копія з плоскою ставкою
   // категорії для Rozetka замість порогів, і прогноз розходився з «Оглядом».
-  const estimates = await loadProfitEstimates(db, orders, { lines: linesByOrder });
+  // docCost 'all': для вручених рядок несе собівартість з проведеної РН — розрізи по
+  // SKU/бренду/категорії нижче рахуються з того самого числа, що й леджер
+  const estimates = await loadProfitEstimates(db, orders, { lines: linesByOrder, docCost: 'all' });
 
-  // Рядки підтверджених РН — для собівартості по SKU в таблиці топ-товарів.
+  // Рядки підтверджених РН — для розрізу по постачальниках (supplier_id є лише там).
   // .in() — порціями: id РН за 6 місяців ідуть в URL запиту, і 07.11.2026 на 651 РН
   // (~24 КБ) PostgREST відповів «Bad Request» → 500 усієї сторінки.
   const accDocIds = accDocs.map(d => d.id as string);
@@ -136,17 +130,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
     fetchAllRows<any>((f, t) => db.from('acc_document_lines').select('sku, qty, price, cost_price, supplier_id, document_id').in('document_id', c).order('id').range(f, t)),
   ))).flat();
-
-  // Зважена середня собівартість за SKU з FIFO-даних РН
-  const skuCostAgg: Record<string, { totalCost: number; totalQty: number }> = {};
-  for (const line of accLines ?? []) {
-    if (!skuCostAgg[line.sku]) skuCostAgg[line.sku] = { totalCost: 0, totalQty: 0 };
-    skuCostAgg[line.sku].totalCost += Number(line.cost_price ?? 0) * Number(line.qty ?? 0);
-    skuCostAgg[line.sku].totalQty  += Number(line.qty ?? 0);
-  }
-  const skuAccCostMap = new Map(
-    Object.entries(skuCostAgg).map(([sku, a]) => [sku, a.totalQty > 0 ? a.totalCost / a.totalQty : 0])
-  );
 
   // Всі SKU з усіх замовлень — для назв товарів, брендів і категорій
   const allOrderSkus = [...new Set(
@@ -198,10 +181,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   const months: { label: string; key: string; revenue: number; margin: number; count: number }[] = [];
   for (let i = 5; i >= 0; i--) {
-    const d     = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key   = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = `${UA_MONTHS[d.getMonth()]} ${d.getFullYear() !== now.getFullYear() ? d.getFullYear() : ''}`.trim();
-    const mRows = rows.filter(r => r.created_at.slice(0, 7) === key);
+    const key   = monthStartYmd(kyivYear, kyivMonth0 - i).slice(0, 7);
+    const [ky, km] = key.split('-').map(Number);
+    const label = `${UA_MONTHS[km - 1]} ${ky !== kyivYear ? ky : ''}`.trim();
+    // Місяць створення — за Києвом, як і межі періоду (slice ISO дав би UTC-місяць)
+    const mRows = rows.filter(r => kyivYmd(new Date(r.created_at)).slice(0, 7) === key);
     months.push({ label, key, revenue: sumRevenue(mRows), margin: sumMargin(mRows), count: mRows.length });
   }
 
@@ -240,12 +224,13 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   const skuStats: Record<string, { revenue: number; cost: number; qty: number }> = {};
   for (const row of deliveredMonthRows) {
-    // Рядки з оцінки: комісія рядка — оцінювач каналу; собівартість — FIFO із
-    // проведених РН по SKU, інакше поточна закупівля з рядка оцінки
+    // Рядки з оцінки (lib/accounting/estimate, docCost 'all'): собівартість — з
+    // проведеної РН цього замовлення, комісія рядка — оцінювач каналу. До 08.11 тут
+    // була середня за півроку по SKU з усіх РН — Σ по брендах не сходилась із фактом періоду.
     for (const item of (estimates.get(row.id)?.lines ?? [])) {
       if (!skuStats[item.sku]) skuStats[item.sku] = { revenue: 0, cost: 0, qty: 0 };
       skuStats[item.sku].revenue += item.price * item.qty;
-      skuStats[item.sku].cost   += (skuAccCostMap.get(item.sku) ?? item.unitCost ?? 0) * item.qty + item.fee;
+      skuStats[item.sku].cost   += (item.unitCost ?? 0) * item.qty + item.fee;
       skuStats[item.sku].qty    += item.qty;
     }
   }
@@ -472,7 +457,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {pr.label}
           </Link>
         ))}
-        <a href={`/api/admin/finance/profit-export?from=${monthStartDate}&to=${kyivYmd(periodTo ? new Date(periodTo.getTime() - 86400000) : now)}`}
+        <a href={`/api/admin/finance/profit-export?from=${monthStartDate}&to=${kyivYmd(periodTo ? new Date(periodTo.getTime() - 86400000) : new Date())}`}
           download className="fin-pill export">
           ↓ Excel · прибуток по угодах
         </a>
@@ -516,7 +501,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               metricCols={2}
               parts={[
                 {
-                  label: 'Виручка', value: `${fmt(rev)} ₴`, cur: rev, prev: prevLedgerRevenue > 0 ? prevLedgerRevenue : null,
+                  label: 'Виручка', value: `${fmt(rev)} ₴`, cur: rev, prev: prevPL.revenue > 0 ? prevPL.revenue : null,
                   hint: 'Проведені продажі з обліку (продаж фіксується в день вручення). Розбір від суми замовлень — нижче.',
                   metrics: [
                     { label: `замовлено · ${fmt(thisMonthRows.length)}`, value: `${fmt(bridge.revenue.start)} ₴`, hint: 'Сума підтверджених замовлень, створених за період (без нових і скасованих)' },
