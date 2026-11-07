@@ -30,7 +30,26 @@ const norm = (s: string) => s.toLowerCase().replace(/[«»"“”„']/g, '').re
 const hasWord = (hay: string, needle: string) =>
   !!needle && new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(needle)}(?![\\p{L}\\p{N}])`, 'u').test(hay);
 
-type LinkCtx = { bySku: Map<string, LinkProduct>; byBrand: Map<string, LinkProduct[]>; brands: string[]; family: Set<string> };
+type LinkCtx = { bySku: Map<string, LinkProduct>; byBrand: Map<string, LinkProduct[]>; brands: string[]; family: Set<string>; guideSlug: string | null };
+
+/** Скільки товарів бренду має бути в самій категорії, щоб існувала сторінка /shop/<категорія>/<бренд> (див. app/shop/[category]/[brand]). */
+const CATEGORY_BRAND_PAGE_MIN = 5;
+
+/**
+ * Куди веде бренд із гайда (07.11.2026) — до товарів бренду саме цієї групи:
+ *  1) є сторінка «категорія + бренд» (5+ товарів бренду в самій категорії) — на неї;
+ *  2) товари бренду є в категорії чи підкатегоріях — категорія з увімкненим фільтром ?brand=;
+ *  3) бренд згаданий мимохідь, у цій групі його товарів немає — загальна сторінка бренду.
+ */
+export function brandHref(brand: string, ctx: LinkCtx): string {
+  const items = ctx.byBrand.get(brand) ?? [];
+  const slug = ctx.guideSlug;
+  if (slug) {
+    if (items.filter(p => p.category_slug === slug).length >= CATEGORY_BRAND_PAGE_MIN) return `/shop/${slug}/${brandSlug(brand)}`;
+    if (items.some(p => p.category_slug && ctx.family.has(p.category_slug))) return `/shop/${slug}?brand=${encodeURIComponent(brand)}`;
+  }
+  return `/shop/brand/${brandSlug(brand)}`;
+}
 
 /**
  * Товари тієї ж моделі, що й текст посилання: «Ceresit CS 25» → усі кольори й
@@ -86,7 +105,7 @@ export function resolveProductLinks(text: string, ctx: LinkCtx): string {
     const alt = bestOf(model.items.filter(x => x.sku !== p?.sku), ctx.family);
     if (p) return `[${label}](${href(alt?.inStock ? alt : p)})`;
     if (alt) return `[${label}](${href(alt)})`;
-    if (model.brand && ctx.byBrand.get(model.brand)?.length) return `[${label}](/shop/brand/${brandSlug(model.brand)})`;
+    if (model.brand && ctx.byBrand.get(model.brand)?.length) return `[${label}](${brandHref(model.brand, ctx)})`;
     return label;
   });
 }
@@ -95,7 +114,7 @@ export function resolveProductLinks(text: string, ctx: LinkCtx): string {
  * Перше згадування кожного бренду в розділі (масив абзаців) → посилання на
  * сторінку бренду. Згадування всередині наявних посилань і токенів {…} не чіпає.
  */
-export function linkBrandsInSection(paras: string[], brands: string[]): string[] {
+export function linkBrandsInSection(paras: string[], brands: string[], hrefFor: (brand: string) => string = b => `/shop/brand/${brandSlug(b)}`): string[] {
   const list = [...new Set(brands.map(b => b.trim()).filter(b => b.length >= 3 && !SKIP_BRANDS.has(b.toLowerCase())))]
     .sort((a, b) => b.length - a.length); // «Aqua Protect» раніше за можливе «Aqua»
   const out = [...paras];
@@ -107,7 +126,7 @@ export function linkBrandsInSection(paras: string[], brands: string[]): string[]
     // Межі слова для кирилиці: \b у JS працює лише з латиницею
     const re = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(brand)}(?![\\p{L}\\p{N}])`, 'iu');
     for (let i = 0; i < out.length; i++) {
-      const replaced = replaceOutsideLinks(out[i], re, m => `[${m}](/shop/brand/${brandSlug(brand)})`);
+      const replaced = replaceOutsideLinks(out[i], re, m => `[${m}](${hrefFor(brand)})`);
       if (replaced !== null) { out[i] = replaced; break; }
     }
   }
@@ -144,7 +163,8 @@ export function buildLinkCtx(products: LinkProduct[], familySlugs: string[] = []
   }
   // Довші назви першими: «Aqua Protect» раніше за «Aqua»
   const brands = [...byBrand.keys()].sort((a, b) => b.length - a.length);
-  return { bySku: new Map(products.map(p => [p.sku, p])), byBrand, brands, family: new Set(familySlugs) };
+  // familySlugs[0] — сама категорія гайда (categoryFamilySlugs кладе її першою)
+  return { bySku: new Map(products.map(p => [p.sku, p])), byBrand, brands, family: new Set(familySlugs), guideSlug: familySlugs[0] ?? null };
 }
 
 /** Гайд із живими посиланнями: товари — на канонічні адреси (або текстом), бренди — автоматично. */
@@ -155,7 +175,7 @@ export function resolveGuideLinks(meta: CategoryMeta, products: LinkProduct[], f
     ...meta.guide,
     sections: meta.guide.sections.map(sec => ({
       ...sec,
-      p: linkBrandsInSection(sec.p.map(t => resolveProductLinks(t, ctx)), ctx.brands),
+      p: linkBrandsInSection(sec.p.map(t => resolveProductLinks(t, ctx)), ctx.brands, b => brandHref(b, ctx)),
     })),
   };
   return { ...meta, guide };

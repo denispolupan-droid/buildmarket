@@ -306,6 +306,16 @@ export default function ShopClient({ products: shippedProducts, categories, revi
     if (q) setSearch(q);
   }, [initialSearch]);
 
+  // ?brand= на сторінці категорії — фільтр «Бренд» уже ввімкнений: так ведуть
+  // посилання на бренд із гайда («Lacrysil» у гайді пін → піни Lacrysil, а не всі
+  // товари бренду). Як і ?q=, читаємо на клієнті: сторінка категорії — ISR, а
+  // канонічна адреса лишається без параметра, нових сторінок в індексі не з'являється.
+  useEffect(() => {
+    if (initialBrand) return;
+    const b = new URLSearchParams(window.location.search).get('brand')?.trim();
+    if (b) setFilterValues(prev => ({ ...prev, 'Бренд': [b] }));
+  }, [initialBrand]);
+
 // Дані обраної категорії для фірмового заголовка, хлібних крихт і блоку
   // «Про категорію». Рахуються з selCat і на сервері при першому рендері
   // (SSR: заголовок, опис і FAQ потрапляють у HTML — SEO як раніше), і на

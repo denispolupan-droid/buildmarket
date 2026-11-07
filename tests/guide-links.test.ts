@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveProductLinks, linkBrandsInSection, resolveGuideLinks, buildLinkCtx } from '../lib/seo/guide-links';
+import { resolveProductLinks, linkBrandsInSection, resolveGuideLinks, buildLinkCtx, brandHref } from '../lib/seo/guide-links';
 
 const products = [
   { sku: '1005-025', slug: 'shov-sylikonovyi-ceresit-cs-25', brand: 'Ceresit', name: 'Шов силіконовий Ceresit CS 25, білий, 280 мл', category_slug: 'sylikonovi', inStock: true },
@@ -23,7 +23,8 @@ describe('resolveProductLinks — посилання на товар за арт
   });
   it('знято з продажу — інший варіант моделі; немає моделі — сторінка бренду; немає бренду — текст', () => {
     expect(resolveProductLinks('[Ceresit CS 25](/product/1005-099)', ctx)).toBe('[Ceresit CS 25](/product/shov-sylikonovyi-ceresit-cs-25)');
-    expect(resolveProductLinks('[Ceresit CS 24](/product/1005-009)', ctx)).toBe('[Ceresit CS 24](/shop/brand/ceresit)');
+    // Моделі немає — до товарів бренду цієї групи (гайд силіконових → силіконові Ceresit)
+    expect(resolveProductLinks('[Ceresit CS 24](/product/1005-009)', ctx)).toBe('[Ceresit CS 24](/shop/sylikonovi?brand=Ceresit)');
     expect(resolveProductLinks('Або [Soudal Genius](/product/9999-001) — дорожче.', ctx)).toBe('Або Soudal Genius — дорожче.');
   });
   it('закінчився і інших варіантів у наявності немає — лишається він сам', () => {
@@ -57,6 +58,26 @@ describe('linkBrandsInSection — перше згадування бренду',
   });
   it('довша назва бренду має пріоритет', () => {
     expect(linkBrandsInSection(['Просочення Aqua Protect'], [...brands, 'Aqua'])[0]).toBe('Просочення [Aqua Protect](/shop/brand/aqua-protect)');
+  });
+});
+
+describe('brandHref — бренд із гайда веде до товарів бренду цієї групи', () => {
+  const many = Array.from({ length: 5 }, (_, i) => ({ sku: `P-${i}`, brand: 'Pattex', name: `Клей Pattex ${i}`, category_slug: 'montazhnyi-klei', inStock: true }));
+  const pina = [{ sku: 'L-1', brand: 'Lacrysil', name: 'Піна Lacrysil', category_slug: 'pina-klei', inStock: true }];
+  const eskaro = [{ sku: 'E-1', brand: 'Eskaro', name: 'Ґрунт Eskaro', category_slug: 'gruntivky', inStock: true }];
+  it('5+ товарів бренду в самій категорії — сторінка «категорія + бренд»', () => {
+    expect(brandHref('Pattex', buildLinkCtx(many, ['montazhnyi-klei']))).toBe('/shop/montazhnyi-klei/pattex');
+  });
+  it('товари бренду в підкатегоріях — категорія з фільтром ?brand=', () => {
+    expect(brandHref('Lacrysil', buildLinkCtx(pina, ['montazhna-pina', 'pina-klei']))).toBe('/shop/montazhna-pina?brand=Lacrysil');
+  });
+  it('бренд не з цієї групи — загальна сторінка бренду', () => {
+    expect(brandHref('Eskaro', buildLinkCtx(eskaro, ['antygrybok']))).toBe('/shop/brand/eskaro');
+  });
+  it('у гайді: перше згадування бренду веде у фільтр групи', () => {
+    const meta = { description: 'd', guide: { title: 't', sections: [{ h: 'A', p: ['Число в назві Lacrysil 30/60 — вихід піни.'] }] } };
+    expect(resolveGuideLinks(meta, pina, ['montazhna-pina', 'pina-klei']).guide!.sections[0].p[0])
+      .toBe('Число в назві [Lacrysil](/shop/montazhna-pina?brand=Lacrysil) 30/60 — вихід піни.');
   });
 });
 
