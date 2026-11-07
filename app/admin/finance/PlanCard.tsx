@@ -55,6 +55,10 @@ export default function PlanCard({ plan, sales: sales0 }: {
   const needDay  = daysLeft > 0 ? Math.round(left / daysLeft) : left;
   const nowDay   = plan.daysPassed > 0 ? Math.round(sales / plan.daysPassed) : 0;
   const paceOk   = plan.value ? nowDay >= needDay : null;
+  // «Сьогодні за планом» — скільки мало б бути продано на сьогодні при рівномірному виконанні
+  const dueToday = plan.value ? Math.round(plan.value * plan.daysPassed / plan.daysInMonth) : 0;
+  const paceTitle = `Рівномірний план: ${fmt(plan.value ?? 0)} ₴ ÷ ${plan.daysInMonth} дн. × ${plan.daysPassed} дн. минуло = ${fmt(dueToday)} ₴. `
+    + (sales >= dueToday ? `Продано більше — випереджаємо на ${fmt(sales - dueToday)} ₴` : `Продано менше — відстаємо на ${fmt(dueToday - sales)} ₴`);
 
   return (
     <div className="fin-card" style={{ marginTop: '6px' }}>
@@ -103,11 +107,15 @@ export default function PlanCard({ plan, sales: sales0 }: {
               <div title={`Виручка (вручено): ${fmt(plan.fact)} ₴`} style={{ width: `${pctOf(plan.fact)}%`, background: 'var(--brand-blue)' }} />
               <div title={`Ще в роботі й у дорозі: ${fmt(inFlight)} ₴`} style={{ width: `${pctOf(inFlight)}%`, background: 'var(--brand-blue)', opacity: 0.35 }} />
               {[25, 50, 75].map(t => <span key={t} className="fin-plan-tick" style={{ left: `${t}%` }} />)}
-              <span className="fin-plan-pace" style={{ left: `${timePct}%` }} title={`Минуло ${plan.daysPassed} з ${plan.daysInMonth} днів — тут має бути темп`} />
+              <span className="fin-plan-pace" style={{ left: `${timePct}%` }} title={paceTitle} />
             </div>
             <div className="fin-plan-axis">
-              {[0, 25, 50, 75, 100].map(t => <span key={t} style={{ left: `${t}%` }}>{t === 0 ? '0' : `${t}%`}</span>)}
-              <b className="fin-plan-pace-label" style={{ left: `${timePct}%`, color: paceOk ? 'var(--color-success)' : 'var(--color-danger)' }}>▲ темп</b>
+              {/* підписи віх, що потрапили під позначку «сьогодні», ховаємо — не налазять */}
+              {[0, 25, 50, 75, 100].filter(t => Math.abs(t - timePct) > 14 || t === 0).map(t => <span key={t} style={{ left: `${t}%` }}>{t === 0 ? '0' : `${t}%`}</span>)}
+              <b className="fin-plan-pace-label" title={paceTitle}
+                style={{ left: `${timePct}%`, transform: timePct > 75 ? 'translateX(-100%)' : timePct < 12 ? 'none' : undefined, color: paceOk ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                ▲ сьогодні за планом: {fmt(dueToday)} ₴
+              </b>
             </div>
           </div>
           <div className="fin-plan-stats">

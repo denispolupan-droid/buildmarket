@@ -413,7 +413,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       abc:        abcClass.get(sku) ?? 'C',
     }))
     .sort((a, b) => b.margin - a.margin)
-    .slice(0, 15);   // 15 — заповнює висоту поруч із «По каналах» і «Клієнти» (07.11.2026)
+    .slice(0, 12);   // 12 — по висоті поруч із «По каналах» і «Клієнти»; колонки вирівняні по низу (07.11.2026)
 
   // ── По каналах ────────────────────────────────────────────────────────────
 
@@ -698,7 +698,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             )}
           </div>
 
-          <div className="fin-card">
+          <div className="fin-card" style={{ flex: 1 }}>{/* тягнеться до низу — колонки рівні */}
             <div className="fin-card-title">Клієнти <span className="fin-card-sub">· нові vs повторні: замовлень, виручка, валовий прибуток · доставлені за {curMonthLabel}</span></div>
             <table className="fin-table">
               <tbody>
