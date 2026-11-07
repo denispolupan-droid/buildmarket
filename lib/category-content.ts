@@ -3,6 +3,7 @@ import type { CategoryMeta, CategoryFaq, CategoryGuide, CategoryRelated } from '
 import type { Category, ProductStockPublic } from '../types';
 import { categoryFamilySlugs, retailPrice } from './seo/meta';
 import { resolveGuidePrices } from './seo/guide-prices';
+import { resolveGuideLinks } from './seo/guide-links';
 import { createServiceClient } from './supabase-service';
 
 /**
@@ -141,11 +142,12 @@ export async function saveCategoryContent(
 export async function resolveCategoryMeta(
   slug: string,
   lang: 'uk' | 'ru',
-  products: { sku: string; category_slug: string | null; stock: ProductStockPublic | null }[],
+  products: { sku: string; category_slug: string | null; stock: ProductStockPublic | null; slug?: string | null; brand?: string | null }[],
   categories: Pick<Category, 'slug' | 'parent_slug'>[],
 ): Promise<CategoryMeta | null> {
   const meta = await getCategoryMeta(slug, lang);
   if (!meta) return null;
   const priced = products.map(p => ({ sku: p.sku, category_slug: p.category_slug, price: retailPrice(p) }));
-  return resolveGuidePrices(meta, priced, categoryFamilySlugs(categories, slug)).meta;
+  // Посилання на товари (за артикулом) і бренди в гайді — див. lib/seo/guide-links
+  return resolveGuideLinks(resolveGuidePrices(meta, priced, categoryFamilySlugs(categories, slug)).meta, products);
 }
