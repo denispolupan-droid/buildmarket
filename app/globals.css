@@ -2840,7 +2840,7 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
 .fin-thin-why { color: var(--text-muted); }
 .fin-thin-date { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* Дві картки факту («Виручка» | «Прибуток») на «Огляді» й «Аналітиці» */
-.fin-fact-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
+.fin-fact-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }   /* обидві картки однієї висоти */
 
 /* «Від замовлень до обліку»: блок згорнутий до підсумкових рядків, розрахунок — по кліку */
 .fin-bridge-sum { list-style: none; cursor: pointer; }
