@@ -11,6 +11,7 @@ import { loadProfitBridge } from '../../../../lib/accounting/profit-bridge';
 import { resolvePeriod } from '../overview-data';
 import ProfitBridgeCard from '../ProfitBridgeCard';
 import StatCard from '../StatCard';
+import { attributeOwnSales } from '../../../../lib/accounting/stock-supplier';
 
 const db = createServiceClient();
 
@@ -261,8 +262,23 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   // ── Збиткові / тонкі угоди (факт, доставлені за період): чистий прибуток < 0
   // або < 5% від виручки — ловить бонуси-подарунки, помилки прайсу, важкі комісії.
   const THIN_PCT = 5;
+  // Причина одним рядком — що «з'їло» прибуток: собівартість чи збори (у % від виручки);
+  // повна розкладка сумами — у підказці рядка
+  const thinWhy = (r: OrderRow) => {
+    const e = estimates.get(r.id);
+    if (!e) return { reason: '', title: '' };
+    const fees = e.fee + e.dealExtra + e.paymentFee;
+    const pctOf = (v: number) => Math.round(v / e.revenue * 100);
+    const reason = e.revenue <= 0 ? 'продажу немає (досилка / повернення)'
+      : e.cogs >= e.revenue ? `собівартість ${pctOf(e.cogs)}% ціни`
+      : `собів. ${pctOf(e.cogs)}% · збори ${pctOf(fees)}%`;
+    const title = `виручка ${fmt(e.revenue)} ₴ − собівартість ${fmt(e.cogs)} ₴ − комісія площадки ${fmt(e.fee)} ₴`
+      + (e.dealExtra ? ` − НП/еквайринг ${fmt(e.dealExtra)} ₴` : '') + (e.paymentFee ? ` − комісія за оплату ${fmt(e.paymentFee)} ₴` : '')
+      + ` = ${fmt(e.gross)} ₴`;
+    return { reason, title };
+  };
   const thinDeals = deliveredMonthRows
-    .map(r => ({ ...r, pct: r.revenue > 0 ? Math.round((r.margin / r.revenue) * 1000) / 10 : 0 }))
+    .map(r => ({ ...r, ...thinWhy(r), date: `${r.created_at.slice(8, 10)}.${r.created_at.slice(5, 7)}`, pct: r.revenue > 0 ? Math.round((r.margin / r.revenue) * 1000) / 10 : 0 }))
     .filter(r => r.margin < 0 || r.pct < THIN_PCT)
     .sort((a, b) => a.margin - b.margin)
     .slice(0, 10);
@@ -320,15 +336,39 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       })
       .map(d => d.id as string),
   );
-  const supplierStats: Record<string, { revenue: number; margin: number; qty: number }> = {};
+  // Продане з НАШОГО складу (supplier_id = null у рядку РН) — постачальник за
+  // партіями FIFO (stock_batches): інакше «Ринок» і складський товар ЗРХ падали в «Наш склад».
+  const docDate = new Map((accDocs ?? []).map(d => [d.id as string, String(d.doc_date ?? '')]));
+  const ownLines = accLines.filter(l => l.supplier_id == null);
+  const { data: batchRows } = ownLines.length
+    ? await db.from('stock_batches').select('sku, supplier_id, initial_qty, received_at').in('sku', [...new Set(ownLines.map(l => l.sku as string))]).limit(2000)
+    : { data: [] };
+  const ownShares = attributeOwnSales(
+    (batchRows ?? []).map(b => ({ sku: b.sku as string, supplierId: b.supplier_id as number | null, qty: Number(b.initial_qty), receivedAt: String(b.received_at) })),
+    ownLines.map((l, i) => ({ key: `${l.document_id}:${l.sku}:${i}`, sku: l.sku as string, qty: Number(l.qty ?? 0), date: docDate.get(l.document_id) ?? '' })),
+  );
+  const ownKeyOf = new Map(ownLines.map((l, i) => [l, `${l.document_id}:${l.sku}:${i}`]));
+
+  const supplierStats: Record<string, { revenue: number; margin: number; qty: number; stockQty: number }> = {};
+  const addSupplier = (key: string, rev: number, margin: number, qty: number, fromStock: boolean) => {
+    if (!supplierStats[key]) supplierStats[key] = { revenue: 0, margin: 0, qty: 0, stockQty: 0 };
+    supplierStats[key].revenue += rev;
+    supplierStats[key].margin  += margin;
+    supplierStats[key].qty     += qty;
+    if (fromStock) supplierStats[key].stockQty += qty;
+  };
   for (const l of accLines) {
     if (!periodDocIds.has(l.document_id)) continue;
-    const key = l.supplier_id != null ? String(l.supplier_id) : 'own';
-    if (!supplierStats[key]) supplierStats[key] = { revenue: 0, margin: 0, qty: 0 };
-    const rev = Number(l.price ?? 0) * Number(l.qty ?? 0);
-    supplierStats[key].revenue += rev;
-    supplierStats[key].margin  += rev - Number(l.cost_price ?? 0) * Number(l.qty ?? 0);
-    supplierStats[key].qty     += Number(l.qty ?? 0);
+    const qty = Number(l.qty ?? 0);
+    const rev = Number(l.price ?? 0) * qty;
+    const margin = rev - Number(l.cost_price ?? 0) * qty;
+    if (l.supplier_id != null) { addSupplier(String(l.supplier_id), rev, margin, qty, false); continue; }
+    // складський рядок: ділимо пропорційно кількості по партіях різних постачальників
+    const shares = ownShares.get(ownKeyOf.get(l) ?? '') ?? [{ supplierId: null, qty }];
+    for (const s of shares) {
+      const k = qty > 0 ? s.qty / qty : 0;
+      addSupplier(s.supplierId != null ? String(s.supplierId) : 'own', rev * k, margin * k, s.qty, true);
+    }
   }
   const supplierIds = Object.keys(supplierStats).filter(k => k !== 'own').map(Number);
   const { data: supplierNames } = supplierIds.length > 0
@@ -543,14 +583,18 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               <div key={ci}>
                 {ci === 0 || col.length ? (
                   <div className="fin-thin-row fin-thin-head">
-                    <span /><span>Замовлення</span><span>Канал</span><span className="num">Виручка</span><span className="num">Прибуток</span><span className="num">%</span>
+                    <span /><span>Замовлення</span><span>Дата</span><span>Канал · причина</span><span className="num">Виручка</span><span className="num">Прибуток</span><span className="num">%</span>
                   </div>
                 ) : null}
                 {col.map(d => (
-                  <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-thin-row">
+                  <Link key={d.id} href={`/admin?expand=${d.id}`} className="fin-thin-row" title={d.title}>
                     <span className={`fin-dot ${d.margin < 0 ? 'red' : 'orange'}`} />
                     <span className="fin-thin-num">#{d.order_number}</span>
-                    <span className="fin-thin-ch">{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
+                    <span className="fin-thin-date">{d.date}</span>
+                    <span className="fin-thin-ch">
+                      {CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}
+                      {d.reason && <span className="fin-thin-why"> · {d.reason}</span>}
+                    </span>
                     <span className="num">{fmt(d.revenue)} ₴</span>
                     <span className="num" style={{ fontWeight: 700, color: d.margin < 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>{d.margin < 0 ? '−' : '+'}{fmt(Math.abs(d.margin))} ₴</span>
                     <span className="num" style={{ color: d.margin < 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>{d.pct < 0 ? '−' : ''}{Math.abs(d.pct)}%</span>
@@ -708,55 +752,50 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      {/* Прибуток по брендах і постачальниках — факт (доставлені за період) */}
+      {/* Прибуток по брендах і постачальниках — факт (доставлені за період). Кожна
+          цифра у своїй колонці (шт / виручка / прибуток / %), як у «тонких угодах» */}
       <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div className="fin-card">
-          <div className="fin-card-title">Валовий прибуток по брендах <span className="fin-card-sub">· шт, виручка, прибуток після комісій і % від виручки · доставлені за {curMonthLabel}</span></div>
-          {brands.length === 0 ? (
-            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
-          ) : (
-            <table className="fin-table">
-              <tbody>
-                {brands.map(([brand, s]) => {
-                  const pctB = s.revenue > 0 ? Math.round((s.margin / s.revenue) * 100) : 0;
-                  return (
-                    <tr key={brand}>
-                      <td className="name">{brand}</td>
-                      <td className="num muted" style={{ fontWeight: 500 }}>{s.qty} шт · {fmt(s.revenue)} ₴</td>
-                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                        {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctB}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        <div className="fin-card">
-          <div className="fin-card-title">Валовий прибуток по постачальниках <span className="fin-card-sub">· шт, виручка, прибуток ДО комісій і % від виручки · доставлені за {curMonthLabel}</span></div>
-          {suppliers.length === 0 ? (
-            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
-          ) : (
-            <table className="fin-table">
-              <tbody>
-                {suppliers.map(s => {
-                  const pctS = s.revenue > 0 ? Math.round((s.margin / s.revenue) * 100) : 0;
-                  return (
-                    <tr key={s.key}>
-                      <td className="name">{s.name}</td>
-                      <td className="num muted" style={{ fontWeight: 500 }}>{s.qty} шт · {fmt(s.revenue)} ₴</td>
-                      <td className="num" style={{ width: '110px', color: s.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                        {s.margin >= 0 ? '+' : ''}{fmt(s.margin)} ₴ · {pctS}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        {[
+          {
+            title: 'Валовий прибуток по брендах', sub: `· прибуток після комісій · доставлені за ${curMonthLabel}`,
+            rows: brands.map(([brand, s]) => ({ key: brand, name: brand, note: '', ...s })),
+          },
+          {
+            title: 'Валовий прибуток по постачальниках', sub: `· прибуток ДО комісій · доставлені за ${curMonthLabel}; товар зі складу — за партіями FIFO`,
+            rows: suppliers.map(s => ({ ...s, note: s.stockQty > 0 && s.key !== 'own' ? `зі складу ${Math.round(s.stockQty * 100) / 100} шт` : '' })),
+          },
+        ].map(card => (
+          <div key={card.title} className="fin-card">
+            <div className="fin-card-title">{card.title} <span className="fin-card-sub">{card.sub}</span></div>
+            {card.rows.length === 0 ? (
+              <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Немає даних</div>
+            ) : (
+              <table className="fin-table fin-month-table">
+                <thead>
+                  <tr><th /><th className="num">Шт</th><th className="num">Виручка</th><th className="num">Прибуток</th><th className="num">%</th></tr>
+                </thead>
+                <tbody>
+                  {card.rows.map(r => {
+                    const pct = r.revenue > 0 ? Math.round((r.margin / r.revenue) * 100) : 0;
+                    const color = r.margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)';
+                    return (
+                      <tr key={r.key}>
+                        <td className="name">
+                          {r.name}
+                          {r.note && <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>{r.note}</span>}
+                        </td>
+                        <td className="num muted" style={{ width: '56px' }}>{fmt(r.qty)}</td>
+                        <td className="num" style={{ width: '96px' }}>{fmt(r.revenue)} ₴</td>
+                        <td className="num" style={{ width: '96px', color }}>{r.margin >= 0 ? '+' : '−'}{fmt(Math.abs(r.margin))} ₴</td>
+                        <td className="num" style={{ width: '48px', color }}>{pct}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
