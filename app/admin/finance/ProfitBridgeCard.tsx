@@ -1,15 +1,33 @@
 import type React from 'react';
+import { Info } from 'lucide-react';
 import type { ProfitBridge, BridgeLine } from '../../../lib/accounting/profit-bridge-rules';
 import { fmtInt, fmtMoney } from '../../../lib/format';
+import { TrendBadge } from './overview-charts';
 
 /**
- * «Від замовлень до обліку» — той самий блок на «Огляді» й «Аналітиці»
- * (lib/accounting/profit-bridge): виручка й прибуток по замовленнях періоду
- * розкладені по рядках до факту обліку; кожен рядок розгортається в
- * розшифровку (замовлення або види зборів із сумами). Рядок «нерозкладено»
- * з'являється лише якщо сума рядків не зійшлась — це баг, а не нюанс.
+ * Дві картки ФАКТУ обліку — «Виручка» і «Прибуток» — на «Огляді» й «Аналітиці»
+ * (рішення власника 07.11.2026: замість 4 KPI-карток + окремого блоку, які
+ * дублювали одне одного). Усі цифри — з ОДНОГО читання леджера
+ * (lib/accounting/profit-bridge): виручка, валовий і чистий не можуть розійтися
+ * (07.11 картки й блок прочитали облік у різні моменти — різниця 1 210 ₴).
+ *
+ * Виручка: шлях від суми замовлень періоду до проведеної виручки (кожен рядок
+ * розгортається до замовлень). Прибуток: валовий і чистий, маржа, прогноз по
+ * замовленнях у дорозі; «показати розрахунок» — склад валового (з вручених
+ * замовлень − збори по скасованих − витрати без замовлення …) і далі до чистого.
+ * Рядок «нерозкладено» з'являється лише якщо сума рядків не зійшлась — це баг.
  */
 export type BridgeWithNet = ProfitBridge & { opex: number; opexBy?: Record<string, number>; taxes: number; net: number };
+
+export type FactExtras = {
+  revenuePrev?: number | null;
+  grossPrev?: number | null;
+  netPrev?: number | null;
+  orders?: number;
+  avgCheck?: number | null;
+  /** прогноз валового по замовленнях у роботі й у дорозі */
+  forecastProfit?: number;
+};
 
 const OPEX_UA: Record<string, string> = {
   logistics: 'логістика (закупівлі, компенсації НП)', loading: 'вантажні роботи', customs: 'митниця', packaging: 'пакування',
@@ -20,6 +38,7 @@ const OPEX_UA: Record<string, string> = {
 const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmtInt(Math.abs(n))} ₴`;
 const signedExact = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmtMoney(Math.abs(n))} ₴`;
 const colorOf = (n: number) => (n < 0 ? '#C2410C' : 'var(--color-success)');
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '7px 0', borderBottom: '1px solid var(--border-light, var(--border))', fontSize: '13px' };
 const numStyle: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: 600 };
@@ -53,92 +72,96 @@ function Line({ l }: { l: BridgeLine }) {
   );
 }
 
-type CompactRow = { label: string; value: number; color?: string };
-
-/**
- * Згорнутий вигляд (за замовчуванням, рішення власника 07.11.2026): лише підсумкові
- * рядки (жирні). «Показати розрахунок» розгортає всі проміжні рядки з розшифровками.
- */
-function Block({ title, startLabel, b, factLabel, tail, compact }: {
-  title: string; startLabel: string; b: ProfitBridge['revenue']; factLabel: string; tail?: React.ReactNode; compact: CompactRow[];
-}) {
+function Plain({ label, value, bold, color, muted }: { label: React.ReactNode; value: string; bold?: boolean; color?: string; muted?: boolean }) {
   return (
-    <details className="fin-bridge-block" style={{ minWidth: 0 }}>
-      <summary className="fin-bridge-sum">
-        <div className="fin-card-title" style={{ fontSize: '13px' }}>{title}</div>
-        <div className="fin-bridge-compact">
-          {compact.map((r, i) => (
-            <div key={r.label} style={{ ...rowStyle, fontWeight: 700, borderBottom: i === compact.length - 1 ? 'none' : rowStyle.borderBottom }}>
-              <span>{r.label}</span><span style={{ ...numStyle, fontWeight: 800, color: r.color }}>{fmtInt(r.value)} ₴</span>
-            </div>
-          ))}
-        </div>
-        <span className="fin-bridge-toggle">
-          <span className="when-closed">показати розрахунок ▾</span><span className="when-open">згорнути розрахунок ▴</span>
-        </span>
-      </summary>
-      {fullRows()}
-    </details>
+    <div style={{ ...rowStyle, fontWeight: bold ? 700 : 400 }}>
+      <span style={{ color: muted ? 'var(--text-muted)' : bold ? 'var(--text-primary)' : 'var(--text-secondary)', minWidth: 0 }}>{label}</span>
+      <span style={{ ...numStyle, fontWeight: bold ? 800 : 600, color }}>{value}</span>
+    </div>
   );
-
-  function fullRows() {
-    return (<>
-      <div style={{ ...rowStyle, fontWeight: 600 }}>
-        <span>{startLabel}</span><span style={{ ...numStyle, fontWeight: 700 }}>{fmtInt(b.start)} ₴</span>
-      </div>
-      {b.lines.map(l => <Line key={l.key} l={l} />)}
-      {Math.abs(b.unexplained) >= 0.5 && (
-        <div style={{ ...rowStyle, color: 'var(--color-danger)', fontWeight: 600 }}>
-          <span>нерозкладено (помилка звірки)</span><span style={numStyle}>{signed(b.unexplained)}</span>
-        </div>
-      )}
-      <div style={{ ...rowStyle, fontWeight: 700, borderBottom: tail ? rowStyle.borderBottom : 'none' }}>
-        <span>{factLabel}</span><span style={{ ...numStyle, fontWeight: 800 }}>{fmtInt(b.fact)} ₴</span>
-      </div>
-      {tail}
-    </>);
-  }
 }
 
-export default function ProfitBridgeCard({ bridge, periodLabel }: { bridge: BridgeWithNet; periodLabel: string }) {
-  // Чистий факт — продовження валового: ті самі проводки, мінус операційні витрати й податки
-  const netRows = (
-    <>
-      <Line l={{
-        key: 'opex', label: 'операційні витрати і компенсації', amount: Math.round(-bridge.opex * 100) / 100,
-        hint: 'Компенсації (напр. НП за пошкоджену посилку) зменшують витрати — тому сума буває зі знаком «+».',
-        details: Object.entries(bridge.opexBy ?? {}).filter(([, v]) => Math.abs(v) >= 0.01).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-          .map(([k, v]) => ({ label: OPEX_UA[k] ?? k, amount: Math.round(-v * 100) / 100 })),
-      }} />
-      <div style={rowStyle}>
-        <span style={{ color: 'var(--text-secondary)' }}>податки</span>
-        <span style={{ ...numStyle, color: colorOf(-bridge.taxes) }}>{signed(-bridge.taxes)}</span>
-      </div>
-      <div style={{ ...rowStyle, fontWeight: 700, borderBottom: 'none' }}>
-        <span>Чистий прибуток · факт обліку</span>
-        <span style={{ ...numStyle, fontWeight: 800, color: bridge.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmtInt(bridge.net)} ₴</span>
-      </div>
-    </>
-  );
+function Head({ label, hint }: { label: string; hint: string }) {
   return (
-    <div className="fin-card" style={{ marginBottom: '16px' }}>
-      <div className="fin-card-title">
-        Факт обліку · {periodLabel}
-        <span className="fin-card-sub"> · виручка, валовий і чистий прибуток з бухгалтерських проводок; «показати розрахунок» — з чого складаються, до замовлень і видів зборів</span>
+    <div className="fin-stat-head">
+      <span className="fin-stat-label">{label}</span>
+      <span className="fin-stat-tag fact">факт</span>
+      <span className="fin-stat-info" title={hint} aria-label={hint}><Info size={14} strokeWidth={2} aria-hidden /></span>
+    </div>
+  );
+}
+
+export default function ProfitBridgeCard({ bridge, periodLabel, extras = {} }: { bridge: BridgeWithNet; periodLabel: string; extras?: FactExtras }) {
+  const b = bridge;
+  const gross = b.profit.fact;
+  const net = b.net;
+  const margin = b.revenue.fact > 0 ? Math.round(gross / b.revenue.fact * 1000) / 10 : null;
+  const unexpl = (n: number) => Math.abs(n) >= 0.5 && (
+    <Plain label={<span style={{ color: 'var(--color-danger)' }}>нерозкладено (помилка звірки)</span>} value={signed(n)} color="var(--color-danger)" />
+  );
+
+  return (
+    <div className="fin-two-col fin-fact-cards">
+      {/* ── Виручка ── */}
+      <div className="fin-card fin-stat">
+        <Head label={`Виручка · ${periodLabel}`}
+          hint="Проведені продажі з обліку (продаж фіксується в день вручення). Нижче — як до неї доходить сума замовлень періоду; кожен рядок розгортається до замовлень." />
+        <div className="fin-stat-value">{fmtInt(b.revenue.fact)} ₴</div>
+        <div className="fin-stat-delta">
+          {extras.revenuePrev !== undefined && <TrendBadge cur={b.revenue.fact} prev={extras.revenuePrev ?? null} />}
+          <span className="fin-kpi-cmp">до попереднього періоду</span>
+        </div>
+        <div style={{ marginTop: '12px' }}>
+          <Plain label={`замовлення за період${extras.orders ? ` · ${fmtInt(extras.orders)}${extras.avgCheck ? ` · чек ${fmtInt(extras.avgCheck)} ₴` : ''}` : ''}`} value={`${fmtInt(b.revenue.start)} ₴`} />
+          {b.revenue.lines.map(l => <Line key={l.key} l={l} />)}
+          {unexpl(b.revenue.unexplained)}
+          <Plain label="= виручка · факт обліку" value={`${fmtInt(b.revenue.fact)} ₴`} bold />
+        </div>
       </div>
-      <div className="fin-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '6px', alignItems: 'start' }}>
-        <Block title="Виручка" startLabel="Замовлення · сума (створені за період)" b={bridge.revenue} factLabel="Виручка · факт обліку"
-          compact={[
-            { label: 'Замовлення · сума (створені за період)', value: bridge.revenue.start },
-            { label: 'Виручка · факт обліку', value: bridge.revenue.fact },
-          ]} />
-        {/* Прибуток вручених замовлень — не підсумок, а перша складова валового: далі
-            прямі витрати на продажі, які не лягли на конкретне замовлення (рішення власника 07.11.2026) */}
-        <Block title="Прибуток" startLabel="з вручених замовлень періоду (до витрат без замовлення)" b={bridge.profit} factLabel="Валовий прибуток · факт обліку" tail={netRows}
-          compact={[
-            { label: 'Валовий прибуток · факт обліку', value: bridge.profit.fact },
-            { label: 'Чистий прибуток · факт обліку', value: bridge.net, color: bridge.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' },
-          ]} />
+
+      {/* ── Прибуток ── */}
+      <div className="fin-card fin-stat">
+        <Head label={`Прибуток · ${periodLabel}`}
+          hint="Валовий — виручка мінус собівартість FIFO і всі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата, Smart). Чистий — ще мінус операційні витрати й податки. Усе з бухгалтерських проводок." />
+        <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <div className="fin-stat-value" style={{ color: gross >= 0 ? '#15803D' : '#DC2626' }}>{fmtInt(gross)} ₴</div>
+            <div className="fin-stat-delta">
+              <span className="fin-kpi-cmp">валовий</span>
+              {extras.grossPrev !== undefined && <TrendBadge cur={gross} prev={extras.grossPrev ?? null} />}
+            </div>
+          </div>
+          <div>
+            <div className="fin-stat-value" style={{ fontSize: '22px', color: net >= 0 ? '#15803D' : '#DC2626' }}>{fmtInt(net)} ₴</div>
+            <div className="fin-stat-delta">
+              <span className="fin-kpi-cmp">чистий</span>
+              {extras.netPrev !== undefined && <TrendBadge cur={net} prev={extras.netPrev ?? null} />}
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: '12px' }}>
+          <Plain label="маржа валового від виручки" value={margin === null ? '—' : `${margin}%`} />
+          {extras.forecastProfit !== undefined && (
+            <Plain label="очікується з доставок (прогноз, у факт ще не входить)" value={`+${fmtInt(extras.forecastProfit)} ₴`} muted />
+          )}
+          <details className="fin-bridge-block">
+            <summary className="fin-bridge-sum">
+              <span className="fin-bridge-toggle"><span className="when-closed">показати розрахунок ▾</span><span className="when-open">згорнути розрахунок ▴</span></span>
+            </summary>
+            <Plain label="з вручених замовлень періоду (до витрат без замовлення)" value={`${fmtInt(b.profit.start)} ₴`} />
+            {b.profit.lines.map(l => <Line key={l.key} l={l} />)}
+            {unexpl(b.profit.unexplained)}
+            <Plain label="= валовий прибуток" value={`${fmtInt(gross)} ₴`} bold />
+            <Line l={{
+              key: 'opex', label: 'операційні витрати і компенсації', amount: r2(-b.opex),
+              hint: 'Компенсації (напр. НП за пошкоджену посилку) зменшують витрати — тому сума буває зі знаком «+».',
+              details: Object.entries(b.opexBy ?? {}).filter(([, v]) => Math.abs(v) >= 0.01).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1]))
+                .map(([k, v]) => ({ label: OPEX_UA[k] ?? k, amount: r2(-v) })),
+            }} />
+            <Plain label="податки" value={signed(-b.taxes)} color={colorOf(-b.taxes)} />
+            <Plain label="= чистий прибуток" value={`${fmtInt(net)} ₴`} bold color={net >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
+          </details>
+        </div>
       </div>
     </div>
   );

@@ -200,8 +200,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const transit = stageAgg(rows.filter(r => r.status === 'shipped'));
   const inWork  = stageAgg(rows.filter(r => ['confirmed', 'awaiting_stock', 'picking', 'pending_payment'].includes(r.status)));
 
-  // Факт доставленого за місяць — з леджера (ledger.*, пораховано вище)
-  const factPct = ledger.revenue > 0 ? Math.round(ledgerGross / ledger.revenue * 100) : 0;
 
   // ── Щомісячні дані (останні 6 місяців) ────────────────────────────────────
 
@@ -485,22 +483,22 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </a>
       </div>
 
-      {/* Картки — та сама сітка StatCard, що на «Огляді»: факт обліку і знімок «зараз» (прогноз) */}
-      <div className="fin-kpi-row cols-4" style={{ marginBottom: '16px' }}>
-        <StatCard label={`Виручка · ${curMonthLabel}`} kind="fact" value={`${fmt(ledger.revenue)} ₴`}
-          cur={ledger.revenue} prev={prevLedgerRevenue > 0 ? prevLedgerRevenue : null} deltaLabel="до попереднього періоду"
-          hint="Проведені продажі з обліку: фіксуються в день вручення замовлення. Як до неї доходить сума замовлень — блок «Від замовлень до обліку» нижче."
-          rows={[
-            { label: 'сума замовлень періоду', value: `${fmt(bridge.revenue.start)} ₴` },
-            { label: 'попередній період', value: `${fmt(prevLedgerRevenue)} ₴` },
-          ]} />
-        <StatCard label="Валовий прибуток" kind="fact" value={`${fmt(ledgerGross)} ₴`} valueColor={ledgerGross >= 0 ? '#15803D' : '#DC2626'}
-          cur={ledgerGross} prev={prevPL.revenue > 0 ? prevPL.grossProfit : null} deltaLabel="до попереднього періоду"
-          hint="З бухгалтерських проводок: виручка − собівартість FIFO − комісії площадок − еквайринг − збори НП. Чистий — ще мінус операційні витрати й податки. Ті самі цифри, що на «Огляді» та у «Звітах»."
-          rows={[
-            { label: 'маржа від виручки', value: `${factPct}%` },
-            { label: 'чистий прибуток', value: `${fmt(pl.netProfit)} ₴`, color: pl.netProfit >= 0 ? '#15803D' : '#DC2626' },
-          ]} />
+      {/* Дві картки ФАКТУ — той самий компонент, що на «Огляді» (одне читання леджера:
+          чистий = валовий цього ж мосту − опер. витрати − податки) */}
+      <ProfitBridgeCard
+        bridge={{ ...bridge, opex: pl.opex.total, opexBy: pl.opex.byAccount, taxes: pl.taxes, net: Math.round((bridge.profit.fact - pl.opex.total - pl.taxes) * 100) / 100 }}
+        periodLabel={curMonthLabel}
+        extras={{
+          revenuePrev: prevLedgerRevenue > 0 ? prevLedgerRevenue : null,
+          grossPrev: prevPL.revenue > 0 ? prevPL.grossProfit : null,
+          netPrev: prevPL.revenue > 0 ? prevPL.netProfit : null,
+          orders: thisMonthRows.length,
+          avgCheck: thisMonthRows.length ? Math.round(bridge.revenue.start / thisMonthRows.length) : null,
+          forecastProfit: Math.round((inWork.margin + transit.margin) * 100) / 100,
+        }} />
+
+      {/* Прогноз «зараз» — замовлення, які ще не в обліку */}
+      <div className="fin-kpi-row cols-2" style={{ marginBottom: '16px' }}>
         <StatCard label="В роботі · прибуток" kind="forecast" value={`${fmt(inWork.margin)} ₴`} deltaLabel="зараз, незалежно від періоду"
           hint="Підтверджені, ще не відвантажені замовлення: прогноз валового прибутку (собівартість за закупівлею, комісії за ставками площадок)."
           rows={[
@@ -514,9 +512,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             { label: 'комісії площадок', value: transit.commission > 0 ? `−${fmt(transit.commission)} ₴` : '—' },
           ]} />
       </div>
-
-      {/* Факт обліку і як до нього доходять цифри по замовленнях — той самий блок, що на «Огляді» */}
-      <ProfitBridgeCard bridge={{ ...bridge, opex: pl.opex.total, opexBy: pl.opex.byAccount, taxes: pl.taxes, net: pl.netProfit }} periodLabel={curMonthLabel} />
 
       {/* Динаміка 6 місяців + комісії МП */}
       <div className="fin-grid-12" style={{ marginBottom: '16px' }}>

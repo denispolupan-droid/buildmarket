@@ -6,7 +6,6 @@ import PlanCard from './PlanCard';
 import DynamicsCarousel from './DynamicsCarousel';
 import { getOverview } from './overview-data';
 import ProfitBridgeCard from './ProfitBridgeCard';
-import StatCard from './StatCard';
 import { requireStaffPage } from '../../../lib/auth-guard';
 import { createServiceClient } from '../../../lib/supabase-service';
 import type { ComponentProps } from 'react';
@@ -20,8 +19,6 @@ const db = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 
-// YYYY-MM-DD → дд.мм для підписів періоду
-const dmy = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 
 /** Дата останнього успішного оновлення живого залишку — «12.08» або «12.08, 18:34» за сьогодні. */
 function staleLabel(iso: string): string {
@@ -86,48 +83,13 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
         </a>
       </div>
 
-      {/* KPI — рівна сітка карток (StatCard): цифра, динаміка, дві строки розшифровки.
-          Міні-графіки прибрано — помісячна динаміка є в блоці «Динаміка» нижче. */}
-      {(() => {
-        const k = ov.kpi;
-        const factMargin = k.revenue.value > 0 ? Math.round(k.profit.value / k.revenue.value * 1000) / 10 : null;
-        const prevLbl = ov.prevLabel;
-        // Різниця «сума вручених замовлень → проведена виручка» (той самий рядок, що в розрахунку факту)
-        const revDiff = ov.bridge.revenue.lines.find(l => l.key === 'diff')?.amount ?? 0;
-        return (
-          <div className="fin-kpi-row cols-4">
-            <StatCard label="Сума замовлень" value={`${fmt(k.orderSum.value)} ₴`} cur={k.orderSum.value} prev={k.orderSum.prev} deltaLabel={prevLbl}
-              hint={`Обсяг продажів: підтверджені замовлення, створені ${dmy(ov.from)}–${dmy(ov.to)} (без нових і скасованих), за цінами продажу. Це ще не виручка — вона проводиться в день вручення.`}
-              rows={[
-                { label: `замовлень · середній чек`, value: `${fmt(k.orders.value)} · ${k.avgCheck.value === null ? '—' : `${fmt(k.avgCheck.value)} ₴`}` },
-                { label: `ще в роботі й у дорозі · ${fmt(k.orderSum.openCount)}`, value: `${fmt(k.orderSum.open)} ₴` },
-              ]} />
-            <StatCard label="Виручка" kind="fact" value={`${fmt(k.revenue.value)} ₴`} cur={k.revenue.value} prev={k.revenue.prev} deltaLabel={prevLbl}
-              hint="Проведені продажі з обліку за датою вручення. Може бути меншою за суму вручених замовлень: частковий повернення, дроп за ціною партнера, безкоштовна досилка, недовкладення — по замовленнях у блоці «Факт обліку» → «показати розрахунок»."
-              rows={[
-                { label: 'вручено замовлень', value: fmt(k.orderSum.deliveredCount) },
-                { label: 'повернення, знижки, дроп', value: revDiff ? `${revDiff < 0 ? '−' : '+'}${fmt(Math.abs(revDiff))} ₴` : '—' },
-              ]} />
-            <StatCard label="Валовий прибуток" kind="fact" value={`${fmt(k.profit.value)} ₴`} valueColor={k.profit.value >= 0 ? '#15803D' : '#DC2626'} cur={k.profit.value} prev={k.profit.prev} deltaLabel={prevLbl}
-              hint="З бухгалтерських проводок: виручка − собівартість FIFO − усі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата, Smart). «Очікується» — прогноз по замовленнях у роботі й у дорозі, у факт ще не входить."
-              rows={[
-                { label: 'маржа від виручки', value: factMargin === null ? '—' : `${factMargin}%` },
-                { label: 'очікується з доставок (прогноз)', value: `+${fmt(k.profitEst.forecast)} ₴`, color: 'var(--text-muted)' },
-              ]} />
-            <StatCard label="Чистий прибуток" kind="fact" value={`${fmt(k.netProfit.value)} ₴`} valueColor={k.netProfit.value >= 0 ? '#15803D' : '#DC2626'} cur={k.netProfit.value} prev={k.netProfit.prev} deltaLabel={prevLbl}
-              hint="Валовий прибуток мінус операційні витрати (оренда, зарплата, реклама, пакування; компенсації їх зменшують) і податки."
-              rows={[
-                { label: 'операційні витрати', value: `${k.netProfit.opex > 0 ? '−' : '+'}${fmt(Math.abs(k.netProfit.opex))} ₴` },
-                { label: 'податки', value: `${k.netProfit.taxes > 0 ? '−' : ''}${fmt(k.netProfit.taxes)} ₴` },
-              ]} />
-          </div>
-        );
-      })()}
-
-      {/* Факт обліку і як до нього доходять цифри по замовленнях — той самий блок, що в «Аналітиці» */}
-      <div style={{ marginTop: '16px' }}>
-        <ProfitBridgeCard bridge={ov.bridge} periodLabel={ov.periodLabel} />
-      </div>
+      {/* Дві картки ФАКТУ обліку (рішення власника 07.11.2026): «Виручка» — шлях від суми
+          замовлень, «Прибуток» — валовий і чистий, розрахунок по кліку. Усе з одного читання
+          леджера; прогноз — лише рядком «очікується з доставок». Той самий компонент — в «Аналітиці». */}
+      <ProfitBridgeCard bridge={ov.bridge} periodLabel={ov.periodLabel} extras={{
+        revenuePrev: ov.kpi.revenue.prev, grossPrev: ov.kpi.profit.prev, netPrev: ov.kpi.netProfit.prev,
+        orders: ov.kpi.orders.value, avgCheck: ov.kpi.avgCheck.value, forecastProfit: ov.kpi.profitEst.forecast,
+      }} />
 
       {/* Стадії зараз · Динаміка */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>

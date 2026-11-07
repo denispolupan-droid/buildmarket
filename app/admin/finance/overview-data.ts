@@ -774,6 +774,8 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     },
     channels,
     plan, dynamics,
-    bridge: { ...bridge, opex: curPL.opex.total, opexBy: curPL.opex.byAccount, taxes: curPL.taxes, net: curPL.netProfit },
+    // Чистий — від валового ТОГО САМОГО читання (мосту), а не з окремого запиту: інакше
+    // на одному екрані валовий і чистий могли розійтися (07.11.2026, різниця 1 210 ₴)
+    bridge: { ...bridge, opex: curPL.opex.total, opexBy: curPL.opex.byAccount, taxes: curPL.taxes, net: Math.round((bridge.profit.fact - curPL.opex.total - curPL.taxes) * 100) / 100 },
   };
 }

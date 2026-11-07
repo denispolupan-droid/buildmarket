@@ -2751,6 +2751,7 @@ input, select { font-family: inherit; }
 /* Не в кожному розділі рівно п'ять показників — «Закупівля» має 4 і 3. */
 .fin-kpi-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
 .fin-kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.fin-kpi-row.cols-2 { grid-template-columns: repeat(2, 1fr); }
 .fin-kpi { position: relative; padding: 18px 20px; }
 /* Щільний варіант («Закупівля», 04.11): менші відступи й цифра; висота в ряду
    однакова (рішення власника — рівні картки, а не «кожна по вмісту»). */
@@ -2838,6 +2839,9 @@ a.fin-thin-row:hover { background: var(--bg-soft); }
 .fin-thin-ch { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .fin-thin-why { color: var(--text-muted); }
 .fin-thin-date { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* Дві картки факту («Виручка» | «Прибуток») на «Огляді» й «Аналітиці» */
+.fin-fact-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
+
 /* «Від замовлень до обліку»: блок згорнутий до підсумкових рядків, розрахунок — по кліку */
 .fin-bridge-sum { list-style: none; cursor: pointer; }
 .fin-bridge-sum::-webkit-details-marker { display: none; }
