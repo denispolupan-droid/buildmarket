@@ -52,15 +52,20 @@ async function _GET(req: NextRequest) {
   }
 
   // Факти з леджера по всіх замовленнях вибірки (усі рахунки «угоди» з profit-rules)
+  // .in() — порціями по 200: id ідуть в URL, і на ~400+ UUID PostgREST відповідає
+  // «Bad Request» (так 07.11.2026 впала «Аналітика»; «Рік» тут — уже понад 400 замовлень).
   const ids = orders.map(o => o.id);
+  const ID_CHUNK = 200;
+  const idChunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += ID_CHUNK) idChunks.push(ids.slice(i, i + ID_CHUNK));
   type Entry = { order_id: string; account_type: string; amount: number; doc_type: string | null };
-  const entries = await (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
+  const entries = (await Promise.all(idChunks.map(c => /* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((f, t) => db
     .from('money_entries')
     .select('order_id, account_type, amount, doc_type')
-    .in('order_id', ids)
+    .in('order_id', c)
     .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'acquiring_fee', 'logistics'])
     .order('id')
-    .range(f, t)) as unknown as Promise<(Entry)[]>);
+    .range(f, t)) as unknown as Promise<(Entry)[]>))).flat();
 
   const entriesByOrder = new Map<string, Entry[]>();
   for (const e of entries) {

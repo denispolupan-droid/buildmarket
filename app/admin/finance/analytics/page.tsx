@@ -136,12 +136,18 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   // категорії для Rozetka замість порогів, і прогноз розходився з «Оглядом».
   const estimates = await loadProfitEstimates(db, orders, { lines: linesByOrder });
 
-  // Рядки підтверджених РН — для собівартості по SKU в таблиці топ-товарів
+  // Рядки підтверджених РН — для собівартості по SKU в таблиці топ-товарів.
+  // .in() — порціями: id РН за 6 місяців ідуть в URL запиту, і 07.11.2026 на 651 РН
+  // (~24 КБ) PostgREST відповів «Bad Request» → 500 усієї сторінки.
   const accDocIds = accDocs.map(d => d.id as string);
+  const DOC_CHUNK = 200;
+  const accDocChunks: string[][] = [];
+  for (let i = 0; i < accDocIds.length; i += DOC_CHUNK) accDocChunks.push(accDocIds.slice(i, i + DOC_CHUNK));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
-  const accLines: any[] = accDocIds.length > 0
-    ? await fetchAllRows<any>((f, t) => db.from('acc_document_lines').select('sku, qty, price, cost_price, supplier_id, document_id').in('document_id', accDocIds).order('id').range(f, t))
-    : [];
+  const accLines: any[] = (await Promise.all(accDocChunks.map(c =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped supabase client
+    fetchAllRows<any>((f, t) => db.from('acc_document_lines').select('sku, qty, price, cost_price, supplier_id, document_id').in('document_id', c).order('id').range(f, t)),
+  ))).flat();
 
   // Зважена середня собівартість за SKU з FIFO-даних РН
   const skuCostAgg: Record<string, { totalCost: number; totalQty: number }> = {};
