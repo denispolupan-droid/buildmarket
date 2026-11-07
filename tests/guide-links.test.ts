@@ -1,25 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { resolveProductLinks, linkBrandsInSection, resolveGuideLinks } from '../lib/seo/guide-links';
+import { resolveProductLinks, linkBrandsInSection, resolveGuideLinks, buildLinkCtx } from '../lib/seo/guide-links';
 
 const products = [
-  { sku: '1005-025', slug: 'shov-sylikonovyi-ceresit-cs-25', brand: 'Ceresit' },
-  { sku: '1804-002', slug: null, brand: 'Lacrysil' },
-  { sku: '1000-008', slug: 'pattex-hightack', brand: 'Pattex' },
+  { sku: '1005-025', slug: 'shov-sylikonovyi-ceresit-cs-25', brand: 'Ceresit', name: 'Шов силіконовий Ceresit CS 25, білий, 280 мл', category_slug: 'sylikonovi', inStock: true },
+  { sku: '1005-026', slug: 'cs-25-siryi', brand: 'Ceresit', name: 'Шов силіконовий Ceresit CS 25, сірий, 280 мл', category_slug: 'sylikonovi', inStock: true },
+  { sku: '1804-002', slug: null, brand: 'Lacrysil', name: 'Піна Lacrysil побутова 320 мл', category_slug: 'pina', inStock: true },
+  { sku: '1000-008', slug: 'pattex-hightack', brand: 'Pattex', name: 'Клей-герметик Pattex HighTack, 440 г', category_slug: 'ms', inStock: true },
+  { sku: '1802-002', slug: 'lacrysil-60-800', brand: 'Lacrysil', name: "Піна-клей Lacrysil побутова '60 секунд' 800 мл", category_slug: 'pina-klei', inStock: false },
+  { sku: '1802-003', slug: 'lacrysil-60-320', brand: 'Lacrysil', name: "Піна-клей Lacrysil побутова '60 секунд' MINI 320 мл", category_slug: 'pina-klei', inStock: true },
 ];
-const bySku = new Map(products.map(p => [p.sku, p]));
+const ctx = buildLinkCtx(products, ['sylikonovi']);
 const brands = ['Ceresit', 'Lacrysil', 'Pattex', 'Aura', 'Дивоцвіт', 'Сталь', 'Aqua Protect'];
 
 describe('resolveProductLinks — посилання на товар за артикулом', () => {
   it('артикул → канонічний слаг; без слага — артикул', () => {
-    expect(resolveProductLinks('Беріть [Ceresit CS 25](/product/1005-025).', bySku))
+    expect(resolveProductLinks('Беріть [Ceresit CS 25](/product/1005-025).', ctx))
       .toBe('Беріть [Ceresit CS 25](/product/shov-sylikonovyi-ceresit-cs-25).');
-    expect(resolveProductLinks('[піна](/product/1804-002)', bySku)).toBe('[піна](/product/1804-002)');
+    expect(resolveProductLinks('[Lacrysil піна](/product/1804-002)', ctx)).toBe('[Lacrysil піна](/product/1804-002)');
   });
-  it('знятий товар — лишається текст без посилання', () => {
-    expect(resolveProductLinks('Або [Soudal Genius](/product/9999-001) — дорожче.', bySku)).toBe('Або Soudal Genius — дорожче.');
+  it('закінчився — на варіант тієї ж моделі в наявності', () => {
+    expect(resolveProductLinks('[Lacrysil «60 секунд»](/product/1802-002)', ctx)).toBe('[Lacrysil «60 секунд»](/product/lacrysil-60-320)');
+  });
+  it('знято з продажу — інший варіант моделі; немає моделі — сторінка бренду; немає бренду — текст', () => {
+    expect(resolveProductLinks('[Ceresit CS 25](/product/1005-099)', ctx)).toBe('[Ceresit CS 25](/product/shov-sylikonovyi-ceresit-cs-25)');
+    expect(resolveProductLinks('[Ceresit CS 24](/product/1005-009)', ctx)).toBe('[Ceresit CS 24](/shop/brand/ceresit)');
+    expect(resolveProductLinks('Або [Soudal Genius](/product/9999-001) — дорожче.', ctx)).toBe('Або Soudal Genius — дорожче.');
+  });
+  it('закінчився і інших варіантів у наявності немає — лишається він сам', () => {
+    const c = buildLinkCtx([{ ...products[4] }]);
+    expect(resolveProductLinks('[Lacrysil «60 секунд»](/product/1802-002)', c)).toBe('[Lacrysil «60 секунд»](/product/lacrysil-60-800)');
   });
   it('посилання на категорії не чіпає', () => {
-    expect(resolveProductLinks('[MS-полімер](/shop/ms-polymerni-hermetyky)', bySku)).toBe('[MS-полімер](/shop/ms-polymerni-hermetyky)');
+    expect(resolveProductLinks('[MS-полімер](/shop/ms-polymerni-hermetyky)', ctx)).toBe('[MS-полімер](/shop/ms-polymerni-hermetyky)');
   });
 });
 

@@ -19,7 +19,45 @@ import { brandSlug } from './slug';
  *     є посилання з його назвою (на товар цього бренду).
  */
 
-export type LinkProduct = { sku: string; slug?: string | null; brand?: string | null };
+export type LinkProduct = {
+  sku: string; slug?: string | null; brand?: string | null;
+  name?: string | null; category_slug?: string | null;
+  /** У наявності (stock_status in_stock або залишок ≥ 1) */
+  inStock?: boolean;
+};
+
+const norm = (s: string) => s.toLowerCase().replace(/[«»"“”„']/g, '').replace(/[’ʼ`]/g, "'").replace(/\s+/g, ' ').trim();
+const hasWord = (hay: string, needle: string) =>
+  !!needle && new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(needle)}(?![\\p{L}\\p{N}])`, 'u').test(hay);
+
+type LinkCtx = { bySku: Map<string, LinkProduct>; byBrand: Map<string, LinkProduct[]>; brands: string[]; family: Set<string> };
+
+/**
+ * Товари тієї ж моделі, що й текст посилання: «Ceresit CS 25» → усі кольори й
+ * фасовки CS 25. Модель — текст без бренду; збіг цілими словами, без лапок і
+ * регістру (як у scripts/guide-product-links.mts, яким посилання розставлено).
+ */
+function sameModel(label: string, ctx: LinkCtx): { brand: string | null; items: LinkProduct[] } {
+  const ln = norm(label);
+  const brand = ctx.brands.find(b => hasWord(ln, norm(b))) ?? null;
+  if (!brand) return { brand: null, items: [] };
+  const tail = norm(ln.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(norm(brand))}(?![\\p{L}\\p{N}])`, 'u'), ' '));
+  if (!tail) return { brand, items: [] };
+  const items = (ctx.byBrand.get(brand) ?? []).filter(p => {
+    const nm = norm(p.name ?? '');
+    return hasWord(nm, ln) || hasWord(nm, tail);
+  });
+  return { brand, items };
+}
+
+/** Найкращий із варіантів: у наявності → з категорії гайда → найкоротша назва → менший артикул. */
+function bestOf(items: LinkProduct[], family: Set<string>): LinkProduct | undefined {
+  return [...items].sort((a, b) =>
+    Number(!!b.inStock) - Number(!!a.inStock)
+    || Number(!!(b.category_slug && family.has(b.category_slug))) - Number(!!(a.category_slug && family.has(a.category_slug)))
+    || (a.name ?? '').length - (b.name ?? '').length
+    || a.sku.localeCompare(b.sku))[0];
+}
 
 const LINK = /\[([^\]]+)\]\((\/[^)\s]+)\)/g;
 const PRODUCT_PATH = /^\/product\/([^/?#]+)$/;
@@ -31,14 +69,25 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** [текст](/product/SKU) → канонічна адреса товару або просто текст, якщо товару немає. */
-export function resolveProductLinks(text: string, bySku: Map<string, LinkProduct>): string {
+/**
+ * [текст](/product/SKU) → канонічна адреса. Якщо товар закінчився, а інший варіант
+ * тієї ж моделі є в наявності — посилання веде на нього. Якщо товар знято з
+ * продажу — на інший варіант моделі; немає жодного — на сторінку бренду; немає
+ * й бренду — лишається текст (07.11.2026).
+ */
+export function resolveProductLinks(text: string, ctx: LinkCtx): string {
+  const href = (p: LinkProduct) => `/product/${p.slug || p.sku}`;
   return text.replace(LINK, (whole, label: string, path: string) => {
     const m = PRODUCT_PATH.exec(path);
     if (!m) return whole;
-    const p = bySku.get(decodeURIComponent(m[1]));
-    if (!p) return label;
-    return `[${label}](/product/${p.slug || p.sku})`;
+    const p = ctx.bySku.get(decodeURIComponent(m[1]));
+    if (p?.inStock) return `[${label}](${href(p)})`;
+    const model = sameModel(label, ctx);
+    const alt = bestOf(model.items.filter(x => x.sku !== p?.sku), ctx.family);
+    if (p) return `[${label}](${href(alt?.inStock ? alt : p)})`;
+    if (alt) return `[${label}](${href(alt)})`;
+    if (model.brand && ctx.byBrand.get(model.brand)?.length) return `[${label}](/shop/brand/${brandSlug(model.brand)})`;
+    return label;
   });
 }
 
@@ -87,16 +136,26 @@ function replaceOutsideLinks(text: string, re: RegExp, wrap: (m: string) => stri
   return null;
 }
 
+export function buildLinkCtx(products: LinkProduct[], familySlugs: string[] = []): LinkCtx {
+  const byBrand = new Map<string, LinkProduct[]>();
+  for (const p of products) {
+    const b = (p.brand ?? '').trim();
+    if (b) byBrand.set(b, [...(byBrand.get(b) ?? []), p]);
+  }
+  // Довші назви першими: «Aqua Protect» раніше за «Aqua»
+  const brands = [...byBrand.keys()].sort((a, b) => b.length - a.length);
+  return { bySku: new Map(products.map(p => [p.sku, p])), byBrand, brands, family: new Set(familySlugs) };
+}
+
 /** Гайд із живими посиланнями: товари — на канонічні адреси (або текстом), бренди — автоматично. */
-export function resolveGuideLinks(meta: CategoryMeta, products: LinkProduct[]): CategoryMeta {
+export function resolveGuideLinks(meta: CategoryMeta, products: LinkProduct[], familySlugs: string[] = []): CategoryMeta {
   if (!meta.guide) return meta;
-  const bySku = new Map(products.map(p => [p.sku, p]));
-  const brands = [...new Set(products.map(p => (p.brand ?? '').trim()).filter(Boolean))];
+  const ctx = buildLinkCtx(products, familySlugs);
   const guide: CategoryGuide = {
     ...meta.guide,
     sections: meta.guide.sections.map(sec => ({
       ...sec,
-      p: linkBrandsInSection(sec.p.map(t => resolveProductLinks(t, bySku)), brands),
+      p: linkBrandsInSection(sec.p.map(t => resolveProductLinks(t, ctx)), ctx.brands),
     })),
   };
   return { ...meta, guide };
