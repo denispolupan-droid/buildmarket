@@ -22,11 +22,19 @@ export type EstimateLine = { sku: string; qty: number; price: number };
 /** Рядок із оцінкою: закупівельна за одиницю (null — невідома) і комісія рядка. */
 export type LineEstimate = EstimateLine & { unitCost: number | null; fee: number };
 
-/** Факт по замовленню з леджера; null — проводки цього виду ще немає. */
-export type OrderFact = { cogs: number | null; fee: number | null; dealExtra: number };
+/**
+ * Факт по замовленню з леджера; null — проводки цього виду ще немає.
+ * revenue — проведена виручка (нетто повернень). Вона буває меншою за суму
+ * замовлення: частковий повернення, дроп за ціною партнера, безкоштовна
+ * досилка, недовкладення (інцидент 07.11.2026: «Огляд» брав суму замовлення
+ * при фактичній собівартості — 5 замовлень завищили прибуток на 1 367,50 ₴).
+ */
+export type OrderFact = { revenue?: number | null; cogs: number | null; fee: number | null; dealExtra: number };
 
 export type ProfitEstimate = {
+  /** Проведена виручка, якщо продаж уже в обліку; інакше — сума замовлення. */
   revenue: number;
+  revenueSource: 'fact' | 'order';
   cogs: number;
   /** Збори площадки: комісія по рядках + збори рівня замовлення (Smart, видача, «Дешева доставка»). */
   fee: number;
@@ -47,7 +55,12 @@ export type ProfitEstimate = {
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export function estimateOrderProfit(totalPrice: number, lines: LineEstimate[], fact?: OrderFact | null, orderFee = 0): ProfitEstimate {
-  const revenue = Number(totalPrice) || 0;
+  // Виручка: проведена (факт) має пріоритет над сумою замовлення — інакше
+  // собівартість нетто повернень віднімається від повної суми замовлення.
+  // Чиста оцінка (estimated) рахується від тієї ж виручки, щоб звірка
+  // «прогноз vs факт» порівнювала лише собівартість і збори.
+  const revenueSource: ProfitEstimate['revenueSource'] = fact?.revenue != null ? 'fact' : 'order';
+  const revenue = revenueSource === 'fact' ? r2(fact!.revenue!) : (Number(totalPrice) || 0);
   const estCogs = r2(lines.reduce((s, l) => s + (l.unitCost ?? 0) * Number(l.qty || 0), 0));
   const estFee  = r2(lines.reduce((s, l) => s + Number(l.fee || 0), 0) + (Number(orderFee) || 0));
   const unknownCostSkus = [...new Set(lines.filter(l => l.unitCost == null).map(l => l.sku))];
@@ -59,7 +72,7 @@ export function estimateOrderProfit(totalPrice: number, lines: LineEstimate[], f
   const dealExtra = r2(fact?.dealExtra ?? 0);
 
   return {
-    revenue, cogs, fee, orderFee: r2(Number(orderFee) || 0), dealExtra,
+    revenue, revenueSource, cogs, fee, orderFee: r2(Number(orderFee) || 0), dealExtra,
     gross: r2(revenue - cogs - fee - dealExtra),
     cogsSource, feeSource,
     estimated: { cogs: estCogs, fee: estFee, gross: r2(revenue - estCogs - estFee) },

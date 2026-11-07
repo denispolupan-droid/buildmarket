@@ -175,6 +175,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     id: string; order_number: number; status: string;
     total_price: number; created_at: string; channel_code: string | null;
     cost: number; commission: number; margin: number;
+    /** Виручка угоди: проведена (вручені) або сума замовлення — база для margin і % у блоках «факт». */
+    revenue: number;
     items: { sku: string; qty: number; price: number }[];
     customer_id: string | null; phone: string | null;
   };
@@ -184,7 +186,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const rows: OrderRow[] = (orders ?? []).map(o => {
     const e = estimates.get(o.id);
     const cost = e?.cogs ?? 0, commission = e?.fee ?? 0;
-    return { ...o, cost, commission, margin: e?.gross ?? (Number(o.total_price) - cost - commission) };
+    const revenue = e?.revenue ?? Number(o.total_price);
+    return { ...o, cost, commission, revenue, margin: e?.gross ?? (revenue - cost - commission) };
   });
 
   // ── Поточний місяць ────────────────────────────────────────────────────────
@@ -265,7 +268,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   // або < 5% від виручки — ловить бонуси-подарунки, помилки прайсу, важкі комісії.
   const THIN_PCT = 5;
   const thinDeals = deliveredMonthRows
-    .map(r => ({ ...r, pct: r.total_price > 0 ? Math.round((r.margin / r.total_price) * 1000) / 10 : 0 }))
+    .map(r => ({ ...r, pct: r.revenue > 0 ? Math.round((r.margin / r.revenue) * 1000) / 10 : 0 }))
     .filter(r => r.margin < 0 || r.pct < THIN_PCT)
     .sort((a, b) => a.margin - b.margin)
     .slice(0, 10);
@@ -308,7 +311,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     const name = String(ro.company || ro.contact || ro.phone || '—').trim();
     const key = ro.customer_id || name.toLowerCase();
     const c = clientStats.get(key) ?? { name, revenue: 0, margin: 0, orders: 0 };
-    c.revenue += r.total_price; c.margin += r.margin; c.orders += 1;
+    c.revenue += r.revenue; c.margin += r.margin; c.orders += 1;
     clientStats.set(key, c);
   }
   const topClients = [...clientStats.values()].sort((a, b) => b.margin - a.margin).slice(0, 8);
@@ -395,7 +398,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   for (const row of deliveredMonthRows) {
     const ch = row.channel_code ?? 'website';
     if (!channelStats[ch]) channelStats[ch] = { revenue: 0, margin: 0, count: 0 };
-    channelStats[ch].revenue += row.total_price;
+    channelStats[ch].revenue += row.revenue;
     channelStats[ch].margin  += row.margin;
     channelStats[ch].count   += 1;
   }
@@ -523,7 +526,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '12px' }}>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-blue)', fontVariantNumeric: 'tabular-nums' }}>#{d.order_number}</span>
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{CHANNEL_LABELS[d.channel_code ?? 'website'] ?? d.channel_code}</span>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>виручка {fmt(d.total_price)} ₴</span>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>виручка {fmt(d.revenue)} ₴</span>
                   <span style={{ fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', width: '110px', textAlign: 'right', color: d.margin < 0 ? 'var(--color-danger)' : 'var(--color-warn)' }}>
                     {d.margin < 0 ? '' : '+'}{fmt(d.margin)} ₴ · {d.pct}%
                   </span>

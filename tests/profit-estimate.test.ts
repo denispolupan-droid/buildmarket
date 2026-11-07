@@ -42,7 +42,7 @@ describe('estimateOrderProfit — прогноз валового прибутк
     const e = estimateOrderProfit(250, lines, { cogs: 0, fee: 0, dealExtra: 0 });
     expect(e.cogsSource).toBe('fact');
     expect(e.cogs).toBe(0);
-    expect(e.gross).toBe(250);
+    expect(e.gross).toBe(250);   // без факту виручки — сума замовлення (див. тест нижче для revenue: 0)
   });
 
   it('SKU без закупівельної ціни потрапляє в unknownCostSkus, його собівартість у прогнозі = 0', () => {
@@ -61,6 +61,29 @@ describe('estimateOrderProfit — прогноз валового прибутк
     const f = estimateOrderProfit(250, lines, { cogs: null, fee: 40, dealExtra: 0 }, 30);
     expect(f.fee).toBe(40);
     expect(f.estimated.fee).toBe(42.5);
+  });
+
+  it('проведена виручка має пріоритет над сумою замовлення (частковий повернення, дроп, досилка)', () => {
+    // 07.11.2026: №26091250 — 2 × 450, повернули одну: виручка 450, COGS нетто повернення
+    const e = estimateOrderProfit(900, lines, { revenue: 450, cogs: 300, fee: 20, dealExtra: 0 });
+    expect(e.revenueSource).toBe('fact');
+    expect(e.revenue).toBe(450);
+    expect(e.gross).toBe(130);
+    // чиста оцінка — від тієї ж виручки: звірка порівнює лише собівартість і збори
+    expect(e.estimated.gross).toBe(450 - 140 - 12.5);
+  });
+
+  it('виручки в обліку ще немає (у дорозі) — береться сума замовлення', () => {
+    const e = estimateOrderProfit(250, lines, { cogs: null, fee: 35, dealExtra: 0 });
+    expect(e.revenueSource).toBe('order');
+    expect(e.revenue).toBe(250);
+    expect(estimateOrderProfit(250, lines).revenueSource).toBe('order');
+  });
+
+  it('виручка сторнована повністю (0) — це факт, а не відсутність факту', () => {
+    const e = estimateOrderProfit(250, lines, { revenue: 0, cogs: 0, fee: 0, dealExtra: 0 });
+    expect(e.revenueSource).toBe('fact');
+    expect(e.gross).toBe(0);
   });
 
   it('порожнє замовлення: нулі й валовий = виручці', () => {

@@ -104,7 +104,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 </ul>
                 <div className="fin-hint-h">Не враховано</div>
                 <ul className="fin-hint-list">
-                  <li>списання маркетплейсів і банку без прив&apos;язки до замовлення;</li>
+                  <li>списання маркетплейсів і банку без прив&apos;язки до замовлення{ov.kpi.profitEst.unattributed > 0 ? ` (${fmt(ov.kpi.profitEst.unattributed)} ₴ за ${dmy(ov.from)}–${dmy(ov.to)}: винагорода RozetkaPay, абонплата, Smart без замовлення)` : ''};</li>
                   <li>операційні витрати ({fmt(ov.kpi.netProfit.opex)} ₴) і податки ({fmt(ov.kpi.netProfit.taxes)} ₴);</li>
                   <li>скасовані замовлення.</li>
                 </ul>

@@ -5,7 +5,7 @@ import { loadInTransitCommission } from '../../../lib/accounting/marketplace-tra
 import { getMonoLiveBalance } from '../../../lib/mono-balance';
 import { getNovapayLiveBalance, getNovapayRegistersCache } from '../../../lib/novapay-api';
 import { isSpecialDebtor } from '../../../lib/accounting/sale-party';
-import { PL_ACCOUNTS, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
+import { PL_ACCOUNTS, classifyPLEntry, plContribution, summarizePL } from '../../../lib/accounting/profit-rules';
 import { createServiceClient } from '../../../lib/supabase-service';
 
 // Дані для «Огляду» фінансів (BI-дашборд). Усі гроші рахуються тут, на
@@ -34,7 +34,8 @@ export type OverviewData = {
     /* Очікуваний валовий прибуток по ВСІХ замовленнях періоду (та сама база,
        що «Замовлення · сума»): доставлені — факт з леджера, решта — оцінка */
     /** delivered — частина value по вже вручених (є проведена собівартість), forecast — по решті */
-    profitEst: { value: number; prev: number; delivered: number; forecast: number };
+    /** unattributed — витрати угод у леджері періоду без order_id (у profitEst не входять) */
+    profitEst: { value: number; prev: number; delivered: number; forecast: number; unattributed: number };
     margin: { value: number | null; prev: number | null };      // від оцінки (profitEst / orderSum)
     orders: KpiSeries;    // к-ть замовлень (когорта періоду, без скасованих)
     orderSum: { value: number; prev: number };  // сума створених замовлень (оцінка до доставки)
@@ -204,9 +205,10 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
 
   const [ledgerRows, orderRows, balRows, arRows, agingRows, apRows, promBal, rozetkaBal, todayRows, monthlyLedger, monthlyOrders, payToday, pipelineRows, refusedRows] = await Promise.all([
     // 1. Леджер за поточний + попередній період (для дельт) — щоденні ряди
-    fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number }>((f, t) => {
+    // order_id — щоб показати в підказці «Валового прибутку», скільки витрат угод не прив'язано до замовлень
+    fetchAllRows<{ business_date: string; account_type: string; doc_type: string | null; amount: number; order_id: string | null }>((f, t) => {
       let q = db.from('money_entries')
-        .select('business_date, account_type, doc_type, amount')
+        .select('business_date, account_type, doc_type, amount, order_id')
         .in('account_type', PL_ACCOUNTS)
         .gte('business_date', prevStr);
       if (periodTo) q = q.lt('business_date', endStr);
@@ -308,6 +310,13 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
     }
   }
   const curPL = summarizePL(curRows), prevPL = summarizePL(prevRows);
+  // Витрати угод без прив'язки до замовлення (винагорода RozetkaPay за переказ,
+  // абонплата, Smart без замовлення, еквайринг/збори НП без замовлення): у факті
+  // вони є, у «прибутку по замовленнях» — ні. Показуємо в підказці, щоб різницю
+  // між картою і «фактом» було видно цифрою (розбір 07.11.2026).
+  const curUnattributedDeal = Math.round(curRows
+    .filter(r => !r.order_id && classifyPLEntry(r.account_type, r.doc_type) === 'deal')
+    .reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
   const curProfit  = curPL.grossProfit;
   const prevProfit = prevPL.grossProfit;
 
@@ -706,7 +715,7 @@ export async function getOverview(p?: string, chartDays?: number): Promise<Overv
       revenue:  { value: curRev, prev: prevRev, daily: revDaily, prevDaily: prevRevDaily },
       profit:   { value: curProfit, prev: prevProfit, daily: profDaily, prevDaily: prevProfDaily },
       netProfit: { value: curPL.netProfit, prev: prevPL.netProfit, opex: curPL.opex.total, taxes: curPL.taxes },
-      profitEst: { value: curProfitEst, prev: prevProfitEst, delivered: curProfitDelivered, forecast: curProfitEst - curProfitDelivered },
+      profitEst: { value: curProfitEst, prev: prevProfitEst, delivered: curProfitDelivered, forecast: curProfitEst - curProfitDelivered, unattributed: curUnattributedDeal },
       margin:   { value: pct(curProfitEst, curOrdSum), prev: pct(prevProfitEst, prevOrdSum) },
       orders:   { value: curOrders.length, prev: prevOrders.length, daily: ordDaily, prevDaily: prevOrdDaily },
       orderSum: { value: curOrdSum, prev: prevOrdSum },

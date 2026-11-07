@@ -48,7 +48,7 @@ export async function loadProfitEstimates(
     Promise.all(chunk(ids, ORDER_CHUNK).map(c => fetchAllRows<{ order_id: string | null; account_type: string; doc_type: string | null; amount: number }>((f, t) => db
       .from('money_entries')
       .select('order_id, account_type, doc_type, amount')
-      .in('account_type', ['cogs', 'marketplace_fee', 'acquiring_fee', 'logistics'])
+      .in('account_type', ['revenue', 'cogs', 'marketplace_fee', 'acquiring_fee', 'logistics'])
       .in('order_id', c)
       .order('id').range(f, t)))).then(a => a.flat()),
   ]);
@@ -65,7 +65,8 @@ export async function loadProfitEstimates(
     if (!e.order_id) continue;
     const f = facts.get(e.order_id) ?? { cogs: null, fee: null, dealExtra: 0 };
     const amt = Number(e.amount);
-    if (e.account_type === 'cogs') f.cogs = (f.cogs ?? 0) + amt;
+    if (e.account_type === 'revenue') f.revenue = (f.revenue ?? 0) - amt;   // кредит → +виручка
+    else if (e.account_type === 'cogs') f.cogs = (f.cogs ?? 0) + amt;
     else if (e.account_type === 'marketplace_fee') f.fee = (f.fee ?? 0) + amt;
     else if (classifyPLEntry(e.account_type, e.doc_type) === 'deal') f.dealExtra += amt;
     facts.set(e.order_id, f);
