@@ -1,3 +1,4 @@
+import { Info } from 'lucide-react';
 import { TrendBadge } from './overview-charts';
 
 /**
@@ -24,7 +25,7 @@ export default function StatCard(props: {
       <div className="fin-stat-head">
         <span className="fin-stat-label" title={label}>{label}</span>
         {kind && <span className={`fin-stat-tag${kind === 'fact' ? ' fact' : ''}`}>{kind === 'fact' ? 'факт' : 'прогноз'}</span>}
-        <span className="fin-stat-info" title={hint} aria-label={hint}>ⓘ</span>
+        <span className="fin-stat-info" title={hint} aria-label={hint}><Info size={14} strokeWidth={2} aria-hidden /></span>
       </div>
       <div className="fin-stat-value" style={valueColor ? { color: valueColor } : undefined}>{value}</div>
       <div className="fin-stat-delta">
