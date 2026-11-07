@@ -91,7 +91,8 @@ function Head({ label, hint }: { label: string; hint: string }) {
   );
 }
 
-export default function ProfitBridgeCard({ bridge, periodLabel, extras = {} }: { bridge: BridgeWithNet; periodLabel: string; extras?: FactExtras }) {
+/** showNet=false — лише валовий («Огляд»); чистий з операційними витратами розбирається в «Аналітиці» (рішення власника 07.11.2026). */
+export default function ProfitBridgeCard({ bridge, periodLabel, extras = {}, showNet = true }: { bridge: BridgeWithNet; periodLabel: string; extras?: FactExtras; showNet?: boolean }) {
   const b = bridge;
   const gross = b.profit.fact;
   const net = b.net;
@@ -121,8 +122,8 @@ export default function ProfitBridgeCard({ bridge, periodLabel, extras = {} }: {
 
       {/* ── Прибуток ── */}
       <div className="fin-card fin-stat">
-        <Head label={`Прибуток · ${periodLabel}`}
-          hint="Валовий — виручка мінус собівартість FIFO і всі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата, Smart). Чистий — ще мінус операційні витрати й податки. Усе з бухгалтерських проводок." />
+        <Head label={`${showNet ? 'Прибуток' : 'Валовий прибуток'} · ${periodLabel}`}
+          hint={`Валовий — виручка мінус собівартість FIFO і всі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата, Smart). ${showNet ? 'Чистий — ще мінус операційні витрати й податки. ' : 'Чистий прибуток (після операційних витрат і податків) — в «Аналітиці». '}Усе з бухгалтерських проводок.`} />
         <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <div className="fin-stat-value" style={{ color: gross >= 0 ? '#15803D' : '#DC2626' }}>{fmtInt(gross)} ₴</div>
@@ -131,13 +132,13 @@ export default function ProfitBridgeCard({ bridge, periodLabel, extras = {} }: {
               {extras.grossPrev !== undefined && <TrendBadge cur={gross} prev={extras.grossPrev ?? null} />}
             </div>
           </div>
-          <div>
+          {showNet && <div>
             <div className="fin-stat-value" style={{ fontSize: '22px', color: net >= 0 ? '#15803D' : '#DC2626' }}>{fmtInt(net)} ₴</div>
             <div className="fin-stat-delta">
               <span className="fin-kpi-cmp">чистий</span>
               {extras.netPrev !== undefined && <TrendBadge cur={net} prev={extras.netPrev ?? null} />}
             </div>
-          </div>
+          </div>}
         </div>
         <div style={{ marginTop: '12px' }}>
           <Plain label="маржа валового від виручки" value={margin === null ? '—' : `${margin}%`} />
@@ -152,6 +153,7 @@ export default function ProfitBridgeCard({ bridge, periodLabel, extras = {} }: {
             {b.profit.lines.map(l => <Line key={l.key} l={l} />)}
             {unexpl(b.profit.unexplained)}
             <Plain label="= валовий прибуток" value={`${fmtInt(gross)} ₴`} bold />
+            {showNet && <>
             <Line l={{
               key: 'opex', label: 'операційні витрати і компенсації', amount: r2(-b.opex),
               hint: 'Компенсації (напр. НП за пошкоджену посилку) зменшують витрати — тому сума буває зі знаком «+».',
@@ -160,6 +162,7 @@ export default function ProfitBridgeCard({ bridge, periodLabel, extras = {} }: {
             }} />
             <Plain label="податки" value={signed(-b.taxes)} color={colorOf(-b.taxes)} />
             <Plain label="= чистий прибуток" value={`${fmtInt(net)} ₴`} bold color={net >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
+            </>}
           </details>
         </div>
       </div>

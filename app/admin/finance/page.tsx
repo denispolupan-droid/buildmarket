@@ -84,12 +84,12 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
       </div>
 
       {/* Дві картки ФАКТУ обліку (рішення власника 07.11.2026): «Виручка» — шлях від суми
-          замовлень, «Прибуток» — валовий і чистий, розрахунок по кліку. Усе з одного читання
+          замовлень, «Валовий прибуток» — розрахунок по кліку; чистий — в «Аналітиці». Усе з одного читання
           леджера; прогноз — лише рядком «очікується з доставок». Той самий компонент — в «Аналітиці». */}
       <ProfitBridgeCard bridge={ov.bridge} periodLabel={ov.periodLabel} extras={{
         revenuePrev: ov.kpi.revenue.prev, grossPrev: ov.kpi.profit.prev, netPrev: ov.kpi.netProfit.prev,
         orders: ov.kpi.orders.value, avgCheck: ov.kpi.avgCheck.value, forecastProfit: ov.kpi.profitEst.forecast,
-      }} />
+      }} showNet={false} />
 
       {/* Стадії зараз · Динаміка */}
       <div className="fin-grid-12" style={{ marginTop: '16px' }}>
