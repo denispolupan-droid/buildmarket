@@ -58,7 +58,10 @@ beforeAll(async () => {
   if (error) throw new Error('order insert: ' + error.message);
   orderId = order.id as string;
   orderNumber = order.order_number as number;
-  await createSaleDraft({ order_id: orderId, order_number: orderNumber, order_items: [{ sku: testSku, name: 'pipeline', brand: 'test', qty: 1, price: 200 }], tracking_number: TTN, shipping_supplier_id: supplierId, confirmed_by: 'pipeline' });
+  const draftId = await createSaleDraft({ order_id: orderId, order_number: orderNumber, order_items: [{ sku: testSku, name: 'pipeline', brand: 'test', qty: 1, price: 200 }], tracking_number: TTN, shipping_supplier_id: supplierId, confirmed_by: 'pipeline' });
+  // Без meta.test=true reset_accounting_test_data відмовляється чистити базу — і
+  // наступні прогони всього набору бачать чужі залишки (08.11.2026).
+  if (draftId) await db.from('acc_documents').update({ meta: { test: true } }).eq('id', draftId);
 });
 
 afterAll(async () => {

@@ -69,7 +69,7 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
     // Always fetch current order for history tracking + manager backward check
     const { data: current } = await db
       .from('orders')
-      .select('status, status_history, confirmed_at, items')
+      .select('status, status_history, confirmed_at')
       .eq('id', id)
       .single();
 
@@ -84,7 +84,7 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
         .eq('doc_type', 'sale')
         .neq('status', 'cancelled')
         .is('reversal_of', null);
-      const noSale = manualStatusWithoutSaleError(status, { items: current?.items }, saleDocs ?? 0);
+      const noSale = manualStatusWithoutSaleError(status, { items: await loadOrderItems(db, id) }, saleDocs ?? 0);
       if (noSale) return NextResponse.json({ error: noSale }, { status: 409 });
     }
 
@@ -211,8 +211,8 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
   let itemsBefore: unknown = null;
   let editWarnings: string[] = [];
   if (bodyItems !== undefined || createdAt !== undefined) {
-    const { data: before } = await db.from('orders').select('items').eq('id', id).maybeSingle();
-    itemsBefore = before?.items ?? null;
+    // Знімок «до» для журналу правок — з order_lines (джерело правди)
+    itemsBefore = await loadOrderItems(db, id);
     editCtx = await checkSaleEdit({
       orderId: id,
       source: body.edit_source === 'invoice' ? 'invoice' : 'order-card',

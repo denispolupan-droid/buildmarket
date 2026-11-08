@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { setOrderLines, type OrderLineInput } from '../../../../../../lib/orders/lines';
+import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 import { withApi } from '../../../../../../lib/api-handler';
 
 // Зміна типу цін замовлення (роздріб / опт / дроп) з перерахунком позицій
@@ -27,7 +28,7 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
   const db = createServiceClient();
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, status, channel_code, items, price_type, promo_discount, discount_pct')
+    .select('id, order_number, status, channel_code, price_type, promo_discount, discount_pct')
     .eq('id', id)
     .single();
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
@@ -52,7 +53,8 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
   const discountFactor = 1 - discountPct / 100;
 
   type Item = { sku: string; qty: number; price: number; price_base?: number; is_bonus?: boolean; [k: string]: unknown };
-  const items = (order.items ?? []) as Item[];
+  // Поточні позиції — з order_lines (джерело правди), не з jsonb-кешу items
+  const items = (await loadOrderItems(db, id)) as unknown as Item[];
   const skus = items.map(i => i.sku);
 
   const { data: rows, error: priceErr } = await db

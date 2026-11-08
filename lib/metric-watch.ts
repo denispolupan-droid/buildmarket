@@ -1,5 +1,6 @@
 import { createServiceClient } from './supabase-service';
 import { fetchAllRows } from './db-paginate';
+import { loadOrderLines } from './orders/lines-read';
 import { productRows, listDataSources, latestUpload } from './merchant';
 import { sendTelegramResult, escTg } from './telegram';
 import { alertAdmin } from './alert';
@@ -168,14 +169,14 @@ async function adsRunning(db: Db): Promise<Reading> {
 
 // ── Замовлення ──────────────────────────────────────────────────────────────
 
-type OrderLite = { channel_code: string | null; status: string; created_at: string; items: { sku?: string; qty?: number }[] | null };
+type OrderLite = { id: string; channel_code: string | null; status: string; created_at: string };
 
 async function recentOrders(db: Db, days: number): Promise<OrderLite[]> {
   const rows = await fetchAllRows((a, b) => db.from('orders')
-    .select('channel_code, status, created_at, items')
+    .select('id, channel_code, status, created_at')
     .gte('created_at', new Date(Date.now() - days * DAY).toISOString())
     .neq('status', 'cancelled').order('id').range(a, b));
-  // created_at не null (gte вище), status не null (neq), items — jsonb рядків замовлення
+  // created_at не null (gte вище), status не null (neq)
   return rows as unknown as OrderLite[];
 }
 
@@ -226,8 +227,10 @@ async function rozetkaRating(): Promise<Reading> {
 /** Ходові товари (≥ 2 шт за 60 днів по всіх каналах), яких немає в наявності. */
 async function bestsellersOut(db: Db): Promise<Reading> {
   const orders = await recentOrders(db, 60);
+  // Продані штуки по SKU — з order_lines (етап D), не з jsonb-кешу items
+  const lines = await loadOrderLines(db, orders.map(o => o.id));
   const sold = new Map<string, number>();
-  for (const o of orders) for (const i of o.items ?? []) if (i.sku) sold.set(i.sku, (sold.get(i.sku) ?? 0) + Number(i.qty ?? 1));
+  for (const arr of lines.values()) for (const i of arr) if (i.sku) sold.set(i.sku, (sold.get(i.sku) ?? 0) + (i.qty || 1));
   const hot = [...sold.entries()].filter(([, q]) => q >= 2).map(([s]) => s);
   if (!hot.length) return { state: 'ok', level: 'green', text: 'ходових товарів без наявності немає', set: [] };
   const { data } = await db.from('product_stock').select('sku, stock_status').in('sku', hot).limit(hot.length);

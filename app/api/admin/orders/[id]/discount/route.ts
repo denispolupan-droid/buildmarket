@@ -3,6 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { applyOrderDiscount, type DiscountItem } from '../../../../../../lib/pricing';
 import { setOrderLines, type OrderLineInput } from '../../../../../../lib/orders/lines';
+import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
 import { parseBody, zMoney, zYmd, zText, z } from '../../../../../../lib/validate';
 import { withApi } from '../../../../../../lib/api-handler';
 
@@ -37,7 +38,7 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
   const db = createServiceClient();
   const { data: order } = await db
     .from('orders')
-    .select('id, status, channel_code, items')
+    .select('id, status, channel_code')
     .eq('id', id)
     .single();
   if (!order) return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
@@ -49,7 +50,8 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
     return NextResponse.json({ error: 'Знижка недоступна для цього каналу' }, { status: 409 });
   }
 
-  const items = (order.items ?? []) as DiscountItem[];
+  // Поточні позиції — з order_lines (джерело правди), не з jsonb-кешу items
+  const items = (await loadOrderItems(db, id)) as unknown as DiscountItem[];
   const result = applyOrderDiscount(items, { pct: body.pct, amount: body.amount });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 

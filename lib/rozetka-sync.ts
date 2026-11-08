@@ -9,6 +9,7 @@ import { itemsDiffer, describeItemsDiff } from './rozetka-items-diff';
 import { rozetkaNeedsTtn, rozetkaStatusLabel } from './rozetka-status';
 import { createServiceClient, type TableUpdate, asJson } from './supabase-service';
 import { setOrderLines, type OrderLineInput } from './orders/lines';
+import { loadOrderItems } from './orders/lines-read';
 
 /** Відмова кабінету на PUT зі статусом+ТТН: {"ttn":["До запитуваного замовлення заборонено прив'язувати ТТН"]} */
 const ROZETKA_TTN_FORBIDDEN = /заборонено прив.?язувати ТТН/i;
@@ -69,7 +70,7 @@ export async function syncRozetkaOrders() {
   for (const rzOrder of [...orders, ...refreshOnly]) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, order_number, status, tracking_number, rozetka_data, payment_confirmed, total_price, items')
+      .select('id, order_number, status, tracking_number, rozetka_data, payment_confirmed, total_price')
       .eq('rozetka_order_id', rzOrder.id)
       .maybeSingle();
 
@@ -134,7 +135,8 @@ export async function syncRozetkaOrders() {
       // перерахунок резерву і замовлення постачальнику, і це рішення людини.
       if (!refreshOnlyIds.has(rzOrder.id)) {
         const liveItems = rozetkaOrderToOurFormat(rzOrder).items;
-        const ourItems = (existing.items ?? []) as { sku: string; qty: number; price: number }[];
+        // Наші позиції — з order_lines (джерело правди), не з jsonb-кешу items
+        const ourItems = await loadOrderItems(db, existing.id);
         if (itemsDiffer(ourItems, liveItems)) {
           if (existing.status === 'new') {
             const comm = await computeRozetkaCommission(liveItems, { fallbackPct });

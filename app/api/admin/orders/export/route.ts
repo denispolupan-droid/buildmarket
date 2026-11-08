@@ -5,6 +5,7 @@ import { fetchAllRows } from '../../../../../lib/db-paginate';
 import { kyivDayBounds } from '../../../../../lib/kyiv-date';
 import { createServiceClient } from '../../../../../lib/supabase-service';
 import { withApi } from '../../../../../lib/api-handler';
+import { loadOrderLines, linesOf } from '../../../../../lib/orders/lines-read';
 
 const db = createServiceClient();
 
@@ -32,15 +33,19 @@ async function _GET(req: NextRequest) {
   // читає як UTC). Без limit(5000): повна вибірка сторінками, інакше експорт
   // мовчки обрізався (аудит 31.10.2026).
   const orders = await fetchAllRows((f, t) => {
-    let query = db.from('orders').select('*').order('created_at', { ascending: false }).order('id');
+    let query = db.from('orders')
+      .select('id, order_number, created_at, status, contact, company, phone, email, channel_code, payment_type, payment_confirmed, delivery_type, delivery_city_name, delivery_address, tracking_number, total_price, comment')
+      .order('created_at', { ascending: false }).order('id');
     if (status)   query = query.eq('status', status);
     if (dateFrom) query = query.gte('created_at', kyivDayBounds(dateFrom).start);
     if (dateTo)   query = query.lt('created_at', kyivDayBounds(dateTo).end);
     return query.range(f, t);
   });
 
+  // Позиції — з order_lines (етап D), не з jsonb-кешу items
+  const linesByOrder = await loadOrderLines(db, (orders ?? []).map(o => o.id));
   const rows = (orders ?? []).map(o => {
-    const items = (o.items ?? []) as { name?: string; qty?: number; price?: number }[];
+    const items = linesOf(linesByOrder, o.id);
     return {
       '№ замовлення':   o.order_number,
       'Дата':           new Date(o.created_at as string).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' }),
@@ -59,7 +64,7 @@ async function _GET(req: NextRequest) {
       'Адреса/відд.':   o.delivery_address ?? '',
       'ТТН':            o.tracking_number ?? '',
       'Товарів':        items.length,
-      'Товари':         items.map(i => `${i.name ?? ''} × ${i.qty ?? 1}`).join('; '),
+      'Товари':         items.map(i => `${i.name} × ${i.qty}`).join('; '),
       'Сума, ₴':        Number(o.total_price ?? 0),
       'Примітка':       o.comment ?? '',
     };

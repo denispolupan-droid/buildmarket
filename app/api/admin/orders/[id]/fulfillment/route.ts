@@ -25,7 +25,7 @@ async function _GET(
 
   const { data: order } = await db
     .from('orders')
-    .select('items, channel_code, payment_type, delivery_type, total_price')
+    .select('channel_code, payment_type, delivery_type, total_price')
     .eq('id', id)
     .single();
 

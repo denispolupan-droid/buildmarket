@@ -5,8 +5,9 @@ import { createDocument, confirmDocument, maybeAutoClose } from '../../../../../
 import { transitionOrder } from '../../../../../../lib/orders/status';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
+import { loadOrderLines, linesOf } from '../../../../../../lib/orders/lines-read';
 
-type OrderRow = { id: string; items: { sku: string; qty: number }[]; status_history: { status: string; at: string; by: string }[] | null };
+type OrderRow = { id: string; items: { sku: string; qty: number }[] };
 
 async function autoPromoteAwaitingOrders(
   db: ReturnType<typeof createServiceClient>,
@@ -19,20 +20,23 @@ async function autoPromoteAwaitingOrders(
   // Знаходимо замовлення зі статусом awaiting_stock і fulfillment_mode own/null
   const { data: waiting } = await db
     .from('orders')
-    .select('id, items, status_history')
+    .select('id')
     .eq('status', 'awaiting_stock')
-    .or('fulfillment_mode.eq.own,fulfillment_mode.is.null');
+    .or('fulfillment_mode.eq.own,fulfillment_mode.is.null')
+    .limit(1000);
 
   if (!waiting?.length) return;
 
+  // Позиції — з order_lines (етап D), не з jsonb-кешу items
+  const linesByOrder = await loadOrderLines(db, waiting.map(o => o.id));
+  const all: OrderRow[] = waiting.map(o => ({ id: o.id, items: linesOf(linesByOrder, o.id).map(l => ({ sku: l.sku, qty: l.qty })) }));
+
   // Фільтруємо ті, що мають хоча б один з отриманих SKU
-  const candidates = (waiting as OrderRow[]).filter(o =>
-    (o.items ?? []).some(i => receivedSkus.includes(i.sku))
-  );
+  const candidates = all.filter(o => o.items.some(i => receivedSkus.includes(i.sku)));
   if (!candidates.length) return;
 
   // Отримуємо поточні залишки по всіх потрібних SKU
-  const allSkus = [...new Set(candidates.flatMap(o => (o.items ?? []).map(i => i.sku)))];
+  const allSkus = [...new Set(candidates.flatMap(o => o.items.map(i => i.sku)))];
   const { data: balances } = await db
     .from('stock_balance')
     .select('sku, qty_available')
@@ -42,9 +46,7 @@ async function autoPromoteAwaitingOrders(
   const avail: Record<string, number> = {};
   for (const b of balances ?? []) avail[b.sku] = Number(b.qty_available ?? 0);
 
-  const toPromote = candidates.filter(o =>
-    (o.items ?? []).every(i => (avail[i.sku] ?? 0) >= i.qty)
-  );
+  const toPromote = candidates.filter(o => o.items.every(i => (avail[i.sku] ?? 0) >= i.qty));
 
   for (const o of toPromote) {
     await transitionOrder(db, o.id, 'picking', `${by} (авто)`, 'procurement-receive');

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient, type TableUpdate } from '../../../../../lib/supabase-service';
 import { resolveSender } from '../../../../../lib/email-sender';
 import { orderItemSources } from '../../../../../lib/orders/item-sources';
+import { loadOrderLines, linesOf } from '../../../../../lib/orders/lines-read';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { withApi } from '../../../../../lib/api-handler';
 
@@ -84,12 +85,14 @@ async function _POST(req: NextRequest) {
 
   const { data: orders } = await db
     .from('orders')
-    .select('id, order_number, items, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
+    .select('id, order_number, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
     .in('id', orderIds);
 
   if (!orders?.length) return NextResponse.json({ error: 'Orders not found' }, { status: 404 });
 
-  const allSkus = [...new Set(orders.flatMap(o => ((o.items ?? []) as { sku: string }[]).map(i => i.sku)))];
+  // Позиції — з order_lines (етап D), не з jsonb-кешу items
+  const linesByOrder = await loadOrderLines(db, orders.map(o => o.id));
+  const allSkus = [...new Set(orders.flatMap(o => linesOf(linesByOrder, o.id).map(i => i.sku)))];
   const supplierMap = await resolveSkuMapping(db, allSkus);
 
   const supplierIds = [...new Set([...supplierMap.values()].map(r => r.supplier_id).filter(Boolean))];
@@ -115,7 +118,7 @@ async function _POST(req: NextRequest) {
       city:    order.delivery_city_name ?? '',
       ttn:     order.tracking_number ?? null,
     });
-    const allItems = (order.items ?? []) as { sku: string; name: string; brand: string; qty: number }[];
+    const allItems = linesOf(linesByOrder, order.id).map(l => ({ sku: l.sku, name: l.name, brand: l.brand, qty: l.qty }));
     // Тільки те, що справді їде від постачальника: у змішаному замовленні
     // позиції з нашого складу до нього потрапляти не мають. Поштучна відправка
     // дає вибір у модалці, а тут вибирати нема кому — шлемо лише його частину.

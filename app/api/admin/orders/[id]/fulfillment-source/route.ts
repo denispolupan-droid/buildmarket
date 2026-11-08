@@ -45,7 +45,7 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code')
+    .select('id, order_number, status, channel_code')
     .eq('id', id)
     .single();
 

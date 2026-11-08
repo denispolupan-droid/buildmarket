@@ -28,7 +28,7 @@ async function _POST(
 
   const { data: order, error: orderError } = await db
     .from('orders')
-    .select('id, order_number, status, items, channel_code, tracking_number, contact, phone, email, company, total_price, rozetka_order_id, prom_order_id, epicentr_order_id, rozetka_data, telegram_chat_id, delivery_type')
+    .select('id, order_number, status, channel_code, tracking_number, contact, phone, email, company, total_price, rozetka_order_id, prom_order_id, epicentr_order_id, rozetka_data, telegram_chat_id, delivery_type')
     .eq('id', id)
     .single();
 

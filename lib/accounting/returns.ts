@@ -15,6 +15,7 @@ import { createServiceClient, createTypedServiceClient } from '../supabase';
 import { createDocument, confirmDocument, cancelDocument, getDocument, resolveSaleDebitParty } from './documents';
 import { recordTxn, reverseMarketplaceCommission } from './money';
 import type { AccDocumentWithLines } from './types';
+import { loadOrderItems } from '../orders/lines-read';
 import {
   MARKETPLACE_CHANNELS, actionsFor, commissionToReverse, kindOf, returnTotal, returnableBySku,
   stageOf, timelineFor, validateRequestedQty,
@@ -112,9 +113,12 @@ export async function getReturnableItems(orderId: string): Promise<{
 }> {
   const db = createTypedServiceClient();
   const { state, hasSale } = await loadOrderReturnState(db, orderId);
-  const { data: order } = await db.from('orders').select('items, channel_code').eq('id', orderId).single();
-  const names = new Map(((order?.items ?? []) as { sku: string; name: string; brand?: string }[])
-    .map(i => [i.sku, [i.brand, i.name].filter(Boolean).join(' ')]));
+  // Назви позицій — з order_lines (етап D), не з jsonb-кешу items
+  const [{ data: order }, lines] = await Promise.all([
+    db.from('orders').select('channel_code').eq('id', orderId).single(),
+    loadOrderItems(db, orderId),
+  ]);
+  const names = new Map(lines.map(i => [i.sku, [i.brand, i.name].filter(Boolean).join(' ')]));
   const { data: existing } = await db
     .from('acc_documents')
     .select('id, doc_number, status, meta, doc_type')
