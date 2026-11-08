@@ -43,6 +43,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Кольори адмінки.** В `app/admin` кольори — лише через токени `var(--…)` з `app/globals.css` (`--surface/--line/--ink-*`, `--ok-*/--danger-*/--amber-*/--orange-*/--blue-*/--violet*`, старі `--color-*`/`--bg-*`/`--text-*`); нові hex ловить храповик `tests/admin-color-tokens.test.ts` (у файлі їх не може стати більше, ніж у `baseline.json`; новий файл — 0). Відтінку немає — додай токен зі світлим і темним значенням, а не hex в inline-стиль. План: `docs/ADMIN-MODERNIZATION-PLAN.md`.
 
+**Читання даних в адмінці (клієнт).** Нові клієнтські екрани читають GET через `useAdminQuery` з `lib/admin/api` (кеш, loading/error, `refresh`), а не `useEffect` + `fetch`. У `onClick` давати `refresh`, не SWR-івський `mutate`: він прийме подію кліку за дані.
+
 **UI-регресії.** Правки, які видно тільки в браузері (скрол, ховер, лейаут), перевіряй через
 Playwright: `npm run test:e2e` (`tests/e2e/`, спеки ганяються проти `npm run dev`). Потрібен
 оптовий акаунт у `.env.local` — `E2E_WHOLESALE_EMAIL` / `E2E_WHOLESALE_PASSWORD`, бо `/catalog`

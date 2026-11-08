@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Lock, LockOpen } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
+import { useAdminQuery } from '../../../../lib/admin/api';
 
 type MonthRow = {
   month: string;          // YYYY-MM-01
@@ -21,17 +22,11 @@ function label(month: string) {
 }
 
 export default function PeriodsClient() {
-  const [months, setMonths] = useState<MonthRow[] | null>(null);
+  const { data, refresh: load } = useAdminQuery<{ months?: MonthRow[] }>('/api/admin/finance/periods', {
+    onError: () => showToast('Не вдалося завантажити періоди', 'error'),
+  });
+  const months = data ? (data.months ?? []) : null;
   const [busy, setBusy]     = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    fetch('/api/admin/finance/periods')
-      .then(r => r.json())
-      .then(d => setMonths(d.months ?? []))
-      .catch(() => showToast('Не вдалося завантажити періоди', 'error'));
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   async function act(month: string, action: 'close' | 'open') {
     setBusy(month);

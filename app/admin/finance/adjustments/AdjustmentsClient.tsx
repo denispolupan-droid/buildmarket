@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAdminQuery } from '../../../../lib/admin/api';
+
+const NO_DOCS: never[] = [];
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, Check, X, ChevronDown, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
@@ -189,20 +192,12 @@ export default function AdjustmentsClient() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const [docs, setDocs] = useState<DebtAdjustmentView[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(true);
+  const docsQuery = useAdminQuery<{ documents?: DebtAdjustmentView[] }>('/api/admin/finance/debt-adjustments?limit=150');
+  const docs = docsQuery.data?.documents ?? NO_DOCS;
+  const loadingDocs = docsQuery.isLoading;
+  const loadDocs = docsQuery.refresh;
   const [expanded, setExpanded] = useState<Set<string>>(new Set(focusId ? [focusId] : []));
   const [cancelling, setCancelling] = useState<string | null>(null);
-
-  const loadDocs = useCallback(async () => {
-    setLoadingDocs(true);
-    try {
-      const res = await fetch('/api/admin/finance/debt-adjustments?limit=150');
-      const d = await res.json();
-      setDocs(d.documents ?? []);
-    } finally { setLoadingDocs(false); }
-  }, []);
-  useEffect(() => { void loadDocs(); }, [loadDocs]);
 
   // Зміна операції — сторони під неї (взаємозалік: клієнт + постачальник)
   const switchOp = (next: AdjustmentOp) => {

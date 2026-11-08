@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -55,12 +56,11 @@ function KindBadge({ kind }: { kind: ReturnKind }) {
 type KindFilter = 'all' | ReturnKind;
 type StageFilter = 'all' | ReturnStage | 'cancelled';
 
+const NO_ROWS: ReturnRow[] = [];
+
 export default function ReturnsClient() {
   const focusId = useSearchParams().get('id');
-  const [rows, setRows] = useState<ReturnRow[]>([]);
-  const [kpi, setKpi] = useState<ReturnsKpi | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [kind, setKind] = useState<KindFilter>('all');
   const [stage, setStage] = useState<StageFilter>('all');
@@ -70,20 +70,16 @@ export default function ReturnsClient() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(focusId ? [focusId] : []));
   const [cards, setCards] = useState<Record<string, ReturnCard | undefined>>({});
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
-    try {
-      const p = new URLSearchParams({ limit: '300' });
-      if (from) p.set('from', from);
-      if (to) p.set('to', to);
-      const res = await fetch(`/api/admin/finance/returns?${p}`);
-      const d = await res.json();
-      if (!res.ok) { setError(d.error ?? 'Помилка завантаження'); return; }
-      setRows(d.rows ?? []); setKpi(d.kpi ?? null);
-    } catch { setError('Мережева помилка'); }
-    finally { setLoading(false); }
-  }, [from, to]);
-  useEffect(() => { void load(); }, [load]);
+  const listParams = new URLSearchParams({ limit: '300' });
+  if (from) listParams.set('from', from);
+  if (to) listParams.set('to', to);
+  const list = useAdminQuery<{ rows?: ReturnRow[]; kpi?: ReturnsKpi | null }>(`/api/admin/finance/returns?${listParams}`);
+  const rows = list.data?.rows ?? NO_ROWS;
+  const kpi = list.data?.kpi ?? null;
+  const loading = list.isValidating;
+  const error = actionError ?? list.error?.message ?? null;
+  const refreshList = list.refresh;
+  const load = useCallback(async () => { setError(null); await refreshList(); }, [refreshList]);
 
   const loadCard = useCallback(async (id: string) => {
     const res = await fetch(`/api/admin/finance/returns/${id}`);
