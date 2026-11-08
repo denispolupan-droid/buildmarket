@@ -86,7 +86,7 @@ export default function HiddenDemand() {
                 {isOpen && (
                   <div style={{ overflowX: 'auto', marginTop: 10 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr><th style={th}>Фраза</th><th style={th}>Мова</th><th style={th}>Тип</th><th style={{ ...th, textAlign: 'right' }}>Обходів</th><th style={{ ...th, textAlign: 'right' }}>GSC</th><th style={th}>Наша сторінка</th><th style={th}>Дія</th></tr></thead>
+                      <thead><tr><th scope="col" style={th}>Фраза</th><th scope="col" style={th}>Мова</th><th scope="col" style={th}>Тип</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Обходів</th><th scope="col" style={{ ...th, textAlign: 'right' }}>GSC</th><th scope="col" style={th}>Наша сторінка</th><th scope="col" style={th}>Дія</th></tr></thead>
                       <tbody>
                         {c.phrases.map(p => (
                           <tr key={`${p.phrase}|${p.lang}`}>

@@ -187,9 +187,9 @@ export default function NovapayClient({ rows, ledger, live, npCod, stmtBalance, 
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ ...cell, textAlign: 'left' }}>Дата</th><th style={{ ...cell, textAlign: 'left' }}>Тип</th>
-                <th style={{ ...cell, textAlign: 'right' }}>Сума</th><th style={{ ...cell, textAlign: 'left' }}>Контрагент · призначення</th>
-                <th style={{ ...cell, textAlign: 'left' }}>Облік</th>
+                <th scope="col" style={{ ...cell, textAlign: 'left' }}>Дата</th><th scope="col" style={{ ...cell, textAlign: 'left' }}>Тип</th>
+                <th scope="col" style={{ ...cell, textAlign: 'right' }}>Сума</th><th scope="col" style={{ ...cell, textAlign: 'left' }}>Контрагент · призначення</th>
+                <th scope="col" style={{ ...cell, textAlign: 'left' }}>Облік</th>
               </tr>
             </thead>
             <tbody>

@@ -530,8 +530,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             <table className="fin-table fin-month-table">
               <thead>
                 <tr>
-                  <th>Місяць</th><th className="num">Вручено</th><th className="num">Виручка</th>
-                  <th className="num">Валовий</th><th className="num">Маржа</th><th className="num">Чистий</th>
+                  <th scope="col">Місяць</th><th scope="col" className="num">Вручено</th><th scope="col" className="num">Виручка</th>
+                  <th scope="col" className="num">Валовий</th><th scope="col" className="num">Маржа</th><th scope="col" className="num">Чистий</th>
                 </tr>
               </thead>
               <tbody>
@@ -574,7 +574,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           {feeTrendHasData ? (
             <table className="fin-table fin-month-table">
               <thead>
-                <tr><th>Місяць</th><th className="num">% виручки</th><th className="num">Разом</th><th className="num">Rozetka</th><th className="num">Prom</th></tr>
+                <tr><th scope="col">Місяць</th><th scope="col" className="num">% виручки</th><th scope="col" className="num">Разом</th><th scope="col" className="num">Rozetka</th><th scope="col" className="num">Prom</th></tr>
               </thead>
               <tbody>
                 {feeTrend.map(m => (
@@ -797,7 +797,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             ) : (
               <table className="fin-table fin-month-table">
                 <thead>
-                  <tr><th /><th className="num">Шт</th><th className="num">Виручка</th><th className="num">Прибуток</th><th className="num">%</th></tr>
+                  <tr><th scope="col" /><th scope="col" className="num">Шт</th><th scope="col" className="num">Виручка</th><th scope="col" className="num">Прибуток</th><th scope="col" className="num">%</th></tr>
                 </thead>
                 <tbody>
                   {card.rows.map(r => {

@@ -108,13 +108,13 @@ export default function LogClient() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)' }}>
-              <th style={th}>Дата</th>
-              <th style={th}>Сторінка</th>
-              <th style={th}>Дія</th>
-              <th style={th}>Запит</th>
-              <th style={{ ...th, textAlign: 'right' }}>Позиція до → після</th>
-              <th style={{ ...th, textAlign: 'right' }}>Кліки до → після</th>
-              <th style={{ ...th, textAlign: 'right' }}>Вартість</th>
+              <th scope="col" style={th}>Дата</th>
+              <th scope="col" style={th}>Сторінка</th>
+              <th scope="col" style={th}>Дія</th>
+              <th scope="col" style={th}>Запит</th>
+              <th scope="col" style={{ ...th, textAlign: 'right' }}>Позиція до → після</th>
+              <th scope="col" style={{ ...th, textAlign: 'right' }}>Кліки до → після</th>
+              <th scope="col" style={{ ...th, textAlign: 'right' }}>Вартість</th>
             </tr>
           </thead>
           <tbody>

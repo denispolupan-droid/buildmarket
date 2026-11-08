@@ -218,7 +218,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
         <table style={{ width: '100%', minWidth: '1100px', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}>
-              <th style={{ padding: '12px 12px 12px 16px', width: 36 }}>
+              <th scope="col" style={{ padding: '12px 12px 12px 16px', width: 36 }}>
                 <input
                   type="checkbox"
                   checked={rows.every(p => selected.has(p.sku))}
@@ -228,20 +228,20 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
               </th>
               {/* Фото без підпису: колонка впізнається сама, а слово «Фото» над
                   мініатюрами лише з'їдало б ширину в і без того щільній таблиці. */}
-              <th style={{ padding: '12px 0 12px 4px', width: 52 }} />
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>SKU</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Назва</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Бренд</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Категорія</th>
-              <th style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Опт</th>
-              <th style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Роздріб</th>
-              <th style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Дроп</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Залишок</th>
-              <th title="Хіт" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>🔥</th>
-              <th title="Новинка" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>✨</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Статус</th>
-              <th title="SEO-готовність" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>SEO</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}></th>
+              <th scope="col" style={{ padding: '12px 0 12px 4px', width: 52 }} />
+              <th scope="col" style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>SKU</th>
+              <th scope="col" style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Назва</th>
+              <th scope="col" style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Бренд</th>
+              <th scope="col" style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Категорія</th>
+              <th scope="col" style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Опт</th>
+              <th scope="col" style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Роздріб</th>
+              <th scope="col" style={{ ...moneyCell, fontWeight: 600, color: 'var(--text-secondary)' }}>Дроп</th>
+              <th scope="col" style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>Залишок</th>
+              <th scope="col" title="Хіт" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>🔥</th>
+              <th scope="col" title="Новинка" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>✨</th>
+              <th scope="col" style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}>Статус</th>
+              <th scope="col" title="SEO-готовність" style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', width: 44 }}>SEO</th>
+              <th scope="col" style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)' }}></th>
             </tr>
           </thead>
           <tbody>

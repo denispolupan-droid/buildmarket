@@ -174,12 +174,12 @@ export default function ActClient({
           </colgroup>
           <thead>
             <tr>
-              <th colSpan={4} style={{ ...cell, textAlign: 'left', fontWeight: 400 }}>За даними {ourName}, грн</th>
-              <th colSpan={4} style={{ ...cell, textAlign: 'left', fontWeight: 400 }}>За даними {them}, грн</th>
+              <th scope="col" colSpan={4} style={{ ...cell, textAlign: 'left', fontWeight: 400 }}>За даними {ourName}, грн</th>
+              <th scope="col" colSpan={4} style={{ ...cell, textAlign: 'left', fontWeight: 400 }}>За даними {them}, грн</th>
             </tr>
             <tr>
               {['Дата', 'Документ', 'Дебет', 'Кредит', 'Дата', 'Документ', 'Дебет', 'Кредит'].map((h, i) => (
-                <th key={i} style={{ ...cell, ...bold, textAlign: 'center' }}>{h}</th>
+                <th scope="col" key={i} style={{ ...cell, ...bold, textAlign: 'center' }}>{h}</th>
               ))}
             </tr>
           </thead>

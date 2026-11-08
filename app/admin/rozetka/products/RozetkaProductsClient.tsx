@@ -413,9 +413,9 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                       <thead>
                         <tr style={{ position: 'sticky', top: 0, background: 'var(--surface-soft)' }}>
-                          <th style={{ textAlign: 'left',  padding: '5px 10px', color: 'var(--text-gray)', fontWeight: 600 }}>Група</th>
-                          <th style={{ textAlign: 'right', padding: '5px 10px', color: 'var(--color-warn)', fontWeight: 600 }}>без точок</th>
-                          <th style={{ textAlign: 'right', padding: '5px 10px', color: 'var(--emerald-dark)', fontWeight: 600 }}>з точками</th>
+                          <th scope="col" style={{ textAlign: 'left',  padding: '5px 10px', color: 'var(--text-gray)', fontWeight: 600 }}>Група</th>
+                          <th scope="col" style={{ textAlign: 'right', padding: '5px 10px', color: 'var(--color-warn)', fontWeight: 600 }}>без точок</th>
+                          <th scope="col" style={{ textAlign: 'right', padding: '5px 10px', color: 'var(--emerald-dark)', fontWeight: 600 }}>з точками</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -660,7 +660,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr>
-                      <th style={{ ...TH, width: 40, padding: '8px 8px 8px 16px' }}>
+                      <th scope="col" style={{ ...TH, width: 40, padding: '8px 8px 8px 16px' }}>
                         <input type="checkbox"
                           checked={rows.every(r => selected.has(r.p.sku))}
                           ref={el => { if (el) el.indeterminate = rows.some(r => selected.has(r.p.sku)) && !rows.every(r => selected.has(r.p.sku)); }}
@@ -670,18 +670,18 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                           }}
                           style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
                       </th>
-                      <th style={{ ...TH, width: 90 }}>SKU</th>
-                      <th style={TH}>Назва</th>
-                      <th style={TH}>Бренд</th>
-                      <th style={TH}>Категорія Rozetka</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Ціна входу</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Комісія</th>
-                      <th style={{ ...TH, textAlign: 'right', width: 110 }}>Наценка</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Ціна Rozetka</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Маржа</th>
-                      <th style={{ ...TH, textAlign: 'center' }} title="Програма Smart: безкоштовна доставка покупцю, компенсація 12/18/30 грн включена в ціну">Smart</th>
-                      <th style={{ ...TH, textAlign: 'center' }}>Rozetka</th>
-                      <th style={{ ...TH, width: 36 }} />
+                      <th scope="col" style={{ ...TH, width: 90 }}>SKU</th>
+                      <th scope="col" style={TH}>Назва</th>
+                      <th scope="col" style={TH}>Бренд</th>
+                      <th scope="col" style={TH}>Категорія Rozetka</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Ціна входу</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Комісія</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right', width: 110 }}>Наценка</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Ціна Rozetka</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Маржа</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'center' }} title="Програма Smart: безкоштовна доставка покупцю, компенсація 12/18/30 грн включена в ціну">Smart</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'center' }}>Rozetka</th>
+                      <th scope="col" style={{ ...TH, width: 36 }} />
                     </tr>
                   </thead>
                   <tbody>

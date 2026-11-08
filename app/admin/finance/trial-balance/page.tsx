@@ -139,11 +139,11 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '2px solid var(--border)' }}>
-              <th style={{ ...th, textAlign: 'left' }}>Рахунок / Контрагент</th>
-              <th style={th}>Сальдо на {from}</th>
-              <th style={th}>Оборот Дт</th>
-              <th style={th}>Оборот Кт</th>
-              <th style={th}>Сальдо на {to}</th>
+              <th scope="col" style={{ ...th, textAlign: 'left' }}>Рахунок / Контрагент</th>
+              <th scope="col" style={th}>Сальдо на {from}</th>
+              <th scope="col" style={th}>Оборот Дт</th>
+              <th scope="col" style={th}>Оборот Кт</th>
+              <th scope="col" style={th}>Сальдо на {to}</th>
             </tr>
           </thead>
           <tbody>

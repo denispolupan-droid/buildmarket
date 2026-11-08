@@ -700,13 +700,13 @@ async function Statement({ cpRef: ref, counterparty, dateFrom, dateTo, showInter
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px' }}>
               <thead>
                 <tr>
-                  <th style={th}>Дата</th>
-                  <th style={th}>Документ</th>
-                  <th style={th}>Замовлення</th>
-                  <th style={th}>Зміст</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Розхід</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Прихід</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Сальдо</th>
+                  <th scope="col" style={th}>Дата</th>
+                  <th scope="col" style={th}>Документ</th>
+                  <th scope="col" style={th}>Замовлення</th>
+                  <th scope="col" style={th}>Зміст</th>
+                  <th scope="col" style={{ ...th, textAlign: 'right' }}>Розхід</th>
+                  <th scope="col" style={{ ...th, textAlign: 'right' }}>Прихід</th>
+                  <th scope="col" style={{ ...th, textAlign: 'right' }}>Сальдо</th>
                 </tr>
               </thead>
               <tbody>

@@ -147,7 +147,7 @@ export default function PromOrdersClient({ orders, totalOrders, stats, totalReve
             <thead>
               <tr style={{ background: 'var(--surface-soft)' }}>
                 {['№', 'Клієнт', 'Статус', 'Сума', 'Prom ID', 'Час'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)' }}>{h}</th>
+                  <th scope="col" key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)' }}>{h}</th>
                 ))}
               </tr>
             </thead>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useDocPanel } from '../../components/admin/ui/useDocPanel';
 import { X, Minus, Search, Trash2, Send, AlertCircle } from 'lucide-react';
 import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
 import { Save } from 'lucide-react';
@@ -54,6 +55,8 @@ export default function NewStockDocModal({
   initialData, warehouses, zIndex, onMinimize, onClose, onDraftChange, onSubmitted,
 }: Props) {
   const [maximized, toggleSize] = useDocPanelSize();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDocPanel(panelRef, { onEscape: onMinimize });
   const [warehouseId,   setWarehouseId]   = useState(initialData.warehouseId || warehouses[0]?.id || 0);
   const [toWarehouseId, setToWarehouseId] = useState<number | null>(initialData.toWarehouseId);
   const [docDate,       setDocDate]       = useState(initialData.docDate);
@@ -178,7 +181,7 @@ export default function NewStockDocModal({
 
   return (
     <>
-      <div className={`doc-panel${maximized ? ' max' : ''}`} style={{ zIndex }}>
+      <div ref={panelRef} role="dialog" aria-modal="false" aria-label="Складський документ" className={`doc-panel${maximized ? ' max' : ''}`} style={{ zIndex }}>
         {/* Header */}
         <DocPanelHeader
           title={title}

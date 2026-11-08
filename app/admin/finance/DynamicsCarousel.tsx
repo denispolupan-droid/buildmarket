@@ -253,13 +253,13 @@ function SourcesDonut({ sources }: { sources: Dynamics['sources'] }) {
         <table style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ ...th, textAlign: 'left', padding: '0 0 6px' }}>Канал</th>
-              <th style={th}>Сума</th>
-              <th style={th}>Частка</th>
-              <th style={th}>Зам.</th>
-              <th style={th} title="Середній чек каналу за період">Сер. чек</th>
-              <th style={th} title="Очікуваний валовий прибуток: доставлені — факт з обліку, решта — оцінка (як у KPI «Прибуток»)">Прибуток</th>
-              <th style={th} title="Виручка каналу проти попереднього періоду тієї ж довжини">vs попер.</th>
+              <th scope="col" style={{ ...th, textAlign: 'left', padding: '0 0 6px' }}>Канал</th>
+              <th scope="col" style={th}>Сума</th>
+              <th scope="col" style={th}>Частка</th>
+              <th scope="col" style={th}>Зам.</th>
+              <th scope="col" style={th} title="Середній чек каналу за період">Сер. чек</th>
+              <th scope="col" style={th} title="Очікуваний валовий прибуток: доставлені — факт з обліку, решта — оцінка (як у KPI «Прибуток»)">Прибуток</th>
+              <th scope="col" style={th} title="Виручка каналу проти попереднього періоду тієї ж довжини">vs попер.</th>
             </tr>
           </thead>
           <tbody>

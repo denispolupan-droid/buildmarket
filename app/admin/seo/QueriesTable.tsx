@@ -169,9 +169,9 @@ export default function QueriesTable({
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-soft)', zIndex: 1 }}>
             <tr>
-              <th style={th}>Запит</th>
-              <th style={th}>Сторінка</th>
-              <th style={th}>Що робили</th>
+              <th scope="col" style={th}>Запит</th>
+              <th scope="col" style={th}>Сторінка</th>
+              <th scope="col" style={th}>Що робили</th>
               <Sortable label="Позиція" k="position" sort={sort} onSort={toggleSort} />
               <Sortable label="Зміна" k="delta" sort={sort} onSort={toggleSort} />
               <Sortable label="Покази" k="impressions" sort={sort} onSort={toggleSort} />
@@ -252,7 +252,7 @@ function Sortable({
 }) {
   const active = sort.key === k;
   return (
-    <th
+    <th scope="col"
       style={{ ...th, textAlign: 'right', cursor: 'pointer', color: active ? 'var(--brand-blue)' : 'var(--text-muted)' }}
       onClick={() => onSort(k)}
     >

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, type ReactNode, type CSSProperties } from 'react';
 import { X } from 'lucide-react';
+import { firstFocusable } from './useDocPanel';
 
 /**
  * Модалка адмінки на нативному <dialog> (showModal):
@@ -43,19 +44,30 @@ function ModalDialog({ onClose, title, width = 480, dismissible = true, footer, 
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
 
+  const titleId = useId();
+
   useEffect(() => {
     const dlg = ref.current;
     if (!dlg) return;
     if (!dlg.open) dlg.showModal();
+    // showModal() ставить фокус на перший фокусований елемент — це хрестик у шапці.
+    // Користувачу потрібне перше поле форми (або перша кнопка в тілі/підвалі):
+    // фокус повертається туди, звідки відкрили, сам <dialog> при close().
+    const content = dlg.querySelector<HTMLElement>('.ui-modal-content');
+    const foot = dlg.querySelector<HTMLElement>('.ui-modal-foot');
+    const first = (content && firstFocusable(content)) ?? (foot && firstFocusable(foot)) ?? null;
+    first?.focus({ preventScroll: true });
     window.dispatchEvent(new Event('ui-modal-open'));
     return () => { if (dlg.open) dlg.close(); };
   }, []);
 
+  const hasTextTitle = title !== undefined && title !== null;
   return (
     <dialog
       ref={ref}
       className="ui-modal"
-      aria-label={rest['aria-label'] ?? (typeof title === 'string' ? title : undefined)}
+      aria-labelledby={hasTextTitle && !rest['aria-label'] ? titleId : undefined}
+      aria-label={rest['aria-label']}
       style={{ width: typeof width === 'number' ? `${width}px` : width, ...style }}
       onCancel={e => { e.preventDefault(); if (dismissible) closeRef.current(); }}
       // Закриваємо лише якщо і натискання, і відпускання — на підкладці: інакше
@@ -68,7 +80,7 @@ function ModalDialog({ onClose, title, width = 480, dismissible = true, footer, 
     >
       {title !== undefined && (
         <div className="ui-modal-head">
-          <div className="ui-modal-title">{title}</div>
+          <div className="ui-modal-title" id={titleId}>{title}</div>
           <button type="button" className="ui-modal-x" onClick={() => closeRef.current()} aria-label="Закрити">
             <X size={18} />
           </button>

@@ -258,12 +258,12 @@ export default function ProductQueueClient({ items, total }: { items: QueueItem[
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-soft)' }}>
-                  <th style={th}></th>
-                  <th style={th}>SKU</th>
-                  <th style={th}>Товар</th>
-                  <th style={th}>Категорія</th>
-                  <th style={th}>Пробіли</th>
-                  <th style={th}></th>
+                  <th scope="col" style={th}></th>
+                  <th scope="col" style={th}>SKU</th>
+                  <th scope="col" style={th}>Товар</th>
+                  <th scope="col" style={th}>Категорія</th>
+                  <th scope="col" style={th}>Пробіли</th>
+                  <th scope="col" style={th}></th>
                 </tr>
               </thead>
               <tbody>

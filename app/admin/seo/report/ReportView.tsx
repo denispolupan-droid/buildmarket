@@ -181,11 +181,11 @@ function PageTable({ rows, showPrev }: { rows: PageRow[]; showPrev?: boolean }) 
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
         <thead>
           <tr>
-            <th style={{ ...th, paddingTop: 14 }}>Сторінка</th>
-            <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Покази</th>
-            {showPrev && <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Було</th>}
-            <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Переходи</th>
-            <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Позиція</th>
+            <th scope="col" style={{ ...th, paddingTop: 14 }}>Сторінка</th>
+            <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Покази</th>
+            {showPrev && <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Було</th>}
+            <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Переходи</th>
+            <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Позиція</th>
           </tr>
         </thead>
         <tbody>
@@ -215,10 +215,10 @@ function QueryTable({ rows, showClicks = true }: { rows: QueryRow[]; showClicks?
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
         <thead>
           <tr>
-            <th style={{ ...th, paddingTop: 14 }}>Запит</th>
-            <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Покази</th>
-            {showClicks && <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Переходи</th>}
-            <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Позиція</th>
+            <th scope="col" style={{ ...th, paddingTop: 14 }}>Запит</th>
+            <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Покази</th>
+            {showClicks && <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Переходи</th>}
+            <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Позиція</th>
           </tr>
         </thead>
         <tbody>
@@ -308,11 +308,11 @@ export default function ReportView({ report, days }: { report: SearchReport; day
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
             <thead>
               <tr>
-                <th style={{ ...th, paddingTop: 14 }}>Тип сторінок</th>
-                <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Покази</th>
-                <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Переходи</th>
-                <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>CTR</th>
-                <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Частка переходів</th>
+                <th scope="col" style={{ ...th, paddingTop: 14 }}>Тип сторінок</th>
+                <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Покази</th>
+                <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Переходи</th>
+                <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>CTR</th>
+                <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Частка переходів</th>
               </tr>
             </thead>
             <tbody>
@@ -340,7 +340,7 @@ export default function ReportView({ report, days }: { report: SearchReport; day
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>Найбільше додали</div>
             <div style={{ ...card, padding: 0, overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr><th style={{ ...th, paddingTop: 14 }}>Сторінка</th><th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Приріст</th></tr></thead>
+                <thead><tr><th scope="col" style={{ ...th, paddingTop: 14 }}>Сторінка</th><th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Приріст</th></tr></thead>
                 <tbody>
                   {r.growth.map(p => (
                     <tr key={p.path}>
@@ -356,7 +356,7 @@ export default function ReportView({ report, days }: { report: SearchReport; day
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>Просіли</div>
             <div style={{ ...card, padding: 0, overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr><th style={{ ...th, paddingTop: 14 }}>Сторінка</th><th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Втрата</th></tr></thead>
+                <thead><tr><th scope="col" style={{ ...th, paddingTop: 14 }}>Сторінка</th><th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Втрата</th></tr></thead>
                 <tbody>
                   {r.decline.length === 0 && (
                     <tr><td style={{ ...td, color: 'var(--text-muted)' }} colSpan={2}>Помітних втрат немає</td></tr>
@@ -415,10 +415,10 @@ export default function ReportView({ report, days }: { report: SearchReport; day
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
               <thead>
                 <tr>
-                  <th style={{ ...th, paddingTop: 14 }}>Місяць</th>
-                  <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Замовлень</th>
-                  <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Виручка</th>
-                  <th style={{ ...th, paddingTop: 14, textAlign: 'right' }}>З сайту</th>
+                  <th scope="col" style={{ ...th, paddingTop: 14 }}>Місяць</th>
+                  <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Замовлень</th>
+                  <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>Виручка</th>
+                  <th scope="col" style={{ ...th, paddingTop: 14, textAlign: 'right' }}>З сайту</th>
                 </tr>
               </thead>
               <tbody>

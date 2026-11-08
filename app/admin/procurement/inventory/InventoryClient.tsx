@@ -161,7 +161,7 @@ export default function InventoryClient() {
               <thead>
                 <tr style={{ background: 'var(--bg-soft)', borderBottom: '2px solid var(--border)' }}>
                   {['Товар', 'Облік (план)', 'Факт', 'Різниця', 'Сума різниці'].map((h, i) => (
-                    <th key={h} style={{ padding: '8px 14px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: i === 0 ? 'left' : 'right', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th scope="col" key={h} style={{ padding: '8px 14px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: i === 0 ? 'left' : 'right', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>

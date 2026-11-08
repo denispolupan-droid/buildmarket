@@ -146,11 +146,11 @@ export default function PricingModelClient() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--bg-soft)', textAlign: 'left', color: 'var(--text-secondary)' }}>
-                  <th style={th}>Смуга</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Націнка, %</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Мін. прибуток, ₴</th>
-                  <th style={{ ...th, textAlign: 'center' }}>Не поштучно</th>
-                  <th style={th}>Коментар</th>
+                  <th scope="col" style={th}>Смуга</th>
+                  <th scope="col" style={{ ...th, textAlign: 'right' }}>Націнка, %</th>
+                  <th scope="col" style={{ ...th, textAlign: 'right' }}>Мін. прибуток, ₴</th>
+                  <th scope="col" style={{ ...th, textAlign: 'center' }}>Не поштучно</th>
+                  <th scope="col" style={th}>Коментар</th>
                 </tr>
               </thead>
               <tbody>
@@ -195,13 +195,13 @@ export default function PricingModelClient() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--bg-soft)', textAlign: 'left', color: 'var(--text-secondary)' }}>
-                  <th style={{ ...th, position: 'sticky', top: 0 }}>SKU</th>
-                  <th style={{ ...th, position: 'sticky', top: 0 }}>Товар</th>
-                  <th style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Собів.</th>
-                  <th style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Зараз</th>
-                  <th style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Стане</th>
-                  <th style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Зміна</th>
-                  <th style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Прибуток</th>
+                  <th scope="col" style={{ ...th, position: 'sticky', top: 0 }}>SKU</th>
+                  <th scope="col" style={{ ...th, position: 'sticky', top: 0 }}>Товар</th>
+                  <th scope="col" style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Собів.</th>
+                  <th scope="col" style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Зараз</th>
+                  <th scope="col" style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Стане</th>
+                  <th scope="col" style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Зміна</th>
+                  <th scope="col" style={{ ...th, position: 'sticky', top: 0, textAlign: 'right' }}>Прибуток</th>
                 </tr>
               </thead>
               <tbody>

@@ -116,13 +116,13 @@ export default function PagesClient() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-soft)', zIndex: 1 }}>
               <tr>
-                <th style={th}>Сторінка</th>
-                <th style={th}>Що робили</th>
-                <th style={{ ...th, textAlign: 'right' }}>Позиція</th>
-                <th style={{ ...th, textAlign: 'right' }}>Зміна</th>
-                <th style={{ ...th, textAlign: 'right' }}>Покази</th>
-                <th style={{ ...th, textAlign: 'right' }}>Кліки</th>
-                <th style={{ ...th, textAlign: 'right' }}>CTR</th>
+                <th scope="col" style={th}>Сторінка</th>
+                <th scope="col" style={th}>Що робили</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Позиція</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Зміна</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Покази</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Кліки</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>CTR</th>
               </tr>
             </thead>
             <tbody>

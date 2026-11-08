@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useDocPanel } from '../../components/admin/ui/useDocPanel';
 import { X, Upload, Loader2, Trash2, Plus, AlertCircle, Minus } from 'lucide-react';
 import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
 import { List, Save, Check } from 'lucide-react';
@@ -151,6 +152,8 @@ type Props = {
 
 export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onClose, onDraftChange, onSubmitted }: Props) {
   const [maximized, toggleSize] = useDocPanelSize();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDocPanel(panelRef, { onEscape: onMinimize });
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -492,7 +495,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
     )}
 
     {/* Side panel ЛІВОРУЧ — після sidebar (220px) */}
-    <div className={`po-panel-enter doc-panel${maximized ? ' max' : ''}`} style={{ zIndex }}>
+    <div ref={panelRef} role="dialog" aria-modal="false" aria-label="Нове замовлення постачальнику" className={`po-panel-enter doc-panel${maximized ? ' max' : ''}`} style={{ zIndex }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}

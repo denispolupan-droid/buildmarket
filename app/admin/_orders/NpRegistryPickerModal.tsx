@@ -89,10 +89,10 @@ export function NpRegistryPickerModal() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '20px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--line)' }}>
-                    <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px' }}>Товар</th>
-                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Замовл.</th>
-                    <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Відвант.</th>
-                    <th style={{ textAlign: 'center', padding: '4px 0', fontWeight: 600, color: '#166534', fontSize: '11px', whiteSpace: 'nowrap' }}>Зараз</th>
+                    <th scope="col" style={{ textAlign: 'left', padding: '4px 0', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px' }}>Товар</th>
+                    <th scope="col" style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Замовл.</th>
+                    <th scope="col" style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Відвант.</th>
+                    <th scope="col" style={{ textAlign: 'center', padding: '4px 0', fontWeight: 600, color: '#166534', fontSize: '11px', whiteSpace: 'nowrap' }}>Зараз</th>
                   </tr>
                 </thead>
                 <tbody>

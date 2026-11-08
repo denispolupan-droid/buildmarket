@@ -236,11 +236,11 @@ export default function AttributesClient({ imported: initialImported }: Props) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-                <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600, width: 24 }} />
-                <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Prom ID</th>
-                <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Категорії сайту</th>
-                <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>Атрибутів</th>
-                <th style={{ padding: '6px 8px' }} />
+                <th scope="col" style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600, width: 24 }} />
+                <th scope="col" style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Prom ID</th>
+                <th scope="col" style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Категорії сайту</th>
+                <th scope="col" style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>Атрибутів</th>
+                <th scope="col" style={{ padding: '6px 8px' }} />
               </tr>
             </thead>
             <tbody>

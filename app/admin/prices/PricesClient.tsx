@@ -1054,11 +1054,11 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 ${desc ? `<div class="cat-desc">${desc}</div>` : ''}
 <table>
   <thead><tr>
-    ${plShowImages ? '<th class="th" style="width:50px"></th>' : ''}
-    <th class="th" style="text-align:left">НАЗВА</th>
-    ${plShowBrand ? '<th class="th" style="width:90px">БРЕНД</th>' : ''}
-    <th class="th" style="width:90px;text-align:center">ОБ\'ЄМ</th>
-    <th class="th" style="width:80px;text-align:right">ЦІНА</th>
+    ${plShowImages ? '<th scope="col" class="th" style="width:50px"></th>' : ''}
+    <th scope="col" class="th" style="text-align:left">НАЗВА</th>
+    ${plShowBrand ? '<th scope="col" class="th" style="width:90px">БРЕНД</th>' : ''}
+    <th scope="col" class="th" style="width:90px;text-align:center">ОБ\'ЄМ</th>
+    <th scope="col" class="th" style="width:80px;text-align:right">ЦІНА</th>
   </tr></thead>
   <tbody>${tRows}</tbody>
 </table>`;
@@ -1598,11 +1598,11 @@ async function sendEmail(){
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #BFDBFE' }}>
-                    <th style={thSmall}>Товар</th>
-                    {mpWantsRz   && <th style={thSmall}>Rozetka: до → після</th>}
-                    {mpWantsRz   && <th style={thSmall}>{isMpAdj ? 'Rozetka: корекція' : 'Націнка Rozetka'}</th>}
-                    {mpWantsProm && <th style={thSmall}>Prom: до → після</th>}
-                    {mpWantsProm && <th style={thSmall}>{isMpAdj ? 'Prom: корекція' : 'Націнка Prom'}</th>}
+                    <th scope="col" style={thSmall}>Товар</th>
+                    {mpWantsRz   && <th scope="col" style={thSmall}>Rozetka: до → після</th>}
+                    {mpWantsRz   && <th scope="col" style={thSmall}>{isMpAdj ? 'Rozetka: корекція' : 'Націнка Rozetka'}</th>}
+                    {mpWantsProm && <th scope="col" style={thSmall}>Prom: до → після</th>}
+                    {mpWantsProm && <th scope="col" style={thSmall}>{isMpAdj ? 'Prom: корекція' : 'Націнка Prom'}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1647,10 +1647,10 @@ async function sendEmail(){
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #BFDBFE' }}>
-                    <th style={thSmall}>Товар</th>
-                    <th style={thSmall}>Оптова: до → після</th>
-                    <th style={thSmall}>Роздрібна: до → після</th>
-                    <th style={thSmall}>Дроп: до → після</th>
+                    <th scope="col" style={thSmall}>Товар</th>
+                    <th scope="col" style={thSmall}>Оптова: до → після</th>
+                    <th scope="col" style={thSmall}>Роздрібна: до → після</th>
+                    <th scope="col" style={thSmall}>Дроп: до → після</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1712,16 +1712,16 @@ async function sendEmail(){
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                      <th style={{ width: 36, padding: '8px 12px' }} />
-                      <th style={{ width: 52 }} />
-                      <th style={th}>Товар</th>
-                      <th style={{ ...th, width: 90 }}>Собівартість</th>
-                      <th style={{ ...th, width: 90 }}>Оптова</th>
-                      <th style={{ ...th, width: 110 }}>Роздрібна</th>
-                      <th style={{ ...th, width: 85, whiteSpace: 'nowrap' }}>Дроп</th>
-                      <th style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Prom</th>
-                      <th style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Rozetka</th>
-                      <th style={{ width: 60, padding: '8px 12px' }} />
+                      <th scope="col" style={{ width: 36, padding: '8px 12px' }} />
+                      <th scope="col" style={{ width: 52 }} />
+                      <th scope="col" style={th}>Товар</th>
+                      <th scope="col" style={{ ...th, width: 90 }}>Собівартість</th>
+                      <th scope="col" style={{ ...th, width: 90 }}>Оптова</th>
+                      <th scope="col" style={{ ...th, width: 110 }}>Роздрібна</th>
+                      <th scope="col" style={{ ...th, width: 85, whiteSpace: 'nowrap' }}>Дроп</th>
+                      <th scope="col" style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Prom</th>
+                      <th scope="col" style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Rozetka</th>
+                      <th scope="col" style={{ width: 60, padding: '8px 12px' }} />
                     </tr>
                   </thead>
                   <tbody>

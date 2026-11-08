@@ -73,7 +73,7 @@ export function HelpTableView({ table }: { table: HelpTable }) {
         <thead>
           <tr>
             {table.head.map(h => (
-              <th key={h} style={{
+              <th scope="col" key={h} style={{
                 textAlign: 'left', padding: '0 12px 7px 0',
                 fontFamily: mono, fontSize: 10.5, fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.07em',

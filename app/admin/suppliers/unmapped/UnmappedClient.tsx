@@ -434,11 +434,11 @@ export default function UnmappedClient({ initial }: { initial: UnmappedRow[] }) 
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-soft)' }}>
-                    <th style={{ ...cell, width: 36 }}>
+                    <th scope="col" style={{ ...cell, width: 36 }}>
                       <input type="checkbox" checked={allGroupSelected} onChange={() => toggleAll(group.rows)} />
                     </th>
                     {['Артикул постач.', 'Назва з файлу', 'Ціна вхід', 'Перший раз', 'Прив\'язати до нашого товару', ''].map(h => (
-                      <th key={h} style={{ ...cell, fontWeight: 700, fontSize: '12px', color: 'var(--text-primary)' }}>{h}</th>
+                      <th scope="col" key={h} style={{ ...cell, fontWeight: 700, fontSize: '12px', color: 'var(--text-primary)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>

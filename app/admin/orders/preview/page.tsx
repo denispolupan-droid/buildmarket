@@ -172,11 +172,11 @@ export default function OrderPreviewPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${HAIR}` }}>
-                  <th style={{ textAlign: 'left', padding: '0 0 10px', ...fieldLabel }}>Товар</th>
-                  <th style={{ textAlign: 'left', padding: '0 0 10px', ...fieldLabel }}>Артикул / SKU</th>
-                  <th style={{ textAlign: 'right', padding: '0 0 10px', ...fieldLabel }}>Кількість</th>
-                  <th style={{ textAlign: 'right', padding: '0 0 10px', ...fieldLabel }}>Ціна</th>
-                  <th style={{ textAlign: 'right', padding: '0 0 10px', ...fieldLabel }}>Сума</th>
+                  <th scope="col" style={{ textAlign: 'left', padding: '0 0 10px', ...fieldLabel }}>Товар</th>
+                  <th scope="col" style={{ textAlign: 'left', padding: '0 0 10px', ...fieldLabel }}>Артикул / SKU</th>
+                  <th scope="col" style={{ textAlign: 'right', padding: '0 0 10px', ...fieldLabel }}>Кількість</th>
+                  <th scope="col" style={{ textAlign: 'right', padding: '0 0 10px', ...fieldLabel }}>Ціна</th>
+                  <th scope="col" style={{ textAlign: 'right', padding: '0 0 10px', ...fieldLabel }}>Сума</th>
                 </tr>
               </thead>
               <tbody>

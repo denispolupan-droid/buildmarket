@@ -329,7 +329,7 @@ export default function PricesLog() {
                     <thead>
                       <tr style={{ background: 'var(--bg-soft)' }}>
                         {['Артикул', 'Назва', ...mpCols.flatMap(c => [`${c.label}: до`, `${c.label}: після`])].map((h, i) => (
-                          <th key={h} style={{ padding: '5px 10px', textAlign: i < 2 ? 'left' : 'right',
+                          <th scope="col" key={h} style={{ padding: '5px 10px', textAlign: i < 2 ? 'left' : 'right',
                             color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -367,7 +367,7 @@ export default function PricesLog() {
                     <thead>
                       <tr style={{ background: 'var(--bg-soft)' }}>
                         {['Артикул', 'Назва', 'До', 'Після', 'Різниця'].map(h => (
-                          <th key={h} style={{ padding: '5px 10px', textAlign: h === 'Артикул' || h === 'Назва' ? 'left' : 'right',
+                          <th scope="col" key={h} style={{ padding: '5px 10px', textAlign: h === 'Артикул' || h === 'Назва' ? 'left' : 'right',
                             color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>
                         ))}
                       </tr>

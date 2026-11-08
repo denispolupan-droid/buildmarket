@@ -364,7 +364,7 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr>
-                      <th style={{ ...TH, width: 40, padding: '8px 8px 8px 16px' }}>
+                      <th scope="col" style={{ ...TH, width: 40, padding: '8px 8px 8px 16px' }}>
                         <input type="checkbox"
                           checked={rows.every(r => selected.has(r.p.sku))}
                           ref={el => { if (el) el.indeterminate = rows.some(r => selected.has(r.p.sku)) && !rows.every(r => selected.has(r.p.sku)); }}
@@ -374,17 +374,17 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                           }}
                           style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
                       </th>
-                      <th style={{ ...TH, width: 90 }}>SKU</th>
-                      <th style={TH}>Назва</th>
-                      <th style={TH}>Бренд</th>
-                      <th style={TH}>Категорія Prom</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Ціна входу</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Комісія</th>
-                      <th style={{ ...TH, textAlign: 'right', width: 110 }}>Наценка</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Ціна Prom</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Маржа</th>
-                      <th style={{ ...TH, textAlign: 'center' }}>Prom</th>
-                      <th style={{ ...TH, width: 36 }} />
+                      <th scope="col" style={{ ...TH, width: 90 }}>SKU</th>
+                      <th scope="col" style={TH}>Назва</th>
+                      <th scope="col" style={TH}>Бренд</th>
+                      <th scope="col" style={TH}>Категорія Prom</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Ціна входу</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Комісія</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right', width: 110 }}>Наценка</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Ціна Prom</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'right' }}>Маржа</th>
+                      <th scope="col" style={{ ...TH, textAlign: 'center' }}>Prom</th>
+                      <th scope="col" style={{ ...TH, width: 36 }} />
                     </tr>
                   </thead>
                   <tbody>

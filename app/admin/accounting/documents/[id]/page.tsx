@@ -259,7 +259,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 <thead>
                   <tr style={{ background: 'var(--bg-soft)' }}>
                     {['Артикул', 'Назва', 'До', 'Після', 'Різниця'].map((h, i) => (
-                      <th key={h} style={{ padding: '7px 14px', textAlign: i >= 2 ? 'right' : 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                      <th scope="col" key={h} style={{ padding: '7px 14px', textAlign: i >= 2 ? 'right' : 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>

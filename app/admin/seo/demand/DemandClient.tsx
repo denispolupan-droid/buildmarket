@@ -127,11 +127,11 @@ export default function DemandClient() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
             <thead>
               <tr>
-                <th style={th}>Товар</th>
-                <th style={{ ...th, textAlign: 'right' }}>Покази</th>
-                <th style={{ ...th, textAlign: 'right' }}>Кліки</th>
-                <th style={{ ...th, textAlign: 'right' }}>Позиція</th>
-                <th style={{ ...th, textAlign: 'right' }}>Наявність</th>
+                <th scope="col" style={th}>Товар</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Покази</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Кліки</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Позиція</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Наявність</th>
               </tr>
             </thead>
             <tbody>
@@ -194,11 +194,11 @@ export default function DemandClient() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
             <thead>
               <tr>
-                <th style={th}>Запит</th>
-                <th style={th}>Куди сідає</th>
-                <th style={{ ...th, textAlign: 'right' }}>Покази</th>
-                <th style={{ ...th, textAlign: 'right' }}>Кліки</th>
-                <th style={{ ...th, textAlign: 'right' }}>Позиція</th>
+                <th scope="col" style={th}>Запит</th>
+                <th scope="col" style={th}>Куди сідає</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Покази</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Кліки</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Позиція</th>
               </tr>
             </thead>
             <tbody>

@@ -162,11 +162,11 @@ export default function AiClient() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={th}>Бот</th>
-                  <th style={th}>Тип</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Візити</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Зміна</th>
-                  <th style={th}>Що читає</th>
+                  <th scope="col" style={th}>Бот</th>
+                  <th scope="col" style={th}>Тип</th>
+                  <th scope="col" style={{ ...th, textAlign: 'right' }}>Візити</th>
+                  <th scope="col" style={{ ...th, textAlign: 'right' }}>Зміна</th>
+                  <th scope="col" style={th}>Що читає</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,9 +199,9 @@ export default function AiClient() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={th}>Джерело</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Переходи</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Зміна</th>
+                    <th scope="col" style={th}>Джерело</th>
+                    <th scope="col" style={{ ...th, textAlign: 'right' }}>Переходи</th>
+                    <th scope="col" style={{ ...th, textAlign: 'right' }}>Зміна</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,9 +228,9 @@ export default function AiClient() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-soft)', zIndex: 1 }}>
                     <tr>
-                      <th style={th}>Сторінка</th>
-                      <th style={th}>Джерело</th>
-                      <th style={{ ...th, textAlign: 'right' }}>Переходи</th>
+                      <th scope="col" style={th}>Сторінка</th>
+                      <th scope="col" style={th}>Джерело</th>
+                      <th scope="col" style={{ ...th, textAlign: 'right' }}>Переходи</th>
                     </tr>
                   </thead>
                   <tbody>

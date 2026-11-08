@@ -59,11 +59,11 @@ export default function JournalTable({ items, emptyText, special = false }: { it
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
             <thead>
               <tr>
-                <th style={{ ...th, textAlign: 'left' }}>Контрагент</th>
-                <th style={th}>Сальдо на початок</th>
-                <th style={th} title="Що ми віддали контрагенту: товар, гроші">Розхід</th>
-                <th style={th} title="Що отримали від контрагента: гроші, товар">Прихід</th>
-                <th style={th}>Сальдо на кінець</th>
+                <th scope="col" style={{ ...th, textAlign: 'left' }}>Контрагент</th>
+                <th scope="col" style={th}>Сальдо на початок</th>
+                <th scope="col" style={th} title="Що ми віддали контрагенту: товар, гроші">Розхід</th>
+                <th scope="col" style={th} title="Що отримали від контрагента: гроші, товар">Прихід</th>
+                <th scope="col" style={th}>Сальдо на кінець</th>
               </tr>
             </thead>
             <tbody>

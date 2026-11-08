@@ -508,11 +508,11 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
                     <tr style={{ background: 'var(--brand-blue-light)' }}>
-                      <th style={{ padding: '7px 10px', textAlign: 'left', color: 'var(--color-info)', fontWeight: 700 }}>Аркуш</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'left', color: 'var(--color-info)', fontWeight: 700 }}>Видимість</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--color-info)', fontWeight: 700 }}>Рядків з товарами</th>
-                      <th style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--color-info)', fontWeight: 700 }}>Всього рядків</th>
-                      <th style={{ padding: '7px 10px' }}></th>
+                      <th scope="col" style={{ padding: '7px 10px', textAlign: 'left', color: 'var(--color-info)', fontWeight: 700 }}>Аркуш</th>
+                      <th scope="col" style={{ padding: '7px 10px', textAlign: 'left', color: 'var(--color-info)', fontWeight: 700 }}>Видимість</th>
+                      <th scope="col" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--color-info)', fontWeight: 700 }}>Рядків з товарами</th>
+                      <th scope="col" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--color-info)', fontWeight: 700 }}>Всього рядків</th>
+                      <th scope="col" style={{ padding: '7px 10px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1028,7 +1028,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
             <thead>
               <tr style={{ background: 'var(--bg-soft)' }}>
                 {['Назва', 'Формат', 'Інтервал', 'Наценки (маг/опт/дроп)', 'Остання синх.', 'Статус', ''].map(h => (
-                  <th key={h} style={{ ...cell, fontWeight: 700, color: 'var(--text-secondary)', fontSize: '12px' }}>{h}</th>
+                  <th scope="col" key={h} style={{ ...cell, fontWeight: 700, color: 'var(--text-secondary)', fontSize: '12px' }}>{h}</th>
                 ))}
               </tr>
             </thead>

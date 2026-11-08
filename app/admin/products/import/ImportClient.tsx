@@ -191,7 +191,7 @@ export default function ImportClient({ categories }: Props) {
                 <thead>
                   <tr style={{ background: 'var(--bg-soft)' }}>
                     {Object.keys(preview[0]).slice(0, 8).map(key => (
-                      <th key={key} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
+                      <th scope="col" key={key} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                         {key}
                       </th>
                     ))}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useDocPanel } from '../../components/admin/ui/useDocPanel';
 import {
   X, Minus, Loader2, Trash2, Plus, AlertCircle, Upload, Search, UserCheck, Users,
   Printer, ChevronDown, CheckSquare, Package, Send, Warehouse, RefreshCw, Info,
@@ -159,6 +160,8 @@ export default function NewOrderModal({
   initialData, zIndex = 1003, onMinimize, onClose, onDraftChange, onSubmitted,
 }: Props) {
   const [maximized, toggleSize] = useDocPanelSize();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDocPanel(panelRef, { onEscape: onMinimize });
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -811,6 +814,10 @@ export default function NewOrderModal({
     <>
       {/* ── Side panel ───────────────────────────────────────────────────── */}
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="false"
+        aria-label="Нове замовлення покупця"
         className={`order-panel-enter doc-panel${maximized ? ' max' : ''}`}
         style={{ zIndex }}
       >

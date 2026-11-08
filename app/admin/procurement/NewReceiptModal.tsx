@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useDocPanel } from '../../components/admin/ui/useDocPanel';
 import { X, Minus, Upload, Loader2, Trash2, AlertCircle, Copy, List, Save, Check, Gift, Truck } from 'lucide-react';
 import DocPanelHeader, { useDocPanelSize } from '../DocPanelHeader';
 import { showToast } from '../../../lib/toast';
@@ -113,6 +114,7 @@ export default function NewReceiptModal({
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  useDocPanel(bodyRef, { onEscape: onMinimize });
 
   const [warehouseId,       setWarehouseId]       = useState(initialData.warehouseId || warehouses[0]?.id || 0);
   const [supplierId,        setSupplierId]         = useState<number | ''>(initialData.supplierId ?? '');
@@ -428,6 +430,9 @@ export default function NewReceiptModal({
       <div
         className={`receipt-panel-enter doc-panel scroll${maximized ? ' max' : ''}`}
         ref={bodyRef}
+        role="dialog"
+        aria-modal="false"
+        aria-label={initialData.poId ? 'Прихід за замовленням постачальнику' : 'Новий прихід товару'}
         style={{ zIndex }}
       >
         {/* ── Header sticky ── */}

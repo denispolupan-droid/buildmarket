@@ -234,7 +234,7 @@ export default function PromoCodesClient({ initial }: { initial: PromoCode[] }) 
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {['Код', 'Знижка', 'Мін. сума', 'Використань', 'Діє до', 'Опис', ''].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                    <th scope="col" key={h} style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
