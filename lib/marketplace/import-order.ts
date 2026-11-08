@@ -3,6 +3,7 @@ import { createServiceClient, asJson, type TableInsert } from '../supabase-servi
 import { log } from '../log';
 import type { MarketplaceAdapter } from './adapter';
 import { stageMarketplaceImport } from './staging';
+import { newOrderLines, linesTotal, type OrderLineInput } from '../orders/lines';
 
 type Db = ReturnType<typeof createServiceClient>;
 
@@ -75,11 +76,18 @@ async function importOnce<Raw>(db: Db, adapter: MarketplaceAdapter<Raw>, raw: Ra
     amount_paid:            mapped.paid ? mapped.total_price : 0,
     price_type:             'retail',
     comment:                mapped.comment,
-    items:                  asJson(mapped.items),
-    total_price:            mapped.total_price,
+    // Позиції й сума — через lib/orders/lines (етап C): сума = Σ рядків, її ставить
+    // база; сума площадки лишається в payload (prom_data/rozetka_data) для звірки
+    ...newOrderLines(mapped.items as unknown as OrderLineInput[]),
     status:                 'new',
     channel_code:           adapter.code,
   };
+  const linesSum = linesTotal(mapped.items as unknown as OrderLineInput[]);
+  if (Math.abs(linesSum - Number(mapped.total_price)) > 0.01) {
+    // Площадка каже одну суму, рядки дають іншу (доставка в сумі, округлення адаптера) —
+    // у замовленні буде сума рядків (правило I10), а розходження має бути видно
+    log.warn('mp.import.total_mismatch', { mp: adapter.code, externalId, mpTotal: mapped.total_price, linesSum });
+  }
   const { data: inserted, error } = await db.from('orders').insert(row).select('id').single();
 
   if (error) {

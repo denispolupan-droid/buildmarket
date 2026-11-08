@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { createServiceClient, asJson } from '../../../../../../lib/supabase-service';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
+import { setOrderLines, type OrderLineInput } from '../../../../../../lib/orders/lines';
 import { withApi } from '../../../../../../lib/api-handler';
 
 // Зміна типу цін замовлення (роздріб / опт / дроп) з перерахунком позицій
@@ -94,13 +95,17 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
   const newTotal  = Math.round(newItems.reduce((s, i) => s + (i.is_bonus ? 0 : Number(i.price) * Number(i.qty)), 0) * 100) / 100;
   const discountAmount = Math.round((baseTotal - newTotal) * 100) / 100;
 
-  const { error: updErr } = await db
-    .from('orders')
-    .update({ items: asJson(newItems), total_price: newTotal, price_type: priceType, discount_amount: discountAmount })
-    .eq('id', id);
-  if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+  // Позиції — лише через lib/orders/lines (етап C): рядки, похідний items і
+  // total_price (тригером) однією транзакцією разом із тарифом і сумою знижки
+  let total: number;
+  try {
+    total = await setOrderLines(db, id, newItems as unknown as OrderLineInput[], { price_type: priceType, discount_amount: discountAmount });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
+  void newTotal;
 
-  return NextResponse.json({ ok: true, price_type: priceType, total_price: newTotal, discount_amount: discountAmount, items: newItems });
+  return NextResponse.json({ ok: true, price_type: priceType, total_price: total, discount_amount: discountAmount, items: newItems });
 }
 
 export const POST = withApi('admin/orders/[id]/reprice', _POST);

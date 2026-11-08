@@ -7,7 +7,8 @@ import { rateLimit, getClientIp } from '../../../lib/rate-limit';
 import { WHOLESALE_MIN } from '../../../lib/site';
 import { alertAdmin } from '../../../lib/alert';
 import { findOrCreateCustomerForOrder } from '../../../lib/customers';
-import { repriceItems, applyPromoCode, type RepriceItem, type PriceRow, type PromoCodeRow } from '../../../lib/pricing';
+import { repriceItems, applyPromoCode, applyPromoToItems, type RepriceItem, type PriceRow, type PromoCodeRow } from '../../../lib/pricing';
+import { newOrderLines, type OrderLineInput } from '../../../lib/orders/lines';
 import type { CartItem } from '../../../types';
 import { getMonoAcquiringToken } from '../../../lib/mono-config';
 import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
@@ -110,7 +111,8 @@ async function _POST(req: NextRequest) {
 
   const priced = repriceItems(rawItems as RepriceItem[], priceBySku as Map<string, PriceRow>, isWholesaleUser);
   if (!priced.ok) return NextResponse.json({ error: priced.error }, { status: 400 });
-  const { serverTotal, serverEligibleTotal, serverItems } = priced;
+  const { serverTotal, serverEligibleTotal } = priced;
+  let serverItems = priced.serverItems;
 
   // ── Promo code: validate server-side and compute final total ─────────────
   let finalTotal      = serverTotal;
@@ -124,8 +126,12 @@ async function _POST(req: NextRequest) {
       return NextResponse.json({ error: 'Промокод не знайдено або неактивний' }, { status: 400 });
     const applied = applyPromoCode(promo as PromoCodeRow, serverTotal, serverEligibleTotal, new Date());
     if (!applied.ok) return NextResponse.json({ error: applied.error }, { status: 400 });
-    finalTotal = applied.finalTotal;
-    promoDiscount = applied.promoDiscount;
+    // Знижка — у построчних цінах (етап C: сума замовлення = Σ рядків, її рахує база),
+    // як і ручна знижка; фактична знижка після округлення копійок — у promo_discount
+    const baked = applyPromoToItems(serverItems, applied.promoDiscount);
+    serverItems = baked.items;
+    finalTotal = baked.finalTotal;
+    promoDiscount = baked.promoDiscount;
     resolvedPromoCode = applied.code;
   }
 
@@ -172,8 +178,7 @@ async function _POST(req: NextRequest) {
       delivery_warehouse_ref: deliveryWarehouseRef ?? null,
       payment_type:          'card',
       comment:               comment ?? null,
-      items:                 serverItems,
-      total_price:           finalTotal,
+      ...newOrderLines(serverItems as OrderLineInput[]),
       promo_code:            resolvedPromoCode,
       promo_discount:        promoDiscount,
       utm_source:            utm_source ?? null,
@@ -262,8 +267,7 @@ async function _POST(req: NextRequest) {
       payment_type:   paymentType,
       status:         'new',
       comment:        comment ?? null,
-      items:          serverItems,
-      total_price:    finalTotal,
+      ...newOrderLines(serverItems as OrderLineInput[]),
       promo_code:     resolvedPromoCode,
       promo_discount: promoDiscount,
       utm_source:     utm_source ?? null,

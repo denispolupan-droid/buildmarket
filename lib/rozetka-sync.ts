@@ -8,6 +8,7 @@ import { alertAdmin } from './alert';
 import { itemsDiffer, describeItemsDiff } from './rozetka-items-diff';
 import { rozetkaNeedsTtn, rozetkaStatusLabel } from './rozetka-status';
 import { createServiceClient, type TableUpdate, asJson } from './supabase-service';
+import { setOrderLines, type OrderLineInput } from './orders/lines';
 
 /** Відмова кабінету на PUT зі статусом+ТТН: {"ttn":["До запитуваного замовлення заборонено прив'язувати ТТН"]} */
 const ROZETKA_TTN_FORBIDDEN = /заборонено прив.?язувати ТТН/i;
@@ -136,15 +137,13 @@ export async function syncRozetkaOrders() {
         const ourItems = (existing.items ?? []) as { sku: string; qty: number; price: number }[];
         if (itemsDiffer(ourItems, liveItems)) {
           if (existing.status === 'new') {
-            const liveTotal = liveItems.reduce((sum, i) => sum + i.qty * i.price, 0);
             const comm = await computeRozetkaCommission(liveItems, { fallbackPct });
-            await db.from('orders').update({
-              items:        liveItems,
-              total_price:  liveTotal,
-              // Знімок оновлюємо разом зі складом, інакше різниця лишиться
-              // й наступний прогін застосує те саме ще раз, по колу.
+            // Позиції — через lib/orders/lines (етап C): рядки, похідний items і
+            // total_price тригером разом зі знімком кабінету — інакше різниця лишиться
+            // й наступний прогін застосує те саме ще раз, по колу.
+            await setOrderLines(db, existing.id, liveItems as unknown as OrderLineInput[], {
               rozetka_data: asJson({ ...storedData, purchases: rzOrder.purchases, _commission: comm, _items_synced_at: new Date().toISOString() }),
-            }).eq('id', existing.id);
+            });
             itemsUpdated++;
             console.log(`[rozetka-sync] items updated from cabinet for order ${rzOrder.id}`);
           } else if (!storedData._items_changed) {

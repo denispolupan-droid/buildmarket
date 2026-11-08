@@ -20,6 +20,7 @@ import { orderSnapshot, statusPushEvents, customerNotifyEvents } from '../../../
 import type { OutboxEventInput } from '../../../../../lib/outbox/types';
 import { withApi } from '../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../lib/orders/lines-read';
+import { setOrderLines } from '../../../../../lib/orders/lines';
 
 // РН — кінцевий фінансовий документ виконаного замовлення. Ідемпотентно фіксує
 // продаж (документ + виручка + COGS + борг постачальнику), якщо підтвердженої
@@ -135,11 +136,15 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
   // як є, і сума могла розійтися з рядками, по яких рахуються РН, виручка і
   // комісія. Редактор рахунку (LinesEditor) суму й так не шле; картка шле —
   // тепер її значення ігнорується. Сума без рядків сенсу не має → 400.
+  // Позиції пишуться окремо через lib/orders/lines (етап C): рядки + похідний
+  // items + total_price тригером; тут лише перевірка форми й сума для стража.
+  let linesToSet: unknown[] | null = null;
+  let linesTotalForGuard: number | undefined;
   if (bodyItems !== undefined) {
     const parsed = parseSaleLines(bodyItems);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
-    update.items       = bodyItems;
-    update.total_price = parsed.total;
+    linesToSet = bodyItems;
+    linesTotalForGuard = parsed.total;
   } else if (bodyTotalPrice !== undefined) {
     return NextResponse.json({ error: 'Сума замовлення рахується з позицій — надішліть items' }, { status: 400 });
   }
@@ -211,7 +216,7 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
     editCtx = await checkSaleEdit({
       orderId: id,
       source: body.edit_source === 'invoice' ? 'invoice' : 'order-card',
-      totalAfter: update.total_price !== undefined ? Number(update.total_price) : undefined,
+      totalAfter: linesTotalForGuard,
       dateAfter: (update.created_at as string | undefined) ?? null,
     });
     editWarnings = editCtx.verdict.warnings.map(w => w.message);
@@ -259,6 +264,7 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
   }
 
   try {
+    if (linesToSet) await setOrderLines(db, id, linesToSet as Parameters<typeof setOrderLines>[2]);
     await applyOrderPatch(db, id, update, events);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

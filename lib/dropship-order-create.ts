@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildDropshipLines, type DropshipCatalogItem, type DropshipLineInput, type DropshipLine } from './dropship-order';
+import { newOrderLines, type OrderLineInput } from './orders/lines';
 
 export type DropshipCustomer = { id: string; name: string | null; email: string | null };
 
@@ -138,10 +139,9 @@ export async function createDropshipOrder(db: SupabaseClient, params: {
       payment_confirmed: true,
       amount_paid:      totalCost,
       comment:          str(params.comment, 1000) || (params.source === 'excel' ? 'Імпорт з Excel' : null),
-      items:            lines,
-      // Сума, яку платить кінцевий клієнт (= накладений платіж), рахується тут
-      // з рядків, а не береться з тіла запиту.
-      total_price:      totalSell,
+      // Сума, яку платить кінцевий клієнт (= накладений платіж), рахується з рядків
+      // (lib/orders/lines, етап C), а не береться з тіла запиту.
+      ...newOrderLines(lines as unknown as OrderLineInput[]),
     })
     .select('id, order_number')
     .single();

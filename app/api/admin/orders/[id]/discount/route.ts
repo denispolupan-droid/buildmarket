@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
-import { asJson, createServiceClient } from '../../../../../../lib/supabase-service';
+import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { applyOrderDiscount, type DiscountItem } from '../../../../../../lib/pricing';
+import { setOrderLines, type OrderLineInput } from '../../../../../../lib/orders/lines';
 import { parseBody, zMoney, zYmd, zText, z } from '../../../../../../lib/validate';
 import { withApi } from '../../../../../../lib/api-handler';
 
@@ -52,17 +53,20 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
   const result = applyOrderDiscount(items, { pct: body.pct, amount: body.amount });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
-  const { error: updErr } = await db
-    .from('orders')
-    .update({ items: asJson(result.items), total_price: result.total, discount_pct: result.discountPct, discount_amount: result.discountAmount })
-    .eq('id', id);
-  if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+  // Позиції — лише через lib/orders/lines (етап C): рядки, похідний items і
+  // total_price (тригером) однією транзакцією разом із полями знижки
+  let total: number;
+  try {
+    total = await setOrderLines(db, id, result.items as unknown as OrderLineInput[], { discount_pct: result.discountPct, discount_amount: result.discountAmount });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
     discount_pct: result.discountPct,
     discount_amount: result.discountAmount,
-    total_price: result.total,
+    total_price: total,
     items: result.items,
   });
 }

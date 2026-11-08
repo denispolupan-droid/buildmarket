@@ -189,6 +189,23 @@ describe('архітектурні межі (AGENTS.md)', () => {
     expect(offenders, 'запиши подію через statusPushEvents/ttnPushEvents (lib/outbox/enqueue):\n' + offenders.join('\n')).toEqual([]);
   });
 
+  it('позиції замовлення пишуться лише через lib/orders/lines (етап C order_lines)', () => {
+    // 08.11.2026: 14 писарів items/total_price зведено до newOrderLines (insert) і
+    // setOrderLines (RPC order_set_lines). Прямий .update({ items … }) або insert з
+    // items без newOrderLines повертає розсинхрон рядків і суми.
+    const upd = /\.update\(\s*\{[^}]*\b(items|total_price)\s*:/;
+    const ins = /\.insert\(\s*\{[\s\S]{0,1200}?\bitems\s*:/;
+    const offenders = files.map(rel)
+      .filter(r => (r.startsWith('app/') || r.startsWith('lib/')) && r !== 'lib/orders/lines.ts')
+      .filter(r => {
+        const src = read(path.join(ROOT, r));
+        if (!src.includes("from('orders')")) return false;
+        if (upd.test(src)) return true;
+        return ins.test(src) && !src.includes('newOrderLines(');
+      });
+    expect(offenders, 'пиши позиції через newOrderLines/setOrderLines (lib/orders/lines):\n' + offenders.join('\n')).toEqual([]);
+  });
+
   it('ключ НП — лише через getNpApiKey (lib/np-api), не через process.env напряму', () => {
     // 03.11.2026: /api/novaposhta, delivery-sync і np-debug читали ЛИШЕ
     // process.env.NOVA_POSHTA_API_KEY (ключ іншого кабінету). Коли змінну прибрали,

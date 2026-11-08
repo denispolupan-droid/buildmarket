@@ -152,3 +152,33 @@ export function applyPromoCode(
   const finalTotal = Math.max(0, serverTotal - (promoDiscount ?? 0));
   return { ok: true, finalTotal, promoDiscount, code: promo.code };
 }
+
+/**
+ * Промокод «зашивається» в построчні ціни так само, як ручна знижка (Варіант A):
+ * з етапу C order_lines (08.11.2026) total_price замовлення рахує база з рядків,
+ * тож знижка, яка живе лише в полі promo_discount, у суму не потрапила б. Знижка
+ * розкладається пропорційно по рядках, що під неї підпадають (не акційні, не
+ * бонусні), ціна за одиницю округлюється до копійок, тому фактична знижка може
+ * відрізнятись від розрахованої на копійки — повертаємо фактичну, і саме вона
+ * іде в promo_discount та в суму рахунку Monobank.
+ */
+export type PromoBakeResult = { items: Record<string, unknown>[]; finalTotal: number; promoDiscount: number };
+
+export function applyPromoToItems(items: Record<string, unknown>[], promoDiscount: number): PromoBakeResult {
+  const eligible = (it: Record<string, unknown>) => !it.is_promo && !it.is_bonus;
+  const eligibleTotal = r2(items.filter(eligible).reduce((s, it) => s + Number(it.price) * Number(it.qty), 0));
+  const discount = Math.min(Math.max(0, r2(promoDiscount)), eligibleTotal);
+  if (discount <= 0 || eligibleTotal <= 0) {
+    const total = r2(items.reduce((s, it) => s + r2(Number(it.price) * Number(it.qty)), 0));
+    return { items, finalTotal: total, promoDiscount: 0 };
+  }
+  const factor = 1 - discount / eligibleTotal;
+  const baked = items.map(it => {
+    if (!eligible(it)) return it;
+    const base = Number(it.price);
+    return { ...it, price_base: base, price: r2(base * factor) };
+  });
+  const before = r2(items.reduce((s, it) => s + r2(Number(it.price) * Number(it.qty)), 0));
+  const finalTotal = r2(baked.reduce((s, it) => s + r2(Number(it.price) * Number(it.qty)), 0));
+  return { items: baked, finalTotal, promoDiscount: r2(before - finalTotal) };
+}

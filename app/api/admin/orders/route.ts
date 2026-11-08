@@ -6,6 +6,7 @@ import { notifyAdminNewOrder } from '../../../../lib/telegram';
 import { requireStaff } from '../../../../lib/auth-guard';
 import { withApi } from '../../../../lib/api-handler';
 import { npWarehouseDescription } from '../../../../lib/np-api';
+import { normalizeLines, newOrderLines } from '../../../../lib/orders/lines';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -162,11 +163,11 @@ async function _POST(req: NextRequest) {
   // parseSaleLines, а пряма сума з приведенням до чисел; бонусні рядки йдуть
   // із price 0 і суму не змінюють. Клієнтський totalPrice ігнорується.
   void totalPrice;
-  const orderTotal = Math.round(items.reduce((s: number, i: { qty: unknown; price: unknown }) => {
-    const qty = Number(i.qty), price = Number(i.price);
-    return s + (Number.isFinite(qty) && Number.isFinite(price) ? qty * price : 0);
-  }, 0) * 100) / 100;
-  if (!(orderTotal >= 0)) return NextResponse.json({ error: 'Некоректна сума позицій' }, { status: 400 });
+  // Правила на позиції й підсумок — lib/orders/lines (етап C): вільна позиція
+  // без артикула допустима, qty > 0, price ≥ 0; суму ставить база з рядків.
+  const norm = normalizeLines(items);
+  if (!norm.ok) return NextResponse.json({ error: norm.error }, { status: 400 });
+  const orderTotal = norm.total;
 
   // Find or create customer — this ensures every manual order builds the CRM
   const { customerId: resolvedCustomerId, contractId: resolvedContractId } = await resolveCustomer(db, {
@@ -194,8 +195,7 @@ async function _POST(req: NextRequest) {
       payment_type:          paymentType,
       status:                'new',
       comment:               comment ?? null,
-      items,
-      total_price:           orderTotal,
+      ...newOrderLines(norm.lines),
       channel_code:          channelCode ?? 'retail',
       // Без дати — лишаємо DEFAULT now() бази, а не час браузера
       ...(createdAtIso ? { created_at: createdAtIso } : {}),

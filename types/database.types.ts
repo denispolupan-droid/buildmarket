@@ -7044,6 +7044,10 @@ export type Database = {
       next_ar_correction_number: { Args: never; Returns: string }
       next_doc_number: { Args: { p_type: string }; Returns: string }
       open_period: { Args: { p_by?: string; p_month: string }; Returns: string }
+      order_set_lines: {
+        Args: { p_lines: Json; p_order_id: string; p_patch?: Json }
+        Returns: number
+      }
       order_transition_outbox: {
         Args: { p_events?: Json; p_order_id: string; p_patch: Json }
         Returns: number
