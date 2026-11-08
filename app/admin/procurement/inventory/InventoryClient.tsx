@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { Search, ClipboardCheck } from 'lucide-react';
 import { showToast } from '../../../../lib/toast';
 import { showConfirm } from '../../../../lib/confirm';
@@ -10,8 +11,14 @@ type Warehouse = { id: number; name: string; is_default: boolean };
 type Item = { sku: string; name: string; plan: number; reserved: number; avg_cost: number };
 
 export default function InventoryClient() {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [warehouseId, setWarehouseId] = useState<number | ''>('');
+  const { data: meta } = useAdminQuery<{ warehouses?: Warehouse[] }>('/api/admin/accounting/inventory', {
+    onError: () => showToast('Не вдалося завантажити склади', 'error'),
+  });
+  const warehouses = meta?.warehouses ?? [];
+  const defaultWarehouse = warehouses.find(w => w.is_default) ?? warehouses[0];
+  // Вибір менеджера має пріоритет; поки його немає — склад за замовчуванням
+  const [pickedWarehouse, setWarehouseId] = useState<number | '' | null>(null);
+  const warehouseId = pickedWarehouse ?? defaultWarehouse?.id ?? '';
   const [items, setItems]     = useState<Item[] | null>(null);
   const [facts, setFacts]     = useState<Record<string, string>>({});
   const [search, setSearch]   = useState('');
@@ -20,17 +27,6 @@ export default function InventoryClient() {
   const [saving, setSaving]   = useState(false);
   const [note, setNote]       = useState('');
   const [result, setResult]   = useState<{ doc_number: string; doc_id: string; diffs: number; surplus_cost: number; shortage_cost: number } | null>(null);
-
-  useEffect(() => {
-    fetch('/api/admin/accounting/inventory')
-      .then(r => r.json())
-      .then(d => {
-        setWarehouses(d.warehouses ?? []);
-        const def = (d.warehouses ?? []).find((w: Warehouse) => w.is_default) ?? (d.warehouses ?? [])[0];
-        if (def) setWarehouseId(def.id);
-      })
-      .catch(() => showToast('Не вдалося завантажити склади', 'error'));
-  }, []);
 
   async function loadItems() {
     if (warehouseId === '') return;

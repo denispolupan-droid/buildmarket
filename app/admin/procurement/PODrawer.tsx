@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { X, Minus, Maximize2, Loader2 } from 'lucide-react';
 import ProcurementDetail from './[id]/ProcurementDetail';
 import AdjustmentButton from './[id]/AdjustmentButton';
@@ -39,27 +40,12 @@ interface Props {
 }
 
 export default function PODrawer({ poId, poLabel, onClose }: Props) {
-  const [po,        setPo]        = useState<PoData | null>(null);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
+  // isValidating, а не isLoading: борг і статус показуємо лише свіжі, не з кешу
+  const detail = useAdminQuery<PoData>(`/api/admin/procurement/${poId}/detail`);
+  const po = detail.data ?? null;
+  const loading = detail.isValidating;
+  const error = detail.error?.message ?? null;
   const [minimized, setMinimized] = useState(false);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/procurement/${poId}/detail`);
-      if (!res.ok) { setError('Не вдалося завантажити'); return; }
-      const data = await res.json();
-      setPo(data);
-    } catch {
-      setError('Мережева помилка');
-    } finally {
-      setLoading(false);
-    }
-  }, [poId]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Закривати по Escape
   useEffect(() => {

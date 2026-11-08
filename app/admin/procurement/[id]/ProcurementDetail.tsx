@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSenders } from '../useSenders';
 import { showToast } from '../../../../lib/toast';
 import { ArrowLeft, CheckCircle, Loader2, Package, FileText, Banknote, X, Upload, Download, Trash2, Copy, Check, MoreHorizontal, Printer, Send, Mail } from 'lucide-react';
 import Link from 'next/link';
@@ -137,14 +138,7 @@ export default function ProcurementDetail({ po, chainButton, adjustmentButton, o
   const [showSendModal,        setShowSendModal]        = useState(false);
   const [sendEmail,            setSendEmail]            = useState(po.supplier_email ?? '');
   const [sendingMail,          setSendingMail]          = useState(false);
-  const [senders,              setSenders]              = useState<{ name: string; email: string }[]>([]);
-  const [chosenSender,         setChosenSender]         = useState('');
-  useEffect(() => {
-    fetch('/api/admin/procurement/senders')
-      .then(r => r.json())
-      .then(d => { const list = d.senders ?? []; setSenders(list); setChosenSender(d.defaultSender || list[0]?.email || ''); })
-      .catch(() => {});
-  }, []);
+  const { senders, chosenSender, setChosenSender } = useSenders();
   const [sendContacts,         setSendContacts]         = useState<ContactEntry[]>([]);
   const [sendContactsLoading,  setSendContactsLoading]  = useState(false);
 

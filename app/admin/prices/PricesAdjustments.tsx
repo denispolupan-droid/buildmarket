@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { Tag, Undo2, Clock } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 import { ADJ_CHANNEL_LABEL, factorLabel, lastDayOf, type AdjChannel } from '../../../lib/price-adjustments';
@@ -35,15 +36,9 @@ function pctText(g: Group) {
 }
 
 export default function PricesAdjustments({ onChanged }: { onChanged: () => void }) {
-  const [groups, setGroups] = useState<Group[] | null>(null);
+  const query = useAdminQuery<Group[]>('/api/admin/prices/adjustments');
+  const groups = query.data ? (Array.isArray(query.data) ? query.data : []) : query.error ? [] : null;
   const [busy, setBusy] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch('/api/admin/prices/adjustments')
-      .then(r => r.json())
-      .then(d => setGroups(Array.isArray(d) ? d : []))
-      .catch(() => setGroups([]));
-  }, []);
 
   async function cancel(g: Group) {
     if (g.log_id == null) return;

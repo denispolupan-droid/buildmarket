@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 import Link from 'next/link';
 import { fmtMoney, fmtDate } from '../../../lib/format';
 import { STATUSES, CHANNEL_LABEL } from '../_orders/constants';
@@ -20,18 +20,9 @@ const STATUS = new Map(STATUSES.map(s => [s.value, s]));
 const secLabel: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' };
 
 export default function PartnerHistory({ customerId }: { customerId: string }) {
-  const [data, setData] = useState<History | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    setData(null); setError(null);
-    fetch(`/api/admin/partners/${customerId}/history`)
-      .then(r => r.ok ? r.json() : r.json().then((d: { error?: string }) => Promise.reject(new Error(d.error ?? `HTTP ${r.status}`))))
-      .then((d: History) => { if (alive) setData(d); })
-      .catch(e => { if (alive) setError(e instanceof Error ? e.message : 'Помилка'); });
-    return () => { alive = false; };
-  }, [customerId]);
+  const query = useAdminQuery<History>(`/api/admin/partners/${customerId}/history`);
+  const data = query.data;
+  const error = query.error?.message ?? null;
 
   const debt = data?.balances.customer ?? 0;
   const partner = data?.balances.partner;

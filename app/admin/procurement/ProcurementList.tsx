@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useSenders } from './useSenders';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ChevronDown, ChevronUp, Send, Loader2, X, Mail, Trash2, Copy } from 'lucide-react';
@@ -86,14 +87,7 @@ export default function ProcurementList({ orders }: { orders: PO[] }) {
   const [loadingContacts, setLoadingContacts] = useState(false);
 
   // Відправники (основний + додаткові з налаштувань) — для вибору «від кого» слати
-  const [senders,      setSenders]      = useState<{ name: string; email: string }[]>([]);
-  const [chosenSender, setChosenSender] = useState('');
-  useEffect(() => {
-    fetch('/api/admin/procurement/senders')
-      .then(r => r.json())
-      .then(d => { const list = d.senders ?? []; setSenders(list); setChosenSender(d.defaultSender || list[0]?.email || ''); })
-      .catch(() => {});
-  }, []);
+  const { senders, chosenSender, setChosenSender } = useSenders();
 
   async function startSendQueue(ids: string[]) {
     const selected   = orders.filter(po => ids.includes(po.id));

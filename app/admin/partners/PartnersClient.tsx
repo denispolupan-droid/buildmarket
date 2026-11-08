@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { useSearchParams } from 'next/navigation';
 import {
   Wallet, CheckCircle, XCircle, Plus, ChevronDown, ChevronUp,
@@ -73,6 +74,8 @@ function fmtDate(s: string | null) {
   return new Date(s).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+const NO_CONTRACTS: never[] = [];
+
 export default function PartnersClient({
   customers: initialCustomers,
   pendingPayouts,
@@ -94,18 +97,11 @@ export default function PartnersClient({
 
   // Contracts for the viewed customer
   type ContractRow = { id: string; contract_number: string; status: string; credit_days: number; credit_limit: number; payment_terms: string | null; start_date: string | null; end_date: string | null; is_auto: boolean };
-  const [contracts,      setContracts]      = useState<ContractRow[]>([]);
-  const [contractsLoading, setContractsLoading] = useState(false);
+  const contractsQuery = useAdminQuery<ContractRow[]>(viewingId ? `/api/admin/contracts?customer_id=${viewingId}` : null);
+  const contracts = Array.isArray(contractsQuery.data) ? contractsQuery.data : NO_CONTRACTS;
+  const contractsLoading = contractsQuery.isLoading;
   const [showNewContract,  setShowNewContract]  = useState(false);
   const [newContract,      setNewContract]      = useState({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
-
-  useEffect(() => {
-    if (!viewingId) { setContracts([]); return; }
-    setContractsLoading(true);
-    fetch(`/api/admin/contracts?customer_id=${viewingId}`)
-      .then(r => r.json()).then(d => setContracts(Array.isArray(d) ? d : []))
-      .finally(() => setContractsLoading(false));
-  }, [viewingId]);
 
   async function addCustomerContract() {
     if (!viewingId) return;
@@ -116,7 +112,7 @@ export default function PartnersClient({
     });
     if (res.ok) {
       const c = await res.json();
-      setContracts(prev => [c, ...prev]);
+      void contractsQuery.update(prev => [c, ...(Array.isArray(prev) ? prev : [])]);
       setShowNewContract(false);
       setNewContract({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
     }
@@ -995,16 +991,7 @@ export default function PartnersClient({
 
 // ── Partner transaction history (for wholesale/dropship) ──────────────────────
 function PartnerTransactions({ partnerId }: { partnerId: string }) {
-  const [txs,     setTxs]     = useState<Record<string, unknown>[] | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  if (!txs && !loading) {
-    setLoading(true);
-    fetch(`/api/admin/partners/${partnerId}/transactions`)
-      .then(r => r.json())
-      .then(data => { setTxs(data); setLoading(false); })
-      .catch(() => { setTxs([]); setLoading(false); });
-  }
+  const { data: txs, isLoading: loading } = useAdminQuery<Record<string, unknown>[]>(`/api/admin/partners/${partnerId}/transactions`);
 
   const TX_LABELS: Record<string, string> = {
     top_up: 'Поповнення', charge: 'Списання', cod_credit: 'COD нарахування',

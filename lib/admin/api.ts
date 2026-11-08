@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import useSWR, { type SWRConfiguration } from 'swr';
 
 /**
@@ -30,20 +31,25 @@ export async function adminFetcher<T>(url: string): Promise<T> {
 /**
  * Значення за замовчуванням повторюють поведінку колишніх useEffect: без автооновлення
  * при поверненні на вкладку й без автоповторів (база на nano-тарифі, бюджет IO).
- * keepPreviousData — при зміні фільтра таблиця не блимає порожнечею.
+ * dedupingInterval 0 — кожне відкриття екрана справді перечитує дані.
+ * keepPreviousData вимкнено: у картках дані іншого контрагента не мають показуватись
+ * під час завантаження; для списків із фільтрами вмикати явно.
  */
 const DEFAULTS: SWRConfiguration = {
   revalidateOnFocus: false,
   revalidateOnReconnect: false,
   shouldRetryOnError: false,
-  keepPreviousData: true,
+  dedupingInterval: 0,
 };
 
 /**
  * url = null — запит не виконується. `refresh()` перечитує дані й безпечний як
  * onClick: на відміну від SWR-івського mutate, не прийме подію кліку за нові дані.
+ * `update(fn)` — локальна правка кешу результатом дії, без запиту.
  */
 export function useAdminQuery<T>(url: string | null, config?: SWRConfiguration<T, AdminApiError>) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<T, AdminApiError>(url, adminFetcher, { ...DEFAULTS, ...config });
-  return { data, error, isLoading, isValidating, refresh: () => mutate() };
+  const refresh = useCallback(() => mutate(), [mutate]);
+  const update = useCallback((fn: (current: T | undefined) => T | undefined) => mutate(fn, { revalidate: false }), [mutate]);
+  return { data, error, isLoading, isValidating, refresh, update };
 }

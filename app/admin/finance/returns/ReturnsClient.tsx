@@ -73,7 +73,7 @@ export default function ReturnsClient() {
   const listParams = new URLSearchParams({ limit: '300' });
   if (from) listParams.set('from', from);
   if (to) listParams.set('to', to);
-  const list = useAdminQuery<{ rows?: ReturnRow[]; kpi?: ReturnsKpi | null }>(`/api/admin/finance/returns?${listParams}`);
+  const list = useAdminQuery<{ rows?: ReturnRow[]; kpi?: ReturnsKpi | null }>(`/api/admin/finance/returns?${listParams}`, { keepPreviousData: true });
   const rows = list.data?.rows ?? NO_ROWS;
   const kpi = list.data?.kpi ?? null;
   const loading = list.isValidating;

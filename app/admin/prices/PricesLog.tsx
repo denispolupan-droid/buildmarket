@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { Tag, RotateCcw, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Clock, X, Undo2 } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
 import { isMpTarget } from '../../../lib/mp-reprice';
@@ -86,19 +87,15 @@ function promoStatus(entry: LogEntry) {
   return { label: 'Активна', color: 'var(--color-success)', bg: 'var(--ok-bg)' };
 }
 
+const NO_ENTRIES: LogEntry[] = [];
+
 export default function PricesLog() {
-  const [entries, setEntries] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const log = useAdminQuery<LogEntry[]>('/api/admin/prices/log');
+  const entries = Array.isArray(log.data) ? log.data : NO_ENTRIES;
+  const loading = log.isLoading;
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [cancelling, setCancelling] = useState<number | null>(null);
   const [reverting, setReverting]   = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch('/api/admin/prices/log')
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setEntries(d); })
-      .finally(() => setLoading(false));
-  }, []);
 
   function toggle(id: number) {
     setExpanded(prev => {
@@ -117,7 +114,7 @@ export default function PricesLog() {
         body: JSON.stringify({ id, action: 'cancel' }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setEntries(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' } : e));
+      void log.update(prev => prev?.map(e => e.id === id ? { ...e, status: 'cancelled' } : e));
       showToast('Заплановану переоцінку скасовано', 'success');
     } catch {
       showToast('Помилка скасування', 'error');
@@ -146,9 +143,9 @@ export default function PricesLog() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? 'Помилка відкату');
       // Перечитуємо журнал: з'явився рядок відкату, а вихідний позначено
-      const fresh = await fetch('/api/admin/prices/log').then(r => r.json()).catch(() => null);
-      if (Array.isArray(fresh)) setEntries(fresh);
-      else setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, status: 'reverted', reverted_at: data.reverted_at ?? new Date().toISOString() } : e));
+      // Спершу позначка: якщо перечитати не вдасться, рядок усе одно покаже відкат
+      await log.update(prev => prev?.map(e => e.id === entry.id ? { ...e, status: 'reverted', reverted_at: data.reverted_at ?? new Date().toISOString() } : e));
+      await log.refresh();
       const drifted = Array.isArray(data.drifted) ? data.drifted.length : 0;
       showToast(
         `Відкочено ${data.reverted ?? entry.count ?? 0} товарів` + (drifted ? ` · ${drifted} з них змінювали після переоцінки — їх теж повернуто до «до»` : ''),
