@@ -38,7 +38,7 @@ export function StatusMenu({ current, options, locked, onPick, onClose }: {
     <div ref={ref} role="menu"
       style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 40, width: '186px', padding: '4px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '9px', boxShadow: '0 8px 24px rgba(15,23,42,0.14)' }}>
       <div style={{ padding: '4px 8px 5px', fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-        Змінити вручну{locked && <span style={{ marginLeft: '4px', color: '#F59E0B' }}>🔒</span>}
+        Змінити вручну{locked && <span style={{ marginLeft: '4px', color: 'var(--amber)' }}>🔒</span>}
       </div>
       {options.map(s => {
         const isCurrent = s.value === current;

@@ -263,7 +263,7 @@ export default function EditPricesButton({
               onDrop={onDrop}
               onClick={() => fileInputRef.current?.click()}
               style={{
-                border: `2px dashed ${dragging ? '#3B82F6' : 'var(--border)'}`,
+                border: `2px dashed ${dragging ? 'var(--blue-bright)' : 'var(--border)'}`,
                 borderRadius: '10px',
                 padding: '14px 16px',
                 marginBottom: '16px',
@@ -273,7 +273,7 @@ export default function EditPricesButton({
                 transition: 'all 0.15s',
               }}
             >
-              <Upload size={18} style={{ color: dragging ? '#3B82F6' : 'var(--text-muted)', flexShrink: 0 }} />
+              <Upload size={18} style={{ color: dragging ? 'var(--blue-bright)' : 'var(--text-muted)', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                   {parsing ? 'Читання файлу...' : 'Прайс від постачальника'}
@@ -301,7 +301,7 @@ export default function EditPricesButton({
 
             {/* Unmatched warning */}
             {matches && unmatchedCount > 0 && (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '8px 12px', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '8px 12px', background: 'var(--bg-warn)', border: '1px solid var(--amber-border)', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
                 <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '1px' }} />
                 <span>
                   Не знайдено у файлі:{' '}
@@ -337,7 +337,7 @@ export default function EditPricesButton({
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                           {l.sku}
                           {match?.via === 'name' && (
-                            <span style={{ marginLeft: '6px', color: '#D97706', fontWeight: 600 }}>≈ по назві</span>
+                            <span style={{ marginLeft: '6px', color: 'var(--status-order)', fontWeight: 600 }}>≈ по назві</span>
                           )}
                         </div>
                       </td>
@@ -361,7 +361,7 @@ export default function EditPricesButton({
                               width: '100px', textAlign: 'right',
                               padding: '4px 8px', borderRadius: '6px',
                               border: `1.5px solid ${wasMatched ? 'var(--border-success)' : 'var(--border)'}`,
-                              background: wasMatched ? 'var(--bg-success)' : 'var(--bg-input, #fff)',
+                              background: wasMatched ? 'var(--bg-success)' : 'var(--bg-input, var(--surface))',
                               fontSize: '13px', fontWeight: 600,
                               color: 'var(--text-primary)',
                             }}
@@ -373,7 +373,7 @@ export default function EditPricesButton({
                               width: '24px', height: '24px', borderRadius: '5px', flexShrink: 0,
                               border: `1px solid ${promo ? 'var(--border-warn)' : 'var(--border)'}`,
                               background: promo ? 'var(--bg-warn)' : 'none',
-                              color: promo ? '#D97706' : 'var(--text-muted)',
+                              color: promo ? 'var(--status-order)' : 'var(--text-muted)',
                               fontSize: '11px', fontWeight: 700, cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
@@ -408,7 +408,7 @@ export default function EditPricesButton({
                               />
                               <button
                                 onClick={() => applyPromo(l.sku, l.qty)}
-                                style={{ padding: '3px 8px', borderRadius: '5px', border: 'none', background: '#D97706', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                                style={{ padding: '3px 8px', borderRadius: '5px', border: 'none', background: 'var(--status-order)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                               >
                                 = середня
                               </button>
@@ -448,7 +448,7 @@ export default function EditPricesButton({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: saving ? 'var(--text-muted)' : 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: saving ? 'var(--text-muted)' : 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <Check size={14} /> {saving ? 'Збереження...' : 'Зберегти'}
               </button>

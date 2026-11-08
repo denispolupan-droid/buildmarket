@@ -97,11 +97,11 @@ export default function PricesAdjustments({ onChanged }: { onChanged: () => void
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
             {g.is_promo ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '2px 6px', borderRadius: 4 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, color: 'var(--orange)', background: 'var(--orange-bg)', border: '1px solid var(--orange-border)', padding: '2px 6px', borderRadius: 4 }}>
                 <Tag size={10} /> Акція
               </span>
             ) : (
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#5B21B6', background: '#F5F3FF', border: '1px solid #DDD6FE', padding: '2px 6px', borderRadius: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#5B21B6', background: 'var(--violet-bg)', border: '1px solid #DDD6FE', padding: '2px 6px', borderRadius: 4 }}>
                 Тимчасова зміна
               </span>
             )}
@@ -123,7 +123,7 @@ export default function PricesAdjustments({ onChanged }: { onChanged: () => void
           <button
             onClick={() => cancel(g)}
             disabled={busy === g.log_id || g.log_id == null}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, border: '1px solid #DDD6FE', background: '#F5F3FF', color: '#5B21B6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 6, border: '1px solid #DDD6FE', background: 'var(--violet-bg)', color: '#5B21B6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             <Undo2 size={12} /> {busy === g.log_id ? '...' : 'Вимкнути'}
           </button>
         </div>

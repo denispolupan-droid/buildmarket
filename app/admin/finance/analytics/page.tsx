@@ -500,7 +500,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                   ],
                 },
                 {
-                  label: 'Прибуток', value: `${fmt(gross)} ₴`, valueColor: gross >= 0 ? '#15803D' : '#DC2626', cur: gross, prev: prevPL.revenue > 0 ? prevPL.grossProfit : null,
+                  label: 'Прибуток', value: `${fmt(gross)} ₴`, valueColor: gross >= 0 ? 'var(--color-success)' : 'var(--color-danger)', cur: gross, prev: prevPL.revenue > 0 ? prevPL.grossProfit : null,
                   hint: `Валовий — виручка мінус собівартість FIFO і всі прямі витрати на продажі (комісії й оплата ${pctOfRev(fees)} виручки). Чистий — ще мінус операційні витрати ${fmt(pl.opex.total)} ₴ і податки ${fmt(pl.taxes)} ₴. Розбір — нижче.`,
                   metrics: [
                     { label: 'маржа', value: rev > 0 ? `${Math.round(gross / rev * 1000) / 10}%` : '—' },
@@ -552,7 +552,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                     <td className="num" style={{ color: m.gross < 0 ? 'var(--color-danger)' : undefined }}>{m.gross !== 0 ? `${fmt(m.gross)} ₴` : '—'}</td>
                     <td className="num muted">
                       <span className="fin-inbar small">
-                        <span className="fin-inbar-track"><span style={{ width: `${Math.min(100, Math.max(0, m.pct ?? 0) * 10)}%`, background: '#16A34A' }} /></span>
+                        <span className="fin-inbar-track"><span style={{ width: `${Math.min(100, Math.max(0, m.pct ?? 0) * 10)}%`, background: 'var(--status-instock)' }} /></span>
                         <span>{m.pct === null ? '—' : `${m.pct}%`}</span>
                       </span>
                     </td>
@@ -580,7 +580,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                 {feeTrend.map(m => (
                   <tr key={m.label}>
                     <td className="muted">{m.label}</td>
-                    <td className="num" style={{ color: m.fee > 0 ? '#C2410C' : 'var(--text-muted)' }}>{m.fee > 0 ? `${m.pct}%` : '—'}</td>
+                    <td className="num" style={{ color: m.fee > 0 ? 'var(--orange)' : 'var(--text-muted)' }}>{m.fee > 0 ? `${m.pct}%` : '—'}</td>
                     <td className="num">{m.fee > 0 ? `−${fmt(m.fee)} ₴` : '—'}</td>
                     <td className="num muted" style={{ fontWeight: 500 }}>{m.roz > 0 ? fmt(m.roz) : '—'}</td>
                     <td className="num muted" style={{ fontWeight: 500 }}>{m.prom > 0 ? fmt(m.prom) : '—'}</td>
@@ -645,7 +645,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
                       <span title={p.abc === 'A' ? 'Клас A — топ, дає 80% прибутку' : p.abc === 'B' ? 'Клас B — середняк (наступні 15% прибутку)' : 'Клас C — хвіст (5% прибутку або збиткові)'}
                         style={{ fontSize: '10px', fontWeight: 800, width: '18px', height: '18px', borderRadius: '5px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                           color: p.abc === 'A' ? 'var(--color-success)' : p.abc === 'B' ? 'var(--color-warn)' : 'var(--text-muted)',
-                          background: p.abc === 'A' ? '#DCFCE7' : p.abc === 'B' ? '#FEF3C7' : 'var(--bg-soft)',
+                          background: p.abc === 'A' ? 'var(--ok-bg)' : p.abc === 'B' ? 'var(--amber-bg)' : 'var(--bg-soft)',
                           border: `1px solid ${p.abc === 'A' ? 'var(--border-success)' : p.abc === 'B' ? 'var(--border-warn)' : 'var(--border)'}` }}>
                         {p.abc}
                       </span>
@@ -701,13 +701,13 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {/* Кільце: частка повторних у центрі; поруч — замовлень і прибуток по кожній групі */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '10px' }}>
               <Donut center={`${repeatShare}%`} parts={[
-                { label: 'Нові', value: repeatAgg.new.count, color: '#94A3B8' },
+                { label: 'Нові', value: repeatAgg.new.count, color: 'var(--ink-muted)' },
                 { label: 'Повторні', value: repeatAgg.repeat.count, color: 'var(--brand-blue)' },
               ]} />
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
                   { label: 'Повторні', color: 'var(--brand-blue)', a: repeatAgg.repeat },
-                  { label: 'Нові', color: '#94A3B8', a: repeatAgg.new },
+                  { label: 'Нові', color: 'var(--ink-muted)', a: repeatAgg.new },
                 ].map(g => (
                   <div key={g.label} style={{ display: 'flex', alignItems: 'baseline', gap: '8px', fontSize: '12.5px' }}>
                     <i style={{ width: 9, height: 9, borderRadius: 2, background: g.color, alignSelf: 'center', flexShrink: 0 }} />

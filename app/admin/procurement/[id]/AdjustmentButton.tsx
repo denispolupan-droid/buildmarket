@@ -136,7 +136,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
   return (
     <>
       <button onClick={() => setOpen(true)}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid #7C3AED', background: '#F5F3FF', color: '#7C3AED', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: '1.5px solid var(--violet)', background: 'var(--violet-bg)', color: 'var(--violet)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
         <Edit3 size={13} /> Коригування
       </button>
 
@@ -154,7 +154,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
 
             {/* Body */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)', borderLeft: '3px solid #7C3AED' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--bg-soft)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)', borderLeft: '3px solid var(--violet)' }}>
                 Підтверджене замовлення не можна редагувати напряму. Коригування створює окремий документ.
               </div>
 
@@ -206,7 +206,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                         {line.isNew ? '—' : `${orig?.qty ?? 0} шт`}
                       </span>
                       <input
-                        style={{ ...inp, borderColor: isChanged ? '#7C3AED' : undefined, background: line.deleted ? 'var(--bg-soft)' : 'var(--bg-card)' }}
+                        style={{ ...inp, borderColor: isChanged ? 'var(--violet)' : undefined, background: line.deleted ? 'var(--bg-soft)' : 'var(--bg-card)' }}
                         type="number" min="0"
                         value={line.qty}
                         disabled={line.deleted}
@@ -214,7 +214,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                       />
                       <button onClick={() => toggleDelete(line.sku)}
                         title={line.deleted ? 'Відновити' : 'Видалити позицію'}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${line.deleted ? 'var(--color-success)' : 'var(--border-danger)'}`, background: 'none', cursor: 'pointer', color: line.deleted ? 'var(--color-success)' : '#EF4444', flexShrink: 0 }}>
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${line.deleted ? 'var(--color-success)' : 'var(--border-danger)'}`, background: 'none', cursor: 'pointer', color: line.deleted ? 'var(--color-success)' : 'var(--danger-bright)', flexShrink: 0 }}>
                         {line.deleted ? <Plus size={12} /> : <Trash2 size={12} />}
                       </button>
                     </div>
@@ -258,7 +258,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                               <div key={s.sku}
                                 onMouseDown={() => selectSuggestion(s)}
                                 onMouseEnter={() => setActiveIdx(i)}
-                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', background: i === activeIdx ? '#EFF4FF' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', background: i === activeIdx ? 'var(--blue-bg)' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                                 <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
                                 <span style={{ fontWeight: 700, color: 'var(--navy)', flexShrink: 0 }}>{s.brand}</span>
                                 <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
@@ -274,7 +274,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                     <input style={inp} type="number" min="0" step="0.01" placeholder="Ціна ₴" value={newPrice || ''}
                       onChange={e => setNewPrice(parseFloat(e.target.value) || 0)} />
                     <button onClick={addLine} disabled={!newSku.trim()}
-                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 12px', borderRadius: '6px', border: 'none', background: newSku.trim() ? 'var(--navy)' : 'var(--border)', color: newSku.trim() ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: newSku.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 12px', borderRadius: '6px', border: 'none', background: newSku.trim() ? 'var(--navy)' : 'var(--border)', color: newSku.trim() ? 'var(--surface)' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: newSku.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
                       <Plus size={12} /> Додати
                     </button>
                   </div>
@@ -304,7 +304,7 @@ export default function AdjustmentButton({ poId, lines, onSuccess }: { poId: str
                 Скасувати
               </button>
               <button onClick={handleSave} disabled={saving || !changed.length}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (!changed.length || saving) ? 0.5 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--violet)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (!changed.length || saving) ? 0.5 : 1 }}>
                 {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : <><Check size={14} />Зберегти коригування</>}
               </button>
             </div>

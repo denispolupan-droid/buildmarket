@@ -41,7 +41,7 @@ export default function EditDraftButton({ poId, supplierId, supplierName, expect
       style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         height: '34px', padding: '0 14px', borderRadius: '8px',
-        border: '1.5px solid var(--navy)', background: '#EFF4FF',
+        border: '1.5px solid var(--navy)', background: 'var(--blue-bg)',
         color: 'var(--navy)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
       }}
     >

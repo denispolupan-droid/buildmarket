@@ -839,7 +839,7 @@ export default function NewOrderModal({
                         padding: '5px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                         border: `1.5px solid ${channelCode === ch.value ? 'var(--navy)' : 'var(--border)'}`,
                         background: channelCode === ch.value ? 'var(--navy)' : 'var(--bg-soft)',
-                        color: channelCode === ch.value ? '#fff' : 'var(--text-secondary)',
+                        color: channelCode === ch.value ? 'var(--surface)' : 'var(--text-secondary)',
                       }}>
                       {ch.label}
                     </button>
@@ -917,7 +917,7 @@ export default function NewOrderModal({
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.name}</span>
                             {c.company && <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '1px 6px', borderRadius: '4px' }}>{c.company}</span>}
-                            <span style={{ fontSize: '10px', color: c.type === 'wholesale' ? '#7C3AED' : 'var(--text-soft)', marginLeft: 'auto' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>
+                            <span style={{ fontSize: '10px', color: c.type === 'wholesale' ? 'var(--violet)' : 'var(--text-soft)', marginLeft: 'auto' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>
                           </div>
                           {(c.phone || c.city) && (
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -934,15 +934,15 @@ export default function NewOrderModal({
                 </div>
               ) : (
                 /* Selected customer badge */
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--brand-blue-light)', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--brand-blue-light)', borderRadius: '8px', border: '1px solid var(--blue-border)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--navy)' }}>{selectedCustomer.name}</div>
-                    <div style={{ fontSize: '11px', color: '#3B82F6' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--blue-bright)' }}>
                       {[selectedCustomer.company, selectedCustomer.phone, selectedCustomer.city].filter(Boolean).join(' · ')}
                     </div>
                   </div>
                   <button onClick={clearCustomer} title="Скинути вибір"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3B82F6', display: 'flex', padding: '3px' }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--blue-bright)', display: 'flex', padding: '3px' }}>
                     <X size={14} />
                   </button>
                 </div>
@@ -995,7 +995,7 @@ export default function NewOrderModal({
               style={{
                 border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`,
                 borderRadius: '10px', padding: '12px 20px', cursor: 'pointer',
-                background: dragging ? '#EFF4FF' : 'var(--bg-soft)',
+                background: dragging ? 'var(--blue-bg)' : 'var(--bg-soft)',
                 display: 'flex', alignItems: 'center', gap: '12px',
                 transition: 'all 0.15s',
               }}
@@ -1003,7 +1003,7 @@ export default function NewOrderModal({
               {parsing
                 ? <><Loader2 size={18} color="#1E3A5F" style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: '13px', color: 'var(--navy)' }}>Читаємо файл...</span></>
                 : <>
-                    <Upload size={18} color={dragging ? '#1E3A5F' : '#94A3B8'} />
+                    <Upload size={18} color={dragging ? 'var(--navy)' : 'var(--ink-muted)'} />
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Завантажити з Excel / CSV</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Перетягніть файл або натисніть · Колонки: Артикул, Назва, К-сть, Ціна</div>
@@ -1032,7 +1032,7 @@ export default function NewOrderModal({
                         padding: '3px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 700,
                         cursor: 'pointer', border: 'none',
                         background: priceTier === t.value ? 'var(--navy)' : 'transparent',
-                        color:      priceTier === t.value ? '#fff'     : 'var(--text-muted)',
+                        color:      priceTier === t.value ? 'var(--surface)'     : 'var(--text-muted)',
                         transition: 'all 0.12s',
                       }}>
                       {t.label}
@@ -1168,7 +1168,7 @@ export default function NewOrderModal({
                       {/* Delete */}
                       <button onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
                         disabled={lines.length === 1}
-                        style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? '#EF4444' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? 'var(--danger-bright)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -1204,7 +1204,7 @@ export default function NewOrderModal({
             </div>
 
             {warnCount > 0 && (
-              <div style={{ padding: '8px 14px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <div style={{ padding: '8px 14px', background: 'var(--amber-bg)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <AlertCircle size={13} />
                 {warnCount} артикул(ів) не знайдено в базі — підсвічено помаранчевим
               </div>
@@ -1235,7 +1235,7 @@ export default function NewOrderModal({
                       style={{
                         flex: 1, padding: '7px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                         border: `1.5px solid ${novaSubtype === sub ? 'var(--navy)' : 'var(--border)'}`,
-                        background: novaSubtype === sub ? '#EFF4FF' : 'var(--bg-soft)',
+                        background: novaSubtype === sub ? 'var(--blue-bg)' : 'var(--bg-soft)',
                         color: novaSubtype === sub ? 'var(--navy)' : 'var(--text-secondary)',
                       }}>
                       {sub === 'warehouse' ? '📦 Відділення' : sub === 'postomat' ? '🏧 Поштомат' : "🚚 Кур'єр"}
@@ -1267,12 +1267,12 @@ export default function NewOrderModal({
             {delivery === RZ_DELIVERY_TYPE && (
               <div>
                 {rzConfig && !rzConfig.enabled && (
-                  <div style={{ padding: '8px 12px', marginBottom: '10px', borderRadius: '8px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', fontSize: '12px', color: '#B91C1C' }}>
+                  <div style={{ padding: '8px 12px', marginBottom: '10px', borderRadius: '8px', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', fontSize: '12px', color: 'var(--danger-dark)' }}>
                     «ROZETKA Доставка» вимкнена в Налаштуваннях — накладну по цьому замовленню створити не вийде.
                   </div>
                 )}
                 {rzOverLimit && (
-                  <div style={{ padding: '8px 12px', marginBottom: '10px', borderRadius: '8px', background: '#FEF3C7', border: '1px solid var(--border-warn)', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
+                  <div style={{ padding: '8px 12px', marginBottom: '10px', borderRadius: '8px', background: 'var(--amber-bg)', border: '1px solid var(--border-warn)', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
                     Вага {weightKg} кг перевищує ліміт нашої точки здачі ({rzConfig?.maxWeightKg} кг) — таку посилку не приймуть.
                   </div>
                 )}
@@ -1330,9 +1330,9 @@ export default function NewOrderModal({
             {/* Left: summary */}
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
               {createdOrderNumber
-                ? <span style={{ color: '#059669', fontWeight: 700 }}>✅ №{createdOrderNumber}</span>
+                ? <span style={{ color: 'var(--emerald)', fontWeight: 700 }}>✅ №{createdOrderNumber}</span>
                 : <>{filledLines} позицій · {fmt(total)} ₴</>}
-              {customerId && <span style={{ marginLeft: '8px', color: '#3B82F6' }}>· 🔗 Прив'язаний</span>}
+              {customerId && <span style={{ marginLeft: '8px', color: 'var(--blue-bright)' }}>· 🔗 Прив'язаний</span>}
             </div>
 
             {/* Right: actions */}
@@ -1362,7 +1362,7 @@ export default function NewOrderModal({
                     height: '36px', padding: '0 16px', border: 'none',
                     borderRadius: '8px 0 0 8px',
                     background: actionBusy || !contact.trim() ? 'var(--text-muted)' : 'var(--navy)',
-                    color: '#fff', fontSize: '13px', fontWeight: 700,
+                    color: 'var(--surface)', fontSize: '13px', fontWeight: 700,
                     cursor: actionBusy ? 'wait' : !contact.trim() ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', gap: '7px',
                   }}>
@@ -1379,7 +1379,7 @@ export default function NewOrderModal({
                     borderRadius: '0 8px 8px 0',
                     borderLeft: '1px solid rgba(255,255,255,0.25)',
                     background: actionBusy || !contact.trim() ? 'var(--text-muted)' : 'var(--navy)',
-                    color: '#fff', cursor: actionBusy ? 'wait' : !contact.trim() ? 'not-allowed' : 'pointer',
+                    color: 'var(--surface)', cursor: actionBusy ? 'wait' : !contact.trim() ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                   <ChevronDown size={14} />
@@ -1434,7 +1434,7 @@ export default function NewOrderModal({
                     borderBottom: '1px solid var(--border-light)',
                     display: 'flex', alignItems: 'baseline', gap: '8px',
                     whiteSpace: 'nowrap', overflow: 'hidden',
-                    background: isActive ? '#EFF4FF' : 'transparent',
+                    background: isActive ? 'var(--blue-bg)' : 'transparent',
                     transition: 'background 0.1s',
                   }}>
                   <span style={{ color: isActive ? 'var(--navy)' : 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
@@ -1496,8 +1496,8 @@ export default function NewOrderModal({
                 </div>
               ) : (
                 pickerList.map((c, i) => {
-                  const typeColor = c.type === 'wholesale' ? '#7C3AED' : c.type === 'dropship_partner' ? '#2563EB' : '#64748B';
-                  const typeBg   = c.type === 'wholesale' ? '#F5F3FF' : c.type === 'dropship_partner' ? '#EFF6FF' : '#F8FAFC';
+                  const typeColor = c.type === 'wholesale' ? 'var(--violet)' : c.type === 'dropship_partner' ? 'var(--blue)' : 'var(--text-soft)';
+                  const typeBg   = c.type === 'wholesale' ? 'var(--violet-bg)' : c.type === 'dropship_partner' ? '#EFF6FF' : '#F8FAFC';
                   const typeLabel = c.type === 'wholesale' ? 'Опт' : c.type === 'dropship_partner' ? 'Дропшип' : 'Роздріб';
                   return (
                     <button
@@ -1554,15 +1554,15 @@ export default function NewOrderModal({
               {poModal.hasOwn ? (
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                    <div style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-success)', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                    <div style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-success)', borderRadius: '8px', border: '1px solid var(--ok-border)' }}>
                       <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase' }}>На складі</div>
                       <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-success)' }}>{poModal.allItems.length - poModal.missingItems.length}</div>
                       <div style={{ fontSize: '11px', color: 'var(--status-instock)' }}>позицій в наявності</div>
                     </div>
-                    <div style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', border: '1px solid #FECACA' }}>
+                    <div style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-danger)', borderRadius: '8px', border: '1px solid var(--danger-border)' }}>
                       <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase' }}>Відсутні</div>
                       <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-danger)' }}>{poModal.missingItems.length}</div>
-                      <div style={{ fontSize: '11px', color: '#EF4444' }}>позицій потрібно замовити</div>
+                      <div style={{ fontSize: '11px', color: 'var(--danger-bright)' }}>позицій потрібно замовити</div>
                     </div>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 12px', background: 'var(--bg-soft)', borderRadius: '8px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
@@ -1579,13 +1579,13 @@ export default function NewOrderModal({
                 {poModal.missingItems.length > 0 && (
                   <button
                     onClick={() => openPODraft(poModal.missingItems)}
-                    style={{ padding: '12px 16px', background: 'var(--navy)', color: '#fff', border: 'none', borderRadius: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+                    style={{ padding: '12px 16px', background: 'var(--navy)', color: 'var(--surface)', border: 'none', borderRadius: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
                     📋 Тільки відсутні ({poModal.missingItems.length} поз.) — мінімальне замовлення
                   </button>
                 )}
                 <button
                   onClick={() => openPODraft(poModal.allItems)}
-                  style={{ padding: '12px 16px', background: poModal.missingItems.length > 0 ? 'var(--bg-soft)' : 'var(--navy)', color: poModal.missingItems.length > 0 ? 'var(--text-primary)' : '#fff', border: `1.5px solid ${poModal.missingItems.length > 0 ? 'var(--border)' : 'none'}`, borderRadius: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+                  style={{ padding: '12px 16px', background: poModal.missingItems.length > 0 ? 'var(--bg-soft)' : 'var(--navy)', color: poModal.missingItems.length > 0 ? 'var(--text-primary)' : 'var(--surface)', border: `1.5px solid ${poModal.missingItems.length > 0 ? 'var(--border)' : 'none'}`, borderRadius: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
                   📦 Весь асортимент ({poModal.allItems.length} поз.)
                 </button>
                 <button onClick={() => setPoModal(null)} style={{ padding: '10px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '13px' }}>
@@ -1627,7 +1627,7 @@ export default function NewOrderModal({
                   Скасувати
                 </button>
                 <button onClick={confirmSendToSupplier} disabled={supplierModal.sending || !supplierModal.emailOverride.trim()}
-                  style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: supplierModal.sending ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: supplierModal.sending ? 0.7 : 1 }}>
+                  style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: supplierModal.sending ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: supplierModal.sending ? 0.7 : 1 }}>
                   {supplierModal.sending ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Надсилаємо...</> : <><Send size={13} /> Надіслати</>}
                 </button>
               </div>
@@ -1655,7 +1655,7 @@ export default function NewOrderModal({
                     <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px', padding: '7px 12px', borderTop: '1px solid var(--border-light)', fontSize: '12px', gap: '8px', alignItems: 'center' }}>
                       <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{item.sku}</span>
                       <span style={{ textAlign: 'right', fontWeight: 600 }}>{item.requested}</span>
-                      <span style={{ textAlign: 'right', color: item.available === 0 ? 'var(--color-danger)' : '#F59E0B', fontWeight: 700 }}>{item.available}</span>
+                      <span style={{ textAlign: 'right', color: item.available === 0 ? 'var(--color-danger)' : 'var(--amber)', fontWeight: 700 }}>{item.available}</span>
                     </div>
                   ))}
                 </div>
@@ -1667,7 +1667,7 @@ export default function NewOrderModal({
                 Закрити
               </button>
               <button onClick={() => { setResultModal(null); onSubmitted(); router.push('/admin?status=new'); router.refresh(); }}
-                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                 До списку замовлень
               </button>
             </div>

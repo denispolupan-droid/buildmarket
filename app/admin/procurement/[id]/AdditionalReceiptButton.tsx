@@ -136,7 +136,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
               {!loading && (remaining.length > 0 || extras.length > 0) && (
                 <>
                   {remaining.length > 0 && (
-                    <div style={{ padding: '10px 14px', background: '#EFF4FF', borderRadius: '8px', fontSize: '13px', color: 'var(--navy)', marginBottom: '14px' }}>
+                    <div style={{ padding: '10px 14px', background: 'var(--blue-bg)', borderRadius: '8px', fontSize: '13px', color: 'var(--navy)', marginBottom: '14px' }}>
                       Відображено тільки товари яких не вистачає. Відкоригуйте кількість у полі «Залишок».
                     </div>
                   )}
@@ -165,7 +165,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                         value={qtys[line.sku] ?? line.remaining_qty}
                         onChange={e => setQtys(prev => ({ ...prev, [line.sku]: parseInt(e.target.value) || 0 }))} />
                       <button onClick={() => removeLine(line.sku)} title="Прибрати позицію"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: 0, alignItems: 'center' }}>
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger-bright)', display: 'flex', padding: 0, alignItems: 'center' }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -174,7 +174,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                   {/* Extra lines (new products) */}
                   {extras.length > 0 && (
                     <>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', margin: '14px 0 8px', letterSpacing: '0.04em' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--violet)', textTransform: 'uppercase', margin: '14px 0 8px', letterSpacing: '0.04em' }}>
                         Додаткові позиції (не з замовлення)
                       </div>
                       {extras.map((e, i) => (
@@ -193,7 +193,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                             type="number" min="1" step="1" placeholder="Кіл." value={e.qty || ''}
                             onChange={ev => setExtraField(i, 'qty', parseInt(ev.target.value) || 1)} />
                           <button onClick={() => setExtras(prev => prev.filter((_, idx) => idx !== i))}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: 0 }}>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger-bright)', display: 'flex', padding: 0 }}>
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -202,7 +202,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                   )}
 
                   <button onClick={addExtra}
-                    style={{ marginTop: '12px', fontSize: '12px', color: '#7C3AED', background: 'none', border: '1px dashed #DDD6FE', borderRadius: '7px', cursor: 'pointer', fontWeight: 600, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    style={{ marginTop: '12px', fontSize: '12px', color: 'var(--violet)', background: 'none', border: '1px dashed #DDD6FE', borderRadius: '7px', cursor: 'pointer', fontWeight: 600, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <Plus size={13} /> Додати позицію не з замовлення
                   </button>
 
@@ -227,7 +227,7 @@ export default function AdditionalReceiptButton({ poId, supplierName }: { poId: 
                   💾 Чернетка
                 </button>
                 <button onClick={() => handleCreate(false)} disabled={saving}
-                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
+                  style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
                   {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Створення...</> : <><Package size={14} />Провести прихід</>}
                 </button>
               </div>

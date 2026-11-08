@@ -117,7 +117,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 },
               },
               {
-                label: 'Валовий прибуток', value: `${fmt(k.profit.value)} ₴`, valueColor: k.profit.value >= 0 ? '#15803D' : '#DC2626', cur: k.profit.value, prev: k.profit.prev,
+                label: 'Валовий прибуток', value: `${fmt(k.profit.value)} ₴`, valueColor: k.profit.value >= 0 ? 'var(--color-success)' : 'var(--color-danger)', cur: k.profit.value, prev: k.profit.prev,
                 hint: 'Виручка мінус собівартість і всі прямі витрати на продажі (комісії площадок, НП, RozetkaPay, еквайринг, збори по скасованих, абонплата). Чистий прибуток і розбір — в «Аналітиці».',
                 metrics: [
                   { label: 'маржа від виручки', value: margin === null ? '—' : `${margin}%` },
@@ -128,11 +128,11 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 bar: {
                   title: 'куди йде кожна гривня виручки',
                   segments: [
-                    { label: 'собівартість', amount: c.cogs, color: '#94A3B8' },
+                    { label: 'собівартість', amount: c.cogs, color: 'var(--ink-muted)' },
                     { label: 'комісії й оплата', amount: c.fees + c.acquiring, color: '#EA8A00' },
                     { label: 'НП', amount: c.delivery, color: '#8B5CF6' },
-                    ...(otherDeal > 0.5 ? [{ label: 'інше', amount: otherDeal, color: '#CBD5E1' }] : []),
-                    { label: 'валовий прибуток', amount: Math.max(0, k.profit.value), color: '#16A34A' },
+                    ...(otherDeal > 0.5 ? [{ label: 'інше', amount: otherDeal, color: 'var(--line-slate)' }] : []),
+                    { label: 'валовий прибуток', amount: Math.max(0, k.profit.value), color: 'var(--status-instock)' },
                   ],
                 },
               },
@@ -207,7 +207,7 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
                 return (
                   <Link key={w.label} href={`/admin/finance${qs ? `?${qs}` : ''}`}
                     style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, textDecoration: 'none',
-                      color: active ? '#fff' : 'var(--text-secondary)', background: active ? 'var(--navy)' : 'var(--bg-soft)' }}>
+                      color: active ? 'var(--surface)' : 'var(--text-secondary)', background: active ? 'var(--navy)' : 'var(--bg-soft)' }}>
                     {w.label}
                   </Link>
                 );
@@ -324,8 +324,8 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
               <div className="fin-money-val">{fmt(ov.mp.prom + ov.mp.rozetka)} ₴</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px' }}>
                 {[
-                  { label: 'Prom',    color: '#C2410C', bal: ov.mp.prom,    transit: ov.mpTransit.prom },
-                  { label: 'Rozetka', color: '#15803D', bal: ov.mp.rozetka, transit: ov.mpTransit.rozetka },
+                  { label: 'Prom',    color: 'var(--orange)', bal: ov.mp.prom,    transit: ov.mpTransit.prom },
+                  { label: 'Rozetka', color: 'var(--color-success)', bal: ov.mp.rozetka, transit: ov.mpTransit.rozetka },
                 ].map(m => (
                   <div key={m.label} title={`Комісії в дорозі −${fmt(m.transit)} ₴ спишуться при доставці → прогноз ${fmt(m.bal - m.transit)} ₴`}
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '12px', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
@@ -373,19 +373,19 @@ export default async function FinanceOverviewPage({ searchParams }: { searchPara
           {/* Стрічка дня: подія → сьогоднішнє число → «вчора» для контексту */}
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: '6px' }}>
             {[
-              { icon: ShoppingCart, tone: '#1E5AA8', bg: '#EFF4FF', label: 'Нових замовлень',
+              { icon: ShoppingCart, tone: '#1E5AA8', bg: 'var(--blue-bg)', label: 'Нових замовлень',
                 value: `${fmt(ov.today.orders)} · ${fmt(ov.today.revenue)} ₴`,
                 sub: `вчора: ${fmt(ov.today.yesterday.orders)} · ${fmt(ov.today.yesterday.revenue)} ₴`,
                 hint: 'Створені сьогодні (без скасованих) і їх сума' },
-              { icon: Truck, tone: '#B45309', bg: '#FEF3C7', label: 'Відправлено посилок',
+              { icon: Truck, tone: 'var(--color-warn)', bg: 'var(--amber-bg)', label: 'Відправлено посилок',
                 value: fmt(ov.today.shipped),
                 sub: `вчора: ${fmt(ov.today.yesterday.shipped)}`,
                 hint: 'Відправлені сьогодні — включно зі створеними в попередні дні' },
-              { icon: Coins, tone: '#15803D', bg: '#DCFCE7', label: 'Надійшло грошей',
+              { icon: Coins, tone: 'var(--color-success)', bg: 'var(--ok-bg)', label: 'Надійшло грошей',
                 value: `${fmt(ov.today.paidSum)} ₴${ov.today.paidCount ? ` · ${ov.today.paidCount} опл.` : ''}`,
                 sub: `вчора: ${fmt(ov.today.yesterday.paidSum)} ₴`,
                 hint: 'Живі оплати від клієнтів за сьогодні (COD НоваПей, картки, банк, каса) — зокрема по замовленнях минулих днів' },
-              { icon: Receipt, tone: '#64748B', bg: '#F1F5F9', label: 'Середній чек',
+              { icon: Receipt, tone: 'var(--text-soft)', bg: 'var(--bg-page)', label: 'Середній чек',
                 value: ov.today.avgCheck === null ? '—' : `${fmt(ov.today.avgCheck)} ₴`,
                 sub: ov.today.yesterday.orders ? `вчора: ${fmt(Math.round(ov.today.yesterday.revenue / ov.today.yesterday.orders))} ₴` : 'вчора: —',
                 hint: 'По створених сьогодні замовленнях' },

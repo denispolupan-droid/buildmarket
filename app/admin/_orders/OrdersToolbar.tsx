@@ -175,7 +175,7 @@ export function OrdersToolbar() {
                     style={{ height: '34px', padding: '0 12px', borderRadius: '999px', fontSize: '12.5px', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
                       // Блідо-червона підсвітка (палітра --bg-danger / --color-danger):
                       // це робота, що висить, а не звичайний фільтр
-                      border: `1.5px solid ${active ? 'var(--color-danger)' : '#FECACA'}`, background: active ? '#FEE2E2' : 'var(--bg-danger)', color: active ? '#991B1B' : '#B91C1C' }}>
+                      border: `1.5px solid ${active ? 'var(--color-danger)' : 'var(--danger-border)'}`, background: active ? 'var(--danger-bg)' : 'var(--bg-danger)', color: active ? '#991B1B' : 'var(--danger-dark)' }}>
                     ↩ Повернення без рішення <span style={{ marginLeft: '4px', opacity: 0.75 }}>{pendingReturns}</span>
                   </button>
                 );
@@ -284,9 +284,9 @@ export function OrdersToolbar() {
                   title="Посилки, які їдуть назад, і рішення по них ще немає: забрати з пошти чи залишити (коли зворотна доставка дорожча за товар). Показує всі статуси одразу."
                   style={{
                     height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                    border: `1.5px solid ${active ? '#FDBA74' : 'var(--border)'}`,
-                    background: active ? '#FFF7ED' : 'var(--bg-card)',
-                    color: active ? '#C2410C' : 'var(--text-secondary)',
+                    border: `1.5px solid ${active ? 'var(--orange-border)' : 'var(--border)'}`,
+                    background: active ? 'var(--orange-bg)' : 'var(--bg-card)',
+                    color: active ? 'var(--orange)' : 'var(--text-secondary)',
                     cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
                   }}
                 >
@@ -307,7 +307,7 @@ export function OrdersToolbar() {
                   style={{
                     height: '30px', padding: '0 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                     border: `1.5px solid ${cabinetAheadOnly ? 'var(--color-success)' : 'var(--border)'}`,
-                    background: cabinetAheadOnly ? '#DCFCE7' : 'var(--bg-card)',
+                    background: cabinetAheadOnly ? 'var(--ok-bg)' : 'var(--bg-card)',
                     color: cabinetAheadOnly ? 'var(--color-success)' : 'var(--text-secondary)',
                     cursor: 'pointer', transition: 'all 0.15s',
                   }}
@@ -422,7 +422,7 @@ function MobileFilterSelect({ label, allLabel, value, onChange, options, total, 
   const active = Boolean(value);
   return (
     <label className={`oc-mfilter${active ? ' is-active' : ''}${className ? ' ' + className : ''}`} title={active ? (current?.label ?? value) : label}
-      style={active ? { color: activeColor ?? 'var(--navy)', background: activeBg ?? '#EFF4FF', borderColor: activeColor ?? 'var(--navy)' } : undefined}>
+      style={active ? { color: activeColor ?? 'var(--navy)', background: activeBg ?? 'var(--blue-bg)', borderColor: activeColor ?? 'var(--navy)' } : undefined}>
       {icon}
       <span className="oc-mfilter__text">{active ? (current?.short ?? current?.label ?? value) : label}</span>
       <ChevronDown size={13} aria-hidden />

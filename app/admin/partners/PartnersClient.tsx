@@ -49,9 +49,9 @@ type Payout = {
 };
 
 const TYPE_LABELS: Record<string, { label: string; short: string; color: string; bg: string }> = {
-  retail:           { label: 'Роздріб',     short: 'Роздріб',  color: '#64748B', bg: '#F1F5F9' },
-  wholesale:        { label: 'Оптовий',     short: 'Опт',      color: '#15803D', bg: '#F0FDF4' },
-  dropship_partner: { label: 'Дропшип',     short: 'Дропшип',  color: '#4880B8', bg: '#EFF6FF' },
+  retail:           { label: 'Роздріб',     short: 'Роздріб',  color: 'var(--text-soft)', bg: 'var(--bg-page)' },
+  wholesale:        { label: 'Оптовий',     short: 'Опт',      color: 'var(--color-success)', bg: 'var(--bg-success)' },
+  dropship_partner: { label: 'Дропшип',     short: 'Дропшип',  color: 'var(--brand-blue)', bg: '#EFF6FF' },
 };
 
 const TABS = [
@@ -266,7 +266,7 @@ export default function PartnersClient({
           </p>
         </div>
         <button onClick={() => setShowNew(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '9px', background: 'var(--navy)', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '9px', background: 'var(--navy)', color: 'var(--surface)', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           <Plus size={14} /> Новий контрагент
         </button>
       </div>
@@ -274,10 +274,10 @@ export default function PartnersClient({
       {/* ── Summary cards ──────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {[
-          { label: 'Всього',           value: String(customers.length),   sub: `${customers.filter(c => c.is_active).length} активних`,  color: '#1E3A5F', icon: Users },
-          { label: 'Роздрібних',       value: String(retailCount),        sub: 'Покупці',                                                color: '#64748B', icon: ShoppingBag },
-          { label: 'Партнерів',        value: String(partnerCount),       sub: 'Опт + Дропшип',                                          color: '#15803D', icon: TrendingUp },
-          { label: 'Загальна виручка', value: fmtMoney(totalRevenue),     sub: `Баланси партнерів: ${fmtMoney(partnerBalance)}`,          color: '#B45309', icon: Wallet },
+          { label: 'Всього',           value: String(customers.length),   sub: `${customers.filter(c => c.is_active).length} активних`,  color: 'var(--navy)', icon: Users },
+          { label: 'Роздрібних',       value: String(retailCount),        sub: 'Покупці',                                                color: 'var(--text-soft)', icon: ShoppingBag },
+          { label: 'Партнерів',        value: String(partnerCount),       sub: 'Опт + Дропшип',                                          color: 'var(--color-success)', icon: TrendingUp },
+          { label: 'Загальна виручка', value: fmtMoney(totalRevenue),     sub: `Баланси партнерів: ${fmtMoney(partnerBalance)}`,          color: 'var(--color-warn)', icon: Wallet },
         ].map(c => {
           const Icon = c.icon;
           return (
@@ -297,14 +297,14 @@ export default function PartnersClient({
 
       {/* ── Pending payouts ─────────────────────────────────────────────────── */}
       {payouts.length > 0 && (
-        <div style={{ background: '#FEF3C7', border: '1px solid var(--border-warn)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
+        <div style={{ background: 'var(--amber-bg)', border: '1px solid var(--border-warn)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px' }}>
           <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-warn)', marginBottom: '10px' }}>
             ⏳ Заявки на виплату ({payouts.length})
           </div>
           {payouts.map(p => {
             const partner = customers.find(c => c.id === p.customer_id);
             return (
-              <div key={p.id} style={{ background: 'var(--bg-card)', border: '1px solid #FDE68A', borderRadius: '8px', padding: '12px 16px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={p.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--amber-border)', borderRadius: '8px', padding: '12px 16px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{partner?.name ?? p.customer_id} — {p.amount.toFixed(2)} ₴</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -314,7 +314,7 @@ export default function PartnersClient({
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => handlePayout(p.id, 'approve')} disabled={saving}
-                    style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <CheckCircle size={12} /> Підтвердити
                   </button>
                   <button onClick={() => handlePayout(p.id, 'reject')} disabled={saving}
@@ -339,12 +339,12 @@ export default function PartnersClient({
                 height: '32px', padding: '0 14px', borderRadius: '8px', fontSize: '13px', fontWeight: isActive ? 700 : 400,
                 border: `1px solid ${isActive ? 'var(--navy)' : 'var(--border)'}`,
                 background: isActive ? 'var(--navy)' : 'var(--bg-card)',
-                color: isActive ? '#fff' : 'var(--text-secondary)', cursor: 'pointer',
+                color: isActive ? 'var(--surface)' : 'var(--text-secondary)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '6px',
               }}>
               {t.label}
               {cnt > 0 && (
-                <span style={{ fontSize: '10px', fontWeight: 700, background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: isActive ? '#fff' : 'var(--text-secondary)', borderRadius: '4px', padding: '0 5px', lineHeight: '16px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: isActive ? 'var(--surface)' : 'var(--text-secondary)', borderRadius: '4px', padding: '0 5px', lineHeight: '16px' }}>
                   {cnt}
                 </span>
               )}
@@ -431,7 +431,7 @@ export default function PartnersClient({
                   {/* Status */}
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button onClick={() => toggleActive(c.id, c.is_active)}
-                      style={{ padding: '2px 10px', borderRadius: '20px', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: c.is_active ? '#DCFCE7' : '#F1F5F9', color: c.is_active ? 'var(--status-instock)' : 'var(--text-soft)' }}>
+                      style={{ padding: '2px 10px', borderRadius: '20px', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: c.is_active ? 'var(--ok-bg)' : 'var(--bg-page)', color: c.is_active ? 'var(--status-instock)' : 'var(--text-soft)' }}>
                       {c.is_active ? 'Активний' : 'Вимкнено'}
                     </button>
                   </div>
@@ -466,7 +466,7 @@ export default function PartnersClient({
                       </button>
                       {hasBalance && (
                         <button onClick={() => { setTopupId(isTopup ? null : c.id); setTopupAmount(''); setTopupNote(''); setError(''); }}
-                          style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: 'var(--brand-blue-light)', color: '#4880B8', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: 'none', background: 'var(--brand-blue-light)', color: 'var(--brand-blue)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Plus size={11} /> Поповнити баланс
                         </button>
                       )}
@@ -567,7 +567,7 @@ export default function PartnersClient({
                         {error && <div style={{ color: 'var(--color-danger)', fontSize: '12px' }}>{error}</div>}
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button onClick={() => handleSaveEdit(c.id)} disabled={saving}
-                            style={{ height: '32px', padding: '0 16px', borderRadius: '7px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: saving ? 0.7 : 1 }}>
+                            style={{ height: '32px', padding: '0 16px', borderRadius: '7px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: saving ? 0.7 : 1 }}>
                             <Save size={12} /> Зберегти
                           </button>
                           <button onClick={() => { setEditingId(null); setEditForm({}); }}
@@ -590,7 +590,7 @@ export default function PartnersClient({
                           <input value={topupNote} onChange={e => setTopupNote(e.target.value)} placeholder="Оплата рахунку №..." style={inp} />
                         </div>
                         <button onClick={() => handleTopup(c.id)} disabled={saving}
-                          style={{ height: '34px', padding: '0 16px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                          style={{ height: '34px', padding: '0 16px', borderRadius: '7px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                           Поповнити
                         </button>
                         <button onClick={() => setTopupId(null)}
@@ -626,7 +626,7 @@ export default function PartnersClient({
               <div style={{ background: 'linear-gradient(135deg, var(--navy) 0%, #0F2040 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '20px', fontWeight: 800, color: '#fff' }}>{vc.name}</span>
+                    <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--surface)' }}>{vc.name}</span>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '20px', background: typeInfo.bg, color: typeInfo.color }}>{typeInfo.label}</span>
                   </div>
                   {vc.company && <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{vc.company}</div>}
@@ -691,7 +691,7 @@ export default function PartnersClient({
                     {vc.credit_limit && (
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '3px' }}>Кредит</div>
-                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#4880B8' }}>{fmtMoney(Number(vc.credit_limit))}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--brand-blue)' }}>{fmtMoney(Number(vc.credit_limit))}</div>
                       </div>
                     )}
                   </div>
@@ -699,7 +699,7 @@ export default function PartnersClient({
 
                 {/* Notes */}
                 {vc.notes && (
-                  <div style={{ background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '9px', padding: '12px 16px' }}>
+                  <div style={{ background: 'var(--bg-warn)', border: '1px solid var(--amber-border)', borderRadius: '9px', padding: '12px 16px' }}>
                     <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', textTransform: 'uppercase', marginBottom: '4px' }}>Нотатки</div>
                     <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{vc.notes}</div>
                   </div>
@@ -710,7 +710,7 @@ export default function PartnersClient({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Договори</div>
                     <button onClick={() => setShowNewContract(v => !v)}
-                      style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>
+                      style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: 'var(--blue-bg)', border: '1px solid var(--blue-border)', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer' }}>
                       + Новий
                     </button>
                   </div>
@@ -739,7 +739,7 @@ export default function PartnersClient({
                       </div>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button onClick={() => setShowNewContract(false)} style={{ fontSize: '12px', padding: '5px 12px', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-card)', cursor: 'pointer', color: 'var(--text-secondary)' }}>Скасувати</button>
-                        <button onClick={addCustomerContract} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: 'var(--navy)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
+                        <button onClick={addCustomerContract} style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: 'var(--navy)', color: 'var(--surface)', cursor: 'pointer', fontWeight: 700 }}>Зберегти</button>
                       </div>
                     </div>
                   )}
@@ -751,16 +751,16 @@ export default function PartnersClient({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {contracts.map(c => (
                         <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: c.is_auto ? '#FAFAFA' : 'var(--bg-soft)', borderRadius: '8px', border: `1px solid ${c.is_auto ? 'var(--border)' : 'var(--border)'}` }}>
-                          <FileText size={13} style={{ color: c.is_auto ? 'var(--text-muted)' : '#4880B8', flexShrink: 0 }} />
+                          <FileText size={13} style={{ color: c.is_auto ? 'var(--text-muted)' : 'var(--brand-blue)', flexShrink: 0 }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.contract_number}</span>
                             {c.is_auto && (
-                              <span title="Створено автоматично при першому замовленні" style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: '#F1F5F9', color: 'var(--text-muted)', marginLeft: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Авто</span>
+                              <span title="Створено автоматично при першому замовленні" style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'var(--bg-page)', color: 'var(--text-muted)', marginLeft: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Авто</span>
                             )}
                             {c.payment_terms && <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>{c.payment_terms === 'prepay' ? 'Передоплата' : c.payment_terms === 'deferred' ? `Відстрочка ${c.credit_days}д.` : c.payment_terms === 'consignment' ? 'Консигнація' : c.payment_terms}</span>}
                             {(c.credit_limit > 0) && <span style={{ fontSize: '11px', color: 'var(--color-success)', marginLeft: '8px' }}>Ліміт: {Number(c.credit_limit).toLocaleString('uk-UA')} ₴</span>}
                           </div>
-                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? 'var(--bg-success)' : '#F1F5F9', color: c.status === 'active' ? 'var(--color-success)' : 'var(--text-soft)' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: c.status === 'active' ? 'var(--bg-success)' : 'var(--bg-page)', color: c.status === 'active' ? 'var(--color-success)' : 'var(--text-soft)' }}>
                             {c.status === 'active' ? 'Активний' : c.status === 'expired' ? 'Закінчився' : 'Неактивний'}
                           </span>
                         </div>
@@ -776,7 +776,7 @@ export default function PartnersClient({
                     <Edit2 size={13} /> Редагувати
                   </button>
                   <button onClick={() => setViewingId(null)}
-                    style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ flex: 1, height: '38px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                     Закрити
                   </button>
                 </div>
@@ -808,7 +808,7 @@ export default function PartnersClient({
                     flex: 1, padding: '7px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                     border: `1.5px solid ${newForm.type === t.value ? 'var(--navy)' : 'var(--border)'}`,
                     background: newForm.type === t.value ? 'var(--navy)' : 'var(--bg-soft)',
-                    color: newForm.type === t.value ? '#fff' : 'var(--text-secondary)',
+                    color: newForm.type === t.value ? 'var(--surface)' : 'var(--text-secondary)',
                   }}>
                   {t.label}
                 </button>
@@ -907,7 +907,7 @@ export default function PartnersClient({
               {(newForm.type === 'wholesale' || newForm.type === 'dropship_partner') && (
                 <>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Умови договору</div>
-                  <div style={{ background: '#F0F7FF', border: '1px solid #BFDBFE', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
+                  <div style={{ background: '#F0F7FF', border: '1px solid var(--blue-border)', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                       <div>
                         <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', marginBottom: '3px', textTransform: 'uppercase' }}>Умови оплати</div>
@@ -954,7 +954,7 @@ export default function PartnersClient({
                 Скасувати
               </button>
               <button onClick={handleCreate} disabled={newSaving}
-                style={{ flex: 1, height: '40px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: newSaving ? 0.7 : 1 }}>
+                style={{ flex: 1, height: '40px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: newSaving ? 0.7 : 1 }}>
                 {newSaving ? 'Збереження...' : 'Створити'}
               </button>
             </div>

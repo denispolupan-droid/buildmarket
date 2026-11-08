@@ -11,7 +11,7 @@ export type EpiCategory = { slug: string; name: string; epicentr_commission_pct:
 
 type Props = { products: EpiProduct[]; stock: EpiStock[]; categories: EpiCategory[]; fallbackPct: number };
 
-const inp: React.CSSProperties = { width: 64, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12.5, textAlign: 'right', background: '#fff' };
+const inp: React.CSSProperties = { width: 64, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12.5, textAlign: 'right', background: 'var(--surface)' };
 const codeInp: React.CSSProperties = { ...inp, width: 90, textAlign: 'left', fontFamily: 'monospace' };
 
 /**
@@ -149,7 +149,7 @@ export default function EpicentrProductsClient({ products: initialProducts, stoc
                     </td>
                     <td className="num">
                       <button onClick={() => toggleCategory(slug, onCount < list.length)}
-                        style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                        style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                         {onCount < list.length ? 'увімкнути всі' : 'вимкнути всі'}
                       </button>
                     </td>

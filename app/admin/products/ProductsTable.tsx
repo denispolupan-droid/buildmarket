@@ -43,7 +43,7 @@ function seoGaps(p: AdminProductRow): string[] {
 function SeoBadge({ p }: { p: AdminProductRow }) {
   const gaps = seoGaps(p);
   const critical = !p.image || !p.description_full_len;
-  const color = gaps.length === 0 ? '#22C55E' : critical ? '#EF4444' : '#F59E0B';
+  const color = gaps.length === 0 ? 'var(--ok-bright)' : critical ? 'var(--danger-bright)' : 'var(--amber)';
   return (
     <Link
       href="/admin/seo"
@@ -280,7 +280,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                       style={{
                         width: 40, height: 40, borderRadius: 8, flexShrink: 0,
                         border: '1px solid var(--border-light)',
-                        background: p.image ? `#fff url("${p.image}") center/cover no-repeat` : 'var(--bg-soft)',
+                        background: p.image ? `var(--surface) url("${p.image}") center/cover no-repeat` : 'var(--bg-soft)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
                     >
@@ -290,7 +290,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                   <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {p.sku}
                     {!isFilled && (
-                      <span title="Незаповнена картка" style={{ marginLeft: 4, color: '#F59E0B', fontSize: 11 }}>●</span>
+                      <span title="Незаповнена картка" style={{ marginLeft: 4, color: 'var(--amber)', fontSize: 11 }}>●</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
@@ -312,7 +312,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                   <td style={{ ...moneyCell, color: 'var(--text-secondary)' }}>
                     {p.stock?.price_drop ? `${p.stock.price_drop} ₴` : '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', color: p.stock?.stock_status === 'out_of_stock' ? '#EF4444' : p.stock?.stock_status === 'in_stock' ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', color: p.stock?.stock_status === 'out_of_stock' ? 'var(--danger-bright)' : p.stock?.stock_status === 'in_stock' ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
                     {(p.stock?.stock_qty ?? 0) > 0 ? p.stock!.stock_qty : p.stock?.stock_status === 'in_stock' ? 'є' : p.stock?.stock_status === 'out_of_stock' ? 'нема' : '—'}
                   </td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>
@@ -332,7 +332,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                       onChange={() => toggleField(p.sku, 'is_new', isNewBadge)}
                       disabled={toggling.has(`${p.sku}:is_new`)}
                       title="Новинка"
-                      style={{ cursor: 'pointer', width: 16, height: 16, accentColor: '#7C3AED' }}
+                      style={{ cursor: 'pointer', width: 16, height: 16, accentColor: 'var(--violet)' }}
                     />
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -345,7 +345,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                         style={{
                           position: 'relative', width: '36px', height: '20px', borderRadius: '10px',
                           border: 'none', cursor: isToggling ? 'wait' : 'pointer', padding: 0,
-                          background: active ? '#22C55E' : '#CBD5E1',
+                          background: active ? 'var(--ok-bright)' : 'var(--line-slate)',
                           transition: 'background 0.2s', opacity: isToggling ? 0.6 : 1,
                           flexShrink: 0,
                         }}
@@ -354,7 +354,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
                           position: 'absolute', top: '2px',
                           left: active ? '18px' : '2px',
                           width: '16px', height: '16px', borderRadius: '50%',
-                          background: '#fff', transition: 'left 0.2s',
+                          background: 'var(--surface)', transition: 'left 0.2s',
                           boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                         }} />
                       </button>
@@ -469,7 +469,7 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
           Знайдено: {filtered.length} товарів
           {someSelected && (
-            <span style={{ marginLeft: 8, color: '#3DBFB8', fontWeight: 600 }}>
+            <span style={{ marginLeft: 8, color: 'var(--brand-teal)', fontWeight: 600 }}>
               · вибрано {selected.size}
             </span>
           )}
@@ -524,8 +524,8 @@ export default function ProductsTable({ products, categories, brandLogos = {}, s
             disabled={!someSelected}
             style={{
               height: 34, padding: '0 16px', borderRadius: 8, border: 'none',
-              background: someSelected ? '#3DBFB8' : 'var(--border)',
-              color: someSelected ? '#fff' : 'var(--text-muted)',
+              background: someSelected ? 'var(--brand-teal)' : 'var(--border)',
+              color: someSelected ? 'var(--surface)' : 'var(--text-muted)',
               fontSize: 13, fontWeight: 600,
               cursor: someSelected ? 'pointer' : 'not-allowed',
               display: 'flex', alignItems: 'center', gap: 6,

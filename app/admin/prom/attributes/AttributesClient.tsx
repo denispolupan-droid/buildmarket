@@ -48,8 +48,8 @@ const labelStyle: React.CSSProperties = {
 
 const btnPrimary: React.CSSProperties = {
   padding: '8px 20px',
-  background: '#7C3AED',
-  color: '#fff',
+  background: 'var(--violet)',
+  color: 'var(--surface)',
   border: 'none',
   borderRadius: 7,
   fontSize: 14,
@@ -60,8 +60,8 @@ const btnPrimary: React.CSSProperties = {
 const btnDanger: React.CSSProperties = {
   padding: '4px 12px',
   background: 'transparent',
-  color: '#EF4444',
-  border: '1px solid #EF4444',
+  color: 'var(--danger-bright)',
+  border: '1px solid var(--danger-bright)',
   borderRadius: 6,
   fontSize: 12,
   cursor: 'pointer',
@@ -207,7 +207,7 @@ export default function AttributesClient({ imported: initialImported }: Props) {
             {loading ? 'Імпортується…' : 'Імпортувати'}
           </button>
           {message && (
-            <span style={{ fontSize: 13, color: message.ok ? 'var(--status-instock)' : '#EF4444' }}>
+            <span style={{ fontSize: 13, color: message.ok ? 'var(--status-instock)' : 'var(--danger-bright)' }}>
               {message.text}
             </span>
           )}

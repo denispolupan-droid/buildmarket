@@ -195,7 +195,7 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
           </span>
         </label>
         {!enabled && (
-          <div style={{ fontSize: '12.5px', color: 'var(--color-warn)', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '9px', padding: '9px 11px', lineHeight: 1.5 }}>
+          <div style={{ fontSize: '12.5px', color: 'var(--color-warn)', background: 'var(--bg-warn)', border: '1px solid var(--amber-border)', borderRadius: '9px', padding: '9px 11px', lineHeight: 1.5 }}>
             Зараз доставка прихована — покупці бачать лише Нову Пошту.
           </div>
         )}
@@ -332,18 +332,18 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
       </div>
 
       {error && (
-        <div style={{ fontSize: '13px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '10px', padding: '10px 12px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid var(--danger-border)', borderRadius: '10px', padding: '10px 12px' }}>
           {error}
         </div>
       )}
       {saved_ && (
-        <div style={{ fontSize: '13px', color: 'var(--color-success)', background: 'var(--bg-success)', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '10px 12px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-success)', background: 'var(--bg-success)', border: '1px solid var(--ok-border)', borderRadius: '10px', padding: '10px 12px' }}>
           Збережено
         </div>
       )}
 
       <button onClick={save} disabled={saving}
-        style={{ height: '46px', borderRadius: '12px', border: 'none', background: saving ? 'var(--text-muted)' : 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
+        style={{ height: '46px', borderRadius: '12px', border: 'none', background: saving ? 'var(--text-muted)' : 'var(--navy)', color: 'var(--surface)', fontSize: '14px', fontWeight: 700, cursor: saving ? 'default' : 'pointer' }}>
         {saving ? 'Зберігаємо…' : 'Зберегти'}
       </button>
 

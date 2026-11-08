@@ -495,11 +495,11 @@ export default function NewReceiptModal({
             onDragLeave={() => setDragging(false)}
             onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) processFile(f); }}
             onClick={() => fileRef.current?.click()}
-            style={{ border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 20px', cursor: 'pointer', background: dragging ? '#EFF4FF' : 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.15s' }}
+            style={{ border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 20px', cursor: 'pointer', background: dragging ? 'var(--blue-bg)' : 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.15s' }}
           >
             {parsing
               ? <><Loader2 size={18} color="#1E3A5F" style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: '13px', color: 'var(--navy)' }}>Читаємо файл...</span></>
-              : <><Upload size={18} color={dragging ? '#1E3A5F' : '#94A3B8'} />
+              : <><Upload size={18} color={dragging ? 'var(--navy)' : 'var(--ink-muted)'} />
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Завантажити з Excel / CSV</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Перетягніть файл або натисніть · Колонки: Код, Назва, Кількість, Ціна</div>
@@ -510,7 +510,7 @@ export default function NewReceiptModal({
           </div>
 
           {unmatchedCount > 0 && (
-            <div style={{ padding: '8px 14px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{ padding: '8px 14px', background: 'var(--amber-bg)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', gap: '6px', alignItems: 'center' }}>
               <AlertCircle size={13} />
               {unmatchedCount} артикул(ів) не знайдено в базі — перевірте вручну (підсвічені помаранчевим)
             </div>
@@ -578,7 +578,7 @@ export default function NewReceiptModal({
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                       {line.ordered_qty != null ? (
                         <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--brand-blue)',
-                          background: '#EFF4FF', border: '1px solid #C7D8F0', borderRadius: '6px',
+                          background: 'var(--blue-bg)', border: '1px solid #C7D8F0', borderRadius: '6px',
                           padding: '3px 8px', width: '100%', boxSizing: 'border-box' }}>
                           {line.ordered_qty}
                         </div>
@@ -592,7 +592,7 @@ export default function NewReceiptModal({
                       <input style={{ ...inp, textAlign: 'right',
                         opacity: initialData.poId && line.qty === 0 ? 0.45 : 1,
                         borderColor: line.ordered_qty != null
-                          ? (line.qty === 0 ? '#CBD5E1' : line.qty === line.ordered_qty ? 'var(--border-success)' : line.qty < line.ordered_qty ? 'var(--border-warn)' : 'var(--border-danger)')
+                          ? (line.qty === 0 ? 'var(--line-slate)' : line.qty === line.ordered_qty ? 'var(--border-success)' : line.qty < line.ordered_qty ? 'var(--border-warn)' : 'var(--border-danger)')
                           : undefined }}
                         type="number" min={initialData.poId ? '0' : '0.001'} step="1"
                         value={line.qty === 0 ? '' : (line.qty || '')}
@@ -623,7 +623,7 @@ export default function NewReceiptModal({
 
                     {/* Bonus toggle */}
                     <button onClick={() => toggleBonus(idx)} title={line.is_bonus ? 'Скасувати бонус' : 'Бонусний товар'}
-                      style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: line.is_bonus ? '#FEF3C7' : 'none', border: line.is_bonus ? '1px solid var(--border-warn)' : '1px solid transparent', borderRadius: '5px', cursor: 'pointer', color: line.is_bonus ? 'var(--color-warn)' : 'var(--text-muted)', height: '24px', width: '24px', padding: 0 }}>
+                      style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: line.is_bonus ? 'var(--amber-bg)' : 'none', border: line.is_bonus ? '1px solid var(--border-warn)' : '1px solid transparent', borderRadius: '5px', cursor: 'pointer', color: line.is_bonus ? 'var(--color-warn)' : 'var(--text-muted)', height: '24px', width: '24px', padding: 0 }}>
                       <Gift size={13} />
                     </button>
 
@@ -636,7 +636,7 @@ export default function NewReceiptModal({
                     {/* Delete */}
                     <button onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
                       disabled={lines.length === 1}
-                      style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? '#EF4444' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? 'var(--danger-bright)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -706,7 +706,7 @@ export default function NewReceiptModal({
                       <option value="cash">Готівка</option>
                     </select>
                     <button onClick={() => setLandedCosts(prev => prev.filter((_, idx) => idx !== i))}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', display: 'flex', padding: 0, alignItems: 'center', flexShrink: 0 }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger-bright)', display: 'flex', padding: 0, alignItems: 'center', flexShrink: 0 }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
@@ -749,7 +749,7 @@ export default function NewReceiptModal({
                 <div key={s.sku}
                   onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
                   onMouseEnter={() => setActiveDropdownIdx(i)}
-                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden', background: isActive ? '#EFF4FF' : 'transparent' }}>
+                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden', background: isActive ? 'var(--blue-bg)' : 'transparent' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
                   <span style={{ fontWeight: 700, color: 'var(--navy)', flexShrink: 0 }}>{s.brand}</span>
                   <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>

@@ -26,8 +26,8 @@ const labelStyle: React.CSSProperties = { fontSize: '12px', color: 'var(--text-s
 // Лінії документа помітніші за стандартну --border (вона майже біла):
 // домішуємо приглушений текст — працює і в світлій, і в темній темі.
 const LINE = 'color-mix(in srgb, var(--text-muted) 38%, var(--border))';
-const ACCENT = '#1E3A5F';
-const ACCENT_TINT = 'color-mix(in srgb, #1E3A5F 7%, var(--bg-card))';
+const ACCENT = 'var(--navy)';
+const ACCENT_TINT = 'color-mix(in srgb, var(--navy) 7%, var(--bg-card))';
 
 const ACCOUNT: Record<string, string> = {
   revenue: 'Виручка', customer: 'Покупець', cogs: 'Собівартість', inventory_asset: 'Товари на складі',
@@ -344,7 +344,7 @@ function Card({ card, onChanged, onToast, onError }: {
           )}
         </div>
         {cancelled && (
-          <div style={{ color: '#B91C1C' }}>Скасовано: {card.cancelled_by ?? '—'}{card.cancel_reason ? ` — ${card.cancel_reason}` : ''}</div>
+          <div style={{ color: 'var(--danger-dark)' }}>Скасовано: {card.cancelled_by ?? '—'}{card.cancel_reason ? ` — ${card.cancel_reason}` : ''}</div>
         )}
         {isCustomer && card.status === 'draft' && (
           <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
@@ -525,7 +525,7 @@ function Stepper({ steps, cancelled }: { steps: Step[]; cancelled: boolean }) {
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((s, i) => {
         const isCur = i === current;
-        const color = s.done ? '#16A34A' : isCur ? '#EA8A00' : 'var(--border)';
+        const color = s.done ? 'var(--status-instock)' : isCur ? '#EA8A00' : 'var(--border)';
         const next = steps[i + 1];
         return (
           <div key={s.label} style={{ minWidth: 0 }}>

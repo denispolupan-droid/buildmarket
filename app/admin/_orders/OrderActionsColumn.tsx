@@ -57,7 +57,7 @@ export function OrderActionsColumn({ order }: {
                 background: 'transparent', color: 'var(--text-primary)', width: '100%',
                 boxSizing: 'border-box' as const, justifyContent: 'flex-start' as const,
               };
-              const btnPrimary = { ...btn, border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1E3A5F', fontWeight: 600 };
+              const btnPrimary = { ...btn, border: '1px solid var(--blue-border)', background: '#EFF6FF', color: 'var(--navy)', fontWeight: 600 };
               const btnMuted   = { ...btn, fontWeight: 500, color: 'var(--text-secondary)' };
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
@@ -100,7 +100,7 @@ export function OrderActionsColumn({ order }: {
                         <button
                           onClick={() => shipOrder(order.id)}
                           disabled={shipping === order.id || !!loading || !hasRemaining}
-                          style={{ ...btn, background: hasRemaining ? '#DCFCE7' : '#F3F4F6', color: hasRemaining ? '#166534' : 'var(--text-gray-light)', border: `1.5px solid ${hasRemaining ? 'var(--border-success)' : '#E5E7EB'}`, opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
+                          style={{ ...btn, background: hasRemaining ? 'var(--ok-bg)' : 'var(--surface-muted)', color: hasRemaining ? '#166534' : 'var(--text-gray-light)', border: `1.5px solid ${hasRemaining ? 'var(--border-success)' : 'var(--line)'}`, opacity: (shipping === order.id || !!loading) ? 0.6 : 1 }}>
                           <Truck size={13} /> {shipping === order.id ? 'Створення...' : hasRemaining ? 'Відвантажити' : 'Відвантажено'}
                         </button>
                         {order.fulfillment_mode === 'supplier' && !order.tracking_number && hasRemaining && (
@@ -128,7 +128,7 @@ export function OrderActionsColumn({ order }: {
                     return (
                       <>
                         {expectedDate && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '7px', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: '12px', color: 'var(--text-warn-dark)', fontWeight: 600 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '7px', background: 'var(--orange-bg)', border: '1px solid #FED7AA', fontSize: '12px', color: 'var(--text-warn-dark)', fontWeight: 600 }}>
                             📅 Очікується: {new Date(expectedDate).toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </div>
                         )}
@@ -244,7 +244,7 @@ export function OrderActionsColumn({ order }: {
                   {isAdmin && ['shipped', 'delivered'].includes(order.status) && (
                     <button onClick={() => setReturnFor({ id: order.id, number: order.order_number })}
                       title="Фінансове повернення: сторнує виручку, COGS і комісію, оприбутковує товар"
-                      style={{ ...btn, border: '1px solid #FDE68A', background: 'var(--bg-warn)', color: 'var(--color-warn)', fontWeight: 600 }}>
+                      style={{ ...btn, border: '1px solid var(--amber-border)', background: 'var(--bg-warn)', color: 'var(--color-warn)', fontWeight: 600 }}>
                       <RotateCcw size={13} /> Повернення
                     </button>
                   )}

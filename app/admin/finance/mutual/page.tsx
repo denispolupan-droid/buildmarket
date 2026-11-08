@@ -44,7 +44,7 @@ const UUID = /^[0-9a-f-]{36}$/i;
 
 const dmy = (d: string) => d.slice(0, 10).split('-').reverse().join('.');
 
-const TONE_COLOR = { pos: '#15803D', neg: '#B45309', zero: 'var(--text-muted)' } as const;
+const TONE_COLOR = { pos: 'var(--color-success)', neg: 'var(--color-warn)', zero: 'var(--text-muted)' } as const;
 
 /** Хто кому винен — словами (lib: для площадок мінус — «отримано наперед»). */
 function balanceWords(v: number, special = false): { text: string; color: string } {
@@ -311,9 +311,9 @@ function SupplierOpen({ charges, transit, owed }: { charges: SupplierCharge[]; t
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '8px 0 2px', fontSize: '12px' }}>
           {([
             ['до 30 днів', aging.d0_30, 'var(--text-secondary)'],
-            ['31–60', aging.d31_60, '#B45309'],
-            ['61–90', aging.d61_90, '#B45309'],
-            ['понад 90', aging.d90p, '#DC2626'],
+            ['31–60', aging.d31_60, 'var(--color-warn)'],
+            ['61–90', aging.d61_90, 'var(--color-warn)'],
+            ['понад 90', aging.d90p, 'var(--color-danger)'],
           ] as const).filter(([, v]) => v > 0.005).map(([lbl, v, color]) => (
             <span key={lbl} style={{ fontWeight: 700, color, background: 'var(--bg-soft)', borderRadius: '6px', padding: '2px 8px' }}>
               {lbl}: {fmt(v)} ₴

@@ -94,7 +94,7 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '32px 24px' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>
         Агент збагачення каталогу
       </h1>
       <p style={{ color: 'var(--text-soft)', marginBottom: 28, fontSize: 14 }}>
@@ -154,7 +154,7 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
             <div style={{
               height: '100%',
               width: `${pct}%`,
-              background: progress.errors > 0 ? '#F59E0B' : '#3DBFB8',
+              background: progress.errors > 0 ? 'var(--amber)' : 'var(--brand-teal)',
               transition: 'width 0.3s',
               borderRadius: 6,
             }} />
@@ -168,7 +168,7 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
           {log.map((item, i) => (
             <div key={i} style={{
               background: item.status === 'error' ? 'var(--bg-danger)' : 'var(--bg-soft)',
-              border: `1px solid ${item.status === 'error' ? '#FECACA' : 'var(--border)'}`,
+              border: `1px solid ${item.status === 'error' ? 'var(--danger-border)' : 'var(--border)'}`,
               borderRadius: 8,
               padding: '12px 14px',
             }}>
@@ -177,8 +177,8 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
                   {item.sku}
                 </span>
                 {item.status === 'ok'
-                  ? <span style={{ fontSize: 11, color: '#10B981' }}>✓ готово</span>
-                  : <span style={{ fontSize: 11, color: '#EF4444' }}>✗ помилка</span>
+                  ? <span style={{ fontSize: 11, color: 'var(--emerald-bright)' }}>✓ готово</span>
+                  : <span style={{ fontSize: 11, color: 'var(--danger-bright)' }}>✗ помилка</span>
                 }
               </div>
               {item.description_full && (
@@ -187,7 +187,7 @@ export default function EnrichClient({ totalMissing, categories }: Props) {
                 </p>
               )}
               {item.error && (
-                <p style={{ fontSize: 12, color: '#EF4444', margin: 0, fontFamily: 'monospace' }}>
+                <p style={{ fontSize: 12, color: 'var(--danger-bright)', margin: 0, fontFamily: 'monospace' }}>
                   {item.error}
                 </p>
               )}
@@ -205,18 +205,18 @@ const labelStyle: React.CSSProperties = {
 };
 
 const selectStyle: React.CSSProperties = {
-  padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1',
-  fontSize: 14, background: '#fff', color: '#1E293B',
+  padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line-slate)',
+  fontSize: 14, background: 'var(--surface)', color: 'var(--ink)',
   outline: 'none', cursor: 'pointer',
 };
 
 const btnPrimary: React.CSSProperties = {
   alignSelf: 'flex-end', padding: '9px 24px',
-  background: '#3DBFB8', color: '#fff', border: 'none',
+  background: 'var(--brand-teal)', color: 'var(--surface)', border: 'none',
   borderRadius: 8, fontSize: 14, fontWeight: 600,
   cursor: 'pointer',
 };
 
 const btnDanger: React.CSSProperties = {
-  ...btnPrimary, background: '#EF4444',
+  ...btnPrimary, background: 'var(--danger-bright)',
 };

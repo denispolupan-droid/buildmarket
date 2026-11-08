@@ -44,9 +44,9 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; icon: typeof Clock }> = {
-  draft:     { label: 'Чернетка',  color: '#B45309', bg: '#FEF3C7', icon: Clock },
-  confirmed: { label: 'Проведено', color: '#15803D', bg: '#DCFCE7', icon: CheckCircle },
-  cancelled: { label: 'Скасовано', color: '#DC2626', bg: '#FEE2E2', icon: XCircle },
+  draft:     { label: 'Чернетка',  color: 'var(--color-warn)', bg: 'var(--amber-bg)', icon: Clock },
+  confirmed: { label: 'Проведено', color: 'var(--color-success)', bg: 'var(--ok-bg)', icon: CheckCircle },
+  cancelled: { label: 'Скасовано', color: 'var(--color-danger)', bg: 'var(--danger-bg)', icon: XCircle },
 };
 
 const DIR_ICON: Record<string, typeof TrendingUp> = {
@@ -153,7 +153,7 @@ function ActionsMenu({
                 fontSize: '13px', fontWeight: 500, color: 'var(--navy)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#EFF4FF')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--blue-bg)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
             >
               <Pencil size={14} /> Виправити
@@ -245,7 +245,7 @@ export default function DocumentsClient({
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-stockdoc-draft', { detail: { docType: 'write_off' } }))}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 8, border: '1.5px solid #FECACA', background: 'var(--bg-card)', color: 'var(--color-danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 8, border: '1.5px solid var(--danger-border)', background: 'var(--bg-card)', color: 'var(--color-danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
             <Trash2 size={14} /> Списання
           </button>
@@ -260,7 +260,7 @@ export default function DocumentsClient({
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '7px',
               height: '36px', padding: '0 16px', borderRadius: '8px',
-              background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700,
+              background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700,
               textDecoration: 'none',
             }}
           >
@@ -270,7 +270,7 @@ export default function DocumentsClient({
       </div>
 
       {error && (
-        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: '#FEE2E2', color: 'var(--color-danger)', fontSize: '13px' }}>
+        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: 'var(--danger-bg)', color: 'var(--color-danger)', fontSize: '13px' }}>
           {error}
         </div>
       )}
@@ -298,7 +298,7 @@ export default function DocumentsClient({
               height: '34px', padding: '0 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
               border: `1.5px solid ${statFilter === s ? 'var(--navy)' : 'var(--border)'}`,
               background: statFilter === s ? 'var(--navy)' : 'var(--bg-card)',
-              color: statFilter === s ? '#fff' : 'var(--text-secondary)',
+              color: statFilter === s ? 'var(--surface)' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}
           >
@@ -343,7 +343,7 @@ export default function DocumentsClient({
             const StIcon   = st.icon;
             const direction = docTypes.find(t => t.code === doc.doc_type)?.direction ?? 'none';
             const DirIcon  = DIR_ICON[direction] ?? FileText;
-            const dirColor = direction === 'in' ? '#15803D' : direction === 'out' ? '#DC2626' : '#64748B';
+            const dirColor = direction === 'in' ? 'var(--color-success)' : direction === 'out' ? 'var(--color-danger)' : 'var(--text-soft)';
             const date     = new Date(doc.doc_date).toLocaleDateString('uk-UA', {
               day: '2-digit', month: '2-digit', year: 'numeric',
             });
@@ -449,7 +449,7 @@ export default function DocumentsClient({
                         disabled={loading === doc.id + 'confirm'}
                         style={{
                           height: '28px', padding: '0 10px', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
-                          border: 'none', background: 'var(--color-success)', color: '#fff', cursor: 'pointer',
+                          border: 'none', background: 'var(--color-success)', color: 'var(--surface)', cursor: 'pointer',
                           opacity: loading === doc.id + 'confirm' ? 0.5 : 1,
                         }}
                       >

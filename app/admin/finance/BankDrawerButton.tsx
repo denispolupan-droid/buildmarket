@@ -77,15 +77,15 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
   const ready = txns.filter(t => t.contractId && !t.saved).length;
 
   const CONF = {
-    auto:      { color: '#15803D', bg: '#F0FDF4', label: '⚡ Авто' },
-    suggested: { color: '#B45309', bg: '#FEF3C7', label: '💡 Пропозиція' },
-    none:      { color: '#94A3B8', bg: '#F8FAFC', label: '❓ Не знайдено' },
+    auto:      { color: 'var(--color-success)', bg: 'var(--bg-success)', label: '⚡ Авто' },
+    suggested: { color: 'var(--color-warn)', bg: 'var(--amber-bg)', label: '💡 Пропозиція' },
+    none:      { color: 'var(--ink-muted)', bg: '#F8FAFC', label: '❓ Не знайдено' },
   };
 
   return (
     <>
       <button onClick={() => setOpen(true)}
-        style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '36px', padding: '0 16px', borderRadius: '8px', background: '#7C3AED', color: '#fff', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '36px', padding: '0 16px', borderRadius: '8px', background: 'var(--violet)', color: 'var(--surface)', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
         <Landmark size={14} /> Банківська виписка
       </button>
 
@@ -120,8 +120,8 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                   onDragLeave={() => setDrag(false)}
                   onDrop={onDrop}
                   onClick={() => fileRef.current?.click()}
-                  style={{ border: `2px dashed ${drag ? '#7C3AED' : 'var(--border)'}`, borderRadius: '12px', padding: '40px 24px', textAlign: 'center', cursor: 'pointer', background: drag ? '#F5F3FF' : 'var(--bg-soft)', transition: 'all 0.15s' }}>
-                  <Upload size={32} color={drag ? '#7C3AED' : '#94A3B8'} style={{ marginBottom: '12px' }} />
+                  style={{ border: `2px dashed ${drag ? 'var(--violet)' : 'var(--border)'}`, borderRadius: '12px', padding: '40px 24px', textAlign: 'center', cursor: 'pointer', background: drag ? 'var(--violet-bg)' : 'var(--bg-soft)', transition: 'all 0.15s' }}>
+                  <Upload size={32} color={drag ? 'var(--violet)' : 'var(--ink-muted)'} style={{ marginBottom: '12px' }} />
                   <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
                     Перетягніть CSV файл сюди
                   </div>
@@ -137,10 +137,10 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                   {/* Stats bar */}
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {[
-                      { label: `⚡ Авто: ${autoC}`,      color: '#15803D', bg: '#F0FDF4' },
-                      { label: `💡 Запропоновано: ${suggC}`, color: '#B45309', bg: '#FEF3C7' },
-                      { label: `❓ Невідомо: ${noneC}`,  color: '#94A3B8', bg: '#F8FAFC' },
-                      { label: `✅ Збережено: ${savedC}`, color: '#1E3A5F', bg: '#EFF4FF' },
+                      { label: `⚡ Авто: ${autoC}`,      color: 'var(--color-success)', bg: 'var(--bg-success)' },
+                      { label: `💡 Запропоновано: ${suggC}`, color: 'var(--color-warn)', bg: 'var(--amber-bg)' },
+                      { label: `❓ Невідомо: ${noneC}`,  color: 'var(--ink-muted)', bg: '#F8FAFC' },
+                      { label: `✅ Збережено: ${savedC}`, color: 'var(--navy)', bg: 'var(--blue-bg)' },
                     ].map(s => (
                       <span key={s.label} style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, color: s.color, background: s.bg }}>{s.label}</span>
                     ))}
@@ -154,7 +154,7 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                     </button>
                     {ready > 0 && (
                       <button onClick={applyAll} disabled={applying}
-                        style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: applying ? 0.7 : 1 }}>
+                        style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: applying ? 0.7 : 1 }}>
                         {applying ? '⏳ Застосовуємо...' : `✅ Застосувати всі (${ready})`}
                       </button>
                     )}
@@ -168,7 +168,7 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
               {txns.map(txn => {
                 const conf = CONF[txn.confidence];
                 return (
-                  <div key={txn.id} style={{ background: txn.saved ? 'var(--bg-success)' : 'var(--bg-soft)', border: `1px solid ${txn.saved ? 'var(--border-success)' : txn.error ? '#FECACA' : 'var(--border)'}`, borderRadius: '10px', padding: '12px 14px' }}>
+                  <div key={txn.id} style={{ background: txn.saved ? 'var(--bg-success)' : 'var(--bg-soft)', border: `1px solid ${txn.saved ? 'var(--border-success)' : txn.error ? 'var(--danger-border)' : 'var(--border)'}`, borderRadius: '10px', padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                       <div>
                         <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-success)' }}>+{fmt(txn.amount)} ₴</span>
@@ -198,7 +198,7 @@ export default function BankDrawerButton({ contracts }: { contracts: Contract[] 
                           </optgroup>
                         </select>
                         <button onClick={() => saveOne(txn)} disabled={!txn.contractId || txn.saving}
-                          style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: txn.contractId ? 'var(--navy)' : 'var(--border)', color: txn.contractId ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                          style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: txn.contractId ? 'var(--navy)' : 'var(--border)', color: txn.contractId ? 'var(--surface)' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
                           {txn.saving ? '...' : '✓ OK'}
                         </button>
                       </div>

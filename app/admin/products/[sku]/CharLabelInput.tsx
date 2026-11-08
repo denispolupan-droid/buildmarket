@@ -73,10 +73,10 @@ export default function CharLabelInput({ categorySlug, value, onChange, style }:
               style={{
                 padding: '10px 14px', cursor: 'pointer', fontSize: '14px',
                 borderBottom: i < Math.min(filtered.length, 20) - 1 ? '1px solid var(--border-light)' : 'none',
-                background: '#fff',
+                background: 'var(--surface)',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
             >
               {s}
             </div>

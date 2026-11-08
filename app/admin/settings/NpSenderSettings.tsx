@@ -287,7 +287,7 @@ export default function NpSenderSettings({
                   flex: 1, height: '40px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: step3Active ? 'pointer' : 'not-allowed',
                   border: `1.5px solid ${senderType === t ? 'var(--navy)' : 'var(--border)'}`,
                   background: senderType === t ? 'var(--navy)' : 'var(--bg-soft)',
-                  color: senderType === t ? '#fff' : 'var(--text-secondary)',
+                  color: senderType === t ? 'var(--surface)' : 'var(--text-secondary)',
                 }}
               >
                 {t === 'warehouse' ? '📦 Відділення НП' : '🏭 Адресний забір'}
@@ -336,7 +336,7 @@ export default function NpSenderSettings({
                 <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження адрес з НП...
               </div>
             ) : npAddresses.length === 0 ? (
-              <div style={{ padding: '12px 14px', background: '#FEF3C7', borderRadius: '10px', fontSize: '13px', color: 'var(--text-warn-dark)', border: '1px solid var(--border-warn)' }}>
+              <div style={{ padding: '12px 14px', background: 'var(--amber-bg)', borderRadius: '10px', fontSize: '13px', color: 'var(--text-warn-dark)', border: '1px solid var(--border-warn)' }}>
                 ⚠ Адрес забору не знайдено. Зареєструйте адресу в кабінеті НП: my.novaposhta.ua → Адреси відправника.
               </div>
             ) : (
@@ -363,7 +363,7 @@ export default function NpSenderSettings({
       {/* Save */}
       <button
         onClick={handleSave} disabled={saving}
-        style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', background: saved ? 'var(--status-instock)' : 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start', opacity: saving ? 0.6 : 1 }}
+        style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', background: saved ? 'var(--status-instock)' : 'var(--navy)', color: 'var(--surface)', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', alignSelf: 'flex-start', opacity: saving ? 0.6 : 1 }}
       >
         {saving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</>
                : saved ? <><Check size={15} />Збережено</>

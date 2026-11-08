@@ -76,11 +76,11 @@ function formatDateOnly(iso: string) {
 function promoStatus(entry: LogEntry) {
   if (!entry.is_promo) return null;
   const today = new Date().toISOString().split('T')[0];
-  if (entry.reverted_at) return { label: 'Скасовано', color: '#6B7280', bg: '#F3F4F6' };
+  if (entry.reverted_at) return { label: 'Скасовано', color: '#6B7280', bg: 'var(--surface-muted)' };
   // Акція МП (adjustment): revert_at — останній день дії включно; акція сайту — дата повернення
   const expired = entry.adjustment ? entry.revert_at != null && entry.revert_at < today : entry.revert_at != null && entry.revert_at <= today;
-  if (expired) return { label: 'Протерміновано', color: '#B45309', bg: '#FEF3C7' };
-  return { label: 'Активна', color: '#15803D', bg: '#DCFCE7' };
+  if (expired) return { label: 'Протерміновано', color: 'var(--color-warn)', bg: 'var(--amber-bg)' };
+  return { label: 'Активна', color: 'var(--color-success)', bg: 'var(--ok-bg)' };
 }
 
 export default function PricesLog() {
@@ -203,8 +203,8 @@ export default function PricesLog() {
 
         return (
           <div key={entry.id} style={{
-            background: isPending ? '#F0F9FF' : isCancelled ? '#F9FAFB' : 'var(--bg-card)',
-            border: `1px solid ${isPending ? '#BAE6FD' : isCancelled ? '#E5E7EB' : 'var(--border)'}`,
+            background: isPending ? '#F0F9FF' : isCancelled ? 'var(--surface-soft)' : 'var(--bg-card)',
+            border: `1px solid ${isPending ? '#BAE6FD' : isCancelled ? 'var(--line)' : 'var(--border)'}`,
             borderRadius: 10, overflow: 'hidden',
             opacity: isCancelled ? 0.7 : 1,
           }}>
@@ -222,7 +222,7 @@ export default function PricesLog() {
                 {valStr}
               </div>
 
-              <div style={{ fontSize: 12, color: 'var(--text-gray)', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5, textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-gray)', background: 'var(--surface-muted)', padding: '2px 8px', borderRadius: 5, textAlign: 'center' }}>
                 {TARGET_LABEL[entry.target] ?? entry.target}
               </div>
 
@@ -239,26 +239,26 @@ export default function PricesLog() {
                   </span>
                 )}
                 {isCancelled && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-gray-light)', background: '#F3F4F6',
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-gray-light)', background: 'var(--surface-muted)',
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
                     Скасовано
                   </span>
                 )}
                 {kindBadge && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#5B21B6', background: '#F5F3FF', border: '1px solid #DDD6FE',
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#5B21B6', background: 'var(--violet-bg)', border: '1px solid #DDD6FE',
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
                     {kindBadge}
                   </span>
                 )}
                 {isReverted && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--text-gray)', background: '#F3F4F6',
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--text-gray)', background: 'var(--surface-muted)',
                     padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
                     <Undo2 size={10} /> Відкочено{entry.reverted_at ? ` ${formatDateOnly(entry.reverted_at)}` : ''}
                   </span>
                 )}
                 {entry.is_promo && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700,
-                    color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74',
+                    color: 'var(--orange)', background: 'var(--orange-bg)', border: '1px solid var(--orange-border)',
                     padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
                     <Tag size={10} /> Акція
                   </span>
@@ -305,7 +305,7 @@ export default function PricesLog() {
                     onClick={() => revertMp(entry)}
                     disabled={reverting === entry.id}
                     title={isAdj ? 'Вимкнути — ціни повернуться на її внесок, наценки й інші акції лишаться' : 'Повернути націнки Prom/Rozetka, що були до цієї переоцінки'}
-                    style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid #DDD6FE', background: '#F5F3FF', color: '#5B21B6', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid #DDD6FE', background: 'var(--violet-bg)', color: '#5B21B6', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                     <Undo2 size={10} /> {reverting === entry.id ? '...' : isPending ? 'Скасувати' : 'Відкотити'}
                   </button>
                 )}
@@ -342,7 +342,7 @@ export default function PricesLog() {
                           {mpCols.map(c => {
                             const bp = row.before?.[c.price] ?? null;
                             const ap = row.after?.[c.price] ?? null;
-                            const color = bp != null && ap != null ? (ap > bp ? '#15803D' : ap < bp ? '#DC2626' : '#111') : '#111';
+                            const color = bp != null && ap != null ? (ap > bp ? 'var(--color-success)' : ap < bp ? 'var(--color-danger)' : 'var(--ink-strong)') : 'var(--ink-strong)';
                             return (
                               <React.Fragment key={c.price}>
                                 <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-gray)', whiteSpace: 'nowrap' }}>{mpCell(row.before, c)}</td>

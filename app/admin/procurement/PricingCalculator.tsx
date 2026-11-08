@@ -52,17 +52,17 @@ export default function PricingCalculator({ markupRetail, markupWholesale, marku
         Наценка
       </span>
 
-      {markupInput('Р', '#1E3A5F', 'retail',    markupRetail)}
-      {markupInput('О', '#7C3AED', 'wholesale', markupWholesale)}
-      {markupInput('Д', '#15803D', 'drop',      markupDrop)}
+      {markupInput('Р', 'var(--navy)', 'retail',    markupRetail)}
+      {markupInput('О', 'var(--violet)', 'wholesale', markupWholesale)}
+      {markupInput('Д', 'var(--color-success)', 'drop',      markupDrop)}
 
       <button
         onClick={onApply}
         disabled={!hasAny}
         style={{
           height: '30px', padding: '0 16px', borderRadius: '7px', border: 'none',
-          background: hasAny ? 'var(--navy)' : '#CBD5E1',
-          color: '#fff', fontSize: '12px', fontWeight: 700,
+          background: hasAny ? 'var(--navy)' : 'var(--line-slate)',
+          color: 'var(--surface)', fontSize: '12px', fontWeight: 700,
           cursor: hasAny ? 'pointer' : 'default',
           flexShrink: 0, transition: 'background 0.15s',
         }}

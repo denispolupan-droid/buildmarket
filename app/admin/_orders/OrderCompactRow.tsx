@@ -81,8 +81,8 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
           onClick={e => { e.stopPropagation(); toggleSelect(order.id); }}
           style={{
             width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer',
-            border: `2px solid ${selectedIds.has(order.id) ? '#3DBFB8' : 'var(--border)'}`,
-            background: selectedIds.has(order.id) ? '#3DBFB8' : 'var(--bg-card)',
+            border: `2px solid ${selectedIds.has(order.id) ? 'var(--brand-teal)' : 'var(--border)'}`,
+            background: selectedIds.has(order.id) ? 'var(--brand-teal)' : 'var(--bg-card)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -134,8 +134,8 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               : `Оплату ще не підтверджено (${PAYMENT_LABEL[order.payment_type] ?? order.payment_type})`}
             style={{
               ...rowBadge,
-              color: isCod ? 'var(--text-warn-dark)' : paymentConfirmed ? 'var(--color-success)' : '#B91C1C',
-              background: isCod ? '#FEF3C7' : paymentConfirmed ? '#DCFCE7' : 'var(--bg-danger)',
+              color: isCod ? 'var(--text-warn-dark)' : paymentConfirmed ? 'var(--color-success)' : 'var(--danger-dark)',
+              background: isCod ? 'var(--amber-bg)' : paymentConfirmed ? 'var(--ok-bg)' : 'var(--bg-danger)',
               borderColor: isCod ? 'var(--border-warn)' : paymentConfirmed ? 'var(--border-success)' : 'var(--border-danger)',
             }}>
             {isCod ? 'НАЛОЖКА' : paymentConfirmed ? 'ОПЛАЧЕНО' : 'НЕ ОПЛАЧЕНО'}
@@ -150,7 +150,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               style={{
                 ...rowBadge,
                 color: settlement.state === 'received' ? '#166534' : 'var(--color-warn)',
-                background: settlement.state === 'received' ? '#BBF7D0' : '#FEF3C7',
+                background: settlement.state === 'received' ? 'var(--ok-border)' : 'var(--amber-bg)',
                 borderColor: settlement.state === 'received' ? '#4ADE80' : 'var(--border-warn)',
               }}>
               {settlement.state === 'received' ? '₴ ВИПЛАЧЕНО' : '₴ ЧЕКАЄМО'}
@@ -192,7 +192,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 <span title={c} aria-label="Коментар покупця" className="oc-note"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 100, minWidth: 0,
                     padding: '1px 7px 1px 5px', borderRadius: '20px', maxWidth: '220px',
-                    background: '#FEF3C7', border: '1px solid var(--border-warn)', color: 'var(--text-warn-dark)',
+                    background: 'var(--amber-bg)', border: '1px solid var(--border-warn)', color: 'var(--text-warn-dark)',
                     fontSize: '11px', fontWeight: 600, lineHeight: 1.5 }}>
                   <MessageSquare size={12} style={{ flexShrink: 0 }} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c}</span>
@@ -278,9 +278,9 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               style={{
                 flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px',
                 padding: '1px 7px', borderRadius: '20px', fontWeight: 700, letterSpacing: '.02em',
-                color: isRozetkaPoint ? '#065F46' : '#7C2D12',
-                background: isRozetkaPoint ? '#ECFDF5' : '#FFF7ED',
-                border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : '#FDBA74'}`,
+                color: isRozetkaPoint ? 'var(--emerald-dark)' : '#7C2D12',
+                background: isRozetkaPoint ? 'var(--emerald-bg)' : 'var(--orange-bg)',
+                border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : 'var(--orange-border)'}`,
               }}>
               <Truck size={10} style={{ flexShrink: 0 }} />
               {isRozetkaPoint ? 'Rozetka' : 'НП'} {order.tracking_number}
@@ -318,9 +318,9 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer',
                   padding: '0 6px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 700, letterSpacing: '.02em',
-                  color: isRozetkaPoint ? '#065F46' : '#7C2D12',
-                  background: isRozetkaPoint ? '#ECFDF5' : '#FFF7ED',
-                  border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : '#FDBA74'}`,
+                  color: isRozetkaPoint ? 'var(--emerald-dark)' : '#7C2D12',
+                  background: isRozetkaPoint ? 'var(--emerald-bg)' : 'var(--orange-bg)',
+                  border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : 'var(--orange-border)'}`,
                 }}>
                 <Truck size={9} style={{ flexShrink: 0 }} />
                 <span style={{ whiteSpace: 'nowrap' }}>{order.tracking_number}</span>
@@ -370,7 +370,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             if (days < 7) return null;
             return (
               <span title={`Відправлено ${days} дн тому — довго висить. Перевірте доставку та завершіть замовлення («Доставлено»), інакше продаж не проведеться.`}
-                style={{ fontSize: '10px', fontWeight: 700, flexShrink: 0, padding: '1px 5px', borderRadius: '10px', color: '#B91C1C', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', whiteSpace: 'nowrap' }}>
+                style={{ fontSize: '10px', fontWeight: 700, flexShrink: 0, padding: '1px 5px', borderRadius: '10px', color: 'var(--danger-dark)', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)', whiteSpace: 'nowrap' }}>
                 ⚠ {days}д
               </span>
             );
@@ -408,8 +408,8 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 // літерою заголовка «Склад», а не на 8px правіше (06.11.2026)
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '-8px',
                   fontSize: '11px', fontWeight: 600, padding: showMail ? '2px 6px 2px 8px' : '2px 8px', borderRadius: '999px', whiteSpace: 'nowrap',
-                  color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : '#7C3AED',
-                  background: order.fulfillment_mode === 'own' ? '#DCFCE7' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
+                  color:      order.fulfillment_mode === 'own' ? 'var(--color-success)' : order.fulfillment_mode === 'supplier' ? 'var(--brand-blue)' : 'var(--violet)',
+                  background: order.fulfillment_mode === 'own' ? 'var(--ok-bg)' : order.fulfillment_mode === 'supplier' ? '#EAF1F8' : '#EDE9FE' }}>
                 {order.fulfillment_mode === 'own' ? 'FXL' : order.fulfillment_mode === 'mixed' ? 'Змішана' : 'Постач.'}
                 {showMail && (
                   <span aria-label={order.supplier_sent_at ? 'надіслано постачальнику' : 'не надіслано постачальнику'}
@@ -456,7 +456,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
             return (
               <span title={received ? `Виплачено — гроші дійшли до нас (${fmtMoney(settlement!.received)} ₴)` : waiting ? `Чекаємо виплату: ${fmtMoney(settlement!.open)} ₴ ще не дійшли до нас` : paid ? `Оплачено${hint ? ' · ' + hint : ''}` : hint || undefined}
                 style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', whiteSpace: 'nowrap',
-                  background: received ? '#BBF7D0' : waiting ? '#FEF3C7' : paid ? '#DCFCE7' : 'var(--border-light)',
+                  background: received ? 'var(--ok-border)' : waiting ? 'var(--amber-bg)' : paid ? 'var(--ok-bg)' : 'var(--border-light)',
                   color: received ? '#166534' : waiting ? 'var(--color-warn)' : paid ? 'var(--color-success)' : 'var(--text-secondary)',
                   fontWeight: received || waiting ? 700 : undefined, display: 'inline-flex', alignItems: 'center' }}>
                 {received ? '✓' : waiting ? '…' : ''}{label}
@@ -469,7 +469,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
         <div className="oc-hide-m" style={{ width: '34px', flexShrink: 0, textAlign: 'center' }}>
           {!isDropship && (
             <span style={{ fontSize: '11px', padding: '2px 5px', borderRadius: '20px', display: 'inline-block',
-              background: noCallback || callbackDone ? '#DCFCE7' : '#FEF3C7',
+              background: noCallback || callbackDone ? 'var(--ok-bg)' : 'var(--amber-bg)',
               color: noCallback || callbackDone ? 'var(--color-success)' : 'var(--color-warn)' }}>
               {noCallback ? '✓' : callbackDone ? '✓📞' : '📞'}
             </span>

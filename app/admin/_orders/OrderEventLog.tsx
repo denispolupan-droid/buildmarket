@@ -20,9 +20,9 @@ const CHANNEL_LABEL: Record<string, string> = {
   prom: 'Prom', rozetka: 'Rozetka', epicentr: 'Епіцентр', telegram: 'Telegram', email: 'email', sms: 'SMS/Viber',
 };
 const STATUS_LABEL: Record<OutboxEv['status'], { text: string; color: string }> = {
-  pending: { text: 'в черзі',   color: '#B45309' },
-  done:    { text: 'доставлено', color: '#15803D' },
-  failed:  { text: 'не доставлено', color: '#DC2626' },
+  pending: { text: 'в черзі',   color: 'var(--color-warn)' },
+  done:    { text: 'доставлено', color: 'var(--color-success)' },
+  failed:  { text: 'не доставлено', color: 'var(--color-danger)' },
   skipped: { text: 'пропущено', color: 'var(--text-muted)' },
 };
 const fmtAt = (s: string) => new Date(s).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });

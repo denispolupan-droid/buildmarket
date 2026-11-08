@@ -105,7 +105,7 @@ export default function PODrawer({ poId, poLabel, onClose }: Props) {
           position: 'fixed', bottom: 0, right: '24px', zIndex: 600,
           display: 'flex', alignItems: 'center', gap: '8px',
           height: '38px', padding: '0 14px',
-          background: 'var(--navy)', color: '#fff',
+          background: 'var(--navy)', color: 'var(--surface)',
           borderRadius: '10px 10px 0 0',
           boxShadow: '0 -4px 20px rgba(0,0,0,0.2)',
           cursor: 'pointer', fontSize: '13px', fontWeight: 700,

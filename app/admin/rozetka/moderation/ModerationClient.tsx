@@ -12,9 +12,9 @@ const KIND_LABEL: Record<FixKind, string> = {
   other: 'інше',
 };
 const KIND_COLOR: Record<FixKind, { c: string; bg: string; b: string }> = {
-  text:  { c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0' },
-  chars: { c: '#B45309', bg: '#FFFBEB', b: '#FDE68A' },
-  photo: { c: '#B91C1C', bg: '#FEF2F2', b: '#FECACA' },
+  text:  { c: 'var(--color-success)', bg: 'var(--bg-success)', b: 'var(--ok-border)' },
+  chars: { c: 'var(--color-warn)', bg: '#FFFBEB', b: 'var(--amber-border)' },
+  photo: { c: 'var(--danger-dark)', bg: '#FEF2F2', b: 'var(--danger-border)' },
   other: { c: '#475569', bg: '#F8FAFC', b: '#E2E8F0' },
 };
 
@@ -100,7 +100,7 @@ export default function ModerationClient() {
       </p>
 
       {err && (
-        <div style={{ ...card, borderColor: '#FECACA', background: 'var(--bg-danger)', color: '#B91C1C', marginBottom: '16px' }}>
+        <div style={{ ...card, borderColor: 'var(--danger-border)', background: 'var(--bg-danger)', color: 'var(--danger-dark)', marginBottom: '16px' }}>
           Не вдалося отримати дані з Rozetka: {err}
         </div>
       )}
@@ -114,7 +114,7 @@ export default function ModerationClient() {
             </div>
             <div style={card}>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}><AlertTriangle size={12} /> Відхилено</div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: data.rejected ? '#B91C1C' : 'var(--text-primary)' }}>{data.rejected}</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: data.rejected ? 'var(--danger-dark)' : 'var(--text-primary)' }}>{data.rejected}</div>
             </div>
             <div style={card}>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Позицій із проблемами</div>
@@ -137,7 +137,7 @@ export default function ModerationClient() {
                 <button key={k} onClick={() => setKind(k)}
                   style={{ height: '30px', padding: '0 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                     border: `1.5px solid ${active ? 'var(--brand-blue)' : 'var(--border)'}`,
-                    background: active ? '#EFF4FF' : 'var(--bg-card)',
+                    background: active ? 'var(--blue-bg)' : 'var(--bg-card)',
                     color: active ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
                   {k === 'all' ? 'Усі' : KIND_LABEL[k]}
                   <span style={{ marginLeft: '5px', fontSize: '10px', opacity: 0.7 }}>{n}</span>
@@ -146,7 +146,7 @@ export default function ModerationClient() {
             })}
             {fixable.length > 0 && (
               <button onClick={() => regen(fixable)} disabled={fixing.length > 0}
-                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer', opacity: fixing.length ? 0.6 : 1 }}>
+                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', height: '30px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '12.5px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer', opacity: fixing.length ? 0.6 : 1 }}>
                 <Wand2 size={14} /> Перегенерувати описи ({fixable.length})
               </button>
             )}
@@ -203,7 +203,7 @@ export default function ModerationClient() {
                     </span>
                   ) : p.autoFixable ? (
                     <button onClick={() => regen([p.sku])} disabled={fixing.length > 0}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid #BBF7D0', background: 'var(--bg-success)', color: 'var(--color-success)', fontSize: '12px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '28px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--ok-border)', background: 'var(--bg-success)', color: 'var(--color-success)', fontSize: '12px', fontWeight: 700, cursor: fixing.length ? 'default' : 'pointer' }}>
                       <Wand2 size={12} /> {fixing.includes(p.sku) ? 'Генерую…' : 'Перегенерувати опис'}
                     </button>
                   ) : (

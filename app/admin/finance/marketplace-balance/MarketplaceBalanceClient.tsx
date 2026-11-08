@@ -55,9 +55,9 @@ type PromReconcile = {
 type MarketplaceData = { rows: LedgerRow[]; balance: number; inTransit: InTransit };
 
 const MARKETPLACE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  prom:    { label: 'Prom.ua',  color: '#1E3A5F', bg: 'var(--bg-soft)' },
-  rozetka: { label: 'Rozetka',  color: '#1E3A5F', bg: 'var(--bg-soft)' },
-  epicentr: { label: 'Епіцентр', color: '#1E3A5F', bg: 'var(--bg-soft)' },
+  prom:    { label: 'Prom.ua',  color: 'var(--navy)', bg: 'var(--bg-soft)' },
+  rozetka: { label: 'Rozetka',  color: 'var(--navy)', bg: 'var(--bg-soft)' },
+  epicentr: { label: 'Епіцентр', color: 'var(--navy)', bg: 'var(--bg-soft)' },
 };
 
 const inp: React.CSSProperties = {
@@ -275,7 +275,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => { setOpen(true); setTopupOpen(v => !v); setError(''); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Plus size={14} /> Поповнити
           </button>
           <button onClick={() => { setOpen(true); setAdjustOpen(v => !v); setTopupOpen(false); setError(''); }}
@@ -361,7 +361,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             <input style={inp} type="date" value={topupDate} onChange={e => setTopupDate(e.target.value)} />
           </div>
           <button onClick={submitTopup} disabled={saving}
-            style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+            style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? '...' : 'Зберегти'}
           </button>
           <button onClick={() => setTopupOpen(false)} style={{ height: '38px', width: '38px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -384,7 +384,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                     <button key={v} type="button" onClick={() => setAdjDirection(v)}
                       style={{ flex: 1, border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
                         background: active ? (v === 'charge' ? 'var(--color-danger)' : 'var(--color-success)') : 'var(--bg-card)',
-                        color: active ? '#fff' : 'var(--text-secondary)' }}>
+                        color: active ? 'var(--surface)' : 'var(--text-secondary)' }}>
                       {t}
                     </button>
                   );
@@ -417,7 +417,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               <input style={inp} value={adjNote} onChange={e => setAdjNote(e.target.value)} placeholder="необовʼязково" />
             </div>
             <button onClick={submitAdjust} disabled={saving}
-              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+              style={{ height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
               {saving ? '...' : 'Зберегти'}
             </button>
             <button onClick={() => setAdjustOpen(false)} style={{ height: '38px', width: '38px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -447,7 +447,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
             style={{ width: '100%', minHeight: '110px', padding: '10px 12px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '12px', fontFamily: 'ui-monospace, monospace', boxSizing: 'border-box', background: 'var(--bg-card)', color: 'var(--text-primary)', resize: 'vertical' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
             <button onClick={() => loadProm()} disabled={promLoading || !promText.trim()}
-              style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: promLoading || !promText.trim() ? 'default' : 'pointer', opacity: promLoading || !promText.trim() ? 0.5 : 1 }}>
+              style={{ height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: promLoading || !promText.trim() ? 'default' : 'pointer', opacity: promLoading || !promText.trim() ? 0.5 : 1 }}>
               {promLoading ? 'Звіряю…' : 'Звірити'}
             </button>
             {promData && (
@@ -506,11 +506,11 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                 <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                   {promData.rows.map((row, idx) => {
                     const ui: Record<string, { text: string; color: string }> = {
-                      ok:               { text: '✓ Збігається', color: '#15803D' },
-                      diff:             { text: 'Розбіжність', color: '#DC2626' },
-                      missing_ours:     { text: 'Немає у нас', color: '#DC2626' },
-                      missing_theirs:   { text: 'Немає у Prom', color: '#DC2626' },
-                      pending_delivery: { text: 'В дорозі — проведемо при доставці', color: '#B45309' },
+                      ok:               { text: '✓ Збігається', color: 'var(--color-success)' },
+                      diff:             { text: 'Розбіжність', color: 'var(--color-danger)' },
+                      missing_ours:     { text: 'Немає у нас', color: 'var(--color-danger)' },
+                      missing_theirs:   { text: 'Немає у Prom', color: 'var(--color-danger)' },
+                      pending_delivery: { text: 'В дорозі — проведемо при доставці', color: 'var(--color-warn)' },
                     };
                     const s = ui[row.status];
                     return (
@@ -549,7 +549,7 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
               <input style={inp} type="date" value={cabinetTo} onChange={e => setCabinetTo(e.target.value)} />
             </div>
             <button onClick={() => loadCabinet()} disabled={cabinetLoading}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: cabinetLoading ? 'wait' : 'pointer', opacity: cabinetLoading ? 0.6 : 1 }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: cabinetLoading ? 'wait' : 'pointer', opacity: cabinetLoading ? 0.6 : 1 }}>
               <RefreshCw size={14} style={cabinetLoading ? { animation: 'spin 1s linear infinite' } : undefined} />
               {cabinetLoading ? 'Завантаження…' : 'Оновити'}
             </button>
@@ -622,12 +622,12 @@ function MarketplacePanel({ marketplace, data }: { marketplace: 'prom' | 'rozetk
                   )}
                   {cabinetData.rows.map((row, idx) => {
                     const statusUi: Record<CabinetRow['status'], { text: string; color: string; action: boolean }> = {
-                      ok:               { text: '✓ Збігається',                        color: '#15803D', action: false },
-                      diff:             { text: 'Розбіжність',                        color: '#DC2626', action: true },
-                      missing_ours:     { text: 'Немає у нас',                        color: '#DC2626', action: true },
-                      missing_theirs:   { text: 'Немає у Rozetka',                    color: '#DC2626', action: true },
-                      pending_delivery: { text: 'В дорозі — спишеться при доставці',  color: '#B45309', action: false },
-                      reserved_theirs:  { text: 'У резерві Rozetka — ще не списано',  color: '#B45309', action: false },
+                      ok:               { text: '✓ Збігається',                        color: 'var(--color-success)', action: false },
+                      diff:             { text: 'Розбіжність',                        color: 'var(--color-danger)', action: true },
+                      missing_ours:     { text: 'Немає у нас',                        color: 'var(--color-danger)', action: true },
+                      missing_theirs:   { text: 'Немає у Rozetka',                    color: 'var(--color-danger)', action: true },
+                      pending_delivery: { text: 'В дорозі — спишеться при доставці',  color: 'var(--color-warn)', action: false },
+                      reserved_theirs:  { text: 'У резерві Rozetka — ще не списано',  color: 'var(--color-warn)', action: false },
                     };
                     const s = statusUi[row.status];
                     return (

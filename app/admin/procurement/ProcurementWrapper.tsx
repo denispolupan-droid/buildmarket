@@ -137,7 +137,7 @@ export default function ProcurementWrapper({
     height: '30px', padding: '0 11px', borderRadius: '7px',
     border: `1px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
     background: active ? 'var(--navy)' : 'var(--bg-soft)',
-    color: active ? '#fff' : 'var(--text-secondary)',
+    color: active ? 'var(--surface)' : 'var(--text-secondary)',
     fontSize: '12px', fontWeight: active ? 700 : 500,
     cursor: 'pointer', whiteSpace: 'nowrap',
   });

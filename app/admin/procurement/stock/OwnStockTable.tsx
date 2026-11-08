@@ -70,7 +70,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 function DateRangeFilter({
-  from, to, accentColor = '#3B82F6',
+  from, to, accentColor = 'var(--blue-bright)',
   onFrom, onTo, onReset,
 }: {
   from: string; to: string; accentColor?: string;
@@ -83,7 +83,7 @@ function DateRangeFilter({
       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
       <SmartDateInput value={to}   onChange={onTo} />
       {(from || to) && (
-        <button onClick={onReset} style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: '1px solid #CBD5E1', borderRadius: '4px', background: 'transparent', color: 'var(--text-muted)' }}>
+        <button onClick={onReset} style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--line-slate)', borderRadius: '4px', background: 'transparent', color: 'var(--text-muted)' }}>
           Скинути
         </button>
       )}
@@ -175,7 +175,7 @@ function MovementReport({
         <button
           onClick={generate}
           disabled={loading}
-          style={{ padding: '5px 16px', fontSize: '12px', fontWeight: 700, cursor: loading ? 'default' : 'pointer', background: '#1E40AF', color: '#fff', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px', opacity: loading ? 0.7 : 1 }}
+          style={{ padding: '5px 16px', fontSize: '12px', fontWeight: 700, cursor: loading ? 'default' : 'pointer', background: '#1E40AF', color: 'var(--surface)', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px', opacity: loading ? 0.7 : 1 }}
         >
           {loading && <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />}
           Сформувати звіт
@@ -199,7 +199,7 @@ function MovementReport({
       {report && (
         <>
           {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: rCol, gap: '8px', padding: '6px 16px 6px 20px', fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', background: '#F1F5F9', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: rCol, gap: '8px', padding: '6px 16px 6px 20px', fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
             <span>Дата</span>
             <span>Документ</span>
             <span>Тип операції</span>
@@ -213,7 +213,7 @@ function MovementReport({
           {/* Opening balance */}
           {balanceRow(
             `Залишок на початок (${from ? new Date(from).toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'})`,
-            report.opening_qty, report.opening_cost > 0 ? report.opening_cost : null, '#1E3A5F', '#fff',
+            report.opening_qty, report.opening_cost > 0 ? report.opening_cost : null, 'var(--navy)', 'var(--surface)',
           )}
 
           {/* No movements */}
@@ -251,7 +251,7 @@ function MovementReport({
                   )}
                 </span>
 
-                <span style={{ fontSize: '12px', color: '#374151' }}>{DOC_LABEL[m.doc_type] ?? m.doc_type}</span>
+                <span style={{ fontSize: '12px', color: 'var(--ink-2)' }}>{DOC_LABEL[m.doc_type] ?? m.doc_type}</span>
 
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 800, color: isIn ? 'var(--color-success)' : 'transparent' }}>
                   {isIn ? `+${absQty}` : ''}
@@ -281,7 +281,7 @@ function MovementReport({
               `Залишок на кінець (${to ? new Date(to).toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'})`,
               closingQty,
               report.closing_value > 0 ? report.closing_value : null,
-              '#14532D', '#fff',
+              '#14532D', 'var(--surface)',
             );
           })()}
 
@@ -290,7 +290,7 @@ function MovementReport({
             const inCost  = rows.filter(r => r.qty > 0).reduce((s, r) => s + Math.abs(Number(r.qty)) * Number(r.cost_price), 0);
             const outRev  = rows.filter(r => r.qty < 0 && r.sale_price != null).reduce((s, r) => s + Math.abs(Number(r.qty)) * Number(r.sale_price), 0);
             return (
-              <div style={{ background: 'var(--bg-soft)', borderTop: '2px solid #CBD5E1' }}>
+              <div style={{ background: 'var(--bg-soft)', borderTop: '2px solid var(--line-slate)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: rCol, gap: '8px', padding: '7px 16px 7px 20px', alignItems: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', gridColumn: '1 / 4' }}>
                     Оборот за період: {rows.length} операцій
@@ -352,7 +352,7 @@ function DocBtn({ label, link }: { label: string; link: string | null }) {
   const style: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: '5px',
     fontSize: '12px', fontWeight: 700, color: 'var(--navy)',
-    background: '#fff', border: '1px solid #BFDBFE',
+    background: 'var(--surface)', border: '1px solid var(--blue-border)',
     padding: '3px 10px', borderRadius: '6px',
     textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   };
@@ -370,19 +370,19 @@ function BatchPanel({ batches, loading }: { batches: Batch[]; loading: boolean }
 
   if (loading) {
     return (
-      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#3B82F6' }}>
+      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--blue-bright)' }}>
         <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Завантаження…
       </div>
     );
   }
 
   if (batches.length === 0) {
-    return <div style={{ padding: '14px 20px', fontSize: '12px', color: '#3B82F6' }}>Партії не знайдено</div>;
+    return <div style={{ padding: '14px 20px', fontSize: '12px', color: 'var(--blue-bright)' }}>Партії не знайдено</div>;
   }
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: bCol, gap: '8px', padding: '6px 16px 6px 20px', fontSize: '10px', fontWeight: 700, color: '#3B82F6', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #BFDBFE' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: bCol, gap: '8px', padding: '6px 16px 6px 20px', fontSize: '10px', fontWeight: 700, color: 'var(--blue-bright)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--blue-border)' }}>
         <span>Дата надходження</span>
         <span style={{ textAlign: 'right' }}>Прийнято</span>
         <span style={{ textAlign: 'right' }}>Залишок</span>
@@ -397,7 +397,7 @@ function BatchPanel({ batches, loading }: { batches: Batch[]; loading: boolean }
         const docLabel = b.doc?.doc_number ?? (b.document_id ? b.document_id.slice(0, 8) + '…' : '—');
 
         return (
-          <div key={b.id} style={{ display: 'grid', gridTemplateColumns: bCol, gap: '8px', padding: '9px 16px 9px 20px', alignItems: 'center', borderTop: bi > 0 ? '1px solid #BFDBFE' : 'none', background: bi % 2 === 0 ? 'transparent' : 'rgba(219,234,254,0.3)' }}>
+          <div key={b.id} style={{ display: 'grid', gridTemplateColumns: bCol, gap: '8px', padding: '9px 16px 9px 20px', alignItems: 'center', borderTop: bi > 0 ? '1px solid var(--blue-border)' : 'none', background: bi % 2 === 0 ? 'transparent' : 'rgba(219,234,254,0.3)' }}>
             <span style={{ fontSize: '12px', color: 'var(--navy)', fontWeight: 500 }}>{fmtDate(b.received_at)}</span>
             <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-soft)' }}>
               {b.initial_qty} шт
@@ -494,7 +494,7 @@ function HistoryModal({
                   {(batchFrom || batchTo) ? `${visibleBatches.length} з ${batches.length}` : batches.length}
                 </span>
               </div>
-              <div style={{ border: '1px solid #BFDBFE', borderRadius: '8px', overflow: 'hidden', background: '#F0F7FF' }}>
+              <div style={{ border: '1px solid var(--blue-border)', borderRadius: '8px', overflow: 'hidden', background: '#F0F7FF' }}>
                 <DateRangeFilter from={batchFrom} to={batchTo} onFrom={setBatchFrom} onTo={setBatchTo} onReset={() => { setBatchFrom(''); setBatchTo(''); }} />
                 <BatchPanel batches={visibleBatches} loading={false} />
                 {visibleBatches.length === 0 && (
@@ -507,7 +507,7 @@ function HistoryModal({
 
             {/* Movement report */}
             <div>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
                 Картка руху товару
               </div>
               <div style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -563,7 +563,7 @@ function MinReorderCell({ sku, warehouseId, value, belowMin }: {
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
           onBlur={save}
-          style={{ width: '52px', padding: '2px 4px', fontSize: '12px', border: '1.5px solid #3B82F6', borderRadius: '4px', outline: 'none', textAlign: 'right' }}
+          style={{ width: '52px', padding: '2px 4px', fontSize: '12px', border: '1.5px solid var(--blue-bright)', borderRadius: '4px', outline: 'none', textAlign: 'right' }}
         />
         {saving && <Loader2 size={11} style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }} />}
       </div>
@@ -705,8 +705,8 @@ export default function OwnStockTable({
                     <span style={{ color: 'var(--text-primary)' }}>{p.name}</span>
                   </span>
                   {inStock
-                    ? <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-success)', background: '#DCFCE7', padding: '2px 8px', borderRadius: '4px', flexShrink: 0 }}>є на складі</span>
-                    : <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-warn-dark)', background: '#FEF3C7', padding: '2px 8px', borderRadius: '4px', flexShrink: 0 }}>нульовий залишок</span>
+                    ? <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-success)', background: 'var(--ok-bg)', padding: '2px 8px', borderRadius: '4px', flexShrink: 0 }}>є на складі</span>
+                    : <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-warn-dark)', background: 'var(--amber-bg)', padding: '2px 8px', borderRadius: '4px', flexShrink: 0 }}>нульовий залишок</span>
                   }
                 </div>
               );
@@ -748,7 +748,7 @@ export default function OwnStockTable({
                   borderBottom: (!isLast || isOpen) ? '1px solid var(--border-light)' : 'none',
                   cursor: 'pointer',
                   background: isOpen ? 'var(--brand-blue-light)' : 'transparent',
-                  borderLeft: isOpen ? '3px solid #3B82F6' : '3px solid transparent',
+                  borderLeft: isOpen ? '3px solid var(--blue-bright)' : '3px solid transparent',
                   transition: 'background 0.12s, border-color 0.12s',
                 }}
                 onMouseEnter={e => { if (!isOpen) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-soft)'; }}
@@ -766,7 +766,7 @@ export default function OwnStockTable({
                   {row.avg_cost > 0 ? `${fmt(Number(row.avg_cost))} ₴` : '—'}
                 </span>
                 <MinReorderCell sku={row.sku} warehouseId={row.warehouse_id} value={row.min_reorder_qty} belowMin={row.qty_total <= (row.min_reorder_qty ?? Infinity) && row.min_reorder_qty != null} />
-                <span style={{ display: 'flex', justifyContent: 'center', color: isOpen ? '#3B82F6' : 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', justifyContent: 'center', color: isOpen ? 'var(--blue-bright)' : 'var(--text-muted)' }}>
                   {isLoad
                     ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
                     : isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -775,10 +775,10 @@ export default function OwnStockTable({
 
               {/* Expanded panel */}
               {isOpen && (
-                <div style={{ borderLeft: '3px solid #3B82F6', borderBottom: !isLast ? '1px solid var(--border-light)' : 'none' }}>
+                <div style={{ borderLeft: '3px solid var(--blue-bright)', borderBottom: !isLast ? '1px solid var(--border-light)' : 'none' }}>
 
                   {/* Tabs */}
-                  <div style={{ display: 'flex', background: 'var(--brand-blue-light)', borderBottom: '1px solid #BFDBFE' }}>
+                  <div style={{ display: 'flex', background: 'var(--brand-blue-light)', borderBottom: '1px solid var(--blue-border)' }}>
                     {(['in', 'out'] as const).map(t => {
                       const active = tab === t;
                       const label  = t === 'in' ? 'Надходження' : 'Рух за період';
@@ -789,9 +789,9 @@ export default function OwnStockTable({
                           onClick={e => { e.stopPropagation(); switchTab(key, t, row.sku, row.warehouse_id); }}
                           style={{
                             padding: '6px 18px', fontSize: '12px', fontWeight: 700, border: 'none', cursor: 'pointer',
-                            borderRight: '1px solid #BFDBFE',
-                            background: active ? (t === 'in' ? '#3B82F6' : '#1E40AF') : 'transparent',
-                            color: active ? '#fff' : (t === 'in' ? '#3B82F6' : '#1E40AF'),
+                            borderRight: '1px solid var(--blue-border)',
+                            background: active ? (t === 'in' ? 'var(--blue-bright)' : '#1E40AF') : 'transparent',
+                            color: active ? 'var(--surface)' : (t === 'in' ? 'var(--blue-bright)' : '#1E40AF'),
                           }}
                         >
                           {label}{count}

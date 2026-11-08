@@ -4,12 +4,12 @@ import { useSearchParams } from 'next/navigation';
 import { Modal } from '../../../components/admin/ui/Modal';
 
 const btnPrimary: React.CSSProperties = {
-  background: 'var(--color-info)', color: '#fff', border: 'none',
+  background: 'var(--color-info)', color: 'var(--surface)', border: 'none',
   padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
   cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
 };
 const btnSecondary: React.CSSProperties = {
-  background: '#fff', color: '#374151', border: '1.5px solid #E5E7EB',
+  background: 'var(--surface)', color: 'var(--ink-2)', border: '1.5px solid var(--line)',
   padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
   cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
 };
@@ -109,7 +109,7 @@ function PreviewContent() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
 
       {/* Action bar */}
-      <div style={{ display: 'flex', gap: 8, padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e5e7eb', alignItems: 'center', flexShrink: 0, height: 50 }}>
+      <div style={{ display: 'flex', gap: 8, padding: '10px 20px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', alignItems: 'center', flexShrink: 0, height: 50 }}>
         <button style={{ ...btnPrimary, opacity: !blobUrl ? 0.5 : 1 }} disabled={!blobUrl}
           onClick={() => { try { iframeRef.current?.contentWindow?.print(); } catch { window.print(); } }}>
           Друкувати
@@ -127,7 +127,7 @@ function PreviewContent() {
 
       {/* PDF / loader / error */}
       {loading && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, background: '#f1f5f9', color: 'var(--text-gray)', fontSize: 14 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, background: 'var(--bg-page)', color: 'var(--text-gray)', fontSize: 14 }}>
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           </svg>
@@ -151,8 +151,8 @@ function PreviewContent() {
 
       {/* Email modal */}
       {emailModal && (
-        <Modal open onClose={() => setEmailModal(false)} width={380} padding={0} dismissible={false} aria-label="Надіслати прайс" style={{ background: '#fff' }}>
-          <div style={{ background: '#fff', padding: 24, width: '100%' }}>
+        <Modal open onClose={() => setEmailModal(false)} width={380} padding={0} dismissible={false} aria-label="Надіслати прайс" style={{ background: 'var(--surface)' }}>
+          <div style={{ background: 'var(--surface)', padding: 24, width: '100%' }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700 }}>Відправити прайс-лист</h3>
             <input
               type="email"
@@ -161,7 +161,7 @@ function PreviewContent() {
               onKeyDown={e => e.key === 'Enter' && sendEmail()}
               placeholder="email@example.com"
               autoFocus
-              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--line)', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button style={{ ...btnPrimary, flex: 1, justifyContent: 'center', opacity: sending ? 0.5 : 1 }} disabled={sending} onClick={sendEmail}>

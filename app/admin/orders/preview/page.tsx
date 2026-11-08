@@ -14,17 +14,17 @@ import {
 // ── Токени превʼю (світла тема, як на макеті) ────────────────────────────────
 const INK = '#0F172A';
 const SECONDARY = '#475569';
-const MUTED = '#94A3B8';
+const MUTED = 'var(--ink-muted)';
 const HAIR = '#E9EDF3';
-const CARD = '#FFFFFF';
+const CARD = 'var(--surface)';
 const CANVAS = '#EEF2F7';
-const BLUE = '#2563EB';       // акцентна синя (як на макеті)
-const BLUE_SOFT = '#EFF4FF';
-const GREEN = '#16A34A';
-const GREEN_SOFT = '#DCFCE7';
-const AMBER = '#B45309';
-const AMBER_SOFT = '#FEF3C7';
-const RED = '#DC2626';
+const BLUE = 'var(--blue)';       // акцентна синя (як на макеті)
+const BLUE_SOFT = 'var(--blue-bg)';
+const GREEN = 'var(--status-instock)';
+const GREEN_SOFT = 'var(--ok-bg)';
+const AMBER = 'var(--color-warn)';
+const AMBER_SOFT = 'var(--amber-bg)';
+const RED = 'var(--color-danger)';
 
 const card: React.CSSProperties = {
   background: CARD, border: `1px solid ${HAIR}`, borderRadius: '16px',
@@ -59,7 +59,7 @@ function ActionBtn({ icon, label, variant = 'default' }: { icon: React.ReactNode
     border: `1px solid ${HAIR}`, background: CARD, color: INK, textAlign: 'left',
   };
   const v = variant === 'blue'
-    ? { ...base, border: `1px solid ${BLUE}`, background: BLUE, color: '#fff' }
+    ? { ...base, border: `1px solid ${BLUE}`, background: BLUE, color: 'var(--surface)' }
     : variant === 'blueOutline'
       ? { ...base, border: `1px solid #BFD3FF`, background: BLUE_SOFT, color: BLUE }
       : base;
@@ -82,10 +82,10 @@ export default function OrderPreviewPage() {
         </div>
         <button style={{ position: 'relative', width: '38px', height: '38px', borderRadius: '10px', border: `1px solid ${HAIR}`, background: CARD, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SECONDARY }}>
           <Bell size={16} />
-          <span style={{ position: 'absolute', top: '-4px', right: '-4px', minWidth: '16px', height: '16px', borderRadius: '999px', background: BLUE, color: '#fff', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>2</span>
+          <span style={{ position: 'absolute', top: '-4px', right: '-4px', minWidth: '16px', height: '16px', borderRadius: '999px', background: BLUE, color: 'var(--surface)', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>2</span>
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '999px', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>AD</div>
+          <div style={{ width: '32px', height: '32px', borderRadius: '999px', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>AD</div>
           <ChevronDown size={14} color={MUTED} />
         </div>
       </div>
@@ -111,7 +111,7 @@ export default function OrderPreviewPage() {
               <div style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', color: INK, fontVariantNumeric: 'tabular-nums' }}>1713 ₴</div>
               <div style={{ fontSize: '12px', color: MUTED }}>Сума замовлення</div>
             </div>
-            <button style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 20px', borderRadius: '12px', border: 'none', background: BLUE, color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 2px rgba(37,99,235,0.4)' }}>
+            <button style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 20px', borderRadius: '12px', border: 'none', background: BLUE, color: 'var(--surface)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 2px rgba(37,99,235,0.4)' }}>
               <Check size={17} /> Підтвердити замовлення
             </button>
             <button style={{ width: '44px', height: '44px', borderRadius: '12px', border: `1px solid ${HAIR}`, background: CARD, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SECONDARY }}>
@@ -183,7 +183,7 @@ export default function OrderPreviewPage() {
                 <tr>
                   <td style={{ padding: '14px 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: MUTED }}><Package size={18} /></div>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'var(--bg-page)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: MUTED }}><Package size={18} /></div>
                       <div style={{ fontSize: '13.5px', fontWeight: 600, color: INK, lineHeight: 1.35 }}>Клей Pattex Shoe Glue<br />для взуття 50 г</div>
                     </div>
                   </td>
@@ -234,7 +234,7 @@ export default function OrderPreviewPage() {
                 <button style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${HAIR}`, background: CARD, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SECONDARY }}><Copy size={15} /></button>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                <button style={{ flex: 1, height: '40px', borderRadius: '10px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Зберегти</button>
+                <button style={{ flex: 1, height: '40px', borderRadius: '10px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Зберегти</button>
                 <button style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${HAIR}`, background: CARD, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: SECONDARY }}><Truck size={16} /></button>
               </div>
               <button style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '40px', marginTop: '10px', borderRadius: '10px', border: '1px solid #BFD3FF', background: BLUE_SOFT, color: BLUE, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}><Mail size={15} /> Надіслати постачальнику</button>
@@ -249,19 +249,19 @@ export default function OrderPreviewPage() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', marginTop: '28px' }}>
               {[
-                { st: 'done',    dot: BLUE,   icon: <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: '#fff' }} />, title: 'Нове', date: '20.07.24, 22:17', sub: 'Створено замовлення' },
+                { st: 'done',    dot: BLUE,   icon: <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: 'var(--surface)' }} />, title: 'Нове', date: '20.07.24, 22:17', sub: 'Створено замовлення' },
                 { st: 'done',    dot: GREEN,  icon: <Check size={13} color="#fff" />, title: 'Оплачено', date: '20.07.24, 22:20', sub: 'Клієнт оплатив замовлення' },
                 { st: 'active',  dot: BLUE,   icon: <Phone size={12} color="#fff" />, title: 'Потрібен дзвінок', date: '20.07.24, 22:22', sub: 'Позначено менеджером' },
-                { st: 'idle',    dot: '#CBD5E1', icon: null, title: 'Підтверджено', date: '', sub: 'Очікує підтвердження' },
-                { st: 'idle',    dot: '#CBD5E1', icon: null, title: 'Відправлено постачальнику', date: '', sub: 'Очікує відправки' },
-                { st: 'idle',    dot: '#CBD5E1', icon: null, title: 'Виконано', date: '', sub: 'Замовлення виконано' },
+                { st: 'idle',    dot: 'var(--line-slate)', icon: null, title: 'Підтверджено', date: '', sub: 'Очікує підтвердження' },
+                { st: 'idle',    dot: 'var(--line-slate)', icon: null, title: 'Відправлено постачальнику', date: '', sub: 'Очікує відправки' },
+                { st: 'idle',    dot: 'var(--line-slate)', icon: null, title: 'Виконано', date: '', sub: 'Замовлення виконано' },
               ].map((s, i, arr) => (
                 <div key={i} style={{ position: 'relative', textAlign: 'center', paddingTop: '4px' }}>
                   {/* connector */}
                   {i < arr.length - 1 && (
                     <div style={{ position: 'absolute', top: '13px', left: '50%', width: '100%', height: '2px', background: arr[i + 1].st === 'idle' ? 'var(--border)' : (s.dot as string) }} />
                   )}
-                  <div style={{ position: 'relative', zIndex: 1, width: '28px', height: '28px', margin: '0 auto', borderRadius: '999px', background: s.st === 'idle' ? '#F1F5F9' : (s.dot as string), border: s.st === 'idle' ? `2px solid #CBD5E1` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ position: 'relative', zIndex: 1, width: '28px', height: '28px', margin: '0 auto', borderRadius: '999px', background: s.st === 'idle' ? 'var(--bg-page)' : (s.dot as string), border: s.st === 'idle' ? `2px solid var(--line-slate)` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {s.icon}
                   </div>
                   <div style={{ marginTop: '10px', fontSize: '12.5px', fontWeight: 700, color: s.st === 'idle' ? MUTED : INK, padding: '0 6px', lineHeight: 1.3 }}>{s.title}</div>
@@ -304,7 +304,7 @@ export default function OrderPreviewPage() {
           <div style={{ ...card, padding: '20px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: INK, marginBottom: '12px' }}>Внутрішні нотатки</div>
             <textarea placeholder="Додати нотатку…" style={{ width: '100%', minHeight: '90px', padding: '10px 12px', border: `1px solid ${HAIR}`, borderRadius: '10px', fontSize: '13px', color: INK, resize: 'vertical', fontFamily: 'inherit' }} />
-            <button style={{ width: '100%', height: '40px', marginTop: '10px', borderRadius: '10px', border: 'none', background: '#F1F5F9', color: MUTED, fontSize: '13px', fontWeight: 600, cursor: 'not-allowed' }}>Зберегти нотатку</button>
+            <button style={{ width: '100%', height: '40px', marginTop: '10px', borderRadius: '10px', border: 'none', background: 'var(--bg-page)', color: MUTED, fontSize: '13px', fontWeight: 600, cursor: 'not-allowed' }}>Зберегти нотатку</button>
           </div>
         </div>
       </div>

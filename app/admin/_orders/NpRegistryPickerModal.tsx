@@ -15,7 +15,7 @@ export function NpRegistryPickerModal() {
       {/* Вибір реєстру НП: сьогодні вже є відкриті — в який додати чи створити новий */}
       {registryPick && (
         // Світлий фон як і раніше: кольори тексту всередині задані під білу картку.
-        <Modal open onClose={() => setRegistryPick(null)} width={420} padding={24} style={{ background: '#fff' }} aria-label="Реєстр НП">
+        <Modal open onClose={() => setRegistryPick(null)} width={420} padding={24} style={{ background: 'var(--surface)' }} aria-label="Реєстр НП">
           <div>
             <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: 'var(--navy)' }}>
               Реєстр НП · {registryPick.items.length} ТТН
@@ -28,7 +28,7 @@ export function NpRegistryPickerModal() {
                 <button key={s.Ref}
                   onClick={() => runRegistryAdd(registryPick.items, s.Ref)}
                   style={{ minHeight: '38px', padding: '8px 14px', textAlign: 'left', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E3A5F'; e.currentTarget.style.background = '#EFF6FF'; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--navy)'; e.currentTarget.style.background = '#EFF6FF'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-card)'; }}>
                   Реєстр №{s.Number}
                   <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
@@ -39,7 +39,7 @@ export function NpRegistryPickerModal() {
               <button
                 onClick={() => runRegistryAdd(registryPick.items, null)}
                 style={{ minHeight: '38px', padding: '8px 14px', textAlign: 'left', borderRadius: '9px', border: '1.5px dashed var(--border)', background: 'var(--bg-soft)', color: 'var(--text-secondary)', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E3A5F'; e.currentTarget.style.color = '#1E3A5F'; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--navy)'; e.currentTarget.style.color = 'var(--navy)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}>
                 + Створити новий реєстр
               </button>
@@ -65,7 +65,7 @@ export function NpRegistryPickerModal() {
         // dismissible={false}: як і раніше, повз картку не закривається — щоб не
         // загубити введені кількості; закриває «Скасувати».
         return (
-          <Modal open onClose={() => setShipModal(null)} dismissible={false} width={480} padding="28px 28px 24px" style={{ background: '#fff' }} aria-label="Відвантаження">
+          <Modal open onClose={() => setShipModal(null)} dismissible={false} width={480} padding="28px 28px 24px" style={{ background: 'var(--surface)' }} aria-label="Відвантаження">
             <div>
               <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: 'var(--navy)' }}>Відвантаження</div>
               <div style={{ fontSize: '12px', color: 'var(--text-gray)', marginBottom: '20px' }}>
@@ -74,7 +74,7 @@ export function NpRegistryPickerModal() {
               {/* TTN field for Prom orders */}
               {shipModal.isProm && (
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
                     ТТН (буде надіслано на Prom)
                   </label>
                   <input
@@ -88,7 +88,7 @@ export function NpRegistryPickerModal() {
               )}
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '20px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <tr style={{ borderBottom: '1px solid var(--line)' }}>
                     <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px' }}>Товар</th>
                     <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Замовл.</th>
                     <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 600, color: 'var(--text-gray)', fontSize: '11px', whiteSpace: 'nowrap' }}>Відвант.</th>
@@ -97,13 +97,13 @@ export function NpRegistryPickerModal() {
                 </thead>
                 <tbody>
                   {shipModal.items.map(item => (
-                    <tr key={item.sku} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                    <tr key={item.sku} style={{ borderBottom: '1px solid var(--surface-muted)' }}>
                       <td style={{ padding: '8px 0' }}>
                         <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{itemTitle(item)}</div>
                         <div style={{ fontSize: '10px', color: 'var(--text-gray-light)', fontFamily: 'monospace' }}>{item.sku}</div>
                       </td>
-                      <td style={{ textAlign: 'center', padding: '8px', color: '#374151' }}>{item.orderQty}</td>
-                      <td style={{ textAlign: 'center', padding: '8px', color: item.shippedQty > 0 ? '#059669' : 'var(--text-gray-light)' }}>
+                      <td style={{ textAlign: 'center', padding: '8px', color: 'var(--ink-2)' }}>{item.orderQty}</td>
+                      <td style={{ textAlign: 'center', padding: '8px', color: item.shippedQty > 0 ? 'var(--emerald)' : 'var(--text-gray-light)' }}>
                         {item.shippedQty > 0 ? item.shippedQty : '—'}
                       </td>
                       <td style={{ textAlign: 'center', padding: '8px 0' }}>
@@ -119,13 +119,13 @@ export function NpRegistryPickerModal() {
                 </tbody>
               </table>
               {isPartial && (
-                <div style={{ fontSize: '11px', color: 'var(--text-warn-dark)', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-warn-dark)', background: 'var(--orange-bg)', border: '1px solid #FED7AA', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px' }}>
                   ⚠ Часткове відвантаження — буде створена окрема ВН. Залишок можна відвантажити пізніше.
                 </div>
               )}
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button onClick={() => setShipModal(null)}
-                  style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: '1.5px solid #E5E7EB', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
+                  style={{ height: '38px', padding: '0 20px', borderRadius: '9px', border: '1.5px solid var(--line)', background: 'var(--surface)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: 'var(--ink-2)' }}>
                   Скасувати
                 </button>
                 <button
@@ -135,7 +135,7 @@ export function NpRegistryPickerModal() {
                     shipModal.isProm && shipModal.ttn ? shipModal.ttn : undefined,
                   )}
                   disabled={!hasAny || shipping === shipModal.orderId}
-                  style={{ height: '38px', padding: '0 24px', borderRadius: '9px', border: 'none', background: hasAny ? '#166534' : 'var(--text-gray-light)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: hasAny ? 'pointer' : 'not-allowed' }}>
+                  style={{ height: '38px', padding: '0 24px', borderRadius: '9px', border: 'none', background: hasAny ? '#166534' : 'var(--text-gray-light)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: hasAny ? 'pointer' : 'not-allowed' }}>
                   <Truck size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
                   {isPartial ? 'Відвантажити частково' : 'Відвантажити'}
                 </button>

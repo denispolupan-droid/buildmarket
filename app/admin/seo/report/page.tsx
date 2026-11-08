@@ -70,7 +70,7 @@ export default async function SeoReportPage({
       <style>{`
         @media print {
           .report-toolbar, .fin-tabs, .admin-sidebar, nav { display: none !important; }
-          body { background: #fff !important; }
+          body { background: var(--surface) !important; }
         }
       `}</style>
     </div>

@@ -46,7 +46,7 @@ export default function RozetkaPayKeysCard({ hasKeys: initialHasKeys, login: ini
   return (
     <div className="fin-card">
       <div className="fin-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Key size={14} color={hasKeys ? '#15803D' : '#B45309'} />
+        <Key size={14} color={hasKeys ? 'var(--color-success)' : 'var(--color-warn)'} />
         RozetkaPay · Reports API
         <span className="fin-card-sub">· {hasKeys ? `підключено (${maskedLogin})` : 'ключі не налаштовані'}</span>
       </div>
@@ -68,12 +68,12 @@ export default function RozetkaPayKeysCard({ hasKeys: initialHasKeys, login: ini
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={save} disabled={!canSave}
-            style={{ height: '36px', padding: '0 16px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? 'var(--color-info)' : 'var(--bg-soft)', color: canSave ? '#fff' : 'var(--text-muted)' }}>
+            style={{ height: '36px', padding: '0 16px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? 'var(--color-info)' : 'var(--bg-soft)', color: canSave ? 'var(--surface)' : 'var(--text-muted)' }}>
             {busy ? 'Перевіряємо…' : 'Зберегти'}
           </button>
           {hasKeys && (
             <button onClick={remove} title="Видалити ключі"
-              style={{ height: '36px', padding: '0 10px', border: '1px solid #FECACA', borderRadius: '8px', background: '#FFF5F5', color: 'var(--color-danger)', cursor: 'pointer' }}>
+              style={{ height: '36px', padding: '0 10px', border: '1px solid var(--danger-border)', borderRadius: '8px', background: '#FFF5F5', color: 'var(--color-danger)', cursor: 'pointer' }}>
               <Trash2 size={13} />
             </button>
           )}

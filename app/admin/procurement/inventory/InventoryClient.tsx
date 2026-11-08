@@ -127,7 +127,7 @@ export default function InventoryClient() {
           </select>
         </div>
         <button onClick={loadItems} disabled={loading || warehouseId === ''}
-          style={{ height: '34px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
+          style={{ height: '34px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
           {loading ? 'Завантаження…' : items ? 'Оновити залишки' : 'Почати перерахунок'}
         </button>
         {items && (
@@ -147,7 +147,7 @@ export default function InventoryClient() {
 
       {/* Результат проведення */}
       {result && (
-        <div style={{ background: 'var(--bg-success)', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-primary)' }}>
+        <div style={{ background: 'var(--bg-success)', border: '1px solid var(--ok-border)', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-primary)' }}>
           ✅ Проведено документ <a href={`/admin/accounting/documents/${result.doc_id}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 800, color: 'var(--color-success)' }}>{result.doc_number}</a> —
           розбіжностей {result.diffs}, надлишок <strong>{fmt(result.surplus_cost)} ₴</strong>, нестача <strong>{fmt(result.shortage_cost)} ₴</strong>.
         </div>
@@ -217,7 +217,7 @@ export default function InventoryClient() {
             <input value={note} onChange={e => setNote(e.target.value)} placeholder="Коментар (необов'язково)"
               style={{ ...inp, flex: '1 1 200px' }} />
             <button onClick={submit} disabled={saving || !diffs.length}
-              style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving || !diffs.length ? 'default' : 'pointer', opacity: saving || !diffs.length ? 0.6 : 1 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '38px', padding: '0 20px', borderRadius: '9px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: saving || !diffs.length ? 'default' : 'pointer', opacity: saving || !diffs.length ? 0.6 : 1 }}>
               <ClipboardCheck size={15} /> {saving ? 'Проводимо…' : 'Провести інвентаризацію'}
             </button>
           </div>

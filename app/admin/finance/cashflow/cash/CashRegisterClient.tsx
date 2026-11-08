@@ -132,9 +132,9 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
         {[
           { label: 'Залишок на початок місяця', value: openingBalance, color: undefined as string | undefined },
-          { label: 'Надходження (ПКО)',          value: totalIn,        color: '#15803D' },
-          { label: 'Видатки (РКО)',              value: Math.abs(totalOut), color: '#DC2626' },
-          { label: 'Поточний залишок',           value: currentBalance, color: currentBalance < 0 ? '#DC2626' : undefined },
+          { label: 'Надходження (ПКО)',          value: totalIn,        color: 'var(--color-success)' },
+          { label: 'Видатки (РКО)',              value: Math.abs(totalOut), color: 'var(--color-danger)' },
+          { label: 'Поточний залишок',           value: currentBalance, color: currentBalance < 0 ? 'var(--color-danger)' : undefined },
         ].map(c => (
           <div key={c.label} className="fin-card">
             <div className="fin-kpi-label">{c.label}</div>
@@ -151,14 +151,14 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
         <button onClick={() => openModal('in')} style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none',
-          background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+          background: 'var(--color-success)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
         }}>
           <Plus size={14} /> ПКО — Прихід
         </button>
         <button onClick={() => openModal('out')} style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none',
-          background: 'var(--color-danger)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+          background: 'var(--color-danger)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
         }}>
           <Plus size={14} /> РКО — Видаток
         </button>
@@ -287,7 +287,7 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
                   flex: 1, height: '36px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', border: 'none',
                   borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
                   background: mDir === d ? (d === 'in' ? 'var(--color-success)' : 'var(--color-danger)') : 'var(--bg-soft)',
-                  color: mDir === d ? '#fff' : 'var(--text-secondary)',
+                  color: mDir === d ? 'var(--surface)' : 'var(--text-secondary)',
                 }}>
                   {d === 'in' ? '↓ Прихід (ПКО)' : '↑ Видаток (РКО)'}
                 </button>
@@ -348,7 +348,7 @@ export default function CashRegisterClient({ entries, openingBalance, currentBal
               <button onClick={handleSave} disabled={saving} style={{
                 flex: 2, height: '40px', borderRadius: '8px', border: 'none',
                 background: mDir === 'in' ? 'var(--color-success)' : 'var(--color-danger)',
-                color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'default' : 'pointer',
+                color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: saving ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
                 opacity: saving ? 0.7 : 1,
               }}>

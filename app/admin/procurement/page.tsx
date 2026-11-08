@@ -180,7 +180,7 @@ function StatCard({ href, dot, label, value, foot, rows }: {
   foot?:  string | null;
   rows:   StatRow[];
 }) {
-  const dotColor = dot === 'orange' ? '#EA8A00' : dot === 'blue' ? 'var(--brand-blue)' : '#94A3B8';
+  const dotColor = dot === 'orange' ? '#EA8A00' : dot === 'blue' ? 'var(--brand-blue)' : 'var(--ink-muted)';
 
   const body = (
     <>

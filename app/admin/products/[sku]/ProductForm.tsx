@@ -39,9 +39,9 @@ type FillEvent =
   | { type: 'done'; done: number; errors: number };
 
 const CONFIDENCE_LABEL: Record<CardProposal['confidence'], { text: string; color: string }> = {
-  high:   { text: 'впевнено',     color: '#16A34A' },
+  high:   { text: 'впевнено',     color: 'var(--status-instock)' },
   medium: { text: 'перевірити',   color: '#CA8A04' },
-  low:    { text: 'сумнівно',     color: '#DC2626' },
+  low:    { text: 'сумнівно',     color: 'var(--color-danger)' },
 };
 
 type Props = {
@@ -228,7 +228,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [onEpicentr, setOnEpicentr] = useState<boolean>(product?.on_epicentr ?? false);
 
   const [imgType, setImgType] = useState<'tube' | 'canister'>(product?.img_type ?? 'tube');
-  const [bc, setBc] = useState(product?.bc ?? '#FFFFFF');
+  const [bc, setBc] = useState(product?.bc ?? 'var(--surface)');
   const [ac, setAc] = useState(product?.ac ?? '#333333');
   const [nl1, setNl1] = useState(product?.nl1 ?? '');
   const [nl2, setNl2] = useState(product?.nl2 ?? '');
@@ -830,7 +830,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             )}
             <span style={{ flex: 1 }} />
             <button type="button" onClick={() => proposeCard()} disabled={proposing || !name.trim()}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: proposing || !name.trim() ? 'default' : 'pointer', opacity: proposing || !name.trim() ? 0.6 : 1 }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 600, cursor: proposing || !name.trim() ? 'default' : 'pointer', opacity: proposing || !name.trim() ? 0.6 : 1 }}>
               {proposing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
               {proposing ? 'Шукаю лінійку, стандарт і технічний лист…' : cardRun ? 'Запропонувати ще раз' : 'Запропонувати картку'}
             </button>
@@ -1024,7 +1024,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             </button>
           </div>
           {mpError && (
-            <div style={{ marginBottom: '10px', fontSize: '12.5px', color: '#B91C1C' }}>{mpError}</div>
+            <div style={{ marginBottom: '10px', fontSize: '12.5px', color: 'var(--danger-dark)' }}>{mpError}</div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
@@ -1056,10 +1056,10 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
             <input type="checkbox" checked={isHit} onChange={e => setIsHit(e.target.checked)} style={{ accentColor: '#F97316' }} />
-            <span style={{ fontSize: '14px', fontWeight: isHit ? 700 : 400, color: isHit ? '#EA580C' : 'var(--text-secondary)' }}>🔥 ХІТ</span>
+            <span style={{ fontSize: '14px', fontWeight: isHit ? 700 : 400, color: isHit ? 'var(--orange-bright)' : 'var(--text-secondary)' }}>🔥 ХІТ</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={isNewBadge} onChange={e => setIsNewBadge(e.target.checked)} style={{ accentColor: '#22C55E' }} />
+            <input type="checkbox" checked={isNewBadge} onChange={e => setIsNewBadge(e.target.checked)} style={{ accentColor: 'var(--ok-bright)' }} />
             <span style={{ fontSize: '14px', fontWeight: isNewBadge ? 700 : 400, color: isNewBadge ? 'var(--status-instock)' : 'var(--text-secondary)' }}>✨ НОВИНКА</span>
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1157,7 +1157,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           {!isNew && (
             <a
               href={`/admin/prices?sku=${encodeURIComponent(sku)}`}
-              style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)', textDecoration: 'none', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '7px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)', textDecoration: 'none', background: 'var(--blue-bg)', border: '1px solid var(--blue-border)', borderRadius: '7px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
               ✏️ Редагувати ціни →
             </a>
@@ -1184,7 +1184,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                 )}
               </div>
             ))}
-            <div style={{ padding: '10px 14px', background: '#EFF4FF', borderRadius: '8px', border: '1px solid #BFDBFE', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            <div style={{ padding: '10px 14px', background: 'var(--blue-bg)', borderRadius: '8px', border: '1px solid var(--blue-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               onClick={() => window.location.href = `/admin/prices?sku=${encodeURIComponent(sku)}`}>
               <div style={{ fontSize: '20px', marginBottom: '2px' }}>✏️</div>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', textAlign: 'center' }}>Редагувати<br />ціни</div>
@@ -1357,7 +1357,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                   title="Додати рядок"
                   style={{
                     fontSize: '11px', padding: '2px 8px', borderRadius: '999px',
-                    border: '1px solid #FDE68A', background: 'var(--bg-warn)', color: 'var(--color-warn)',
+                    border: '1px solid var(--amber-border)', background: 'var(--bg-warn)', color: 'var(--color-warn)',
                     fontWeight: 600, cursor: 'pointer',
                   }}
                 >
@@ -1398,7 +1398,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                 <button
                   onClick={() => removeChar(i)}
                   style={{
-                    width: '44px', height: '44px', borderRadius: '8px', border: '1px solid #FECACA',
+                    width: '44px', height: '44px', borderRadius: '8px', border: '1px solid var(--danger-border)',
                     background: 'var(--bg-danger)', color: 'var(--color-danger)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
@@ -1427,7 +1427,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           ) : promAttrs.length === 0 ? (
             <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
               Атрибути для цієї категорії не завантажені.{' '}
-              <a href="/admin/prom/attributes" target="_blank" style={{ color: '#7C3AED' }}>
+              <a href="/admin/prom/attributes" target="_blank" style={{ color: 'var(--violet)' }}>
                 Імпортувати XML
               </a>
             </div>
@@ -1474,7 +1474,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                                     : current.filter(x => x !== optVal),
                                 }));
                               }}
-                              style={{ accentColor: '#7C3AED' }}
+                              style={{ accentColor: 'var(--violet)' }}
                             />
                             {v.name_uk}
                           </label>
@@ -1509,7 +1509,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                           ...prev,
                           [attr.name_uk]: e.target.checked ? 'Так' : 'Ні',
                         }))}
-                        style={{ width: 18, height: 18, accentColor: '#7C3AED' }}
+                        style={{ width: 18, height: 18, accentColor: 'var(--violet)' }}
                       />
                       {(promChars[attr.name_uk] as string) === 'Так' ? 'Так' : 'Ні'}
                     </label>
@@ -1530,7 +1530,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               height: '48px', padding: '0 20px', borderRadius: '10px',
-              border: '1px solid #FECACA', background: 'var(--bg-danger)', color: 'var(--color-danger)',
+              border: '1px solid var(--danger-border)', background: 'var(--bg-danger)', color: 'var(--color-danger)',
               fontSize: '14px', fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -1544,7 +1544,7 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px',
             height: '48px', padding: '0 28px', borderRadius: '10px',
-            background: 'var(--navy)', color: '#fff', border: 'none',
+            background: 'var(--navy)', color: 'var(--surface)', border: 'none',
             fontSize: '14px', fontWeight: 600, cursor: saving || finishing ? 'wait' : 'pointer',
             opacity: saving || finishing ? 0.7 : 1,
           }}

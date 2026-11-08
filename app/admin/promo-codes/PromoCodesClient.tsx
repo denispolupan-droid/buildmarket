@@ -56,7 +56,7 @@ function btnStyle(primary?: boolean): React.CSSProperties {
     height: '36px', padding: '0 16px', borderRadius: '8px', border: 'none',
     cursor: 'pointer', fontSize: '13px', fontWeight: 600,
     background: primary ? 'var(--brand-main)' : 'var(--bg-soft)',
-    color: primary ? '#fff' : 'var(--text-primary)',
+    color: primary ? 'var(--surface)' : 'var(--text-primary)',
   };
 }
 
@@ -212,7 +212,7 @@ export default function PromoCodesClient({ initial }: { initial: PromoCode[] }) 
                 placeholder="Напр.: промо для партнерів лютого 2026" />
             </div>
           </div>
-          {error && <div style={{ color: '#EF4444', fontSize: '13px', marginTop: '10px' }}>{error}</div>}
+          {error && <div style={{ color: 'var(--danger-bright)', fontSize: '13px', marginTop: '10px' }}>{error}</div>}
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
             <button style={btnStyle(true)} onClick={handleSave} disabled={saving}>
               {saving ? '...' : editing ? 'Зберегти' : 'Створити'}
@@ -265,13 +265,13 @@ export default function PromoCodesClient({ initial }: { initial: PromoCode[] }) 
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <button onClick={() => toggleActive(c.id, !c.is_active)}
                           title={c.is_active ? 'Деактивувати' : 'Активувати'}
-                          style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.is_active ? '#DCFCE7' : 'var(--bg-soft)', color: c.is_active ? 'var(--color-success)' : 'var(--text-muted)' }}
+                          style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.is_active ? 'var(--ok-bg)' : 'var(--bg-soft)', color: c.is_active ? 'var(--color-success)' : 'var(--text-muted)' }}
                         >{c.is_active ? <Check size={13} /> : <X size={13} />}</button>
                         <button onClick={() => startEdit(c)} title="Редагувати"
                           style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-soft)', color: 'var(--text-secondary)' }}
                         ><Edit2 size={13} /></button>
                         <button onClick={() => handleDelete(c.id)} title="Видалити"
-                          style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FEE2E2', color: '#EF4444' }}
+                          style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--danger-bg)', color: 'var(--danger-bright)' }}
                         ><Trash2 size={13} /></button>
                       </div>
                     </td>

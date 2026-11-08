@@ -12,7 +12,7 @@ export default function NewOrderButton() {
         display: 'inline-flex', alignItems: 'center', gap: '6px',
         height: '36px', padding: '0 18px', borderRadius: '9px',
         background: 'linear-gradient(135deg, #162035 0%, var(--navy) 100%)',
-        color: '#fff',
+        color: 'var(--surface)',
         fontSize: '13px', fontWeight: 700,
         border: 'none', cursor: 'pointer',
         boxShadow: '0 1px 3px rgba(0,0,0,0.18)',

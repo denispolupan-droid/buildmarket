@@ -150,21 +150,21 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
 
   const statusIcon = (sku: string) => {
     const s = statuses[sku];
-    if (s === 'done')       return <span style={{ color: '#22C55E', fontSize: 13 }}>✓</span>;
-    if (s === 'error')      return <span style={{ color: '#EF4444', fontSize: 13 }}>✗</span>;
-    if (s === 'processing') return <span style={{ color: '#F59E0B', fontSize: 12 }}>⏳</span>;
-    return <span style={{ color: '#CBD5E1', fontSize: 12 }}>○</span>;
+    if (s === 'done')       return <span style={{ color: 'var(--ok-bright)', fontSize: 13 }}>✓</span>;
+    if (s === 'error')      return <span style={{ color: 'var(--danger-bright)', fontSize: 13 }}>✗</span>;
+    if (s === 'processing') return <span style={{ color: 'var(--amber)', fontSize: 12 }}>⏳</span>;
+    return <span style={{ color: 'var(--line-slate)', fontSize: 12 }}>○</span>;
   };
 
   return (
-    <Modal open onClose={onClose} width={580} padding={0} dismissible={false} aria-label="Заповнення ШІ" style={{ background: '#fff' }}>
-      <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <Modal open onClose={onClose} width={580} padding={0} dismissible={false} aria-label="Заповнення ШІ" style={{ background: 'var(--surface)' }}>
+      <div style={{ background: 'var(--surface)', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Wand2 size={20} color="#3DBFB8" />
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>AI заповнення карток</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>AI заповнення карток</div>
               <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>{selected.length} товарів вибрано</div>
             </div>
           </div>
@@ -181,15 +181,15 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
             {/* Повний перепис — перезаписує ВЕСЬ контент */}
             <label
               onClick={() => setForce(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${force ? '#F59E0B' : 'var(--border)'}`, background: force ? 'var(--bg-warn)' : 'var(--bg-soft)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${force ? 'var(--amber)' : 'var(--border)'}`, background: force ? 'var(--bg-warn)' : 'var(--bg-soft)' }}
             >
               <div style={{
                 width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-                border: `2px solid ${force ? '#F59E0B' : '#CBD5E1'}`,
-                background: force ? '#F59E0B' : '#fff',
+                border: `2px solid ${force ? 'var(--amber)' : 'var(--line-slate)'}`,
+                background: force ? 'var(--amber)' : 'var(--surface)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {force && <span style={{ color: '#fff', fontSize: 11, lineHeight: 1, fontWeight: 700 }}>✓</span>}
+                {force && <span style={{ color: 'var(--surface)', fontSize: 11, lineHeight: 1, fontWeight: 700 }}>✓</span>}
               </div>
               <div>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-warn-dark)' }}>Повністю переписати картку</span>
@@ -207,19 +207,19 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
                     onClick={() => toggleField(key)}
                     style={{
                       width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-                      border: `2px solid ${fields[key] ? '#3DBFB8' : '#CBD5E1'}`,
-                      background: fields[key] ? '#3DBFB8' : '#fff',
+                      border: `2px solid ${fields[key] ? 'var(--brand-teal)' : 'var(--line-slate)'}`,
+                      background: fields[key] ? 'var(--brand-teal)' : 'var(--surface)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', transition: 'all 0.15s',
                     }}
                   >
-                    {fields[key] && <span style={{ color: '#fff', fontSize: 11, lineHeight: 1, fontWeight: 700 }}>✓</span>}
+                    {fields[key] && <span style={{ color: 'var(--surface)', fontSize: 11, lineHeight: 1, fontWeight: 700 }}>✓</span>}
                   </div>
                   <div>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: '#1E293B' }}>{label}</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>{label}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>{hint}</span>
                     {key === 'characteristics' && !fields[key] && (
-                      <span style={{ fontSize: 11, color: '#F59E0B', marginLeft: 6, fontWeight: 500 }}>⚠ вимкнено — захист ручних правок</span>
+                      <span style={{ fontSize: 11, color: 'var(--amber)', marginLeft: 6, fontWeight: 500 }}>⚠ вимкнено — захист ручних правок</span>
                     )}
                   </div>
                 </label>
@@ -249,7 +249,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
             <div style={{ background: 'var(--border)', borderRadius: 6, height: 6, overflow: 'hidden' }}>
               <div style={{
                 height: '100%', width: `${pct}%`,
-                background: progress.errors > 0 ? '#F59E0B' : '#3DBFB8',
+                background: progress.errors > 0 ? 'var(--amber)' : 'var(--brand-teal)',
                 transition: 'width 0.3s', borderRadius: 6,
               }} />
             </div>
@@ -261,7 +261,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
           {!running && !finished && (
             <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 10 }}>
               {selected.length > 5 && (
-                <span style={{ color: '#F59E0B' }}>⏱ Орієнтовний час: ~{Math.max(1, Math.ceil(selected.length * 50 / 6 / 60))} хв. (по 6 паралельно)</span>
+                <span style={{ color: 'var(--amber)' }}>⏱ Орієнтовний час: ~{Math.max(1, Math.ceil(selected.length * 50 / 6 / 60))} хв. (по 6 паралельно)</span>
               )}
             </div>
           )}
@@ -271,14 +271,14 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '7px 10px', borderRadius: 8,
                 background: statuses[p.sku] === 'done' ? 'var(--bg-success)' : statuses[p.sku] === 'error' ? 'var(--bg-danger)' : statuses[p.sku] === 'processing' ? 'var(--bg-warn)' : 'var(--bg-soft)',
-                border: `1px solid ${statuses[p.sku] === 'done' ? '#BBF7D0' : statuses[p.sku] === 'error' ? '#FECACA' : statuses[p.sku] === 'processing' ? '#FDE68A' : 'var(--border)'}`,
+                border: `1px solid ${statuses[p.sku] === 'done' ? 'var(--ok-border)' : statuses[p.sku] === 'error' ? 'var(--danger-border)' : statuses[p.sku] === 'processing' ? 'var(--amber-border)' : 'var(--border)'}`,
                 transition: 'background 0.2s, border-color 0.2s',
               }}>
                 <span style={{ width: 16, textAlign: 'center', flexShrink: 0 }}>{statusIcon(p.sku)}</span>
                 <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-soft)', flexShrink: 0 }}>{p.sku}</span>
                 <span style={{ fontSize: 13, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                 {errors[p.sku] && (
-                  <span style={{ fontSize: 11, color: '#EF4444', marginLeft: 'auto', flexShrink: 0 }} title={errors[p.sku]}>помилка</span>
+                  <span style={{ fontSize: 11, color: 'var(--danger-bright)', marginLeft: 'auto', flexShrink: 0 }} title={errors[p.sku]}>помилка</span>
                 )}
               </div>
             ))}
@@ -291,7 +291,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
             <>
               <button onClick={onClose} style={{
                 height: 40, padding: '0 20px', borderRadius: 8, border: '1px solid var(--border)',
-                background: '#fff', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+                background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer',
               }}>
                 Скасувати
               </button>
@@ -300,8 +300,8 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
                 disabled={!anyFieldSelected}
                 style={{
                   height: 40, padding: '0 24px', borderRadius: 8, border: 'none',
-                  background: anyFieldSelected ? '#3DBFB8' : 'var(--border)',
-                  color: anyFieldSelected ? '#fff' : 'var(--text-muted)',
+                  background: anyFieldSelected ? 'var(--brand-teal)' : 'var(--border)',
+                  color: anyFieldSelected ? 'var(--surface)' : 'var(--text-muted)',
                   fontSize: 14, fontWeight: 600,
                   cursor: anyFieldSelected ? 'pointer' : 'not-allowed',
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -314,7 +314,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
           {running && (
             <button onClick={stop} style={{
               height: 40, padding: '0 24px', borderRadius: 8, border: 'none',
-              background: '#EF4444', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              background: 'var(--danger-bright)', color: 'var(--surface)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             }}>
               ■ Зупинити
             </button>
@@ -322,7 +322,7 @@ export default function AiFillModal({ skus, products, onClose, onDone }: Props) 
           {finished && (
             <button onClick={onClose} style={{
               height: 40, padding: '0 24px', borderRadius: 8, border: 'none',
-              background: '#22C55E', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              background: 'var(--ok-bright)', color: 'var(--surface)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             }}>
               ✓ Готово
             </button>

@@ -74,13 +74,13 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
   }
 
   return (
-    <Modal open onClose={onClose} width={640} padding={0} aria-label="Логотипи брендів" style={{ background: '#fff' }}>
-      <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <Modal open onClose={onClose} width={640} padding={0} aria-label="Логотипи брендів" style={{ background: 'var(--surface)' }}>
+      <div style={{ background: 'var(--surface)', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ImageIcon size={20} color="#3DBFB8" />
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>Логотипи брендів</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>Логотипи брендів</div>
               <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>{brands.length} брендів у каталозі</div>
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
             const logoUrl = entry?.logoUrl;
             const isBusy = busy[brand];
             return (
-              <div key={brand} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
+              <div key={brand} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--bg-page)' }}>
                 <div style={{
                   width: 56, height: 40, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-soft)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden',
@@ -107,8 +107,8 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
                     : <ImageIcon size={16} color="#CBD5E1" />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{brand}</div>
-                  {errors[brand] && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors[brand]}</div>}
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{brand}</div>
+                  {errors[brand] && <div style={{ fontSize: 11, color: 'var(--danger-bright)', marginTop: 2 }}>{errors[brand]}</div>}
                 </div>
                 <label
                   title={logoUrl ? undefined : 'Спочатку завантажте лого'}
@@ -138,7 +138,7 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     height: 32, padding: '0 12px', borderRadius: 8,
-                    border: '1px solid #CBD5E1', background: '#fff', color: '#334155',
+                    border: '1px solid var(--line-slate)', background: 'var(--surface)', color: '#334155',
                     fontSize: 12, fontWeight: 600, cursor: isBusy ? 'default' : 'pointer', opacity: isBusy ? 0.6 : 1,
                   }}
                 >
@@ -150,8 +150,8 @@ export default function BrandLogosModal({ brands, logos, onLogosChange, onClose 
                     onClick={() => remove(brand)}
                     aria-label="Видалити логотип"
                     style={{
-                      width: 32, height: 32, borderRadius: 8, border: '1px solid #FECACA', background: '#fff',
-                      color: '#EF4444', cursor: isBusy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 32, height: 32, borderRadius: 8, border: '1px solid var(--danger-border)', background: 'var(--surface)',
+                      color: 'var(--danger-bright)', cursor: isBusy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       opacity: isBusy ? 0.6 : 1,
                     }}
                   >

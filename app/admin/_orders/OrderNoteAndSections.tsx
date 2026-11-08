@@ -136,7 +136,7 @@ export function OrderNoteAndSections({ order }: {
                 const grossPct = gross != null && revenue > 0 ? Math.round((gross / revenue) * 1000) / 10 : undefined;
                 const net = gross != null && commission != null ? gross - commission - deliveryExp - mpDeliveryFee - extraExp - payFeeAmt : undefined;
                 const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
-                const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? '#15803D' : '#DC2626';
+                const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? 'var(--color-success)' : 'var(--color-danger)';
                 const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean; sub?: string; title?: string } = {}) => (
                   <div title={opts.title} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px',
                     ...(opts.total ? { marginTop: '3px', paddingTop: '9px', borderTop: '1px solid var(--border-light)' } : {}) }}>
@@ -154,17 +154,17 @@ export function OrderNoteAndSections({ order }: {
                           ? `Цифри з бухгалтерських проводок (проведено РН: ${fact.posted_docs}). Враховано FIFO-собівартість, усі збори маркетплейсу та повернення.`
                           : 'Попередня оцінка до проведення продажу: собівартість за поточними цінами закупівлі, комісія — розрахунок за ставками маркетплейсу.'}
                         style={{ fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '999px', letterSpacing: '0.03em', textTransform: 'uppercase',
-                          color: isFact ? 'var(--color-success)' : 'var(--color-warn)', background: isFact ? '#DCFCE7' : '#FEF3C7' }}>
+                          color: isFact ? 'var(--color-success)' : 'var(--color-warn)', background: isFact ? 'var(--ok-bg)' : 'var(--amber-bg)' }}>
                         {isFact ? 'Факт' : 'Оцінка'}
                       </span>
                     </div>
                     {row('Виручка', `${fmtInt(revenue)} ₴`)}
                     {row('Собівартість', cost != null ? `${fmtInt(cost)} ₴` : '…', { color: 'var(--text-secondary)' })}
-                    {(commission ?? 0) > 0 && row('Комісія маркетплейсу', `−${fmtInt(commission!)} ₴`, { color: '#C2410C' })}
-                    {deliveryExp > 0 && row('Доставка НП (наш рахунок)', `−${fmtInt(deliveryExp)} ₴`, { color: '#C2410C' })}
-                    {mpDelivery && row(mpDelivery.label, `−${fmtInt(mpDeliveryFee)} ₴`, { color: '#C2410C', title: mpDelivery.hint })}
-                    {extraExp !== 0 && row('Еквайринг і збори НП', `−${fmtInt(extraExp)} ₴`, { color: '#C2410C', title: 'Еквайринг і збори Нової Пошти / Rozetka Доставки за це замовлення з бухгалтерських проводок (переказ наложки, утримання).' })}
-                    {payFeeAmt > 0 && row(payFee!.source === 'fact' ? 'Комісія за оплату (RozetkaPay, еквайринг)' : 'Комісія за оплату ≈', `−${fmtInt(payFeeAmt)} ₴`, { color: '#C2410C',
+                    {(commission ?? 0) > 0 && row('Комісія маркетплейсу', `−${fmtInt(commission!)} ₴`, { color: 'var(--orange)' })}
+                    {deliveryExp > 0 && row('Доставка НП (наш рахунок)', `−${fmtInt(deliveryExp)} ₴`, { color: 'var(--orange)' })}
+                    {mpDelivery && row(mpDelivery.label, `−${fmtInt(mpDeliveryFee)} ₴`, { color: 'var(--orange)', title: mpDelivery.hint })}
+                    {extraExp !== 0 && row('Еквайринг і збори НП', `−${fmtInt(extraExp)} ₴`, { color: 'var(--orange)', title: 'Еквайринг і збори Нової Пошти / Rozetka Доставки за це замовлення з бухгалтерських проводок (переказ наложки, утримання).' })}
+                    {payFeeAmt > 0 && row(payFee!.source === 'fact' ? 'Комісія за оплату (RozetkaPay, еквайринг)' : 'Комісія за оплату ≈', `−${fmtInt(payFeeAmt)} ₴`, { color: 'var(--orange)',
                       title: payFee!.source === 'fact'
                         ? 'Комісія платіжного сервісу за оплату цього замовлення — точна: винагорода RozetkaPay з реєстру виплати або комісія банку за еквайринг (оплата карткою на сайті) з виписки Monobank.'
                         : 'RozetkaPay ще не виплатила гроші за це замовлення — оцінка за середньою ставкою винагороди за 90 днів.' })}
@@ -186,7 +186,7 @@ export function OrderNoteAndSections({ order }: {
                 const hasAny = order.items.some(i => (received[i.sku] ?? 0) > 0);
                 if (!hasAny) return null;
                 return (
-                  <div style={{ marginTop: '10px', padding: '10px 12px', background: 'var(--bg-success)', border: '1px solid #BBF7D0', borderRadius: '8px' }}>
+                  <div style={{ marginTop: '10px', padding: '10px 12px', background: 'var(--bg-success)', border: '1px solid var(--ok-border)', borderRadius: '8px' }}>
                     <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
                       📥 Отримано на склад
                     </div>
@@ -206,7 +206,7 @@ export function OrderNoteAndSections({ order }: {
                             </span>
                           </div>
                           <div style={{ height: '4px', background: '#D1FAE5', borderRadius: '2px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: full ? 'var(--color-success)' : '#F59E0B', borderRadius: '2px', transition: 'width 0.3s' }} />
+                            <div style={{ height: '100%', width: `${pct}%`, background: full ? 'var(--color-success)' : 'var(--amber)', borderRadius: '2px', transition: 'width 0.3s' }} />
                           </div>
                         </div>
                       );
@@ -233,7 +233,7 @@ export function OrderNoteAndSections({ order }: {
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span>Тип цін: <strong>{PRICE_TYPE_LABELS[pt] ?? pt}</strong></span>
                         {activePct > 0
-                          ? <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', borderRadius: '5px', padding: '1px 7px' }}>−{activePct}%</span>
+                          ? <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-warn)', background: 'var(--amber-bg)', borderRadius: '5px', padding: '1px 7px' }}>−{activePct}%</span>
                           : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>+ знижка</span>}
                       </span>
                       <span style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
@@ -307,7 +307,7 @@ export function OrderNoteAndSections({ order }: {
                           {activePct > 0 && (
                             <button
                               onClick={() => applyDiscount(order.id, 'pct', 0)}
-                              style={{ marginTop: '4px', fontSize: '11px', color: '#B91C1C', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                              style={{ marginTop: '4px', fontSize: '11px', color: 'var(--danger-dark)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                             >Прибрати знижку −{activePct}%</button>
                           )}
                         </div>
@@ -339,7 +339,7 @@ export function OrderNoteAndSections({ order }: {
                               cursor: disabled ? 'not-allowed' : 'pointer',
                               border: `1.5px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
                               background: disabled ? 'var(--bg-soft)' : active ? 'var(--navy)' : 'var(--bg-card)',
-                              color: disabled ? 'var(--text-muted)' : active ? '#fff' : 'var(--text-secondary)',
+                              color: disabled ? 'var(--text-muted)' : active ? 'var(--surface)' : 'var(--text-secondary)',
                               opacity: disabled ? 0.5 : 1 }}>
                             {label}
                           </button>
@@ -407,7 +407,7 @@ export function OrderNoteAndSections({ order }: {
                         деталізація по поставщику. Показуємо тільки резерв (його немає вгорі). */}
                     {activeReservations.length > 0 && (
                       <div style={{ display: 'flex', padding: '7px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
-                        <span style={{ background: '#DCFCE7', color: 'var(--color-success)', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
+                        <span style={{ background: 'var(--ok-bg)', color: 'var(--color-success)', padding: '1px 8px', borderRadius: '20px', fontWeight: 700 }}>
                           ✓ Зарезервовано: {activeReservations.length} поз.
                         </span>
                       </div>
@@ -450,7 +450,7 @@ export function OrderNoteAndSections({ order }: {
                           <div title={mpFee!.hint}
                             style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)', fontSize: '12px', color: 'var(--text-secondary)' }}>
                             <span>🚚 {mpFee!.label}{fi.by_supplier.length > 1 ? ' · частка' : ''}</span>
-                            <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: '#C2410C' }}>−{fmtInt(groupFee)} грн</span>
+                            <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--orange)' }}>−{fmtInt(groupFee)} грн</span>
                           </div>
                         )}
                       </div>

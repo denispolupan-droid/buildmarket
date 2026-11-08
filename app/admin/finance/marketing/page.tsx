@@ -186,7 +186,7 @@ export default async function MarketingPage({
               style={{ height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)' }} />
           </div>
         ))}
-        <button type="submit" style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+        <button type="submit" style={{ height: '36px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           Показати
         </button>
       </form>
@@ -275,7 +275,7 @@ export default async function MarketingPage({
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
             <div className="fin-card" style={{ padding: '14px 18px' }}>
               <div className="fin-kpi-label">Витрачено</div>
-              <div className="fin-money-val" style={{ color: '#B91C1C' }}>{fmt(adsSpendTotal)} ₴</div>
+              <div className="fin-money-val" style={{ color: 'var(--danger-dark)' }}>{fmt(adsSpendTotal)} ₴</div>
             </div>
             <div className="fin-card" style={{ padding: '14px 18px' }}>
               <div className="fin-kpi-label">Замовлень з реклами</div>
@@ -287,7 +287,7 @@ export default async function MarketingPage({
             </div>
             <div className="fin-card" style={{ padding: '14px 18px' }}>
               <div className="fin-kpi-label">Прибуток − витрати</div>
-              <div className="fin-money-val" style={{ color: gProfit - adsSpendTotal >= 0 ? 'var(--color-success)' : '#B91C1C' }}>{fmt(gProfit - adsSpendTotal)} ₴</div>
+              <div className="fin-money-val" style={{ color: gProfit - adsSpendTotal >= 0 ? 'var(--color-success)' : 'var(--danger-dark)' }}>{fmt(gProfit - adsSpendTotal)} ₴</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 валовий {fmt(gProfit)} ₴ з {gPosted} проведених{gLive.length > gPosted && ` · ${gLive.length - gPosted} ще в дорозі`}
               </div>
@@ -315,7 +315,7 @@ export default async function MarketingPage({
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? ours.orders : '—'}</span>
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? `${fmt(ours.revenue)} ₴` : '—'}</span>
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{ours ? `${fmt(ours.profit)} ₴` : '—'}</span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? 'var(--text-muted)' : net >= 0 ? 'var(--color-success)' : '#B91C1C' }}>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? 'var(--text-muted)' : net >= 0 ? 'var(--color-success)' : 'var(--danger-dark)' }}>
                     {net == null ? 'без мітки' : `${net >= 0 ? '+' : ''}${fmt(net)} ₴`}
                   </span>
                 </div>

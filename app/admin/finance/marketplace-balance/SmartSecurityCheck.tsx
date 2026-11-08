@@ -8,7 +8,7 @@ import { parseSecurityRows, type SecurityRow, type SmartCompare } from '../../..
 const fmt = (v: number) => v.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const smallBtn = (primary: boolean): React.CSSProperties => ({
   height: '28px', padding: '0 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-  border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
+  border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)', color: primary ? 'var(--surface)' : 'var(--text-secondary)',
 });
 
 /**

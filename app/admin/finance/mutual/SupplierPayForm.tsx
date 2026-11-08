@@ -172,7 +172,7 @@ export default function SupplierPayForm({ supplierId, owed }: { supplierId: numb
               style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
           </div>
           <button onClick={submitPay} disabled={paySaving}
-            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: paySaving ? 'wait' : 'pointer', opacity: paySaving ? 0.6 : 1 }}>
+            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: paySaving ? 'wait' : 'pointer', opacity: paySaving ? 0.6 : 1 }}>
             {paySaving ? 'Зберігаємо…' : 'Зафіксувати оплату'}
           </button>
           <button onClick={() => setOpen(false)}

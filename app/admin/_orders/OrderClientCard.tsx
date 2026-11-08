@@ -68,8 +68,8 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
                   title={`${custStats[order.id].count} замовлень цього клієнта на ${custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴ (разом із цим) — ${open ? 'сховати' : 'показати попередні'}`}
                   style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0, fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
                     padding: '2px 6px', borderRadius: '6px', border: '1px solid transparent',
-                    color: open ? 'var(--brand-blue)' : 'var(--text-secondary)', background: open ? '#EFF4FF' : 'none' }}>
-                  <ShoppingCart size={13} color={open ? 'var(--brand-blue)' : '#64748B'} />
+                    color: open ? 'var(--brand-blue)' : 'var(--text-secondary)', background: open ? 'var(--blue-bg)' : 'none' }}>
+                  <ShoppingCart size={13} color={open ? 'var(--brand-blue)' : 'var(--text-soft)'} />
                   {custStats[order.id].count} · {custStats[order.id].total.toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴
                   {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
@@ -94,7 +94,7 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
             <span style={{ display: 'inline-flex', gap: '6px', flexShrink: 0, marginLeft: '2px' }}>
             {!isDropship && (noCallback ? (
               <span title="Клієнт просив не дзвонити"
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0, background: '#DCFCE7', color: 'var(--color-success)', border: '1px solid var(--border-success)' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', flexShrink: 0, background: 'var(--ok-bg)', color: 'var(--color-success)', border: '1px solid var(--border-success)' }}>
                 <PhoneOff size={12} />
               </span>
             ) : (
@@ -102,13 +102,13 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
                 className="oc-flag-btn" aria-pressed={callbackDone}
                 title={callbackDone ? 'Зателефонували — натисніть, щоб зняти позначку' : 'Потрібен дзвінок — натисніть, коли зателефонували клієнту'}
                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
-                  background: callbackDone ? '#DCFCE7' : '#FEF3C7', color: callbackDone ? 'var(--color-success)' : 'var(--color-warn)', border: `1px solid ${callbackDone ? 'var(--border-success)' : 'var(--border-warn)'}` }}>
+                  background: callbackDone ? 'var(--ok-bg)' : 'var(--amber-bg)', color: callbackDone ? 'var(--color-success)' : 'var(--color-warn)', border: `1px solid ${callbackDone ? 'var(--border-success)' : 'var(--border-warn)'}` }}>
                 <Phone size={12} />
               </button>
             ))}
             {([
-              { key: 'urgent',  label: 'Терміново',  onBg: '#FEE2E2', onC: '#B91C1C', onB: '#FCA5A5', Icon: Zap },
-              { key: 'problem', label: 'Проблемний', onBg: '#FEF3C7', onC: '#B45309', onB: '#FCD34D', Icon: AlertTriangle },
+              { key: 'urgent',  label: 'Терміново',  onBg: 'var(--danger-bg)', onC: 'var(--danger-dark)', onB: '#FCA5A5', Icon: Zap },
+              { key: 'problem', label: 'Проблемний', onBg: 'var(--amber-bg)', onC: 'var(--color-warn)', onB: '#FCD34D', Icon: AlertTriangle },
             ] as const).map(f => {
               const active = (order.flags ?? []).includes(f.key);
               return (
@@ -242,7 +242,7 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
               <button
                 onClick={() => savePaymentType(order.id, editPaymentTypeValue)}
                 disabled={savingPaymentType}
-                style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                style={{ height: '28px', padding: '0 12px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
               >
                 {savingPaymentType ? '...' : 'Зберегти'}
               </button>
@@ -261,7 +261,7 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
           <DropshipPaymentInfo order={order} />
         ) : isCod ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: 'var(--color-success)', border: '1px solid var(--border-success)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: 'var(--ok-bg)', color: 'var(--color-success)', border: '1px solid var(--border-success)' }}>
               <CreditCard size={12} /> Накладений платіж
             </div>
             <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred','cod'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
@@ -270,7 +270,7 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
           </div>
         ) : order.payment_type === 'card' ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? '#DCFCE7' : 'var(--brand-blue-light)', color: order.status === 'confirmed' ? 'var(--color-success)' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? 'var(--border-success)' : '#BFDBFE'}` }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: order.status === 'confirmed' ? 'var(--ok-bg)' : 'var(--brand-blue-light)', color: order.status === 'confirmed' ? 'var(--color-success)' : 'var(--brand-blue)', border: `1px solid ${order.status === 'confirmed' ? 'var(--border-success)' : 'var(--blue-border)'}` }}>
               <CreditCard size={12} />{order.status === 'confirmed' ? 'Оплата карткою — підтверджено' : 'Картка онлайн'}
             </div>
             <button onClick={() => { setEditPaymentTypeId(order.id); setEditPaymentTypeValue(['cash','invoice','deferred','cod'].includes(order.payment_type) ? order.payment_type : 'cash'); }} title="Змінити спосіб оплати" style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--text-muted)', lineHeight: 1 }}>
@@ -294,9 +294,9 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
               {/* Badge */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '32px', padding: '0 10px', borderRadius: '7px', fontSize: '11.5px', fontWeight: 600, boxSizing: 'border-box',
-                  background: paymentConfirmed ? '#DCFCE7' : isPartial ? '#FFF7ED' : order.payment_type === 'cash' ? 'var(--bg-success)' : '#FEF3C7',
-                  color:      paymentConfirmed ? 'var(--color-success)'  : isPartial ? '#C2410C' : order.payment_type === 'cash' ? '#166534' : 'var(--color-warn)',
-                  border: `1px solid ${paymentConfirmed ? 'var(--border-success)' : isPartial ? '#FDBA74' : order.payment_type === 'cash' ? 'var(--border-success)' : 'var(--border-warn)'}`,
+                  background: paymentConfirmed ? 'var(--ok-bg)' : isPartial ? 'var(--orange-bg)' : order.payment_type === 'cash' ? 'var(--bg-success)' : 'var(--amber-bg)',
+                  color:      paymentConfirmed ? 'var(--color-success)'  : isPartial ? 'var(--orange)' : order.payment_type === 'cash' ? '#166534' : 'var(--color-warn)',
+                  border: `1px solid ${paymentConfirmed ? 'var(--border-success)' : isPartial ? 'var(--orange-border)' : order.payment_type === 'cash' ? 'var(--border-success)' : 'var(--border-warn)'}`,
                 }}>
                   <CreditCard size={12} />
                   {paymentConfirmed
@@ -337,19 +337,19 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
               {/* Форма додавання оплати */}
 
               {isFormOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '8px', border: '1.5px solid #BFDBFE', background: '#F0F9FF' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '8px', border: '1.5px solid var(--blue-border)', background: '#F0F9FF' }}>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <input
                       type="number" min="0.01" step="0.01"
                       placeholder="Сума"
                       value={payFormAmount[order.id] ?? ''}
                       onChange={e => setPayFormAmount(prev => ({ ...prev, [order.id]: e.target.value }))}
-                      style={{ width: '90px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+                      style={{ width: '90px', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--line-slate)', fontSize: '12px' }}
                     />
                     <select
                       value={payFormMode[order.id] ?? defaultMode}
                       onChange={e => setPayFormMode(prev => ({ ...prev, [order.id]: e.target.value }))}
-                      style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', cursor: 'pointer' }}
+                      style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--line-slate)', fontSize: '12px', cursor: 'pointer' }}
                     >
                       <option value="cash">Готівка</option>
                       <option value="transfer">Безготівк.</option>
@@ -360,26 +360,26 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
                       type="date"
                       value={payFormDate[order.id] ?? new Date().toISOString().slice(0, 10)}
                       onChange={e => setPayFormDate(prev => ({ ...prev, [order.id]: e.target.value }))}
-                      style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+                      style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--line-slate)', fontSize: '12px' }}
                     />
                   </div>
                   <input
                     type="text" placeholder="Примітка (необов'язково)"
                     value={payFormNote[order.id] ?? ''}
                     onChange={e => setPayFormNote(prev => ({ ...prev, [order.id]: e.target.value }))}
-                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--line-slate)', fontSize: '12px' }}
                   />
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       onClick={() => addPayment(order)}
                       disabled={isSaving}
-                      style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}
+                      style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}
                     >
                       {isSaving ? 'Збереження...' : 'Зберегти'}
                     </button>
                     <button
                       onClick={() => setPayFormOpen(prev => ({ ...prev, [order.id]: false }))}
-                      style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: 'transparent', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                      style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--line-slate)', background: 'transparent', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       Скасувати
                     </button>

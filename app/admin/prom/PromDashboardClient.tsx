@@ -181,13 +181,13 @@ export default function PromDashboardClient({
   const navLinks = [
     { href: '/admin/prom/products',    label: 'Товари',      desc: 'Увімкнути/вимкнути, наценки, ціни',     color: '#0EA5E9' },
     { href: '/admin/prom/commissions', label: 'Комісії',     desc: 'Плани та ставки комісій по категоріях', color: '#8B5CF6' },
-    { href: '/admin/prom/orders',      label: 'Замовлення',  desc: 'Синхронізація та статус замовлень',     color: '#10B981' },
-    { href: '/admin/prom/prices',      label: 'Ціни',        desc: 'Управління цінами для Prom',            color: '#F59E0B' },
+    { href: '/admin/prom/orders',      label: 'Замовлення',  desc: 'Синхронізація та статус замовлень',     color: 'var(--emerald-bright)' },
+    { href: '/admin/prom/prices',      label: 'Ціни',        desc: 'Управління цінами для Prom',            color: 'var(--amber)' },
   ];
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: 960, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1E293B', margin: '0 0 24px' }}>Prom.ua</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', margin: '0 0 24px' }}>Prom.ua</h1>
 
       {/* Status cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: tokenOpen ? 0 : 24 }}>
@@ -196,21 +196,21 @@ export default function PromDashboardClient({
             key={label}
             onClick={clickable ? () => setTokenOpen(v => !v) : undefined}
             style={{
-              background: '#fff', borderRadius: 10, padding: '14px 16px',
-              border: `1.5px solid ${ok ? '#D1FAE5' : '#FEE2E2'}`,
+              background: 'var(--surface)', borderRadius: 10, padding: '14px 16px',
+              border: `1.5px solid ${ok ? '#D1FAE5' : 'var(--danger-bg)'}`,
               cursor: clickable ? 'pointer' : 'default',
               transition: 'box-shadow .15s',
               ...(clickable && tokenOpen ? { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: '1.5px solid transparent' } : {}),
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Icon size={13} color={ok ? '#059669' : '#DC2626'} />
+              <Icon size={13} color={ok ? 'var(--emerald)' : 'var(--color-danger)'} />
               <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
               {clickable && (
                 <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>{tokenOpen ? '▲' : '▼'}</span>
               )}
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: ok ? '#059669' : 'var(--color-danger)' }}>{value}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: ok ? 'var(--emerald)' : 'var(--color-danger)' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -218,16 +218,16 @@ export default function PromDashboardClient({
       {/* Token panel — expands under first card */}
       {tokenOpen && (
         <div style={{
-          background: '#fff', border: '1.5px solid #D1FAE5', borderTop: 'none',
+          background: 'var(--surface)', border: '1.5px solid #D1FAE5', borderTop: 'none',
           borderRadius: '0 10px 10px 10px', padding: '16px 18px', marginBottom: 24,
         }}>
           {hasToken && maskedToken && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <span style={{ fontSize: 13, color: 'var(--text-gray)' }}>Поточний:</span>
-              <code style={{ fontSize: 13, background: '#F3F4F6', padding: '3px 10px', borderRadius: 6, letterSpacing: 2 }}>{maskedToken}</code>
+              <code style={{ fontSize: 13, background: 'var(--surface-muted)', padding: '3px 10px', borderRadius: 6, letterSpacing: 2 }}>{maskedToken}</code>
               <button
                 onClick={deleteToken}
-                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid #FECACA', borderRadius: 6, background: '#FFF5F5', color: 'var(--color-danger)', fontSize: 12, cursor: 'pointer' }}
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid var(--danger-border)', borderRadius: 6, background: '#FFF5F5', color: 'var(--color-danger)', fontSize: 12, cursor: 'pointer' }}
               >
                 <Trash2 size={12} /> Видалити
               </button>
@@ -241,7 +241,7 @@ export default function PromDashboardClient({
                 onChange={e => setTokenInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveToken()}
                 placeholder={hasToken ? 'Новий токен для заміни...' : 'Вставте токен з кабінету Prom.ua'}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 36px 8px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontFamily: tokenInput ? 'monospace' : 'inherit', outline: 'none' }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 36px 8px 12px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13, fontFamily: tokenInput ? 'monospace' : 'inherit', outline: 'none' }}
               />
               <button
                 onClick={() => setShowToken(v => !v)}
@@ -253,13 +253,13 @@ export default function PromDashboardClient({
             <button
               onClick={saveToken}
               disabled={savingToken || !tokenInput.trim()}
-              style={{ padding: '8px 18px', background: tokenInput.trim() ? 'var(--color-info)' : '#E5E7EB', color: tokenInput.trim() ? '#fff' : 'var(--text-gray-light)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'not-allowed' }}
+              style={{ padding: '8px 18px', background: tokenInput.trim() ? 'var(--color-info)' : 'var(--line)', color: tokenInput.trim() ? 'var(--surface)' : 'var(--text-gray-light)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'not-allowed' }}
             >
               {savingToken ? 'Перевіряємо…' : 'Зберегти'}
             </button>
           </div>
           {tokenMsg && (
-            <div style={{ marginTop: 8, fontSize: 13, color: tokenMsg.ok ? '#065F46' : 'var(--color-danger)' }}>
+            <div style={{ marginTop: 8, fontSize: 13, color: tokenMsg.ok ? 'var(--emerald-dark)' : 'var(--color-danger)' }}>
               {tokenMsg.text}
             </div>
           )}
@@ -271,13 +271,13 @@ export default function PromDashboardClient({
         {navLinks.map(({ href, label, desc, color }) => (
           <Link key={label} href={href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
             <div style={{
-              background: '#fff', borderRadius: 10, padding: '16px 18px',
+              background: 'var(--surface)', borderRadius: 10, padding: '16px 18px',
               border: '1px solid var(--border)', cursor: 'pointer',
               height: '100%', boxSizing: 'border-box',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
-                <span style={{ fontWeight: 600, fontSize: 14, color: '#1E293B' }}>{label}</span>
+                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>{label}</span>
                 <ExternalLink size={11} color="#CBD5E1" style={{ marginLeft: 'auto' }} />
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>{desc}</div>
@@ -287,14 +287,14 @@ export default function PromDashboardClient({
       </div>
 
       {/* Feed URL */}
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', margin: 0 }}>YML-фід товарів</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>YML-фід товарів</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={doSync}
               disabled={syncing || !hasToken}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: syncing || !hasToken ? '#CBD5E1' : 'var(--text-secondary)', cursor: syncing || !hasToken ? 'not-allowed' : 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: syncing || !hasToken ? 'var(--line-slate)' : 'var(--text-secondary)', cursor: syncing || !hasToken ? 'not-allowed' : 'pointer' }}
             >
               <RefreshCw size={12} style={syncing ? { animation: 'spin 1s linear infinite' } : {}} />
               {syncing ? 'Синхронізую…' : 'Синхронізувати'}
@@ -303,16 +303,16 @@ export default function PromDashboardClient({
               onClick={doPushStock}
               disabled={pushingStock || !hasToken}
               title="Проштовхнути актуальні залишки в кабінет Prom через API (не чекаючи перечитування фіда)"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: pushingStock || !hasToken ? '#CBD5E1' : 'var(--text-secondary)', cursor: pushingStock || !hasToken ? 'not-allowed' : 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: pushingStock || !hasToken ? 'var(--line-slate)' : 'var(--text-secondary)', cursor: pushingStock || !hasToken ? 'not-allowed' : 'pointer' }}
             >
               <RefreshCw size={12} style={pushingStock ? { animation: 'spin 1s linear infinite' } : {}} />
               {pushingStock ? 'Пуш…' : 'Пуш залишків'}
             </button>
-            <button onClick={checkFeed} disabled={checking} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <button onClick={checkFeed} disabled={checking} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
               <RefreshCw size={12} style={checking ? { animation: 'spin 1s linear infinite' } : {}} />
               Перевірити
             </button>
-            <a href={feedUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
+            <a href={feedUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
               <ExternalLink size={12} /> Відкрити
             </a>
           </div>
@@ -322,25 +322,25 @@ export default function PromDashboardClient({
           <div style={{ flex: 1, fontFamily: 'monospace', fontSize: 13, padding: '10px 14px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 8, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {feedUrl}
           </div>
-          <button onClick={copyFeed} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: copied ? '#ECFDF5' : '#0EA5E9', color: copied ? '#059669' : '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+          <button onClick={copyFeed} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: copied ? 'var(--emerald-bg)' : '#0EA5E9', color: copied ? 'var(--emerald)' : 'var(--surface)', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
             {copied ? 'Скопійовано' : 'Копіювати'}
           </button>
         </div>
 
         {syncMsg && (
-          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: syncMsg.startsWith('Помилка') ? 'var(--bg-danger)' : '#ECFDF5', color: syncMsg.startsWith('Помилка') ? 'var(--color-danger)' : '#059669' }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: syncMsg.startsWith('Помилка') ? 'var(--bg-danger)' : 'var(--emerald-bg)', color: syncMsg.startsWith('Помилка') ? 'var(--color-danger)' : 'var(--emerald)' }}>
             {syncMsg.startsWith('Помилка') ? `✗ ${syncMsg}` : `✓ Синхронізовано: ${syncMsg}`}
           </div>
         )}
 
         {feedOk !== null && (
-          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: feedOk ? '#ECFDF5' : 'var(--bg-danger)', color: feedOk ? '#059669' : 'var(--color-danger)' }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12, background: feedOk ? 'var(--emerald-bg)' : 'var(--bg-danger)', color: feedOk ? 'var(--emerald)' : 'var(--color-danger)' }}>
             {feedOk ? '✓ Фід доступний і повертає валідний XML' : '✗ Фід недоступний або повертає помилку'}
           </div>
         )}
 
-        <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, border: '1px solid #FED7AA', fontSize: 12, color: 'var(--text-warn-dark)', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--orange-bg)', borderRadius: 8, border: '1px solid #FED7AA', fontSize: 12, color: 'var(--text-warn-dark)', lineHeight: 1.6 }}>
           Вкажи цю URL в кабінеті Prom.ua: <b>Товари → Імпорт товарів → Завантажити за посиланням</b>.
         </div>
 
@@ -352,12 +352,12 @@ export default function PromDashboardClient({
             role="switch"
             aria-checked={readyToShip}
             title={readyToShip ? 'Вимкнути «Готово до відправки»' : 'Увімкнути «Готово до відправки»'}
-            style={{ position: 'relative', width: 40, height: 22, borderRadius: 11, border: 'none', padding: 0, flexShrink: 0, background: readyToShip ? '#059669' : '#CBD5E1', cursor: savingRts ? 'wait' : 'pointer', transition: 'background .15s' }}
+            style={{ position: 'relative', width: 40, height: 22, borderRadius: 11, border: 'none', padding: 0, flexShrink: 0, background: readyToShip ? 'var(--emerald)' : 'var(--line-slate)', cursor: savingRts ? 'wait' : 'pointer', transition: 'background .15s' }}
           >
-            <span style={{ position: 'absolute', top: 2, left: readyToShip ? 20 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+            <span style={{ position: 'absolute', top: 2, left: readyToShip ? 20 : 2, width: 18, height: 18, borderRadius: '50%', background: 'var(--surface)', transition: 'left .15s' }} />
           </button>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
               «Готово до відправки» — {readyToShip ? 'увімкнено' : 'вимкнено'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.5 }}>

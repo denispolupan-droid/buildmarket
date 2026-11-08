@@ -28,7 +28,7 @@ function Stars({ mark }: { mark: number }) {
   return (
     <span style={{ whiteSpace: 'nowrap' }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <span key={i} style={{ color: mark >= i ? '#F59E0B' : '#D1D5DB', fontSize: '13px' }}>★</span>
+        <span key={i} style={{ color: mark >= i ? 'var(--amber)' : 'var(--line-strong)', fontSize: '13px' }}>★</span>
       ))}
     </span>
   );
@@ -98,7 +98,7 @@ export default function RozetkaReviewsClient() {
         {([['all', `Всі (${rows.length})`], ['market', `Про магазин (${marketCount})`], ['item', `Про товари (${itemCount})`]] as const).map(([key, label]) => (
           <button key={key} onClick={() => setFilter(key)}
             style={{ height: '30px', padding: '0 13px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-              background: filter === key ? '#6366F1' : 'var(--bg-card)', color: filter === key ? '#fff' : 'var(--text-secondary)' }}>
+              background: filter === key ? '#6366F1' : 'var(--bg-card)', color: filter === key ? 'var(--surface)' : 'var(--text-secondary)' }}>
             {label}
           </button>
         ))}
@@ -137,7 +137,7 @@ export default function RozetkaReviewsClient() {
                   {row.vote === 'dislike' && <ThumbsDown size={13} color="#DC2626" />}
                   {row.unread && (
                     <button onClick={() => markRead(row)} title="Позначити прочитаним"
-                      style={{ fontSize: '10px', fontWeight: 700, color: '#B91C1C', background: '#FEE2E2', border: '1px solid var(--border-danger)', borderRadius: '5px', padding: '1px 6px', cursor: 'pointer' }}>
+                      style={{ fontSize: '10px', fontWeight: 700, color: 'var(--danger-dark)', background: 'var(--danger-bg)', border: '1px solid var(--border-danger)', borderRadius: '5px', padding: '1px 6px', cursor: 'pointer' }}>
                       нове · прочитано?
                     </button>
                   )}
@@ -182,7 +182,7 @@ export default function RozetkaReviewsClient() {
                       placeholder="Відповідь покупцю…"
                       style={{ flex: 1, resize: 'none', padding: '8px 11px', border: '1.5px solid var(--border)', borderRadius: '9px', fontSize: '13px', outline: 'none', background: 'var(--bg-soft)', color: 'var(--text-primary)', fontFamily: 'inherit' }} />
                     <button onClick={() => sendReply(row)} disabled={sending || !replyText.trim()}
-                      style={{ height: '36px', width: '40px', borderRadius: '9px', border: 'none', background: '#6366F1', color: '#fff', cursor: 'pointer', opacity: sending || !replyText.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      style={{ height: '36px', width: '40px', borderRadius: '9px', border: 'none', background: '#6366F1', color: 'var(--surface)', cursor: 'pointer', opacity: sending || !replyText.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Send size={14} />
                     </button>
                   </div>

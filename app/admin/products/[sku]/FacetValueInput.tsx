@@ -57,7 +57,7 @@ export default function FacetValueInput({ values, multi, value, onChange, style 
               fontSize: 12, padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
               border: on ? '1px solid var(--brand-blue)' : '1px solid var(--border)',
               background: on ? 'var(--brand-blue)' : 'var(--bg-soft)',
-              color: on ? '#fff' : 'var(--text-primary)', fontWeight: on ? 600 : 400,
+              color: on ? 'var(--surface)' : 'var(--text-primary)', fontWeight: on ? 600 : 400,
             }}
           >
             {v}
@@ -65,7 +65,7 @@ export default function FacetValueInput({ values, multi, value, onChange, style 
         );
       })}
       {unknown.map(u => (
-        <span key={u} title="поза довідником" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 999, border: '1px dashed #F59E0B', color: 'var(--color-warn)' }}>
+        <span key={u} title="поза довідником" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 999, border: '1px dashed var(--amber)', color: 'var(--color-warn)' }}>
           {u} ×
           <button type="button" onClick={() => toggle(u)} style={{ marginLeft: 4, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-warn)' }} aria-label={`прибрати ${u}`}>✕</button>
         </span>

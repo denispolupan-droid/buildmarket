@@ -51,11 +51,11 @@ function promCatLabel(url: string | null): string | null {
 }
 
 function marginColor(pct: number) {
-  if (pct >= 30) return '#16A34A';
+  if (pct >= 30) return 'var(--status-instock)';
   if (pct >= 20) return '#65A30D';
-  if (pct >= 10) return '#D97706';
-  if (pct >= 0)  return '#EA580C';
-  return '#DC2626';
+  if (pct >= 10) return 'var(--status-order)';
+  if (pct >= 0)  return 'var(--orange-bright)';
+  return 'var(--color-danger)';
 }
 
 const TH: React.CSSProperties = {
@@ -227,14 +227,14 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Товари Prom.ua</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--ink-strong)' }}>Товари Prom.ua</h1>
           <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-gray)' }}>{totalEnabled} / {products.length} увімкнено в Prom</p>
         </div>
       </div>
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap', background: '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap', background: 'var(--surface)' }}>
           <input type="checkbox"
             checked={filteredRows.length > 0 && filteredRows.every(r => selected.has(r.p.sku))}
             ref={el => { if (el) el.indeterminate = filteredRows.some(r => selected.has(r.p.sku)) && !filteredRows.every(r => selected.has(r.p.sku)); }}
@@ -242,16 +242,16 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
               if (e.target.checked) setSelected(new Set(filteredRows.map(r => r.p.sku)));
               else setSelected(prev => { const s = new Set(prev); filteredRows.forEach(r => s.delete(r.p.sku)); return s; });
             }}
-            style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
+            style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
           {filteredRows.every(r => selected.has(r.p.sku)) && filteredRows.length > 0 ? 'Зняти вибір' : 'Вибрати всі'}
         </label>
         <button
           onClick={() => setCollapsed(allCollapsed ? Object.fromEntries(allSlugs.map(s => [s, false])) : Object.fromEntries(allSlugs.map(s => [s, true])))}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, background: '#fff', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, background: 'var(--surface)', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
         >
           {allCollapsed ? <><ChevronDown size={13} /> Розгорнути всі</> : <><ChevronRight size={13} /> Згорнути всі</>}
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', background: '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', background: 'var(--surface)' }}>
           <span>Всі в Prom</span>
           <button
             onClick={() => {
@@ -262,9 +262,9 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
               if (window.confirm(msg)) toggleAll(next);
             }}
             title={totalEnabled === products.length ? 'Вимкнути всі з Prom' : 'Увімкнути всі в Prom'}
-            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? '#22C55E' : totalEnabled > 0 ? 'var(--border-success)' : '#CBD5E1', transition: 'background 0.2s' }}
+            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? 'var(--ok-bright)' : totalEnabled > 0 ? 'var(--border-success)' : 'var(--line-slate)', transition: 'background 0.2s' }}
           >
-            <span style={{ position: 'absolute', top: 2, left: totalEnabled === products.length ? 18 : totalEnabled > 0 ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+            <span style={{ position: 'absolute', top: 2, left: totalEnabled === products.length ? 18 : totalEnabled > 0 ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>
         </label>
         <div style={{ position: 'relative', flex: '1 1 220px' }}>
@@ -274,12 +274,12 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
             style={{ width: '100%', height: 42, paddingLeft: 38, paddingRight: 14, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
         </div>
         <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)}
-          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterBrand ? 'var(--brand-blue-light)' : '#fff', minWidth: 150 }}>
+          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterBrand ? 'var(--brand-blue-light)' : 'var(--surface)', minWidth: 150 }}>
           <option value="">Всі бренди</option>
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterStatus ? 'var(--brand-blue-light)' : '#fff', minWidth: 170 }}>
+          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterStatus ? 'var(--brand-blue-light)' : 'var(--surface)', minWidth: 170 }}>
           <option value="">Всі статуси Prom</option>
           <option value="on">Увімкнено в Prom</option>
           <option value="off">Виключено з Prom</option>
@@ -293,7 +293,7 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
             <span style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
           </div>
           <button onClick={applyGlobalMarkup} disabled={globalSaving || !globalMarkup}
-            style={{ height: 42, padding: '0 14px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: globalMarkup && !globalSaving ? 'pointer' : 'default', background: globalMarkup && !globalSaving ? '#2563EB' : '#F1F5F9', color: globalMarkup && !globalSaving ? '#fff' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            style={{ height: 42, padding: '0 14px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: globalMarkup && !globalSaving ? 'pointer' : 'default', background: globalMarkup && !globalSaving ? 'var(--blue)' : 'var(--bg-page)', color: globalMarkup && !globalSaving ? 'var(--surface)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {globalSaving ? 'Зберігаю...' : 'Застосувати'}
           </button>
         </div>
@@ -302,7 +302,7 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
       {/* Знайдено */}
       <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 12 }}>
         Знайдено: <strong>{filteredRows.length}</strong> товарів у <strong>{grouped.size}</strong> категоріях
-        {selected.size > 0 && <span style={{ marginLeft: 8, color: '#2563EB', fontWeight: 600 }}>· вибрано {selected.size}</span>}
+        {selected.size > 0 && <span style={{ marginLeft: 8, color: 'var(--blue)', fontWeight: 600 }}>· вибрано {selected.size}</span>}
       </div>
 
       {/* Grouped categories */}
@@ -324,7 +324,7 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
             : null;
 
           return (
-            <div key={catSlug} style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <div key={catSlug} style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
 
               {/* Category header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--bg-soft)', borderBottom: isCollapsed ? 'none' : '1px solid var(--border)' }}>
@@ -334,26 +334,26 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                 <button
                   onClick={() => bulkToggle(catSlug, !allOn)}
                   title={allOn ? 'Вимкнути всі в Prom' : 'Увімкнути всі в Prom'}
-                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? '#22C55E' : someOn ? 'var(--border-success)' : '#CBD5E1', transition: 'background 0.2s' }}
+                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? 'var(--ok-bright)' : someOn ? 'var(--border-success)' : 'var(--line-slate)', transition: 'background 0.2s' }}
                 >
-                  <span style={{ position: 'absolute', top: 2, left: allOn ? 18 : someOn ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                  <span style={{ position: 'absolute', top: 2, left: allOn ? 18 : someOn ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </button>
-                <span onClick={() => setCollapsed(p => ({ ...p, [catSlug]: !isCollapsed }))} style={{ fontWeight: 600, fontSize: 13, color: '#1E293B', flex: 1, cursor: 'pointer' }}>
+                <span onClick={() => setCollapsed(p => ({ ...p, [catSlug]: !isCollapsed }))} style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)', flex: 1, cursor: 'pointer' }}>
                   {cat?.name ?? catSlug}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rows.length} товарів</span>
-                {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FFF7ED', color: 'var(--text-warn-dark)' }}>комісія {commission}%</span>}
+                {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'var(--orange-bg)', color: 'var(--text-warn-dark)' }}>комісія {commission}%</span>}
                 {avgMarkup !== null && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'var(--brand-blue-light)', color: 'var(--color-info)' }}>наценка ~{avgMarkup}%</span>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 11, color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>Наценка:</span>
                   <div style={{ position: 'relative' }}>
                     <input value={catMarkupInputs[catSlug] ?? ''} onChange={e => setCatMarkupInputs(p => ({ ...p, [catSlug]: e.target.value }))} onKeyDown={e => e.key === 'Enter' && applyBulkMarkup(catSlug)}
                       type="number" min="0" max="200" step="1" placeholder={catMkp != null ? String(catMkp) : '0'}
-                      style={{ padding: '3px 18px 3px 6px', borderRadius: 4, border: '1px solid #CBD5E1', fontSize: 11, width: 52, boxSizing: 'border-box' }} />
+                      style={{ padding: '3px 18px 3px 6px', borderRadius: 4, border: '1px solid var(--line-slate)', fontSize: 11, width: 52, boxSizing: 'border-box' }} />
                     <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
                   </div>
                   <button onClick={() => applyBulkMarkup(catSlug)} disabled={catSaving === catSlug || !catMarkupInputs[catSlug]}
-                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', background: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--brand-blue-light)' : '#F1F5F9', color: catMarkupInputs[catSlug] && catSaving !== catSlug ? '#2563EB' : 'var(--text-muted)', border: `1px solid ${catMarkupInputs[catSlug] && catSaving !== catSlug ? '#BFDBFE' : 'var(--border)'}`, cursor: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'pointer' : 'default' }}>
+                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', background: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--brand-blue-light)' : 'var(--bg-page)', color: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--blue)' : 'var(--text-muted)', border: `1px solid ${catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--blue-border)' : 'var(--border)'}`, cursor: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'pointer' : 'default' }}>
                     {catSaving === catSlug ? 'Зберігаю...' : 'Застосувати'}
                   </button>
                 </div>
@@ -372,7 +372,7 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                             const allSel = rows.every(r => selected.has(r.p.sku));
                             setSelected(prev => { const s = new Set(prev); rows.forEach(r => allSel ? s.delete(r.p.sku) : s.add(r.p.sku)); return s; });
                           }}
-                          style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
+                          style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
                       </th>
                       <th style={{ ...TH, width: 90 }}>SKU</th>
                       <th style={TH}>Назва</th>
@@ -396,14 +396,14 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                       const isEditing  = editSku === p.sku;
 
                       return (
-                        <tr key={p.sku} style={{ borderBottom: '1px solid #F1F5F9', background: isSelected ? 'rgba(37,99,235,0.03)' : undefined, opacity: isOn ? 1 : 0.45 }}>
+                        <tr key={p.sku} style={{ borderBottom: '1px solid var(--bg-page)', background: isSelected ? 'rgba(37,99,235,0.03)' : undefined, opacity: isOn ? 1 : 0.45 }}>
                           <td style={{ padding: '8px 8px 8px 16px' }}>
                             <input type="checkbox" checked={isSelected} onChange={() => setSelected(prev => { const s = new Set(prev); s.has(p.sku) ? s.delete(p.sku) : s.add(p.sku); return s; })}
-                              style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
+                              style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
                           </td>
                           <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>{p.sku}</td>
                           <td style={{ padding: '8px 12px', maxWidth: 300 }}>
-                            <div style={{ fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                            <div style={{ fontWeight: 500, color: 'var(--ink-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                             {p.volume && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.volume}</div>}
                           </td>
                           <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.brand}</td>
@@ -411,18 +411,18 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                             {promCatUrl ? (
                               <a href={promCatUrl} target="_blank" rel="noreferrer"
                                 title={promCatUrl}
-                                style={{ fontSize: 11, color: p.prom_portal_url ? '#C2410C' : '#2563EB', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                style={{ fontSize: 11, color: p.prom_portal_url ? 'var(--orange)' : 'var(--blue)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                                 {promCatLabel(promCatUrl) ?? promCatUrl}
-                                {p.prom_portal_url && <span style={{ marginLeft: 3, fontSize: 9, color: '#C2410C' }}>✎</span>}
+                                {p.prom_portal_url && <span style={{ marginLeft: 3, fontSize: 9, color: 'var(--orange)' }}>✎</span>}
                               </a>
                             ) : (
-                              <span style={{ fontSize: 11, color: '#D1D5DB' }}>—</span>
+                              <span style={{ fontSize: 11, color: 'var(--line-strong)' }}>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#111' }}>
-                            {cost != null ? `${cost.toFixed(0)} ₴` : basePrice > 0 ? <span style={{ color: 'var(--text-muted)' }}>{basePrice.toFixed(0)} ₴</span> : <span style={{ color: '#D1D5DB' }}>—</span>}
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--ink-strong)' }}>
+                            {cost != null ? `${cost.toFixed(0)} ₴` : basePrice > 0 ? <span style={{ color: 'var(--text-muted)' }}>{basePrice.toFixed(0)} ₴</span> : <span style={{ color: 'var(--line-strong)' }}>—</span>}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', color: rComm > 0 ? 'var(--text-warn-dark)' : '#D1D5DB', fontWeight: 500 }}>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', color: rComm > 0 ? 'var(--text-warn-dark)' : 'var(--line-strong)', fontWeight: 500 }}>
                             {rComm > 0 ? `${rComm}%` : '—'}
                           </td>
                           {/* Наценка inline */}
@@ -437,25 +437,25 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                                   onChange={e => setMarkups(prev => ({ ...prev, [p.sku]: e.target.value }))}
                                   onBlur={e => saveMarkup(p.sku, e.target.value)}
                                   placeholder={rCatMkp != null ? `${rCatMkp}` : '0'}
-                                  style={{ width: 56, height: 26, padding: '0 18px 0 6px', borderRadius: 5, border: '1px solid var(--border)', fontSize: 12, background: markups[p.sku] ? 'var(--brand-blue-light)' : '#fff', outline: savingMarkup === p.sku ? '2px solid #93C5FD' : undefined }} />
+                                  style={{ width: 56, height: 26, padding: '0 18px 0 6px', borderRadius: 5, border: '1px solid var(--border)', fontSize: 12, background: markups[p.sku] ? 'var(--brand-blue-light)' : 'var(--surface)', outline: savingMarkup === p.sku ? '2px solid #93C5FD' : undefined }} />
                                 <span style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: manual ? '#C2410C' : '#111' }}>
-                            {promPrice != null ? `${promPrice} ₴` : <span style={{ color: '#D1D5DB' }}>—</span>}
-                            {manual != null && manual > 0 && <span style={{ fontSize: 10, color: '#C2410C', marginLeft: 2 }}>✎</span>}
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: manual ? 'var(--orange)' : 'var(--ink-strong)' }}>
+                            {promPrice != null ? `${promPrice} ₴` : <span style={{ color: 'var(--line-strong)' }}>—</span>}
+                            {manual != null && manual > 0 && <span style={{ fontSize: 10, color: 'var(--orange)', marginLeft: 2 }}>✎</span>}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                             {marginPct != null
-                              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? '#ECFDF5' : marginPct >= 10 ? 'var(--bg-warn)' : 'var(--bg-danger)', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
-                              : <span style={{ color: '#D1D5DB' }}>—</span>}
+                              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? 'var(--emerald-bg)' : marginPct >= 10 ? 'var(--bg-warn)' : 'var(--bg-danger)', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
+                              : <span style={{ color: 'var(--line-strong)' }}>—</span>}
                           </td>
                           {/* Toggle */}
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <button onClick={() => toggleProduct(p.sku)} disabled={isToggling}
-                              style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isToggling ? 'wait' : 'pointer', padding: 0, background: isOn ? '#22C55E' : '#CBD5E1', transition: 'background 0.2s', opacity: isToggling ? 0.6 : 1 }}>
-                              <span style={{ position: 'absolute', top: 2, left: isOn ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                              style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isToggling ? 'wait' : 'pointer', padding: 0, background: isOn ? 'var(--ok-bright)' : 'var(--line-slate)', transition: 'background 0.2s', opacity: isToggling ? 0.6 : 1 }}>
+                              <span style={{ position: 'absolute', top: 2, left: isOn ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                             </button>
                           </td>
                           {/* Ручна ціна */}
@@ -463,19 +463,19 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
                             {isEditing ? (
                               <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                                 <input type="number" value={editManual} onChange={e => setEditManual(e.target.value)} placeholder="авто" autoFocus
-                                  style={{ width: 68, height: 26, padding: '0 5px', border: '1.5px solid #C2410C', borderRadius: 5, fontSize: 12, outline: 'none' }} />
+                                  style={{ width: 68, height: 26, padding: '0 5px', border: '1.5px solid var(--orange)', borderRadius: 5, fontSize: 12, outline: 'none' }} />
                                 <button onClick={() => saveManual(p.sku)} disabled={savingEdit}
                                   style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--status-instock)', background: 'var(--bg-success)', color: 'var(--status-instock)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <Check size={11} />
                                 </button>
                                 <button onClick={() => setEditSku(null)}
-                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--border)', background: '#F9FAFB', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--border)', background: 'var(--surface-soft)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <X size={11} />
                                 </button>
                               </div>
                             ) : (
                               <button onClick={() => { setEditSku(p.sku); setEditManual(manual != null && manual > 0 ? String(manual) : ''); }} title="Встановити ручну ціну"
-                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: manual ? '#FFF7ED' : 'transparent', color: manual ? '#C2410C' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: manual ? 'var(--orange-bg)' : 'transparent', color: manual ? 'var(--orange)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Pencil size={11} />
                               </button>
                             )}
@@ -493,7 +493,7 @@ export default function PromPricesClient({ products, stock, categories, plan, ad
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-soft)' }}>
-        {([['#16A34A', '≥ 30%'], ['#65A30D', '20–30%'], ['#D97706', '10–20%'], ['#EA580C', '0–10%'], ['#DC2626', '< 0%']] as [string, string][]).map(([color, label]) => (
+        {([['var(--status-instock)', '≥ 30%'], ['#65A30D', '20–30%'], ['var(--status-order)', '10–20%'], ['var(--orange-bright)', '0–10%'], ['var(--color-danger)', '< 0%']] as [string, string][]).map(([color, label]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} /> {label}
           </div>

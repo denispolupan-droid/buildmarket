@@ -175,7 +175,7 @@ export default function NewDocumentClient({
       </div>
 
       {error && (
-        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: '#FEE2E2', color: 'var(--color-danger)', fontSize: '13px' }}>
+        <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: '8px', background: 'var(--danger-bg)', color: 'var(--color-danger)', fontSize: '13px' }}>
           {error}
         </div>
       )}
@@ -354,7 +354,7 @@ export default function NewDocumentClient({
               <div>
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {line.name}
-                  {line.is_bonus && <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', padding: '1px 5px', borderRadius: '4px' }}>Бонус</span>}
+                  {line.is_bonus && <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: 'var(--amber-bg)', padding: '1px 5px', borderRadius: '4px' }}>Бонус</span>}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{line.sku}</div>
               </div>
@@ -385,7 +385,7 @@ export default function NewDocumentClient({
                   title={line.is_bonus ? 'Скасувати бонус' : 'Позначити як бонусний (собівартість = 0)'}
                   style={{
                     display: 'flex', justifyContent: 'center', alignItems: 'center',
-                    background: line.is_bonus ? '#FEF3C7' : 'none',
+                    background: line.is_bonus ? 'var(--amber-bg)' : 'none',
                     border: line.is_bonus ? '1.5px solid var(--border-warn)' : '1.5px solid transparent',
                     borderRadius: '6px', cursor: 'pointer', padding: '4px', fontSize: '14px',
                     height: '28px', width: '28px',
@@ -397,7 +397,7 @@ export default function NewDocumentClient({
 
               <button
                 onClick={() => removeLine(line.sku)}
-                style={{ display: 'flex', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: '4px' }}
+                style={{ display: 'flex', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger-bright)', padding: '4px' }}
               >
                 <Trash2 size={14} />
               </button>
@@ -444,7 +444,7 @@ export default function NewDocumentClient({
           disabled={saving || lines.length === 0}
           style={{
             height: '40px', padding: '0 22px', borderRadius: '9px', fontSize: '13px', fontWeight: 700,
-            border: 'none', background: 'var(--navy)', color: '#fff',
+            border: 'none', background: 'var(--navy)', color: 'var(--surface)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px',
             opacity: saving || lines.length === 0 ? 0.5 : 1,
           }}

@@ -45,8 +45,8 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
 function Toggle({ value, onChange, labelOn, labelOff }: { value: boolean; onChange: (v: boolean) => void; labelOn: string; labelOff: string }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-      <div onClick={() => onChange(!value)} style={{ width: '44px', height: '24px', borderRadius: '12px', position: 'relative', cursor: 'pointer', background: value ? '#22C55E' : '#CBD5E1', transition: 'background 0.2s', flexShrink: 0 }}>
-        <div style={{ position: 'absolute', top: '3px', left: value ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+      <div onClick={() => onChange(!value)} style={{ width: '44px', height: '24px', borderRadius: '12px', position: 'relative', cursor: 'pointer', background: value ? 'var(--ok-bright)' : 'var(--line-slate)', transition: 'background 0.2s', flexShrink: 0 }}>
+        <div style={{ position: 'absolute', top: '3px', left: value ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
       <span style={{ fontSize: '13px', fontWeight: 600, color: value ? 'var(--status-instock)' : 'var(--text-muted)' }}>
         {value ? labelOn : labelOff}
@@ -83,7 +83,7 @@ function SizeSelector({ value, onChange }: { value: string; onChange: (v: 'compa
       <div style={{ display: 'flex', gap: '8px' }}>
         {SIZES.map(s => (
           <button key={s.value} onClick={() => onChange(s.value)}
-            style={{ flex: 1, padding: '10px 8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', border: value === s.value ? '2px solid #4880B8' : '2px solid var(--border)', background: value === s.value ? 'var(--brand-blue-light)' : 'var(--bg-card)', color: value === s.value ? '#4880B8' : 'var(--text-secondary)' }}>
+            style={{ flex: 1, padding: '10px 8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', border: value === s.value ? '2px solid var(--brand-blue)' : '2px solid var(--border)', background: value === s.value ? 'var(--brand-blue-light)' : 'var(--bg-card)', color: value === s.value ? 'var(--brand-blue)' : 'var(--text-secondary)' }}>
             <div style={{ fontSize: '13px', fontWeight: 700 }}>{s.label}</div>
             <div style={{ fontSize: '11px', marginTop: '2px', opacity: 0.7 }}>{s.desc}</div>
           </button>
@@ -220,7 +220,7 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
               </div>
               <p style={{ margin: '2px 0 0', fontSize: '11px', color: banner.textColor, opacity: 0.75 }}>{banner.subtitle}</p>
             </div>
-            <span style={{ background: banner.ctaBgColor, color: '#fff', fontSize: '11.5px', fontWeight: 700, padding: '5px 11px', borderRadius: '7px' }}>{banner.ctaText} →</span>
+            <span style={{ background: banner.ctaBgColor, color: 'var(--surface)', fontSize: '11.5px', fontWeight: 700, padding: '5px 11px', borderRadius: '7px' }}>{banner.ctaText} →</span>
           </div>
         )}
 
@@ -290,7 +290,7 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
             <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '1.5px solid var(--border)', marginBottom: '12px' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={banner.bgImage} alt="banner bg" style={{ width: '100%', height: '100px', objectFit: 'cover', display: 'block' }} />
-              <button onClick={removeImage} style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#fff', padding: '4px', display: 'flex' }}>
+              <button onClick={removeImage} style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '6px', cursor: 'pointer', color: 'var(--surface)', padding: '4px', display: 'flex' }}>
                 <XIcon size={14} strokeWidth={2.5} />
               </button>
             </div>
@@ -314,7 +314,7 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
               <label style={lbl}>Затемнення фону: {banner.bgOverlay ?? 40}%</label>
               <input type="range" min={0} max={80} value={banner.bgOverlay ?? 40}
                 onChange={e => setBanner('bgOverlay', Number(e.target.value))}
-                style={{ width: '100%', accentColor: '#4880B8' }} />
+                style={{ width: '100%', accentColor: 'var(--brand-blue)' }} />
               <p style={hint}>0% = без затемнення · 40% = стандарт · 80% = темно</p>
             </div>
           )}
@@ -341,7 +341,7 @@ export default function PromoSettings({ initial }: { initial: PromoConfig }) {
       </div>
 
       {/* Save */}
-      <button onClick={save} disabled={saving} style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer', background: saved ? 'var(--status-instock)' : '#4880B8', color: '#fff', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }}>
+      <button onClick={save} disabled={saving} style={{ height: '44px', padding: '0 28px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer', background: saved ? 'var(--status-instock)' : 'var(--brand-blue)', color: 'var(--surface)', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }}>
         {saving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : saved ? <Check size={16} /> : null}
         {saving ? 'Зберігаємо...' : saved ? 'Збережено!' : 'Зберегти зміни'}
       </button>

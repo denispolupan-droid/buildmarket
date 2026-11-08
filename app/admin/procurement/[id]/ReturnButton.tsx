@@ -125,7 +125,7 @@ export default function ReturnButton({
                 Скасувати
               </button>
               <button onClick={handleReturn} disabled={saving || !toReturn.length}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (!toReturn.length || saving) ? 0.5 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (!toReturn.length || saving) ? 0.5 : 1 }}>
                 {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Проведення...</> : `↩ Провести повернення (${toReturn.length} SKU)`}
               </button>
             </div>

@@ -29,7 +29,7 @@ export default function SyncButton({ supplierId }: { supplierId: number }) {
       <button onClick={handleSync} disabled={syncing} style={{
         display: 'flex', alignItems: 'center', gap: '7px',
         height: '36px', padding: '0 16px', borderRadius: '8px',
-        border: 'none', background: 'var(--navy)', color: '#fff',
+        border: 'none', background: 'var(--navy)', color: 'var(--surface)',
         fontSize: '13px', fontWeight: 700, cursor: syncing ? 'wait' : 'pointer',
         opacity: syncing ? 0.7 : 1,
       }}>

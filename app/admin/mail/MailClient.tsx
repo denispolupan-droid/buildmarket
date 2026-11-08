@@ -180,13 +180,13 @@ function ComposeModal({ onClose, replyTo, senders }: {
               {signature}
             </div>
           )}
-          {error && <div style={{ color: '#EF4444', fontSize: '13px' }}>{error}</div>}
+          {error && <div style={{ color: 'var(--danger-bright)', fontSize: '13px' }}>{error}</div>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
           <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-secondary)' }}>
             Скасувати
           </button>
-          <button onClick={send} disabled={sending} style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', cursor: sending ? 'default' : 'pointer', fontSize: '14px', fontWeight: 600, opacity: sending ? 0.7 : 1 }}>
+          <button onClick={send} disabled={sending} style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', cursor: sending ? 'default' : 'pointer', fontSize: '14px', fontWeight: 600, opacity: sending ? 0.7 : 1 }}>
             {sending ? 'Відправка...' : 'Відправити'}
           </button>
         </div>
@@ -309,7 +309,7 @@ export default function MailClient() {
         <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>Пошта не підключена</div>
         <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Підключіть Zoho Mail для роботи з поштою</div>
       </div>
-      <a href="/api/admin/mail/oauth/authorize" style={{ padding: '10px 24px', borderRadius: '10px', background: 'var(--navy)', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
+      <a href="/api/admin/mail/oauth/authorize" style={{ padding: '10px 24px', borderRadius: '10px', background: 'var(--navy)', color: 'var(--surface)', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
         Підключити Zoho Mail
       </a>
     </div>
@@ -324,7 +324,7 @@ export default function MailClient() {
       <div className="mail-folders" style={{ width: '220px', flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', padding: '16px 0' }}>
         <button
           onClick={() => { setCompose(true); setReplyData(undefined); }}
-          style={{ margin: '0 12px 16px', padding: '9px 14px', borderRadius: '10px', background: 'var(--navy)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          style={{ margin: '0 12px 16px', padding: '9px 14px', borderRadius: '10px', background: 'var(--navy)', color: 'var(--surface)', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
         >
           <Pencil size={14} /> Написати
         </button>
@@ -344,7 +344,7 @@ export default function MailClient() {
             <span style={{ opacity: 0.6 }}>{folderIcon(f.folderName)}</span>
             <span style={{ flex: 1 }}>{folderName(f.folderName)}</span>
             {f.unreadCount > 0 && (
-              <span style={{ background: '#EF4444', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px', minWidth: '18px', textAlign: 'center' }}>
+              <span style={{ background: 'var(--danger-bright)', color: 'var(--surface)', fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px', minWidth: '18px', textAlign: 'center' }}>
                 {f.unreadCount}
               </span>
             )}
@@ -368,7 +368,7 @@ export default function MailClient() {
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>Завантаження...</div>
         )}
         {error && (
-          <div style={{ padding: '16px', color: '#EF4444', fontSize: '13px' }}>{error}</div>
+          <div style={{ padding: '16px', color: 'var(--danger-bright)', fontSize: '13px' }}>{error}</div>
         )}
         {!loading && messages.length === 0 && !error && (
           <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>Листів немає</div>
@@ -461,7 +461,7 @@ export default function MailClient() {
                     title="Тіло листа"
                     sandbox=""
                     srcDoc={html}
-                    style={{ width: '100%', minHeight: '400px', border: 'none', background: '#fff' }}
+                    style={{ width: '100%', minHeight: '400px', border: 'none', background: 'var(--surface)' }}
                   />
                 );
                 if (text) return (

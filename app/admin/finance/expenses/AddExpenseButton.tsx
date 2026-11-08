@@ -62,7 +62,7 @@ export default function AddExpenseButton() {
   return (
     <div>
       <button onClick={() => setOpen(v => !v)}
-        style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '36px', padding: '0 16px', borderRadius: '8px', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: '7px', height: '36px', padding: '0 16px', borderRadius: '8px', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
         <Plus size={14} /> Додати витрату
       </button>
 
@@ -99,7 +99,7 @@ export default function AddExpenseButton() {
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} />
           </div>
           <button onClick={submit} disabled={saving}
-            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+            style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Зберігаємо…' : 'Зберегти'}
           </button>
         </div>

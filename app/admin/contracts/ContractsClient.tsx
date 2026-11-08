@@ -54,9 +54,9 @@ const EMPTY: Omit<Contract, 'id' | 'balance' | 'customer_number'> = {
 };
 
 const STATUS_CFG = {
-  active:    { label: 'Активний',    color: '#15803D', bg: '#F0FDF4' },
-  suspended: { label: 'Призупинено', color: '#B45309', bg: '#FEF3C7' },
-  closed:    { label: 'Закрито',     color: '#DC2626', bg: '#FEF2F2' },
+  active:    { label: 'Активний',    color: 'var(--color-success)', bg: 'var(--bg-success)' },
+  suspended: { label: 'Призупинено', color: 'var(--color-warn)', bg: 'var(--amber-bg)' },
+  closed:    { label: 'Закрито',     color: 'var(--color-danger)', bg: '#FEF2F2' },
 };
 
 function fmtCustomerNum(n: number | null | undefined) {
@@ -228,7 +228,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
           <Users size={12} /> Контрагенти
         </Link>
         <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>/</span>
-        <span style={{ height: '30px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--navy)', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ height: '30px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--navy)', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <FileText size={12} /> Договори
         </span>
       </div>
@@ -241,7 +241,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
           </p>
         </div>
         <button onClick={openCreate}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 18px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           <Plus size={15} /> Новий договір
         </button>
       </div>
@@ -254,9 +254,9 @@ export default function ContractsClient({ initialContracts }: { initialContracts
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
         {[
-          { label: 'Активних',      value: contracts.filter(c => c.status === 'active').length,    color: '#16A34A',           accent: '#16A34A' },
-          { label: 'Призупинено',   value: contracts.filter(c => c.status === 'suspended').length, color: '#D97706',           accent: '#D97706' },
-          { label: 'Загальний борг', value: `${contracts.filter(c => c.status === 'active').reduce((s, c) => s + (c.balance ?? 0), 0).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴`, color: 'var(--brand-blue)', accent: '#4880B8' },
+          { label: 'Активних',      value: contracts.filter(c => c.status === 'active').length,    color: 'var(--status-instock)',           accent: 'var(--status-instock)' },
+          { label: 'Призупинено',   value: contracts.filter(c => c.status === 'suspended').length, color: 'var(--status-order)',           accent: 'var(--status-order)' },
+          { label: 'Загальний борг', value: `${contracts.filter(c => c.status === 'active').reduce((s, c) => s + (c.balance ?? 0), 0).toLocaleString('uk-UA', { maximumFractionDigits: 0 })} ₴`, color: 'var(--brand-blue)', accent: 'var(--brand-blue)' },
         ].map(s => (
           <div key={s.label} style={{ padding: '14px 18px', borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: `3px solid ${s.accent}` }}>
             <div style={{ fontSize: '22px', fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -426,7 +426,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                           {c.phone && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{c.phone}</div>}
                         </div>
                         {c.customer_number != null && (
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', padding: '2px 7px', borderRadius: '5px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: 'var(--blue-bg)', padding: '2px 7px', borderRadius: '5px', flexShrink: 0 }}>
                             #{String(c.customer_number).padStart(4, '0')}
                           </span>
                         )}
@@ -503,7 +503,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 Скасувати
               </button>
               <button onClick={handleSave} disabled={saving}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: saving ? 0.7 : 1 }}>
                 {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : <><Check size={14} />Зберегти</>}
               </button>
             </div>
@@ -530,7 +530,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                   {payModal.customer_name || payModal.customer_id}
                 </div>
                 {payModal.customer_number != null && (
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: '#EFF4FF', padding: '2px 8px', borderRadius: '5px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--navy)', background: 'var(--blue-bg)', padding: '2px 8px', borderRadius: '5px', flexShrink: 0 }}>
                     {fmtCustomerNum(payModal.customer_number)}
                   </span>
                 )}
@@ -561,7 +561,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                       style={{ flex: 1, height: '36px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                         border: `1.5px solid ${payMethod === m ? 'var(--navy)' : 'var(--border)'}`,
                         background: payMethod === m ? 'var(--navy)' : 'var(--bg-soft)',
-                        color: payMethod === m ? '#fff' : 'var(--text-secondary)' }}>
+                        color: payMethod === m ? 'var(--surface)' : 'var(--text-secondary)' }}>
                       {m === 'bank' ? '🏦 Банк' : m === 'cash' ? '💵 Готівка' : '💳 Еквайринг'}
                     </button>
                   ))}
@@ -591,7 +591,7 @@ export default function ContractsClient({ initialContracts }: { initialContracts
                 Скасувати
               </button>
               <button onClick={handlePayment} disabled={paying}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: paying ? 0.7 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: paying ? 0.7 : 1 }}>
                 {paying ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />Збереження...</> : <><Check size={14} />Зафіксувати оплату</>}
               </button>
             </div>

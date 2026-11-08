@@ -93,7 +93,7 @@ export default function PeriodsClient() {
                 </button>
               ) : (
                 <button onClick={() => act(m.month, 'close')} disabled={busy === m.month}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: busy === m.month ? 0.6 : 1 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: busy === m.month ? 0.6 : 1 }}>
                   <Lock size={13} /> Закрити місяць
                 </button>
               )}

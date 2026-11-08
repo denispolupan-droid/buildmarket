@@ -191,7 +191,7 @@ export default function NewStockDocModal({
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
           {error && (
-            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 8, background: '#FEE2E2', color: 'var(--color-danger)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg)', color: 'var(--color-danger)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
               <AlertCircle size={14} /> {error}
             </div>
           )}
@@ -284,7 +284,7 @@ export default function NewStockDocModal({
                       style={{ ...inp, textAlign: 'right' }}
                     />
                   )}
-                  <button onClick={() => removeLine(line.sku)} style={{ display: 'flex', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: 4 }}>
+                  <button onClick={() => removeLine(line.sku)} style={{ display: 'flex', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger-bright)', padding: 4 }}>
                     <Trash2 size={14} />
                   </button>
                 </div>

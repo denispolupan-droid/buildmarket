@@ -142,7 +142,7 @@ export default function ReceiptPaymentPanel({
                 flex: 1, height: '34px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                 border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
                 background: payMode === m.key ? 'var(--navy)' : 'var(--bg-soft)',
-                color:      payMode === m.key ? '#fff'    : 'var(--text-secondary)',
+                color:      payMode === m.key ? 'var(--surface)'    : 'var(--text-secondary)',
                 transition: 'all 0.15s',
               }}>
               {m.label}
@@ -158,13 +158,13 @@ export default function ReceiptPaymentPanel({
             <label style={lbl}>Оплатити до</label>
             <input style={inp} type="date" value={deferDate} onChange={e => setDeferDate(e.target.value)} />
           </div>
-          <div style={{ padding: '8px 12px', background: '#FFF7ED', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
+          <div style={{ padding: '8px 12px', background: 'var(--orange-bg)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)' }}>
             📌 Товар оприходовано. Оплату буде зроблено до {deferDate ? new Date(deferDate).toLocaleDateString('uk-UA') : '—'}.
             Проводки в леджері будуть записані при фактичній оплаті.
           </div>
           <button
             onClick={handlePay} disabled={paying}
-            style={{ height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-warn)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            style={{ height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-warn)', color: 'var(--surface)', fontSize: '14px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
             {paying ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Clock size={14} />}
             {paying ? 'Зберігаємо...' : 'Зберегти відстрочку'}
           </button>
@@ -190,7 +190,7 @@ export default function ReceiptPaymentPanel({
             style={{
               height: '40px', borderRadius: '8px', border: 'none',
               background: !payAmount || parseFloat(payAmount) <= 0 ? 'var(--border)' : 'var(--color-success)',
-              color:      !payAmount || parseFloat(payAmount) <= 0 ? 'var(--text-muted)' : '#fff',
+              color:      !payAmount || parseFloat(payAmount) <= 0 ? 'var(--text-muted)' : 'var(--surface)',
               fontSize: '14px', fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             }}>
@@ -205,11 +205,11 @@ export default function ReceiptPaymentPanel({
     <>
       <div style={{
         background: 'var(--bg-card)',
-        border: `1px solid ${isPaid ? 'var(--border-success)' : isDeferred ? '#FDE68A' : 'var(--border)'}`,
+        border: `1px solid ${isPaid ? 'var(--border-success)' : isDeferred ? 'var(--amber-border)' : 'var(--border)'}`,
         borderRadius: '12px', padding: '16px',
       }}>
         <div style={{ fontSize: '13px', fontWeight: 700, color: isPaid ? 'var(--color-success)' : isDeferred ? 'var(--color-warn)' : 'var(--text-muted)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <Banknote size={15} color={isPaid ? '#15803D' : isDeferred ? '#B45309' : undefined} />
+          <Banknote size={15} color={isPaid ? 'var(--color-success)' : isDeferred ? 'var(--color-warn)' : undefined} />
           Оплата постачальнику
         </div>
 
@@ -246,7 +246,7 @@ export default function ReceiptPaymentPanel({
         /* ── Відстрочка ── */
         ) : isDeferred && !editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '13px', color: 'var(--text-warn-dark)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '10px 12px', background: 'var(--amber-bg)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-warn-dark)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Clock size={16} /> Відстрочка
               </span>
@@ -257,7 +257,7 @@ export default function ReceiptPaymentPanel({
               <span style={{ fontWeight: 700, color: 'var(--color-warn)' }}>{fmt(totalCost)} ₴</span>
             </div>
             <button onClick={() => { setEditing(true); setPayMode('transfer'); setPayAmount(String(totalCost.toFixed(2))); }}
-              style={{ height: '36px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+              style={{ height: '36px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
               💳 Провести оплату
             </button>
             <button onClick={() => setEditing(true)}
@@ -280,8 +280,8 @@ export default function ReceiptPaymentPanel({
                   <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(remaining)} ₴</span>
                 </div>
               )}
-              <div style={{ marginTop: '4px', height: '4px', background: '#E5E7EB', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: remaining > 0 ? '#F59E0B' : 'var(--color-success)', borderRadius: '2px', width: `${Math.min(100, totalCost > 0 ? (totalPaid / totalCost) * 100 : 0)}%`, transition: 'width 0.3s' }} />
+              <div style={{ marginTop: '4px', height: '4px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: remaining > 0 ? 'var(--amber)' : 'var(--color-success)', borderRadius: '2px', width: `${Math.min(100, totalCost > 0 ? (totalPaid / totalCost) * 100 : 0)}%`, transition: 'width 0.3s' }} />
               </div>
             </div>
             {history.map((p, i) => (
@@ -295,7 +295,7 @@ export default function ReceiptPaymentPanel({
                 ✏️ Редагувати
               </button>
               {remaining > 0 && (
-                <button onClick={() => setEditing(true)} style={{ flex: 1, height: '32px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => setEditing(true)} style={{ flex: 1, height: '32px', borderRadius: '8px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                   + Ще оплату
                 </button>
               )}
@@ -338,7 +338,7 @@ export default function ReceiptPaymentPanel({
             <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-danger)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <X size={16} /> Скасувати оплату?
             </div>
-            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)', marginBottom: '16px' }}>
+            <div style={{ padding: '10px 12px', background: 'var(--amber-bg)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-warn-dark)', marginBottom: '16px' }}>
               ⚠ Буде проведено компенсуючу проводку в леджері. Дія тільки для адміністратора.
             </div>
             <div style={{ marginBottom: '16px' }}>
@@ -351,7 +351,7 @@ export default function ReceiptPaymentPanel({
                 Назад
               </button>
               <button onClick={handleReverse} disabled={reversing}
-                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: '#fff', cursor: reversing ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: reversing ? 0.7 : 1 }}>
+                style={{ flex: 1, height: '40px', borderRadius: '8px', border: 'none', background: 'var(--color-danger)', color: 'var(--surface)', cursor: reversing ? 'default' : 'pointer', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: reversing ? 0.7 : 1 }}>
                 {reversing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
                 Скасувати оплату
               </button>

@@ -196,10 +196,10 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
         display: 'grid', gridTemplateColumns: '180px 1fr 1fr 110px 90px',
         gap: 6, alignItems: 'center',
         padding: '5px 10px',
-        borderBottom: '1px solid #F1F5F9',
-        background: indent === 0 ? 'var(--bg-soft)' : '#fff',
+        borderBottom: '1px solid var(--bg-page)',
+        background: indent === 0 ? 'var(--bg-soft)' : 'var(--surface)',
       }}>
-        <div style={{ fontSize: indent === 0 ? 13 : 12, fontWeight: indent === 0 ? 600 : 400, color: indent === 0 ? '#1E293B' : 'var(--text-secondary)', paddingLeft: indent * 16 }}>
+        <div style={{ fontSize: indent === 0 ? 13 : 12, fontWeight: indent === 0 ? 600 : 400, color: indent === 0 ? 'var(--ink)' : 'var(--text-secondary)', paddingLeft: indent * 16 }}>
           {cat.name}
         </div>
 
@@ -214,7 +214,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             style={{
               padding: '4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, width: 96, flexShrink: 0, boxSizing: 'border-box',
-              background: v.rz_id ? '#ECFDF5' : '#fff',
+              background: v.rz_id ? 'var(--emerald-bg)' : 'var(--surface)',
             }}
           />
           <input
@@ -226,13 +226,13 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             style={{
               padding: '4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, flex: 1, minWidth: 0, boxSizing: 'border-box',
-              color: 'var(--text-secondary)', background: v.rz_name ? 'var(--bg-success)' : '#fff',
+              color: 'var(--text-secondary)', background: v.rz_name ? 'var(--bg-success)' : 'var(--surface)',
             }}
           />
           {dropSlug === cat.slug && treeSuggestions.length > 0 && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-              background: '#fff', border: '1px solid #CBD5E1', borderRadius: 7,
+              background: 'var(--surface)', border: '1px solid var(--line-slate)', borderRadius: 7,
               boxShadow: '0 4px 16px rgba(0,0,0,.12)', marginTop: 2, overflow: 'hidden',
             }}>
               {treeSuggestions.map(entry => (
@@ -242,13 +242,13 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                   style={{
                     padding: '5px 10px', cursor: 'pointer', fontSize: 12,
                     display: 'flex', alignItems: 'center', gap: 8,
-                    borderBottom: '1px solid #F1F5F9',
+                    borderBottom: '1px solid var(--bg-page)',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-success)')}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}
                 >
-                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#059669', flexShrink: 0 }}>{entry.rz_id}</span>
-                  <span style={{ color: '#1E293B', flex: 1 }}>{entry.name}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--emerald)', flexShrink: 0 }}>{entry.rz_id}</span>
+                  <span style={{ color: 'var(--ink)', flex: 1 }}>{entry.name}</span>
                   {entry.commission_rz_id && (() => {
                     const parentName = refsMap.get(entry.commission_rz_id)?.name ?? treeMap.get(entry.commission_rz_id)?.name;
                     return (
@@ -273,7 +273,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             style={{
               padding: '4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, width: 88, flexShrink: 0, boxSizing: 'border-box',
-              background: v.commission_rz_id && v.commission_rz_id !== v.rz_id ? '#FFF7ED' : '#ECFDF5',
+              background: v.commission_rz_id && v.commission_rz_id !== v.rz_id ? 'var(--orange-bg)' : 'var(--emerald-bg)',
             }}
           />
           {v.commission_label && v.commission_label !== v.rz_id && (
@@ -293,7 +293,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
             style={{
               padding: '4px 22px 4px 8px', borderRadius: 5, border: '1px solid var(--border)',
               fontSize: 12, width: '100%', boxSizing: 'border-box',
-              background: v.commission ? '#FFF7ED' : '#fff',
+              background: v.commission ? 'var(--orange-bg)' : 'var(--surface)',
             }}
           />
           <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-muted)' }}>%</span>
@@ -306,8 +306,8 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
             padding: '4px 8px', borderRadius: 5, fontSize: 11, fontWeight: 600,
-            background: saved[cat.slug] ? '#ECFDF5' : '#0EA5E9',
-            color: saved[cat.slug] ? '#059669' : '#fff',
+            background: saved[cat.slug] ? 'var(--emerald-bg)' : '#0EA5E9',
+            color: saved[cat.slug] ? 'var(--emerald)' : 'var(--surface)',
             border: 'none', cursor: 'pointer',
           }}
         >
@@ -322,10 +322,10 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
     <div style={{ padding: '28px 32px', maxWidth: 1400, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
         <Link href="/admin/rozetka/products" style={{ fontSize: 13, color: 'var(--text-soft)', textDecoration: 'none' }}>← Товари</Link>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1E293B', margin: 0 }}>Rozetka</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>Rozetka</h1>
 
         {/* Tab switcher */}
-        <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: 8, padding: 3, gap: 2 }}>
+        <div style={{ display: 'flex', background: 'var(--bg-page)', borderRadius: 8, padding: 3, gap: 2 }}>
           {([
             { key: 'commissions', label: 'Комісії',   icon: <Percent size={13} /> },
             { key: 'categories',  label: 'Категорії', icon: <List size={13} /> },
@@ -334,8 +334,8 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
               style={{
                 display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px',
                 borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500,
-                background: view === key ? '#fff' : 'transparent',
-                color: view === key ? '#1E293B' : 'var(--text-soft)',
+                background: view === key ? 'var(--surface)' : 'transparent',
+                color: view === key ? 'var(--ink)' : 'var(--text-soft)',
                 boxShadow: view === key ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
                 transition: 'all .15s',
               }}
@@ -356,7 +356,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
               </span>
               <button onClick={downloadCsv} style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
-                background: '#F1F5F9', border: '1px solid var(--border)', borderRadius: 8,
+                background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8,
                 fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer',
               }}>
                 <Download size={13} /> Скачати TSV
@@ -366,7 +366,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
           {view === 'commissions' && (
             <button onClick={() => tariffRef.current?.click()} disabled={tImporting} style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
-              background: '#0EA5E9', color: '#fff', border: 'none', borderRadius: 8,
+              background: '#0EA5E9', color: 'var(--surface)', border: 'none', borderRadius: 8,
               fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: tImporting ? 0.7 : 1,
             }}>
               <Upload size={14} />
@@ -383,7 +383,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
       {view === 'commissions' && (<>
       {/* Tariff import error */}
       {tErr && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: 8, marginBottom: 16, fontSize: 13, color: 'var(--color-danger)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--bg-danger)', border: '1px solid var(--danger-border)', borderRadius: 8, marginBottom: 16, fontSize: 13, color: 'var(--color-danger)' }}>
           <AlertTriangle size={14} /> {tErr}
           <button onClick={() => setTErr(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }}><X size={14} /></button>
         </div>
@@ -391,12 +391,12 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
 
       {/* Tariff import preview panel */}
       {tRes && (
-        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: tRes.applied ? '#ECFDF5' : '#F0F9FF', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: tRes.applied ? 'var(--emerald-bg)' : '#F0F9FF', borderBottom: '1px solid var(--border)' }}>
             {tRes.applied
-              ? <><CheckCircle size={15} color="#059669" /><span style={{ fontSize: 13, fontWeight: 600, color: '#059669' }}>Тариф оновлено: {tRes.categories} категорій, {tRes.brackets} порогів{tRes.totalInTable != null ? ` · у таблиці ${tRes.totalInTable}` : ''}</span></>
+              ? <><CheckCircle size={15} color="#059669" /><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--emerald)' }}>Тариф оновлено: {tRes.categories} категорій, {tRes.brackets} порогів{tRes.totalInTable != null ? ` · у таблиці ${tRes.totalInTable}` : ''}</span></>
               : <>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
                     Тариф: {tRes.categories} категорій · {tRes.brackets} порогів
                     {(tRes.added ?? 0) > 0 && ` · +${tRes.added} нових`}
                     {(tRes.changed ?? 0) > 0 && ` · ${tRes.changed} змін`}
@@ -404,11 +404,11 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                     {(tRes.unchanged ?? 0) > 0 && ` · ${tRes.unchanged} без змін`}
                   </span>
                   {((tRes.added ?? 0) + (tRes.changed ?? 0) + (tRes.removed ?? 0)) > 0 ? (
-                    <button onClick={applyTariff} disabled={tApplying} style={{ marginLeft: 'auto', padding: '5px 14px', background: '#0EA5E9', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={applyTariff} disabled={tApplying} style={{ marginLeft: 'auto', padding: '5px 14px', background: '#0EA5E9', color: 'var(--surface)', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       {tApplying ? 'Застосовуємо…' : 'Застосувати тариф'}
                     </button>
                   ) : (
-                    <span style={{ marginLeft: 'auto', fontSize: 12, color: '#059669' }}>Все актуально, змін немає</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--emerald)' }}>Все актуально, змін немає</span>
                   )}
                 </>
             }
@@ -425,7 +425,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                   <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{c.category_name ?? c.rz_id}</span>
                   <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>[{c.rz_id}] від {c.price_from}₴</span>
                   <span style={{ color: 'var(--color-danger)', textDecoration: c.old_pct != null ? 'line-through' : 'none' }}>{c.old_pct != null ? `${c.old_pct}%` : 'нове'}</span>
-                  <span style={{ color: '#059669', fontWeight: 600 }}>→ {c.new_pct}%</span>
+                  <span style={{ color: 'var(--emerald)', fontWeight: 600 }}>→ {c.new_pct}%</span>
                 </div>
               ))}
             </div>
@@ -440,12 +440,12 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
         ))}
       </datalist>
 
-      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{
           display: 'grid', gridTemplateColumns: '180px 1fr 1fr 110px 90px',
           gap: 6, padding: '8px 10px',
-          background: '#F1F5F9', borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-page)', borderBottom: '1px solid var(--border)',
           fontSize: 11, fontWeight: 600, color: 'var(--text-soft)', textTransform: 'uppercase', letterSpacing: '.04em',
         }}>
           <div>Категорія</div>
@@ -488,7 +488,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
               style={{
                 width: '100%', boxSizing: 'border-box', paddingLeft: 32, paddingRight: 12,
                 height: 36, border: '1px solid var(--border)', borderRadius: 8, fontSize: 13,
-                outline: 'none', color: '#1E293B',
+                outline: 'none', color: 'var(--ink)',
               }}
             />
           </div>
@@ -498,7 +498,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
           )}
 
           {catRefLoaded && (
-            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
               {/* 6 columns: rz_id | rz_name | comm_id | comm_name | % | our cats */}
               {(() => {
                 const cols = '100px 1fr 100px 1fr 64px 1fr';
@@ -507,7 +507,7 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                   <>
                     <div style={{
                       display: 'grid', gridTemplateColumns: cols,
-                      background: '#F1F5F9', borderBottom: '2px solid var(--border)',
+                      background: 'var(--bg-page)', borderBottom: '2px solid var(--border)',
                       fontSize: 11, fontWeight: 700, color: 'var(--text-soft)',
                       textTransform: 'uppercase', letterSpacing: '.05em',
                     }}>
@@ -519,11 +519,11 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                     {catRefFiltered.map((r, i) => (
                       <div key={r.rz_id} style={{
                         display: 'grid', gridTemplateColumns: cols,
-                        borderBottom: '1px solid #F1F5F9',
-                        background: i % 2 === 0 ? '#fff' : '#FAFBFC',
-                        fontSize: 13, color: '#1E293B',
+                        borderBottom: '1px solid var(--bg-page)',
+                        background: i % 2 === 0 ? 'var(--surface)' : '#FAFBFC',
+                        fontSize: 13, color: 'var(--ink)',
                       }}>
-                        <div style={{ ...cellStyle, fontFamily: 'monospace', fontSize: 12, color: '#059669', fontWeight: 600 }}>
+                        <div style={{ ...cellStyle, fontFamily: 'monospace', fontSize: 12, color: 'var(--emerald)', fontWeight: 600 }}>
                           {r.rz_id}
                         </div>
                         <div style={{ ...cellStyle }}>
@@ -532,18 +532,18 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
                         <div style={{ ...cellStyle, fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>
                           {r.commission_rz_id ?? <span style={{ color: 'var(--border)' }}>—</span>}
                         </div>
-                        <div style={{ ...cellStyle, color: r.commission_name ? 'var(--text-secondary)' : '#CBD5E1' }}>
+                        <div style={{ ...cellStyle, color: r.commission_name ? 'var(--text-secondary)' : 'var(--line-slate)' }}>
                           {r.commission_name ?? '—'}
                         </div>
-                        <div style={{ ...cellStyle, fontWeight: 600, color: r.commission_pct ? 'var(--text-primary)' : '#CBD5E1' }}>
+                        <div style={{ ...cellStyle, fontWeight: 600, color: r.commission_pct ? 'var(--text-primary)' : 'var(--line-slate)' }}>
                           {r.commission_pct != null ? `${r.commission_pct}%` : '—'}
                         </div>
-                        <div style={{ ...cellStyle, color: r.our_categories.length > 0 ? '#334155' : '#CBD5E1', flexWrap: 'wrap', gap: 4, paddingTop: 6, paddingBottom: 6 }}>
+                        <div style={{ ...cellStyle, color: r.our_categories.length > 0 ? '#334155' : 'var(--line-slate)', flexWrap: 'wrap', gap: 4, paddingTop: 6, paddingBottom: 6 }}>
                           {r.our_categories.length > 0
                             ? r.our_categories.map(name => (
                                 <span key={name} style={{
                                   display: 'inline-block', padding: '2px 7px',
-                                  background: 'var(--bg-success)', color: '#059669',
+                                  background: 'var(--bg-success)', color: 'var(--emerald)',
                                   borderRadius: 4, fontSize: 12, lineHeight: 1.5,
                                 }}>{name}</span>
                               ))

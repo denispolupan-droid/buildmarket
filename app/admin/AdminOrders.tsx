@@ -66,7 +66,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '9px 14px', marginBottom: '10px', borderRadius: '10px',
-            background: '#F5F3FF', border: '1.5px solid #DDD6FE',
+            background: 'var(--violet-bg)', border: '1.5px solid #DDD6FE',
             animation: 'awaiting-banner-pulse 3s ease-in-out infinite',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -74,7 +74,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
                 {awaitingCount} {awaitingCount === 1 ? 'замовлення очікує товар' : 'замовлень очікують товар'}
               </span>
-              <span style={{ fontSize: '12px', color: '#7C3AED' }}>— перевірте надходження товару</span>
+              <span style={{ fontSize: '12px', color: 'var(--violet)' }}>— перевірте надходження товару</span>
             </div>
             {isFiltered ? (
               <button
@@ -137,7 +137,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                 {others.map(s => (
                   <a key={s.value} href={hrefFor(s.value)}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '30px', padding: '0 12px', borderRadius: '8px', background: s.bg, color: s.color, fontSize: '13px', fontWeight: 700, textDecoration: 'none', border: `1px solid ${s.color}22` }}>
-                    {s.label} <span style={{ background: s.color, color: '#fff', borderRadius: '10px', padding: '0 6px', fontSize: '11px' }}>{statusCounts[s.value]}</span>
+                    {s.label} <span style={{ background: s.color, color: 'var(--surface)', borderRadius: '10px', padding: '0 6px', fontSize: '11px' }}>{statusCounts[s.value]}</span>
                   </a>
                 ))}
               </div>
@@ -153,7 +153,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
             // (ТТН створена, товар ще на складі); після приймання перевізником —
             // «Відправлено». На облік не впливає — лише мітка статусу.
             if (order.status === 'shipped' && !order.carrier_accepted_at) {
-              status = { ...status, label: 'До відправки', color: '#B45309', bg: '#FEF3C7' };
+              status = { ...status, label: 'До відправки', color: 'var(--color-warn)', bg: 'var(--amber-bg)' };
             }
             const date = new Date(order.created_at).toLocaleString('uk-UA', {
               day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -216,10 +216,10 @@ export default function AdminOrders(props: AdminOrdersProps) {
             const orderBadges = (
               <>
                 {(order.flags ?? []).includes('urgent') && (
-                  <span title="Терміново" style={{ ...rowBadge, color: '#B91C1C', background: '#FEE2E2', borderColor: 'var(--border-danger)' }}>⚡</span>
+                  <span title="Терміново" style={{ ...rowBadge, color: 'var(--danger-dark)', background: 'var(--danger-bg)', borderColor: 'var(--border-danger)' }}>⚡</span>
                 )}
                 {(order.flags ?? []).includes('problem') && (
-                  <span title="Проблемний" style={{ ...rowBadge, color: 'var(--color-warn)', background: '#FEF3C7', borderColor: 'var(--border-warn)' }}>⚠</span>
+                  <span title="Проблемний" style={{ ...rowBadge, color: 'var(--color-warn)', background: 'var(--amber-bg)', borderColor: 'var(--border-warn)' }}>⚠</span>
                 )}
                 {/* Замовлення відредагували в кабінеті МП, а наш склад лишився
                     старий: чіпати його автоматично не можна, поки висять резерв
@@ -228,27 +228,27 @@ export default function AdminOrders(props: AdminOrdersProps) {
                   const ch = (order.rozetka_data as { _items_changed?: { at: string; summary: string } } | null)?._items_changed;
                   return ch ? (
                     <span title={`Змінено в кабінеті Rozetka ${new Date(ch.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}: ${ch.summary}. Наш склад не змінювався — звірте резерв, ЗП постачальнику і ТТН.`}
-                      style={{ ...rowBadge, color: '#9A3412', background: '#FFF7ED', borderColor: '#FDBA74' }}>
+                      style={{ ...rowBadge, color: '#9A3412', background: 'var(--orange-bg)', borderColor: 'var(--orange-border)' }}>
                       ✎ змінено в МП
                     </span>
                   ) : null;
                 })()}
                 {order.mp_refund_status && (
-                  <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ ...rowBadge, color: '#B91C1C', background: '#FEE2E2', borderColor: 'var(--border-danger)' }}>↩ повернення</span>
+                  <span title={`Покупець відкрив повернення — ${order.mp_refund_status}`} style={{ ...rowBadge, color: 'var(--danger-dark)', background: 'var(--danger-bg)', borderColor: 'var(--border-danger)' }}>↩ повернення</span>
                 )}
                 {order.np_return_ref && (
-                  <span title={`Заявка на повернення в НП${order.np_return_number ? ` №${order.np_return_number}` : ''} — посилка їде назад на наше відділення`} style={{ ...rowBadge, color: '#9A3412', background: '#FFF7ED', borderColor: '#FDBA74' }}>↩ НП</span>
+                  <span title={`Заявка на повернення в НП${order.np_return_number ? ` №${order.np_return_number}` : ''} — посилка їде назад на наше відділення`} style={{ ...rowBadge, color: '#9A3412', background: 'var(--orange-bg)', borderColor: 'var(--orange-border)' }}>↩ НП</span>
                 )}
                 {isReturnPending(order) && (() => {
                   const rs = returnState(order);
                   const s = rs === 'received'
-                    ? { t: '↩ забрано', c: '#15803D', bg: '#F0FDF4', b: '#BBF7D0', title: 'Повернення забрано з пошти' }
+                    ? { t: '↩ забрано', c: 'var(--color-success)', bg: 'var(--bg-success)', b: 'var(--ok-border)', title: 'Повернення забрано з пошти' }
                     : rs === 'abandoned'
-                    ? { t: '↩ залишено', c: '#64748B', bg: '#F8FAFC', b: '#E2E8F0', title: 'Вирішено не забирати (повернення дорожче за товар)' }
+                    ? { t: '↩ залишено', c: 'var(--text-soft)', bg: '#F8FAFC', b: '#E2E8F0', title: 'Вирішено не забирати (повернення дорожче за товар)' }
                     // «Зараз» беремо з руху ЗВОРОТНОЇ накладної, якщо він відомий:
                     // статус старої після відмови застигає і про поточне місце
                     // нічого не каже.
-                    : { t: '↩ забрати?', c: '#C2410C', bg: '#FFF7ED', b: '#FDBA74', title: `Замовлення скасоване, але посилку вже прийняла ${isRozetkaPoint ? 'Rozetka Доставка' : 'НП'} — вона їде назад${
+                    : { t: '↩ забрати?', c: 'var(--orange)', bg: 'var(--orange-bg)', b: 'var(--orange-border)', title: `Замовлення скасоване, але посилку вже прийняла ${isRozetkaPoint ? 'Rozetka Доставка' : 'НП'} — вона їде назад${
                         order.np_return_tracking ? ` (зараз: ${returnTrackingLabel(order.np_return_tracking, new Date())})`
                         : order.carrier_status_text ? ` (зараз: «${order.carrier_status_text}»)` : ''
                       }. Відкрийте замовлення і вирішіть: забрати з пошти чи залишити.` };
@@ -264,7 +264,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                 )}
                 {isPromCheapDeliv && (
                   <span title={`Замовлення за акцією Prom «Дешева доставка»: покупець платить за доставку символічно, організацію оплачуємо ми${promDeliveryFee > 0 ? ` — ${promDeliveryFee} ₴ за це замовлення` : ''}. Prom списує збір після вручення посилки; невикуп не списується. Збір проводиться автоматично при доставці.`}
-                    style={{ ...rowBadge, color: '#7C2D12', background: '#FDBA74', borderColor: '#FB923C' }}>
+                    style={{ ...rowBadge, color: '#7C2D12', background: 'var(--orange-border)', borderColor: '#FB923C' }}>
                     ДЕШ. ДОСТ.
                   </span>
                 )}
@@ -283,7 +283,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
               return (
                 <span
                   title={`Одна посилка на ${group.length} замовлення — спільна ТТН ${order.tracking_number}. Разом із №${others.join(', №')}. Відвантажувати треба всі, інакше частина залишиться висіти.`}
-                  style={{ ...rowBadge, marginTop: '2px', color: '#5B21B6', background: '#F5F3FF', borderColor: '#C4B5FD' }}>
+                  style={{ ...rowBadge, marginTop: '2px', color: '#5B21B6', background: 'var(--violet-bg)', borderColor: '#C4B5FD' }}>
                   ⛓ №{others.join(', №')}
                 </span>
               );
@@ -376,9 +376,9 @@ export default function AdminOrders(props: AdminOrdersProps) {
             // Рамка по периметру насиченим кольором кричала на весь список,
             // тож акцент лише зліва, а контур — світлий.
             const rowTone = flags.includes('urgent')
-              ? { bg: '#FEF6F6', bgOpen: '#FDEDED', bar: '#DC2626', edge: '#FADBDB' }
+              ? { bg: '#FEF6F6', bgOpen: '#FDEDED', bar: 'var(--color-danger)', edge: '#FADBDB' }
               : flags.includes('problem')
-                ? { bg: '#FFFCF3', bgOpen: '#FEF7E6', bar: '#F59E0B', edge: '#FBE7BF' }
+                ? { bg: '#FFFCF3', bgOpen: '#FEF7E6', bar: 'var(--amber)', edge: '#FBE7BF' }
                 : isUnpaidInvoice
                   ? { bg: '#FFFBF0', bgOpen: '#FEF9EC', bar: '#FCD34D', edge: '#FDE8B0' }
                   : null;
@@ -390,7 +390,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
             // його легко було відправити на збірку разом з усіма. Тепер вибір —
             // бірюзовий контур і смуга зліва, а заливка лишається тоном рядка.
             const pickedBg = rowTone ? rowTone.bgOpen : 'var(--brand-teal-light)';
-            const rowBg = isFlashing ? '#F0FDF4' : isPicked ? pickedBg : rowTone?.bg ?? 'var(--bg-card)';
+            const rowBg = isFlashing ? 'var(--bg-success)' : isPicked ? pickedBg : rowTone?.bg ?? 'var(--bg-card)';
 
             return (
               <div key={order.id} id={`order-${order.id}`} className={`oc-sheet-row${isExpanded ? ' is-open' : ''}${isPicked ? ' is-picked' : ''}`} style={{
@@ -400,7 +400,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                 border: `1px solid ${isFlashing ? 'var(--border-success)' : isPicked ? 'var(--brand-teal)' : isExpanded ? '#D8DEE7' : rowTone?.edge ?? 'var(--border-light)'}`,
                 borderLeft: isPicked ? '4px solid var(--brand-teal)' : rowTone ? `4px solid ${rowTone.bar}` : undefined,
                 borderRadius: '14px', overflow: 'hidden',
-                boxShadow: isExpanded ? '0 2px 4px rgba(16,24,40,0.04), 0 24px 48px -16px rgba(16,24,40,0.28)' : isFlashing ? '0 0 0 3px #BBF7D0' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
+                boxShadow: isExpanded ? '0 2px 4px rgba(16,24,40,0.04), 0 24px 48px -16px rgba(16,24,40,0.28)' : isFlashing ? '0 0 0 3px var(--ok-border)' : isPicked ? '0 2px 10px rgba(61,191,184,0.25)' : '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
                 opacity: expandedId && !isExpanded ? 0.35 : 1,
                 transition: 'box-shadow 0.3s, border-color 0.3s, opacity 0.15s, background 0.3s',
                 // Наведення — темніший відтінок того ж тону (CSS читає змінну), а не нейтральний
@@ -417,7 +417,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                   {/* Банер відкритого повернення з маркетплейсу (orders.mp_refund_status,
                       ставить/гасить cron-вотчер marketplace-returns-watch) */}
                   {order.mp_refund_status && (
-                    <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-danger)', padding: '10px 16px', fontSize: '13px', color: '#B91C1C', lineHeight: 1.5 }}>
+                    <div style={{ borderTop: '1px solid var(--border-light)', background: 'var(--bg-danger)', padding: '10px 16px', fontSize: '13px', color: 'var(--danger-dark)', lineHeight: 1.5 }}>
                       <span style={{ fontWeight: 700 }}>↩ Покупець відкрив повернення на маркетплейсі — статус: {order.mp_refund_status}.</span>{' '}
                       <span>Прийміть товар і оформіть «↩ Повернення» в цій картці — це сторнує виручку, COGS і комісію.</span>
                     </div>
@@ -428,7 +428,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                   {isReturnPending(order) && (() => {
                     const rs = returnState(order);
                     return (
-                      <div style={{ borderTop: '1px solid var(--border-light)', background: rs ? 'var(--bg-soft)' : '#FFF7ED', padding: '10px 16px', fontSize: '13px', color: rs ? 'var(--text-secondary)' : '#9A3412', lineHeight: 1.6 }}>
+                      <div style={{ borderTop: '1px solid var(--border-light)', background: rs ? 'var(--bg-soft)' : 'var(--orange-bg)', padding: '10px 16px', fontSize: '13px', color: rs ? 'var(--text-secondary)' : '#9A3412', lineHeight: 1.6 }}>
                         <span style={{ fontWeight: 700 }}>
                           {order.status === 'cancelled'
                             ? '↩ Замовлення скасоване, а посилка вже в дорозі назад'
@@ -450,7 +450,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                               <Truck size={13} style={{ flexShrink: 0 }} />
                               <span>Зворотна ТТН {rt.ttn} · {returnTrackingLabel(rt, new Date())}</span>
                               {hot && (
-                                <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px', color: '#B91C1C', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px', color: 'var(--danger-dark)', background: 'var(--bg-danger)', border: '1px solid var(--border-danger)' }}>
                                   {days < 0 ? 'зберігання вже платне' : days === 0 ? 'останній день' : `${days} дн до платного`}
                                 </span>
                               )}
@@ -461,7 +461,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                           {rs === null && <>
                             <span>Посилка повертається {isRozetkaPoint ? 'у наше відділення відправлення' : 'на відділення'}. Вирішіть:</span>
                             <button onClick={() => setReturnState(order.id, 'received')}
-                              style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid #BBF7D0', background: 'var(--bg-success)', color: 'var(--color-success)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
+                              style={{ height: '30px', padding: '0 12px', borderRadius: '7px', border: '1.5px solid var(--ok-border)', background: 'var(--bg-success)', color: 'var(--color-success)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
                               ✓ Забрав {isRozetkaPoint ? 'посилку' : 'з пошти'}
                             </button>
                             <button onClick={() => setReturnState(order.id, 'abandoned')}
@@ -499,7 +499,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                         {!paymentConfirmed && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
-                            color: 'var(--color-warn)', background: '#FEF3C7' }}>
+                            color: 'var(--color-warn)', background: 'var(--amber-bg)' }}>
                             <CreditCard size={12} />{isCod ? 'Накладений платіж' : 'Очікує оплату'}
                           </span>
                         )}
@@ -525,7 +525,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                         </span>
                         {order.promo_code && (
                           <span title="Знижку вже враховано в сумі замовлення"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', whiteSpace: 'nowrap' }}>
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', height: '26px', padding: '0 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--color-warn)', background: 'var(--amber-bg)', whiteSpace: 'nowrap' }}>
                             <Tag size={12} /> {order.promo_code} · −{fmtMoney(Number(order.promo_discount ?? 0))} ₴
                           </span>
                         )}
@@ -542,16 +542,16 @@ export default function AdminOrders(props: AdminOrdersProps) {
                       return (
                         <div className="oc-confirm-block" style={{ width: '230px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '6px' }}>
                           <button onClick={() => confirmOrder(order.id)} disabled={busy}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '34px', padding: '0 18px', borderRadius: '9px', border: 'none', background: busy ? 'var(--text-muted)' : 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', height: '34px', padding: '0 18px', borderRadius: '9px', border: 'none', background: busy ? 'var(--text-muted)' : 'var(--navy)', color: 'var(--surface)', fontSize: '14px', fontWeight: 600, cursor: busy ? 'wait' : 'pointer', boxShadow: '0 1px 2px rgba(30,58,95,0.35)', whiteSpace: 'nowrap' }}>
                             {busy ? 'Обробка…' : <><Check size={17} /> Підтвердити замовлення</>}
                           </button>
                           {confirmErr && (
-                            <div style={{ maxWidth: '300px', padding: '8px 10px', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '8px', textAlign: 'left' }}>
+                            <div style={{ maxWidth: '300px', padding: '8px 10px', background: 'var(--bg-danger)', border: '1px solid var(--danger-border)', borderRadius: '8px', textAlign: 'left' }}>
                               <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-danger)', marginBottom: confirmErr.insufficient?.length ? '6px' : 0 }}>⚠ {confirmErr.error}</div>
                               {confirmErr.insufficient?.map(item => {
                                 const name = order.items.find(i => i.sku === item.sku)?.name;
                                 return (
-                                  <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid #FECACA' }}>
+                                  <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '2px 0', borderTop: '1px solid var(--danger-border)' }}>
                                     <span style={{ color: '#7F1D1D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{name ?? item.sku}</span>
                                     <span style={{ color: 'var(--color-danger)', fontWeight: 700, flexShrink: 0 }}>{item.available} / {item.requested} шт</span>
                                   </div>
@@ -695,7 +695,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                 height: '36px', width: '36px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 border: `1.5px solid ${p === currentPage ? '#162035' : 'var(--border)'}`,
                 background: p === currentPage ? 'linear-gradient(135deg, #162035 0%, var(--navy) 100%)' : 'var(--bg-card)',
-                color: p === currentPage ? '#fff' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                color: p === currentPage ? 'var(--surface)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
               }}>{p}</a>
             ))}
           {currentPage < totalPages && (
@@ -729,8 +729,8 @@ export default function AdminOrders(props: AdminOrdersProps) {
         ];
         const ord = orders.find(o => o.id === rozCancelFor);
         return (
-          <Modal open onClose={() => setRozCancelFor(null)} width={420} padding={0} dismissible={false} aria-label="Скасування замовлення Rozetka" style={{ background: '#fff' }}>
-            <div style={{ background: '#fff', padding: '24px', width: '100%' }}>
+          <Modal open onClose={() => setRozCancelFor(null)} width={420} padding={0} dismissible={false} aria-label="Скасування замовлення Rozetka" style={{ background: 'var(--surface)' }}>
+            <div style={{ background: 'var(--surface)', padding: '24px', width: '100%' }}>
               <div style={{ fontWeight: 800, fontSize: '16px', marginBottom: '4px', color: 'var(--color-danger)' }}>Скасування замовлення Rozetka</div>
               <div style={{ fontSize: '12.5px', color: 'var(--text-gray)', marginBottom: '16px', lineHeight: 1.5 }}>
                 #{ord?.order_number} — Rozetka вимагає вказати причину. Її побачить покупець, і вона піде в статистику кабінету.
@@ -740,7 +740,7 @@ export default function AdminOrders(props: AdminOrdersProps) {
                   <button key={r.id}
                     onClick={() => { const id = rozCancelFor; setRozCancelFor(null); changeStatus(id, 'cancelled', r.id); }}
                     style={{ height: '38px', padding: '0 14px', textAlign: 'left', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.background = '#FEF2F2'; }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-danger)'; e.currentTarget.style.background = '#FEF2F2'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-card)'; }}>
                     {r.label}
                   </button>

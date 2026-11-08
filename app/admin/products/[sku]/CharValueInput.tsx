@@ -83,10 +83,10 @@ export default function CharValueInput({ label, value, onChange, style }: Props)
               style={{
                 padding: '10px 14px', cursor: 'pointer', fontSize: '14px',
                 borderBottom: i < filtered.length - 1 ? '1px solid var(--border-light)' : 'none',
-                background: s === value ? 'var(--brand-blue-light)' : '#fff',
+                background: s === value ? 'var(--brand-blue-light)' : 'var(--surface)',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
-              onMouseLeave={e => (e.currentTarget.style.background = s === value ? '#EFF6FF' : '#fff')}
+              onMouseLeave={e => (e.currentTarget.style.background = s === value ? '#EFF6FF' : 'var(--surface)')}
             >
               {s}
             </div>

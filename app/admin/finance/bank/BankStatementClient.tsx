@@ -101,9 +101,9 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
   const readyToApply   = txns.filter(t => t.contractId && !t.saved).length;
 
   const CONF_CFG = {
-    auto:      { label: 'Авто',        color: '#15803D', bg: '#F0FDF4', icon: Zap },
-    suggested: { label: 'Пропозиція',  color: '#B45309', bg: '#FEF3C7', icon: ChevronDown },
-    none:      { label: 'Не знайдено', color: '#94A3B8', bg: '#F8FAFC', icon: AlertCircle },
+    auto:      { label: 'Авто',        color: 'var(--color-success)', bg: 'var(--bg-success)', icon: Zap },
+    suggested: { label: 'Пропозиція',  color: 'var(--color-warn)', bg: 'var(--amber-bg)', icon: ChevronDown },
+    none:      { label: 'Не знайдено', color: 'var(--ink-muted)', bg: '#F8FAFC', icon: AlertCircle },
   };
 
   return (
@@ -119,10 +119,10 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
             border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`,
             borderRadius: '16px', padding: '64px 32px',
             textAlign: 'center', cursor: 'pointer',
-            background: dragging ? '#EFF4FF' : 'var(--bg-soft)',
+            background: dragging ? 'var(--blue-bg)' : 'var(--bg-soft)',
             transition: 'all 0.15s',
           }}>
-          <Upload size={40} color={dragging ? '#1E3A5F' : '#94A3B8'} style={{ marginBottom: '16px' }} />
+          <Upload size={40} color={dragging ? 'var(--navy)' : 'var(--ink-muted)'} style={{ marginBottom: '16px' }} />
           <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
             Перетягніть CSV файл сюди
           </div>
@@ -138,7 +138,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
       )}
 
       {parseErr && (
-        <div style={{ padding: '14px 16px', background: 'var(--bg-danger)', border: '1px solid #FECACA', borderRadius: '10px', color: 'var(--color-danger)', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' }}>
+        <div style={{ padding: '14px 16px', background: 'var(--bg-danger)', border: '1px solid var(--danger-border)', borderRadius: '10px', color: 'var(--color-danger)', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' }}>
           <AlertCircle size={16} /> {parseErr}
         </div>
       )}
@@ -169,7 +169,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
               </button>
               {readyToApply > 0 && (
                 <button onClick={applyAll} disabled={applying}
-                  style={{ height: '34px', padding: '0 18px', borderRadius: '999px', border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: applying ? 0.7 : 1 }}>
+                  style={{ height: '34px', padding: '0 18px', borderRadius: '999px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: applying ? 0.7 : 1 }}>
                   {applying
                     ? 'Застосовуємо…'
                     : `Застосувати всі (${readyToApply})`}
@@ -187,7 +187,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
               return (
                 <div key={txn.id} style={{
                   background: txn.saved ? 'var(--bg-success)' : 'var(--bg-card)',
-                  border: `1px solid ${txn.saved ? 'var(--border-success)' : txn.error ? '#FECACA' : 'var(--border)'}`,
+                  border: `1px solid ${txn.saved ? 'var(--border-success)' : txn.error ? 'var(--danger-border)' : 'var(--border)'}`,
                   borderRadius: '10px', padding: '12px 16px',
                   display: 'grid', gridTemplateColumns: '110px 1fr auto auto',
                   gap: '12px', alignItems: 'center',
@@ -254,7 +254,7 @@ export default function BankStatementClient({ contracts }: { contracts: Contract
                     <button
                       onClick={() => saveOne(txn)}
                       disabled={!txn.contractId || txn.saving}
-                      style={{ height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: txn.contractId ? 'var(--navy)' : 'var(--border)', color: txn.contractId ? '#fff' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                      style={{ height: '32px', padding: '0 14px', borderRadius: '8px', border: 'none', background: txn.contractId ? 'var(--navy)' : 'var(--border)', color: txn.contractId ? 'var(--surface)' : 'var(--text-muted)', fontSize: '12px', fontWeight: 700, cursor: txn.contractId ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
                       {txn.saving ? '...' : '✓ OK'}
                     </button>
                   )}

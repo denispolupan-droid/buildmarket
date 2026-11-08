@@ -43,7 +43,7 @@ const LC_ICONS: Record<string, string> = {
   delivery: '🚚', loading: '📦', customs: '🏛', packaging: '📦', broker: '🏛', other: '➕',
 };
 
-function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href, cancelled = false, children: kids }: {
+function TimelineNode({ icon, title, sub, amount, amountColor = 'var(--ink-2)', href, cancelled = false, children: kids }: {
   icon: string; title: string; sub?: string; amount?: string; amountColor?: string;
   href?: string; cancelled?: boolean; children?: React.ReactNode;
 }) {
@@ -51,7 +51,7 @@ function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href,
     <div style={{ display: 'flex', gap: '14px', position: 'relative', opacity: cancelled ? 0.55 : 1 }}>
       {/* Line */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '32px' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: cancelled ? '#F3F4F6' : 'var(--bg-soft)', border: `2px solid ${cancelled ? '#D1D5DB' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: cancelled ? 'var(--surface-muted)' : 'var(--bg-soft)', border: `2px solid ${cancelled ? 'var(--line-strong)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
           {icon}
         </div>
         {kids && <div style={{ width: '2px', flex: 1, background: 'var(--border)', marginTop: '4px', minHeight: '20px' }} />}
@@ -67,7 +67,7 @@ function TimelineNode({ icon, title, sub, amount, amountColor = '#374151', href,
             <span style={{ fontSize: '13px', fontWeight: 600, color: cancelled ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: cancelled ? 'line-through' : 'none' }}>{title}</span>
           )}
           {cancelled && (
-            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-danger)', background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-danger)', background: 'var(--danger-bg)', padding: '1px 6px', borderRadius: '4px' }}>
               Скасовано
             </span>
           )}
@@ -95,7 +95,7 @@ function PoEvents({ data }: { data: ChainData }) {
               title={isReversal ? 'Скасування оплати' : 'Оплата постачальнику'}
               sub={`${fmtDate(p.business_date)} · ${ACCOUNT_LABELS[p.account_type] ?? p.account_type}`}
               amount={isReversal ? `+${fmt(Math.abs(p.amount))} ₴` : `−${fmt(Math.abs(p.amount))} ₴`}
-              amountColor={isReversal ? '#B45309' : '#DC2626'}
+              amountColor={isReversal ? 'var(--color-warn)' : 'var(--color-danger)'}
               cancelled={isReversal}
             />
           );
@@ -124,7 +124,7 @@ function PoEvents({ data }: { data: ChainData }) {
               {lines.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0' }}>
                   {lines.map(l => (
-                    <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? '#EF4444' : 'var(--color-success)', display: 'flex', gap: '6px' }}>
+                    <div key={l.sku} style={{ fontSize: '11px', color: l.qty < 0 ? 'var(--danger-bright)' : 'var(--color-success)', display: 'flex', gap: '6px' }}>
                       <span style={{ fontFamily: 'monospace' }}>{l.sku}</span>
                       <span>{l.qty > 0 ? `+${l.qty}` : l.qty} шт</span>
                     </div>
@@ -160,7 +160,7 @@ function PoEvents({ data }: { data: ChainData }) {
               />
             ))}
             {lcTotal > 0 && (
-              <div style={{ marginTop: '6px', padding: '6px 10px', background: '#F5F3FF', borderRadius: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+              <div style={{ marginTop: '6px', padding: '6px 10px', background: 'var(--violet-bg)', borderRadius: '7px', display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                 <span style={{ color: '#6B21A8', fontWeight: 600 }}>Разом з витратами:</span>
                 <span style={{ color: '#6B21A8', fontWeight: 800 }}>{fmt(Number(child.total_cost))} ₴</span>
               </div>
@@ -203,7 +203,7 @@ export default function DocChain({ poId }: { poId: string }) {
       title={`${data.po.doc_number} — Замовлення постачальнику`}
       sub={`${fmtDate(data.po.doc_date)}${data.po.notes ? ` · ${data.po.notes}` : ''}${data.po.status === 'cancelled' ? ' · Скасовано' : ''}`}
       amount={data.po.total_cost ? `${fmt(Number(data.po.total_cost))} ₴` : undefined}
-      amountColor={data.po.status === 'cancelled' ? '#9CA3AF' : '#374151'}
+      amountColor={data.po.status === 'cancelled' ? '#9CA3AF' : 'var(--ink-2)'}
       href={data.po.status !== 'cancelled' ? `/admin/procurement/${data.po.id}` : undefined}
       cancelled={data.po.status === 'cancelled'}
     >
@@ -216,7 +216,7 @@ export default function DocChain({ poId }: { poId: string }) {
       icon="📤" title={`${d.doc_number} — Продаж`}
       sub={`${fmtDate(d.doc_date)}${d.status && SALE_STATUS[d.status] ? ` · ${SALE_STATUS[d.status]}` : ''}`}
       amount={d.total_amount ? `${fmt(Number(d.total_amount))} ₴` : undefined}
-      amountColor={d.status === 'cancelled' ? '#9CA3AF' : '#15803D'}
+      amountColor={d.status === 'cancelled' ? '#9CA3AF' : 'var(--color-success)'}
       cancelled={d.status === 'cancelled'}
       href={d.order_id ? `/admin?expand=${d.order_id}` : `/admin/accounting/documents/${d.id}`}
     />

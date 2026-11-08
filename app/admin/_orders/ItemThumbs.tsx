@@ -21,7 +21,7 @@ export function ItemThumbs({ items, thumbs, size, max, pad, className, style }: 
             style={{
               width: `${size}px`, height: `${size}px`, flexShrink: 0, position: 'relative',
               borderRadius: `${Math.round(size / 5)}px`,
-              border: '1px solid var(--border-light)', background: img ? `#fff url("${img}") center/cover no-repeat` : 'var(--bg-soft)',
+              border: '1px solid var(--border-light)', background: img ? `var(--surface) url("${img}") center/cover no-repeat` : 'var(--bg-soft)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
             {!img && <Package size={Math.round(size * 0.36)} color="var(--border)" />}
@@ -30,7 +30,7 @@ export function ItemThumbs({ items, thumbs, size, max, pad, className, style }: 
                 style={{
                   position: 'absolute', right: '-5px', bottom: '-5px', minWidth: '15px', height: '15px',
                   padding: '0 3px', borderRadius: '8px', boxSizing: 'border-box',
-                  background: 'var(--brand-blue)', color: '#fff', border: '1.5px solid var(--bg-card)',
+                  background: 'var(--brand-blue)', color: 'var(--surface)', border: '1.5px solid var(--bg-card)',
                   fontSize: '9.5px', fontWeight: 800, lineHeight: '12px', textAlign: 'center',
                 }}>
                 {positions}

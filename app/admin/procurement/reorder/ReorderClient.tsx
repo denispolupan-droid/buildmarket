@@ -57,13 +57,13 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
     <div>
       {/* Toolbar */}
       {selected.size > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '10px 14px', background: '#EFF4FF', border: '1px solid #BFDBFE', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '10px 14px', background: 'var(--blue-bg)', border: '1px solid var(--blue-border)', borderRadius: '10px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>
             Вибрано: {selected.size} позицій
           </span>
           <button
             onClick={openPO}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
           >
             <ShoppingCart size={13} /> Створити ЗП
           </button>
@@ -107,7 +107,7 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
                 borderBottom: !isLast ? '1px solid var(--border-light)' : 'none',
                 background: isSel ? 'var(--brand-blue-light)' : 'transparent',
                 cursor: 'pointer',
-                borderLeft: `3px solid ${row.qty_total === 0 ? 'var(--color-danger)' : '#F59E0B'}`,
+                borderLeft: `3px solid ${row.qty_total === 0 ? 'var(--color-danger)' : 'var(--amber)'}`,
               }}
               onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-soft)'; }}
               onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
@@ -131,7 +131,7 @@ export default function ReorderClient({ rows }: { rows: ReorderRow[] }) {
                 </div>
                 {/* Mini progress bar */}
                 <div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: row.qty_total === 0 ? 'var(--color-danger)' : '#F59E0B', borderRadius: '2px' }} />
+                  <div style={{ height: '100%', width: `${pct}%`, background: row.qty_total === 0 ? 'var(--color-danger)' : 'var(--amber)', borderRadius: '2px' }} />
                 </div>
               </div>
 

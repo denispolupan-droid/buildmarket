@@ -86,7 +86,7 @@ export default function PlanCard({ plan, sales: sales0 }: {
             style={{ flex: 1, height: '34px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '14px', outline: 'none', fontVariantNumeric: 'tabular-nums' }}
           />
           <button onClick={save} disabled={saving}
-            style={{ height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
+            style={{ height: '34px', padding: '0 14px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
             {saving ? '…' : 'Зберегти'}
           </button>
         </div>

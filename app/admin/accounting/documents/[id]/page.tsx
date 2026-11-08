@@ -30,9 +30,9 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   debt_adjustment: 'Коригування боргу',
 };
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  draft:     { label: 'Чернетка',  color: '#64748B', bg: '#F8FAFC' },
-  confirmed: { label: 'Проведено', color: '#15803D', bg: '#F0FDF4' },
-  cancelled: { label: 'Скасовано', color: '#DC2626', bg: '#FEF2F2' },
+  draft:     { label: 'Чернетка',  color: 'var(--text-soft)', bg: '#F8FAFC' },
+  confirmed: { label: 'Проведено', color: 'var(--color-success)', bg: 'var(--bg-success)' },
+  cancelled: { label: 'Скасовано', color: 'var(--color-danger)', bg: '#FEF2F2' },
 };
 
 export default async function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -171,7 +171,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         )}
         {['return_in', 'supplier_return', 'return_out'].includes(doc.doc_type) && (
           <Link href={`/admin/finance/returns?id=${id}`}
-            style={{ fontSize: '12px', color: 'var(--color-warn)', textDecoration: 'none', background: 'var(--bg-warn)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #FDE68A' }}>
+            style={{ fontSize: '12px', color: 'var(--color-warn)', textDecoration: 'none', background: 'var(--bg-warn)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid var(--amber-border)' }}>
             ↩ Журнал повернень
           </Link>
         )}
@@ -182,13 +182,13 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 ? `/admin/procurement/${doc.parent_doc_id}`
                 : `/admin/accounting/documents/${doc.parent_doc_id}`
             }
-            style={{ fontSize: '12px', color: 'var(--navy)', textDecoration: 'none', background: '#EFF4FF', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
+            style={{ fontSize: '12px', color: 'var(--navy)', textDecoration: 'none', background: 'var(--blue-bg)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
             ↑ {['receipt','stock_in'].includes(doc.doc_type) ? 'Замовлення' : 'Підстава'}
           </Link>
         )}
         {(childDocs ?? []).map((child: { id: string; doc_number: string; doc_type: string; status: string }) => (
           <Link key={child.id} href={`/admin/accounting/documents/${child.id}`}
-            style={{ fontSize: '12px', color: 'var(--color-success)', textDecoration: 'none', background: 'var(--bg-success)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid #BBF7D0' }}>
+            style={{ fontSize: '12px', color: 'var(--color-success)', textDecoration: 'none', background: 'var(--bg-success)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600, border: '1px solid var(--ok-border)' }}>
             ↓ {child.doc_number}
           </Link>
         ))}
@@ -247,8 +247,8 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {log ? `${TYPE_LABEL[log.type] ?? log.type}: ${log.type === 'increase_pct' ? (log.value >= 0 ? `+${log.value}%` : `${log.value}%`) : log.type === 'multiply_cost' ? `×${log.value}` : log.type === 'supplier_discount' ? `−${log.value}%` : `${log.value} ₴`}` : 'Переоцінка'}
               </span>
-              {log && <span style={{ fontSize: 12, color: 'var(--text-gray)', background: '#F3F4F6', padding: '2px 8px', borderRadius: 5 }}>{TARGET_LABEL[target] ?? target}</span>}
-              {log?.is_promo && <span style={{ fontSize: 12, fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', padding: '2px 8px', borderRadius: 5 }}>🏷 Акція</span>}
+              {log && <span style={{ fontSize: 12, color: 'var(--text-gray)', background: 'var(--surface-muted)', padding: '2px 8px', borderRadius: 5 }}>{TARGET_LABEL[target] ?? target}</span>}
+              {log?.is_promo && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--orange)', background: 'var(--orange-bg)', border: '1px solid var(--orange-border)', padding: '2px 8px', borderRadius: 5 }}>🏷 Акція</span>}
               {log?.revert_at && <span style={{ fontSize: 12, color: 'var(--text-gray)' }}>↩ Відкат: {new Date(log.revert_at).toLocaleDateString('uk-UA')}</span>}
               {log?.reverted_at && <span style={{ fontSize: 12, color: 'var(--text-gray-light)' }}>✓ Скасовано {new Date(log.reverted_at).toLocaleDateString('uk-UA')}</span>}
               <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-gray)' }}>{log?.count ?? snapshot.length} позицій</span>
@@ -313,14 +313,14 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
       <div className="adm-scroll-x" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Товари</span>
-          {hasLandedCost && <span style={{ fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#F5F3FF', padding: '2px 10px', borderRadius: '20px' }}>З урахуванням Landed Cost</span>}
+          {hasLandedCost && <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--violet)', background: 'var(--violet-bg)', padding: '2px 10px', borderRadius: '20px' }}>З урахуванням Landed Cost</span>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: hasLandedCost ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '7px 16px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', columnGap: '16px' }}>
           <span>Артикул</span><span>Найменування</span><span style={{ textAlign: 'right' }}>К-сть</span>
           {hasLandedCost ? (
             <>
               <span style={{ textAlign: 'right' }}>Ціна до</span>
-              <span style={{ textAlign: 'center', color: '#7C3AED' }}>+LC</span>
+              <span style={{ textAlign: 'center', color: 'var(--violet)' }}>+LC</span>
               <span style={{ textAlign: 'right' }}>Ціна після</span>
               <span style={{ textAlign: 'right' }}>Сума</span>
             </>
@@ -345,7 +345,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {nameMap.get(line.sku) || line.sku}
                   {line.is_bonus && (
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: 'var(--amber-bg)', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
                   )}
                 </div>
               </div>
@@ -355,7 +355,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                   <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>{fmt(originalPrice)} ₴</span>
                   <div style={{ textAlign: 'center' }}>
                     {lcAdded > 0
-                      ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span>
+                      ? <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--violet)', background: 'var(--violet-bg)', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span>
                       : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}
                   </div>
                   <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(finalPrice)} ₴</span>
@@ -375,7 +375,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
             <>
               <span style={{ gridColumn: '1/4', color: 'var(--text-primary)' }}>Всього</span>
               <span style={{ textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 400, fontSize: '12px' }}>{fmt(totalCost)} ₴</span>
-              <span style={{ textAlign: 'center', fontSize: '12px', fontWeight: 700, color: '#7C3AED' }}>+{fmt(totalLandedCost)} ₴</span>
+              <span style={{ textAlign: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--violet)' }}>+{fmt(totalLandedCost)} ₴</span>
               <span style={{ textAlign: 'right', color: 'var(--text-primary)' }}>{fmt(totalAfterLC)} ₴</span>
               <span style={{ textAlign: 'right' }}>{fmt(totalAfterLC)} ₴</span>
             </>
@@ -401,7 +401,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{lc.description ?? lc.cost_type}</span>
                 {lc.distributed && <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--color-success)', fontWeight: 600 }}>✓ Розподілено</span>}
               </div>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#7C3AED' }}>+{fmt(lc.amount)} ₴</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--violet)' }}>+{fmt(lc.amount)} ₴</span>
             </div>
           ))}
           <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800 }}>

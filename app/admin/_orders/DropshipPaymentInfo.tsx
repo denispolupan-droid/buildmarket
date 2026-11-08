@@ -15,7 +15,7 @@ export function DropshipPaymentInfo({ order }: { order: Order }) {
   const isCod = order.payment_type === 'cod';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-      <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: '#DCFCE7', color: 'var(--color-success)', border: '1px solid var(--border-success)' }}>
+      <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: 'var(--ok-bg)', color: 'var(--color-success)', border: '1px solid var(--border-success)' }}>
         <CreditCard size={12} /> ✓ Оплачено з балансу партнера {fmt(paid)} ₴
       </div>
       <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.45 }}>

@@ -127,7 +127,7 @@ export default async function TrialBalancePage({ searchParams }: { searchParams:
           <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>По</label>
           <input type="date" name="to" defaultValue={to} style={{ height: '34px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', background: 'var(--bg-soft)', color: 'var(--text-primary)' }} />
         </div>
-        <button type="submit" style={{ height: '34px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+        <button type="submit" style={{ height: '34px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
           Сформувати
         </button>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 'auto' }}>

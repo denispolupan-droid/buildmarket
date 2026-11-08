@@ -22,18 +22,18 @@ const inputStyle: React.CSSProperties = {
   height: '36px', padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px',
   outline: 'none', color: 'var(--text-primary)', background: 'var(--bg-soft)', width: '100%', boxSizing: 'border-box',
 };
-const btnPrimary: React.CSSProperties = { height: '36px', padding: '0 16px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
+const btnPrimary: React.CSSProperties = { height: '36px', padding: '0 16px', borderRadius: '9px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
 const btnGhost: React.CSSProperties = { height: '32px', padding: '0 12px', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' };
 
 /** Сальдо словами: клієнт «+» = винен нам; постачальник «−» = ми винні; партнер — баланс кабінету. */
 function balanceText(account: DebtAccount, b: number, cabinet?: number): { text: string; color: string } {
   if (account === 'partner') {
     const c = cabinet ?? 0;
-    return Math.abs(c) < 0.005 ? { text: 'баланс 0', color: 'var(--text-muted)' } : { text: `баланс ${fmt(c)} ₴`, color: c > 0 ? '#15803D' : '#DC2626' };
+    return Math.abs(c) < 0.005 ? { text: 'баланс 0', color: 'var(--text-muted)' } : { text: `баланс ${fmt(c)} ₴`, color: c > 0 ? 'var(--color-success)' : 'var(--color-danger)' };
   }
   if (Math.abs(b) < 0.005) return { text: 'сальдо 0', color: 'var(--text-muted)' };
-  if (account === 'customer') return b > 0 ? { text: `винен нам ${fmt(b)} ₴`, color: '#DC2626' } : { text: `аванс ${fmt(-b)} ₴`, color: '#15803D' };
-  return b < 0 ? { text: `ми винні ${fmt(-b)} ₴`, color: '#DC2626' } : { text: `переплата ${fmt(b)} ₴`, color: '#15803D' };
+  if (account === 'customer') return b > 0 ? { text: `винен нам ${fmt(b)} ₴`, color: 'var(--color-danger)' } : { text: `аванс ${fmt(-b)} ₴`, color: 'var(--color-success)' };
+  return b < 0 ? { text: `ми винні ${fmt(-b)} ₴`, color: 'var(--color-danger)' } : { text: `переплата ${fmt(b)} ₴`, color: 'var(--color-success)' };
 }
 
 const PLACEHOLDER: Record<DebtAccount, string> = { customer: 'клієнт, np:cod, mp:prom…', supplier: 'постачальник…', partner: 'дропшип-партнер…' };
@@ -418,7 +418,7 @@ export default function AdjustmentsClient() {
                     <span>Створив: {d.created_by ?? '—'}{cancelled ? ` · скасував: ${d.cancelled_by ?? '—'}${d.cancel_reason ? ` (${d.cancel_reason})` : ''}` : ''}</span>
                     {!cancelled && (
                       <button type="button" onClick={() => cancelDoc(d)} disabled={cancelling === d.id}
-                        style={{ ...btnGhost, color: 'var(--color-danger)', borderColor: '#FECACA' }}>
+                        style={{ ...btnGhost, color: 'var(--color-danger)', borderColor: 'var(--danger-border)' }}>
                         <X size={13} /> {cancelling === d.id ? 'Скасовуємо…' : 'Скасувати документ'}
                       </button>
                     )}

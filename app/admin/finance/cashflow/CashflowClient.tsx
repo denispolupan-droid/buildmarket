@@ -167,11 +167,11 @@ export default function CashflowClient({ entries, openingByAccount, defaultFrom,
         {[
           { label: 'Залишок на початок', value: openingBalance, color: undefined as string | undefined, sign: '',
             sub: account === 'all' ? accountsSub(openingByAccount) : `рахунок: ${ACCOUNT_LABELS[account].label}` },
-          { label: 'Надходження',        value: totalIn,        color: '#15803D', sign: '+',
+          { label: 'Надходження',        value: totalIn,        color: 'var(--color-success)', sign: '+',
             sub: `${filtered.filter(e => e.amount > 0).length} операцій за період` },
-          { label: 'Видатки',            value: Math.abs(totalOut), color: '#DC2626', sign: '−',
+          { label: 'Видатки',            value: Math.abs(totalOut), color: 'var(--color-danger)', sign: '−',
             sub: `${filtered.filter(e => e.amount < 0).length} операцій за період` },
-          { label: 'Залишок на кінець',  value: closingBalance, color: closingBalance < 0 ? '#DC2626' : undefined, sign: '',
+          { label: 'Залишок на кінець',  value: closingBalance, color: closingBalance < 0 ? 'var(--color-danger)' : undefined, sign: '',
             sub: account === 'all' ? accountsSub(closingByAccount) : `рахунок: ${ACCOUNT_LABELS[account].label}` },
         ].map(card => (
           <div key={card.label} className="fin-card">

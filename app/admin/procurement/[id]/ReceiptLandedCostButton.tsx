@@ -182,7 +182,7 @@ export default function ReceiptLandedCostButton({
               </div>
 
               {totalAmount > 0 && (
-                <div style={{ padding: '10px 14px', background: '#F5F3FF', borderRadius: '8px', fontSize: '13px', fontWeight: 600, display: 'flex', justifyContent: 'space-between', color: '#7C3AED' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--violet-bg)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, display: 'flex', justifyContent: 'space-between', color: 'var(--violet)' }}>
                   <span>Загальна сума витрат:</span>
                   <span>{totalAmount.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} ₴</span>
                 </div>
@@ -199,7 +199,7 @@ export default function ReceiptLandedCostButton({
                 Скасувати
               </button>
               <button onClick={handleSave} disabled={saving || totalAmount === 0}
-                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (saving || totalAmount === 0) ? 0.5 : 1 }}>
+                style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: 'var(--violet)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px', opacity: (saving || totalAmount === 0) ? 0.5 : 1 }}>
                 {saving ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Розподіл...</> : '📦 Розподілити витрати'}
               </button>
             </div>

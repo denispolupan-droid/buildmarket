@@ -122,7 +122,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
                 padding: '8px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 border: `1.5px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
                 background: active ? 'var(--navy)' : 'var(--bg-card)',
-                color: active ? '#fff' : 'var(--text-secondary)',
+                color: active ? 'var(--surface)' : 'var(--text-secondary)',
               }}>
               {s.label}
               <span style={{ marginLeft: 8, fontWeight: 500, opacity: 0.75 }}>{order[s.key].length}</span>
@@ -134,7 +134,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
             padding: '8px 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
             border: `1.5px solid ${tab === 'categories' ? 'var(--navy)' : 'var(--border)'}`,
             background: tab === 'categories' ? 'var(--navy)' : 'var(--bg-card)',
-            color: tab === 'categories' ? '#fff' : 'var(--text-secondary)',
+            color: tab === 'categories' ? 'var(--surface)' : 'var(--text-secondary)',
           }}>
           Категорії
         </button>
@@ -230,7 +230,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
               <button onClick={save} disabled={saving || !dirty}
-                style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: 'var(--navy)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
+                style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
                 {saving ? 'Зберігаю…' : 'Зберегти вітрину'}
               </button>
               {dirty && (

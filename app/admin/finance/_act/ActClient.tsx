@@ -130,7 +130,7 @@ export default function ActClient({
             style={{
               display: 'flex', alignItems: 'center', gap: '7px',
               height: '36px', padding: '0 18px', borderRadius: '8px',
-              border: 'none', background: 'var(--navy)', color: '#fff',
+              border: 'none', background: 'var(--navy)', color: 'var(--surface)',
               fontSize: '13px', fontWeight: 700, cursor: 'pointer',
             }}>
             <Printer size={14} /> Друкувати акт
@@ -144,7 +144,7 @@ export default function ActClient({
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>—</span>
           <input type="date" value={to} onChange={e => setTo(e.target.value)} style={inp} />
           <button onClick={applyDates}
-            style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            style={{ height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <RefreshCw size={13} /> Оновити
           </button>
         </div>}
@@ -254,7 +254,7 @@ export default function ActClient({
           @page { size: A4 portrait; margin: 12mm 12mm; }
         }
         @media screen {
-          .act-print-area { border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+          .act-print-area { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
         }
       `}</style>
     </>

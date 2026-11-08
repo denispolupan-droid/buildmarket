@@ -36,8 +36,8 @@ const REF = 'var(--border)';
 
 function Pill({ tone, children }: { tone: 'up' | 'down' | 'flat'; children: React.ReactNode }) {
   const map = {
-    up:   { color: '#15803D', background: '#E7F5EC' },
-    down: { color: '#B45309', background: '#FDF3E3' },
+    up:   { color: 'var(--color-success)', background: '#E7F5EC' },
+    down: { color: 'var(--color-warn)', background: '#FDF3E3' },
     flat: { color: 'var(--text-muted)', background: 'var(--bg-soft)' },
   }[tone];
   return (

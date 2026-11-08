@@ -15,7 +15,7 @@ function StarsRow({ value }: { value: number }) {
   return (
     <span style={{ whiteSpace: 'nowrap' }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <span key={i} style={{ color: value >= i - 0.25 ? '#F59E0B' : 'var(--border)', fontSize: 15 }}>★</span>
+        <span key={i} style={{ color: value >= i - 0.25 ? 'var(--amber)' : 'var(--border)', fontSize: 15 }}>★</span>
       ))}
     </span>
   );
@@ -32,7 +32,7 @@ export default function SellerRatingCard({ rating }: { rating: RozetkaSellerRati
 
   return (
     <div style={{ padding: '0 32px 48px', maxWidth: 960, margin: '0 auto' }}>
-      <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid var(--border)', padding: '18px 20px' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1.5px solid var(--border)', padding: '18px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
           <Star size={16} color="#F59E0B" />
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>Рейтинг продавця</span>

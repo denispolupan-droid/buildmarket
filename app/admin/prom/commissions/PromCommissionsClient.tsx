@@ -49,10 +49,10 @@ interface Props {
 }
 
 const PLANS: { key: Plan; label: string; short: string; color: string }[] = [
-  { key: 'econom',     label: 'Економ',          short: 'Еко',    color: '#059669' },
+  { key: 'econom',     label: 'Економ',          short: 'Еко',    color: 'var(--emerald)' },
   { key: 'single',     label: 'Єдина комісія',   short: 'Єдина',  color: '#1D4ED8' },
-  { key: 'more_sales', label: 'Більше продажів', short: 'Більше', color: '#7C3AED' },
-  { key: 'turbo',      label: 'Турбо',           short: 'Турбо',  color: '#DC2626' },
+  { key: 'more_sales', label: 'Більше продажів', short: 'Більше', color: 'var(--violet)' },
+  { key: 'turbo',      label: 'Турбо',           short: 'Турбо',  color: 'var(--color-danger)' },
 ];
 
 const GRID = '200px 1fr 64px 64px 64px 64px 82px';
@@ -60,10 +60,10 @@ const GRID = '200px 1fr 64px 64px 64px 64px 82px';
 function pctColor(pct: number | null): string {
   if (pct == null) return '#9CA3AF';
   if (pct >= 20)  return '#7C2D12';
-  if (pct >= 15)  return '#DC2626';
-  if (pct >= 12)  return '#EA580C';
-  if (pct >= 10)  return '#D97706';
-  if (pct >= 7)   return '#16A34A';
+  if (pct >= 15)  return 'var(--color-danger)';
+  if (pct >= 12)  return 'var(--orange-bright)';
+  if (pct >= 10)  return 'var(--status-order)';
+  if (pct >= 7)   return 'var(--status-instock)';
   return '#0369A1';
 }
 
@@ -116,7 +116,7 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
 
   return (
     <Modal open onClose={onClose} width={720} padding={0} aria-label="Категорія Prom">
-      <div style={{ background: '#fff', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
+      <div style={{ background: 'var(--surface)', maxHeight: '85vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
@@ -125,12 +125,12 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
               value={q}
               onChange={e => handleQ(e.target.value)}
               placeholder="Пошук по ID або назві Prom категорії…"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--line-slate)', fontSize: 13, outline: 'none' }}
             />
           </div>
           <button
             onClick={onClose}
-            style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #E5E7EB', background: '#F9FAFB', color: 'var(--text-gray)', fontSize: 13, cursor: 'pointer' }}
+            style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface-soft)', color: 'var(--text-gray)', fontSize: 13, cursor: 'pointer' }}
           >
             Закрити
           </button>
@@ -146,15 +146,15 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
             <div
               key={entry.prom_category_id}
               onClick={() => { onPick(entry); onClose(); }}
-              style={{ padding: '8px 20px', cursor: 'pointer', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 12 }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
+              style={{ padding: '8px 20px', cursor: 'pointer', borderBottom: '1px solid var(--bg-page)', display: 'flex', alignItems: 'center', gap: 12 }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-success)')}
               onMouseLeave={e => (e.currentTarget.style.background = '')}
             >
-              <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#059669', flexShrink: 0, minWidth: 60 }}>
+              <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--emerald)', flexShrink: 0, minWidth: 60 }}>
                 {entry.prom_category_id}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{entry.name}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{entry.name}</div>
                 {entry.path && <div style={{ fontSize: 11, color: 'var(--text-gray-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.path}</div>}
               </div>
               {entry.commission_single != null && (
@@ -167,7 +167,7 @@ function CatalogModal({ onPick, onClose }: CatalogModalProps) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '8px 20px', borderTop: '1px solid #F1F5F9', fontSize: 11, color: '#CBD5E1' }}>
+        <div style={{ padding: '8px 20px', borderTop: '1px solid var(--bg-page)', fontSize: 11, color: 'var(--line-slate)' }}>
           {loading ? 'Завантаження…' : `${items.length} категорій${q.length < 2 ? ' · введи запит для звуження' : ''}`}
         </div>
       </div>
@@ -208,18 +208,18 @@ function PromRow({
     <div style={{
       display: 'grid', gridTemplateColumns: GRID,
       gap: 6, alignItems: 'center',
-      padding: '6px 10px', borderBottom: '1px solid #F1F5F9',
-      background: indent === 0 ? 'var(--bg-soft)' : '#fff',
+      padding: '6px 10px', borderBottom: '1px solid var(--bg-page)',
+      background: indent === 0 ? 'var(--bg-soft)' : 'var(--surface)',
     }}>
 
       {/* Наша категорія */}
       <div style={{
         paddingLeft: indent * 14,
         fontSize: indent === 0 ? 13 : 12, fontWeight: indent === 0 ? 700 : 400,
-        color: indent === 0 ? '#1E293B' : 'var(--text-secondary)',
+        color: indent === 0 ? 'var(--ink)' : 'var(--text-secondary)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
-        {indent > 0 && <span style={{ color: '#D1D5DB', marginRight: 4 }}>└</span>}
+        {indent > 0 && <span style={{ color: 'var(--line-strong)', marginRight: 4 }}>└</span>}
         {cat.name}
       </div>
 
@@ -229,9 +229,9 @@ function PromRow({
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '3px 6px', borderRadius: 5,
-            border: '1px solid #D1FAE5', background: '#ECFDF5',
+            border: '1px solid #D1FAE5', background: 'var(--emerald-bg)',
           }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#059669', flexShrink: 0, fontWeight: 700 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--emerald)', flexShrink: 0, fontWeight: 700 }}>
               {v.prom_id}
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -258,14 +258,14 @@ function PromRow({
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   padding: '5px 8px', borderRadius: 5,
-                  border: '1px solid #CBD5E1', fontSize: 12,
-                  color: '#374151', background: '#fff', outline: 'none',
+                  border: '1px solid var(--line-slate)', fontSize: 12,
+                  color: 'var(--ink-2)', background: 'var(--surface)', outline: 'none',
                 }}
               />
               {dropOpen && (
                 <div style={{
                   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
-                  background: '#fff', border: '1px solid #CBD5E1', borderRadius: 8,
+                  background: 'var(--surface)', border: '1px solid var(--line-slate)', borderRadius: 8,
                   boxShadow: '0 4px 24px rgba(0,0,0,.18)', marginTop: 3,
                   display: 'flex', flexDirection: 'column',
                 }}>
@@ -280,13 +280,13 @@ function PromRow({
                           <div
                             key={entry.prom_category_id}
                             onMouseDown={() => onPick(cat.slug, entry)}
-                            style={{ padding: '6px 12px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', gap: 2 }}
-                            onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
+                            style={{ padding: '6px 12px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--bg-page)', display: 'flex', flexDirection: 'column', gap: 2 }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-success)')}
                             onMouseLeave={e => (e.currentTarget.style.background = '')}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#059669', flexShrink: 0 }}>{entry.prom_category_id}</span>
-                              <span style={{ color: '#1E293B', fontWeight: 600 }}>{entry.name}</span>
+                              <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--emerald)', flexShrink: 0 }}>{entry.prom_category_id}</span>
+                              <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{entry.name}</span>
                               {entry.commission_single != null && (
                                 <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: pctColor(entry.commission_single), flexShrink: 0 }}>{entry.commission_single}%</span>
                               )}
@@ -295,7 +295,7 @@ function PromRow({
                           </div>
                         ))}
                       </div>
-                      <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid #F1F5F9', background: '#FAFAFA', borderRadius: '0 0 8px 8px' }}>
+                      <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--bg-page)', background: '#FAFAFA', borderRadius: '0 0 8px 8px' }}>
                         {v.prom_name.length < 2 ? `Перші ${suggestions.length} · введи запит для звуження` : `${suggestions.length} результатів`}
                       </div>
                     </>
@@ -309,7 +309,7 @@ function PromRow({
               title="Переглянути повний каталог Prom"
               style={{
                 flexShrink: 0, padding: '5px 7px', borderRadius: 5,
-                border: '1px solid #CBD5E1', background: 'var(--bg-soft)',
+                border: '1px solid var(--line-slate)', background: 'var(--bg-soft)',
                 color: 'var(--text-soft)', cursor: 'pointer', display: 'flex', alignItems: 'center',
               }}
             >
@@ -326,7 +326,7 @@ function PromRow({
         return (
           <div key={p.key} style={{
             fontSize: 13, fontWeight: isActive ? 700 : 500,
-            color: pct != null ? pctColor(pct) : '#E5E7EB',
+            color: pct != null ? pctColor(pct) : 'var(--line)',
             textAlign: 'center',
             background: isActive && pct != null ? `${p.color}08` : 'transparent',
             borderRadius: 4, padding: '2px 4px',
@@ -343,8 +343,8 @@ function PromRow({
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
           padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none',
-          background: isSaved ? '#ECFDF5' : '#0EA5E9',
-          color: isSaved ? '#059669' : '#fff',
+          background: isSaved ? 'var(--emerald-bg)' : '#0EA5E9',
+          color: isSaved ? 'var(--emerald)' : 'var(--surface)',
           cursor: isSaving ? 'not-allowed' : 'pointer',
           opacity: isSaving ? 0.6 : 1,
         }}
@@ -538,16 +538,16 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
     <div style={{ padding: '28px 32px 64px', maxWidth: 1200 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid #E5E7EB', color: 'var(--text-gray)', textDecoration: 'none' }}>
+        <Link href="/admin/prom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid var(--line)', color: 'var(--text-gray)', textDecoration: 'none' }}>
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Комісії Prom.ua</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--ink-strong)' }}>Комісії Prom.ua</h1>
           <p style={{ margin: '3px 0 0', color: 'var(--text-gray)', fontSize: 13 }}>
             {filledCount} / {categories.length} категорій з Prom ID
             &nbsp;·&nbsp; Активний план: <strong style={{ color: activePlanMeta.color }}>{activePlanMeta.label}</strong>
             <button onClick={() => setTariffOpen(v => !v)}
-              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: 'var(--color-warn)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid var(--orange-border)', background: tariffOpen ? 'var(--orange-bg)' : 'var(--surface)', color: 'var(--color-warn)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               <Truck size={11} style={{ verticalAlign: '-1px', marginRight: 4 }} />
               Дешева доставка: {tariff.map(b => `від ${b.from} → ${b.fee} грн`).join(' · ')}
             </button>
@@ -557,13 +557,13 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
 
       {/* «Дешева доставка» — редагований тариф компенсації доставки НП */}
       {tariffOpen && (
-        <div style={{ margin: '0 0 16px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #FDBA74', background: 'var(--bg-warn)', maxWidth: 640 }}>
+        <div style={{ margin: '0 0 16px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid var(--orange-border)', background: 'var(--bg-warn)', maxWidth: 640 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-warn)', marginBottom: 10 }}>
             «Дешева доставка» — компенсація організації доставки НП (грн з ПДВ, за сумою замовлення)
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tariffDraft.map((b, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-2)' }}>
                 <span>замовлення від</span>
                 <input value={b.from} onChange={e => setTariffDraft(d => d.map((x, j) => j === i ? { ...x, from: e.target.value } : x))}
                   style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, textAlign: 'right' }} />
@@ -581,13 +581,13 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
             ))}
           </div>
           <button onClick={() => setTariffDraft(d => [...d, { from: '', fee: '' }])}
-            style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px dashed #FDBA74', background: 'none', color: 'var(--color-warn)', fontSize: 12, cursor: 'pointer' }}>
+            style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px dashed var(--orange-border)', background: 'none', color: 'var(--color-warn)', fontSize: 12, cursor: 'pointer' }}>
             <Plus size={11} /> Додати поріг
           </button>
           {tariffError && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-danger)', fontWeight: 600 }}>{tariffError}</div>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
             <button onClick={saveDeliveryTariff} disabled={tariffSaving}
-              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: 'var(--color-warn)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
+              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: 'var(--color-warn)', color: 'var(--surface)', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
               {tariffSaving ? 'Зберігаю…' : 'Зберегти'}
             </button>
             <span style={{ fontSize: 12, color: 'var(--text-warn-dark)' }}>
@@ -605,9 +605,9 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
             onClick={() => !savingPlan && p.key !== plan && savePlan(p.key)}
             style={{
               padding: '10px 14px', borderRadius: 9, textAlign: 'left',
-              border: `2px solid ${plan === p.key ? p.color : '#E5E7EB'}`,
-              background: plan === p.key ? `${p.color}10` : '#F9FAFB',
-              color: plan === p.key ? p.color : '#374151',
+              border: `2px solid ${plan === p.key ? p.color : 'var(--line)'}`,
+              background: plan === p.key ? `${p.color}10` : 'var(--surface-soft)',
+              color: plan === p.key ? p.color : 'var(--ink-2)',
               cursor: savingPlan ? 'not-allowed' : 'pointer',
               fontWeight: plan === p.key ? 700 : 400, fontSize: 13,
             }}
@@ -618,11 +618,11 @@ export default function PromCommissionsClient({ categories, plan: initialPlan, d
       </div>
 
       {/* Table */}
-      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: GRID,
           gap: 6, padding: '8px 10px',
-          background: '#F1F5F9', borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-page)', borderBottom: '1px solid var(--border)',
           fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', textTransform: 'uppercase', letterSpacing: '.04em',
         }}>
           <div>Категорія</div>

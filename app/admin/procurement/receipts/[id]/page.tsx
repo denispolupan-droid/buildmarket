@@ -148,7 +148,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         </div>
         {doc.parent_doc_id && (
           <Link href={`/admin/procurement/${doc.parent_doc_id}`}
-            style={{ fontSize: '12px', color: 'var(--navy)', textDecoration: 'none', background: '#EFF4FF', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
+            style={{ fontSize: '12px', color: 'var(--navy)', textDecoration: 'none', background: 'var(--blue-bg)', padding: '4px 12px', borderRadius: '6px', fontWeight: 600 }}>
             ↑ Замовлення
           </Link>
         )}
@@ -188,13 +188,13 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
       {/* Awaiting orders alert */}
       {(linkedOrder?.status === 'awaiting_stock' || (awaitingCount ?? 0) > 0) && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', marginBottom: '16px', borderRadius: '10px', background: '#F5F3FF', border: '1.5px solid #A78BFA' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', marginBottom: '16px', borderRadius: '10px', background: 'var(--violet-bg)', border: '1.5px solid #A78BFA' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '18px' }}>⏳</span>
             <div>
               {linkedOrder?.status === 'awaiting_stock' ? (
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
-                  Замовлення <a href={`/admin?expand=${linkedOrder.id}`} style={{ color: '#7C3AED', textDecoration: 'underline' }}>#{linkedOrder.order_number}</a> очікувало цей товар — переведіть у &ldquo;Збирається&rdquo;
+                  Замовлення <a href={`/admin?expand=${linkedOrder.id}`} style={{ color: 'var(--violet)', textDecoration: 'underline' }}>#{linkedOrder.order_number}</a> очікувало цей товар — переведіть у &ldquo;Збирається&rdquo;
                 </div>
               ) : (
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#6D28D9' }}>
@@ -202,7 +202,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
                 </div>
               )}
               {linkedOrder?.status === 'awaiting_stock' && (awaitingCount ?? 0) > 1 && (
-                <div style={{ fontSize: '11px', color: '#7C3AED', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--violet)', marginTop: '2px' }}>
                   Ще {(awaitingCount ?? 0) - 1} інших замовлень в черзі
                 </div>
               )}
@@ -244,12 +244,12 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Товари</span>
-          {hasLC && <span style={{ fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#F5F3FF', padding: '2px 10px', borderRadius: '20px' }}>З урахуванням Landed Cost</span>}
+          {hasLC && <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--violet)', background: 'var(--violet-bg)', padding: '2px 10px', borderRadius: '20px' }}>З урахуванням Landed Cost</span>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: hasLC ? '110px minmax(0,1fr) 60px 100px 80px 100px 100px' : '120px minmax(0,1fr) 70px 110px 110px', padding: '7px 16px', background: 'var(--bg-soft)', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', columnGap: '16px' }}>
           <span>Артикул</span><span>Найменування</span><span style={{ textAlign: 'right' }}>К-сть</span>
           {hasLC ? (
-            <><span style={{ textAlign: 'right' }}>Ціна до</span><span style={{ textAlign: 'center', color: '#7C3AED' }}>+LC</span><span style={{ textAlign: 'right' }}>Ціна після</span><span style={{ textAlign: 'right' }}>Сума</span></>
+            <><span style={{ textAlign: 'right' }}>Ціна до</span><span style={{ textAlign: 'center', color: 'var(--violet)' }}>+LC</span><span style={{ textAlign: 'right' }}>Ціна після</span><span style={{ textAlign: 'right' }}>Сума</span></>
           ) : (
             <><span style={{ textAlign: 'right' }}>Ціна закупки</span><span style={{ textAlign: 'right' }}>Сума</span></>
           )}
@@ -266,7 +266,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
                 <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {nameMap.get(line.sku) || line.sku}
                   {line.is_bonus && (
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: '#FEF3C7', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-warn)', background: 'var(--amber-bg)', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>🎁 Бонус</span>
                   )}
                 </div>
               </div>
@@ -275,7 +275,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
                 <>
                   <span style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-secondary)' }}>{fmt(line.is_bonus ? 0 : origPrice)} ₴</span>
                   <div style={{ textAlign: 'center' }}>
-                    {!line.is_bonus && lcAdded > 0.01 ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span> : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}
+                    {!line.is_bonus && lcAdded > 0.01 ? <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--violet)', background: 'var(--violet-bg)', padding: '1px 6px', borderRadius: '4px' }}>+{fmt(lcAdded)} ₴</span> : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}
                   </div>
                   <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(line.is_bonus ? 0 : finalPrice)} ₴</span>
                   <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600 }}>{fmt(line.is_bonus ? 0 : line.qty * finalPrice)} ₴</span>
@@ -298,13 +298,13 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
       {/* Додаткові витрати */}
       {hasLC && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid #DDD6FE', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: '#7C3AED' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--violet)' }}>
             📦 Додаткові витрати (Landed Cost)
           </div>
           {(landedCosts ?? []).map((lc: { id: string; cost_type: string; description: string | null; amount: number; distributed: boolean }) => (
             <div key={lc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 16px', borderTop: '1px solid var(--border-light)' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{COST_TYPE_LABELS[lc.cost_type] ?? lc.cost_type}{lc.description ? ` · ${lc.description}` : ''}</span>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#7C3AED' }}>+{fmt(lc.amount)} ₴</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--violet)' }}>+{fmt(lc.amount)} ₴</span>
             </div>
           ))}
           <div style={{ padding: '10px 16px', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 800 }}>

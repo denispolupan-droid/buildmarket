@@ -35,7 +35,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
               title={editingId === order.id ? 'Скасувати редагування складу' : 'Змінити склад замовлення'}
               style={{
                 flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1,
-                display: 'inline-flex', color: editingId === order.id ? '#EF4444' : 'var(--text-muted)',
+                display: 'inline-flex', color: editingId === order.id ? 'var(--danger-bright)' : 'var(--text-muted)',
               }}
             >
               {editingId === order.id ? <X size={13} /> : <Pencil size={12} />}
@@ -45,7 +45,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
           {/* Зауваження обліку після правки складу: правку збережено,
               але менеджер має побачити наслідки до друку документів. */}
           {editWarnings[order.id]?.length > 0 && (
-            <div style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--text-warn-dark)', background: 'var(--bg-warn)', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 10px' }}>
+            <div style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--text-warn-dark)', background: 'var(--bg-warn)', border: '1px solid var(--amber-border)', borderRadius: '8px', padding: '8px 10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '3px' }}>
                 Збережено, але зверніть увагу:
                 <button onClick={() => setEditWarnings(prev => { const n = { ...prev }; delete n[order.id]; return n; })}
@@ -75,7 +75,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                     {item.is_bonus ? '🎁 0 ₴' : `${fmtInt(item.price * item.qty)} грн`}
                   </span>
                   <button onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
-                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', flexShrink: 0, display: 'flex' }}>
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--danger-bright)', padding: '2px', flexShrink: 0, display: 'flex' }}>
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -108,7 +108,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                     style={{ height: '28px', padding: '0 6px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', textAlign: 'center', outline: 'none' }} />
                   <input placeholder="Ціна" type="number" min={0} value={addPrice} onChange={e => setAddPrice(e.target.value)}
                     style={{ height: '28px', padding: '0 6px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-                  <button onClick={addItem} style={{ height: '28px', width: '28px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button onClick={addItem} style={{ height: '28px', width: '28px', borderRadius: '6px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Plus size={13} />
                   </button>
                 </div>
@@ -118,7 +118,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                   Разом: {fmtMoney(editItems.reduce((s, i) => s + i.price * i.qty, 0))} грн
                 </span>
                 <button onClick={() => saveEdit(order.id)} disabled={editSaving}
-                  style={{ height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', opacity: editSaving ? 0.6 : 1 }}>
+                  style={{ height: '30px', padding: '0 14px', borderRadius: '7px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', opacity: editSaving ? 0.6 : 1 }}>
                   {editSaving ? '...' : <><Check size={12} /> Зберегти</>}
                 </button>
               </div>
@@ -164,10 +164,10 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                       const effectiveSrc = sourceOverrides[order.id]?.[item.sku] ?? planSrc?.fulfillment_type;
                       const supplierName = fulfillmentData[order.id]?.by_supplier?.flatMap(g => g.items).find(i => i.sku === item.sku)?.supplier_name;
                       const srcBg = isMixed
-                        ? effectiveSrc === 'own' ? '#F0FDF4' : '#EFF4FF'
+                        ? effectiveSrc === 'own' ? 'var(--bg-success)' : 'var(--blue-bg)'
                         : undefined;
                       const srcBorder = isMixed
-                        ? effectiveSrc === 'own' ? '2px solid #86EFAC' : '2px solid #BFDBFE'
+                        ? effectiveSrc === 'own' ? '2px solid #86EFAC' : '2px solid var(--blue-border)'
                         : undefined;
                       // Сторінка товару в магазині: слаг, якщо він уже підвантажився,
                       // інакше SKU — /product/<sku> сам 308-редіректить на ЧПУ.
@@ -185,7 +185,7 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                                   <a href={`/admin/products/${encodeURIComponent(item.sku)}`} target="_blank" rel="noopener noreferrer"
                                     onClick={e => e.stopPropagation()} title="Відкрити картку товару в адмінці"
                                     style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    background: img ? `#fff url("${img}") center/cover no-repeat` : '#fff' }}>
+                                    background: img ? `var(--surface) url("${img}") center/cover no-repeat` : 'var(--surface)' }}>
                                     {!img && <Package size={16} color="var(--text-muted)" />}
                                   </a>
                                 );
@@ -376,8 +376,8 @@ export function OrderItemsCard({ order, isCod, paymentConfirmed, isDropship }: {
                           <td style={{ padding: '2px 0 0' }} />
                         </tr>
                       );
-                      if (partial) line('__paid', 'Оплачено', paid, '#15803D');
-                      line('__left', 'До сплати', left, '#B45309');
+                      if (partial) line('__paid', 'Оплачено', paid, 'var(--color-success)');
+                      line('__left', 'До сплати', left, 'var(--color-warn)');
                     })();
                     return rows;
                   })()}

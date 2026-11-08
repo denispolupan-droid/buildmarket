@@ -305,9 +305,9 @@ export default function BlogAdminClient() {
 
       {/* Автопілот чернеток — вимикач */}
       {autopilot && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', background: '#fff', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 20, maxWidth: 900 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 20, maxWidth: 900 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
               🤖 Автопілот статей —{' '}
               <span style={{ color: autopilot.enabled ? 'var(--color-success)' : 'var(--color-warn)' }}>{autopilot.enabled ? 'увімкнено' : 'на паузі'}</span>
             </div>
@@ -325,7 +325,7 @@ export default function BlogAdminClient() {
             role="switch" aria-checked={autopilot.enabled}
             title={autopilot.enabled ? 'Поставити автопілот на паузу' : 'Увімкнути автопілот'}
             style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', opacity: autopilotSaving ? 0.6 : 1,
-              background: autopilot.enabled ? '#fff' : '#3DBFB8', color: autopilot.enabled ? 'var(--text-secondary)' : '#fff', border: autopilot.enabled ? '1px solid #CBD5E1' : 'none' }}
+              background: autopilot.enabled ? 'var(--surface)' : 'var(--brand-teal)', color: autopilot.enabled ? 'var(--text-secondary)' : 'var(--surface)', border: autopilot.enabled ? '1px solid var(--line-slate)' : 'none' }}
           >
             {autopilotSaving ? '…' : autopilot.enabled ? '⏸ Поставити на паузу' : '▶ Увімкнути'}
           </button>
@@ -340,12 +340,12 @@ export default function BlogAdminClient() {
           onKeyDown={e => { if (e.key === 'Enter') generate(); }}
           disabled={generating}
           placeholder="Тема, напр.: Як розрахувати витрату фарби на кімнату"
-          style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 14 }}
+          style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--line-slate)', fontSize: 14 }}
         />
         <button
           onClick={generate}
           disabled={generating || !topic.trim()}
-          style={{ padding: '10px 22px', background: '#3DBFB8', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: generating || !topic.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
+          style={{ padding: '10px 22px', background: 'var(--brand-teal)', color: 'var(--surface)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: generating || !topic.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
         >
           {generating ? '⏳ Генеруємо (1–2 хв)…' : '✨ Згенерувати статтю'}
         </button>
@@ -353,16 +353,16 @@ export default function BlogAdminClient() {
           onClick={createManual}
           disabled={generating || !topic.trim()}
           title="Порожня чернетка з цим заголовком — текст пишете самі в редакторі"
-          style={{ padding: '10px 18px', background: '#fff', color: 'var(--text-secondary)', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: generating || !topic.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
+          style={{ padding: '10px 18px', background: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--line-slate)', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: generating || !topic.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
         >
           ✍️ Створити вручну
         </button>
       </div>
-      {error && <p style={{ color: '#EF4444', fontSize: 13 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--danger-bright)', fontSize: 13 }}>{error}</p>}
 
       {/* Зв'язка статей з товарами — без AI, безкоштовно */}
-      <div style={{ padding: '16px 20px', background: '#fff', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 24, maxWidth: 900 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>🔗 Зв&apos;язати статті з товарами</div>
+      <div style={{ padding: '16px 20px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 24, maxWidth: 900 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>🔗 Зв&apos;язати статті з товарами</div>
         <p style={{ fontSize: 12, color: 'var(--text-soft)', margin: '0 0 12px' }}>
           Підбирає товари за категоріями, які вже прописані в статті: цінова драбина з різних брендів,
           тільки в наявності та з ціною. Внизу статті з&apos;являється блок «Чим це зробити» обома мовами.
@@ -373,19 +373,19 @@ export default function BlogAdminClient() {
           й хочете, щоб стаття показувала новий набір.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button onClick={loadPlans} disabled={linking} style={{ ...btn, borderColor: '#3DBFB8', color: '#0F766E', fontWeight: 700 }}>
+          <button onClick={loadPlans} disabled={linking} style={{ ...btn, borderColor: 'var(--brand-teal)', color: '#0F766E', fontWeight: 700 }}>
             Порахувати, що зміниться
           </button>
           {plans && (
             <button
               onClick={applyPlans}
               disabled={linking || !planPicked.size}
-              style={{ padding: '8px 18px', background: '#3DBFB8', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: linking ? 'wait' : 'pointer', opacity: linking || !planPicked.size ? 0.5 : 1 }}
+              style={{ padding: '8px 18px', background: 'var(--brand-teal)', color: 'var(--surface)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: linking ? 'wait' : 'pointer', opacity: linking || !planPicked.size ? 0.5 : 1 }}
             >
               {linking ? '⏳ Оновлюємо…' : `Застосувати до ${planPicked.size}`}
             </button>
           )}
-          {linkMsg && <span style={{ fontSize: 13, color: linkMsg.startsWith('✓') ? '#10B981' : '#EF4444' }}>{linkMsg}</span>}
+          {linkMsg && <span style={{ fontSize: 13, color: linkMsg.startsWith('✓') ? 'var(--emerald-bright)' : 'var(--danger-bright)' }}>{linkMsg}</span>}
         </div>
 
         {plans && (() => {
@@ -406,14 +406,14 @@ export default function BlogAdminClient() {
         })()}
 
         {plans && (
-          <div style={{ marginTop: 8, maxHeight: 460, overflowY: 'auto', border: '1px solid #F1F5F9', borderRadius: 8 }}>
+          <div style={{ marginTop: 8, maxHeight: 460, overflowY: 'auto', border: '1px solid var(--bg-page)', borderRadius: 8 }}>
             {plans.map(p => {
               const disabled = !p.picks.length;
               return (
                 <label
                   key={p.id}
                   style={{
-                    display: 'flex', gap: 10, padding: '10px 12px', borderBottom: '1px solid #F1F5F9',
+                    display: 'flex', gap: 10, padding: '10px 12px', borderBottom: '1px solid var(--bg-page)',
                     cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, alignItems: 'flex-start',
                   }}
                 >
@@ -429,11 +429,11 @@ export default function BlogAdminClient() {
                     style={{ marginTop: 3, width: 15, height: 15 }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
                       {p.title}
                       {p.hasBlock && <span style={{ marginLeft: 8, fontSize: 11, color: '#0EA5E9' }}>блок уже стоїть — освіжимо</span>}
                       {p.manualLinks && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-warn)' }}>вже має власні посилання</span>}
-                      {p.ruMissing && <span style={{ marginLeft: 8, fontSize: 11, color: '#EF4444' }}>немає рос. версії</span>}
+                      {p.ruMissing && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--danger-bright)' }}>немає рос. версії</span>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 4px' }}>
                       {p.categories.join(', ') || 'категорій не вказано'}
@@ -446,7 +446,7 @@ export default function BlogAdminClient() {
                           });
                           setSearch('');
                         }}
-                        style={{ marginLeft: 10, border: 'none', background: 'none', color: '#3DBFB8', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                        style={{ marginLeft: 10, border: 'none', background: 'none', color: 'var(--brand-teal)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0 }}
                       >
                         {editSkus?.id === p.id ? 'згорнути' : '✏ змінити склад'}
                       </button>
@@ -454,14 +454,14 @@ export default function BlogAdminClient() {
 
                     {editSkus?.id === p.id ? (
                       /* Редактор: свій набір товарів статті замість автопідбору */
-                      <div onClick={e => e.preventDefault()} style={{ border: '1px solid #CBD5E1', borderRadius: 8, padding: 10, background: 'var(--bg-soft)' }}>
+                      <div onClick={e => e.preventDefault()} style={{ border: '1px solid var(--line-slate)', borderRadius: 8, padding: 10, background: 'var(--bg-soft)' }}>
                         {editSkus.items.length === 0 && (
                           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Товарів немає — додайте пошуком нижче</div>
                         )}
                         {editSkus.items.map((it, i) => (
                           <div key={it.sku} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
                             <span style={{ color: 'var(--text-muted)', width: 16 }}>{i + 1}.</span>
-                            <span style={{ flex: 1, color: '#1E293B' }}>
+                            <span style={{ flex: 1, color: 'var(--ink)' }}>
                               {it.label}
                               <span style={{ color: 'var(--text-muted)' }}>{it.price ? ` — ${it.price} грн` : ''}</span>
                             </span>
@@ -469,7 +469,7 @@ export default function BlogAdminClient() {
                             <button onClick={() => moveItem(i, 1)} disabled={i === editSkus.items.length - 1} style={miniBtn} title="Нижче">↓</button>
                             <button
                               onClick={() => setEditSkus(s => s && ({ ...s, items: s.items.filter(x => x.sku !== it.sku) }))}
-                              style={{ ...miniBtn, color: '#EF4444' }}
+                              style={{ ...miniBtn, color: 'var(--danger-bright)' }}
                               title="Прибрати"
                             >×</button>
                           </div>
@@ -479,10 +479,10 @@ export default function BlogAdminClient() {
                           value={search}
                           onChange={e => setSearch(e.target.value)}
                           placeholder="Додати товар: назва, бренд або SKU"
-                          style={{ width: '100%', marginTop: 8, padding: '7px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 12 }}
+                          style={{ width: '100%', marginTop: 8, padding: '7px 10px', borderRadius: 6, border: '1px solid var(--line-slate)', fontSize: 12 }}
                         />
                         {found.length > 0 && (
-                          <div style={{ marginTop: 4, maxHeight: 160, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6, background: '#fff' }}>
+                          <div style={{ marginTop: 4, maxHeight: 160, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }}>
                             {found.map(f => {
                               const already = editSkus.items.some(x => x.sku === f.sku);
                               return (
@@ -498,8 +498,8 @@ export default function BlogAdminClient() {
                                   }}
                                   style={{
                                     display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px',
-                                    border: 'none', borderBottom: '1px solid #F1F5F9', background: 'none',
-                                    fontSize: 12, color: already ? 'var(--text-muted)' : '#1E293B', cursor: already ? 'default' : 'pointer',
+                                    border: 'none', borderBottom: '1px solid var(--bg-page)', background: 'none',
+                                    fontSize: 12, color: already ? 'var(--text-muted)' : 'var(--ink)', cursor: already ? 'default' : 'pointer',
                                   }}
                                 >
                                   <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{f.sku}</span> {f.name}
@@ -512,7 +512,7 @@ export default function BlogAdminClient() {
 
                         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                           <button onClick={saveSkus} disabled={savingSkus}
-                                  style={{ padding: '6px 14px', background: '#3DBFB8', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: savingSkus ? 0.6 : 1 }}>
+                                  style={{ padding: '6px 14px', background: 'var(--brand-teal)', color: 'var(--surface)', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: savingSkus ? 0.6 : 1 }}>
                             {savingSkus ? 'Зберігаю…' : 'Зберегти склад'}
                           </button>
                           <button onClick={() => { setEditSkus(null); setSearch(''); }} style={{ ...btn, fontSize: 12 }}>Скасувати</button>
@@ -533,7 +533,7 @@ export default function BlogAdminClient() {
                         ))}
                       </ul>
                     ) : (
-                      <div style={{ fontSize: 12, color: '#EF4444' }}>немає товарів у наявності за категоріями статті</div>
+                      <div style={{ fontSize: 12, color: 'var(--danger-bright)' }}>немає товарів у наявності за категоріями статті</div>
                     )}
                   </div>
                 </label>
@@ -546,8 +546,8 @@ export default function BlogAdminClient() {
       {/* Список */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 900 }}>
         {posts.map(p => (
-          <div key={p.id} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: p.is_published ? '#10B98118' : '#F59E0B18', color: p.is_published ? '#10B981' : '#F59E0B' }}>
+          <div key={p.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: p.is_published ? '#10B98118' : '#F59E0B18', color: p.is_published ? 'var(--emerald-bright)' : 'var(--amber)' }}>
               {p.is_published ? 'опубліковано' : 'чернетка'}
             </span>
             {p.noindex && (
@@ -556,7 +556,7 @@ export default function BlogAdminClient() {
               </span>
             )}
             <div style={{ flex: 1, minWidth: 240 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{p.title}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{p.title}</div>
               <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>{p.slug} · {new Date(p.created_at).toLocaleDateString('uk-UA')}</div>
             </div>
             {p.is_published && (
@@ -571,15 +571,15 @@ export default function BlogAdminClient() {
             >
               {coverBusy === p.id ? '⏳' : '🖼'} Обкладинка
             </button>
-            <button onClick={() => togglePublish(p)} style={{ ...btn, color: p.is_published ? '#F59E0B' : '#10B981' }}>
+            <button onClick={() => togglePublish(p)} style={{ ...btn, color: p.is_published ? 'var(--amber)' : 'var(--emerald-bright)' }}>
               {p.is_published ? 'Зняти з публікації' : 'Опублікувати'}
             </button>
             {p.is_published && (
-              <button onClick={() => toggleNoindex(p)} title="Стаття лишається на сайті; змінюється лише індексація пошуком" style={{ ...btn, color: p.noindex ? '#10B981' : 'var(--text-soft)' }}>
+              <button onClick={() => toggleNoindex(p)} title="Стаття лишається на сайті; змінюється лише індексація пошуком" style={{ ...btn, color: p.noindex ? 'var(--emerald-bright)' : 'var(--text-soft)' }}>
                 {p.noindex ? 'Повернути в пошук' : 'Закрити від пошуку'}
               </button>
             )}
-            <button onClick={() => remove(p)} style={{ ...btn, color: '#EF4444' }}>Видалити</button>
+            <button onClick={() => remove(p)} style={{ ...btn, color: 'var(--danger-bright)' }}>Видалити</button>
           </div>
         ))}
         {posts.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Статей з БД поки немає. Згенеруйте першу — введіть тему вище.</p>}
@@ -587,8 +587,8 @@ export default function BlogAdminClient() {
 
       {/* Редактор */}
       {editing && (
-        <Modal open onClose={() => { if (!saving) setEditing(null); }} width={900} padding={0} dismissible={!saving} aria-label="Редактор статті" style={{ background: '#fff' }}>
-          <div style={{ background: '#fff', padding: 24, maxHeight: '90vh', overflowY: 'auto', width: '100%' }}>
+        <Modal open onClose={() => { if (!saving) setEditing(null); }} width={900} padding={0} dismissible={!saving} aria-label="Редактор статті" style={{ background: 'var(--surface)' }}>
+          <div style={{ background: 'var(--surface)', padding: 24, maxHeight: '90vh', overflowY: 'auto', width: '100%' }}>
             <h2 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 16px' }}>Редагування: {editing.slug}</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label style={lbl}>Заголовок (укр)
@@ -612,9 +612,9 @@ export default function BlogAdminClient() {
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
               <button onClick={() => setEditing(null)} disabled={saving} style={btn}>Скасувати</button>
-              <button onClick={() => saveEditing()} disabled={saving} style={{ ...btn, background: 'var(--navy)', color: '#fff', border: 'none' }}>Зберегти</button>
+              <button onClick={() => saveEditing()} disabled={saving} style={{ ...btn, background: 'var(--navy)', color: 'var(--surface)', border: 'none' }}>Зберегти</button>
               {!editing.is_published && (
-                <button onClick={() => saveEditing(true)} disabled={saving} style={{ ...btn, background: '#10B981', color: '#fff', border: 'none' }}>Зберегти й опублікувати</button>
+                <button onClick={() => saveEditing(true)} disabled={saving} style={{ ...btn, background: 'var(--emerald-bright)', color: 'var(--surface)', border: 'none' }}>Зберегти й опублікувати</button>
               )}
             </div>
           </div>
@@ -625,12 +625,12 @@ export default function BlogAdminClient() {
 }
 
 const btn: React.CSSProperties = {
-  padding: '7px 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 8,
+  padding: '7px 14px', background: 'var(--surface)', border: '1px solid var(--line-slate)', borderRadius: 8,
   fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer',
 };
 const miniBtn: React.CSSProperties = {
-  width: 22, height: 22, lineHeight: '20px', padding: 0, background: '#fff',
-  border: '1px solid #CBD5E1', borderRadius: 5, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
+  width: 22, height: 22, lineHeight: '20px', padding: 0, background: 'var(--surface)',
+  border: '1px solid var(--line-slate)', borderRadius: 5, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
 };
 const lbl: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-soft)' };
-const inp: React.CSSProperties = { padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, fontFamily: 'inherit' };
+const inp: React.CSSProperties = { padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line-slate)', fontSize: 13, fontFamily: 'inherit' };

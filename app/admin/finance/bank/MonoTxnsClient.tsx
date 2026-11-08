@@ -155,7 +155,7 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
             {(['todo', 'all'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', background: filter === f ? 'var(--navy)' : 'var(--bg-card)', color: filter === f ? '#fff' : 'var(--text-secondary)' }}>
+                style={{ height: '26px', padding: '0 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', background: filter === f ? 'var(--navy)' : 'var(--bg-card)', color: filter === f ? 'var(--surface)' : 'var(--text-secondary)' }}>
                 {f === 'todo' ? `На категоризацію (${todo.length})` : `Усі (${rows.length})`}
               </button>
             ))}
@@ -213,7 +213,7 @@ export default function MonoTxnsClient({ rows, suppliers, partners, ledgerBank, 
                           <input value={desc[r.id] ?? ''} onChange={e => setDesc(d => ({ ...d, [r.id]: e.target.value }))} placeholder="Опис (необов'язково)" style={inp} />
                         )}
                         <button onClick={() => post(r)} disabled={!choice[r.id] || busy === r.id || (choice[r.id] === 'order' && !orderNo[r.id]) || (choice[r.id]?.startsWith('partner-') && !partner[r.id])}
-                          style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? 'var(--color-info)' : 'var(--bg-soft)', color: choice[r.id] ? '#fff' : 'var(--text-muted)' }}>
+                          style={{ alignSelf: 'flex-start', height: '28px', padding: '0 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: choice[r.id] ? 'pointer' : 'not-allowed', background: choice[r.id] ? 'var(--color-info)' : 'var(--bg-soft)', color: choice[r.id] ? 'var(--surface)' : 'var(--text-muted)' }}>
                           {busy === r.id ? 'Проводимо…' : 'Провести'}
                         </button>
                       </div>

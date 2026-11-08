@@ -44,9 +44,9 @@ export default async function SupplierStockPage({ params }: { params: Promise<{ 
   const outStock = (stock ?? []).filter(s => s.stock_status === 'out_of_stock').length;
 
   const statusStyle = (status: string) =>
-    status === 'in_stock'       ? { color: '#15803D', bg: '#F0FDF4', label: 'В наявності' } :
-    status === 'on_order'       ? { color: '#B45309', bg: '#FEF3C7', label: 'Під замовлення' } :
-                                  { color: '#DC2626', bg: '#FEF2F2', label: 'Відсутній' };
+    status === 'in_stock'       ? { color: 'var(--color-success)', bg: 'var(--bg-success)', label: 'В наявності' } :
+    status === 'on_order'       ? { color: 'var(--color-warn)', bg: 'var(--amber-bg)', label: 'Під замовлення' } :
+                                  { color: 'var(--color-danger)', bg: '#FEF2F2', label: 'Відсутній' };
 
   const col: React.CSSProperties = {
     display: 'grid',

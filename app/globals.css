@@ -78,6 +78,45 @@
   --text-soft:       #64748B;
   --text-gray:       #6B7280;
   --text-gray-light: #9CA3AF;
+
+  /* Токени адмінки, етап 1 (docs/ADMIN-MODERNIZATION-PLAN.md, 08.11.2026): світлі
+     значення = рівно ті hex, що були в inline-стилях (кодмод їх замінив на var()),
+     тому світла тема піксель у піксель та сама; темні — нижче. Нові кольори в
+     app/admin — лише через ці токени (tests/admin-color-tokens.test.ts). */
+  --surface:        #FFFFFF;
+  --surface-soft:   #F9FAFB;
+  --surface-muted:  #F3F4F6;
+  --line:           #E5E7EB;
+  --line-strong:    #D1D5DB;
+  --line-slate:     #CBD5E1;
+  --ink-strong:     #111111;
+  --ink:            #1E293B;
+  --ink-2:          #374151;
+  --ink-muted:      #94A3B8;
+  --ok-bright:      #22C55E;
+  --ok-bg:          #DCFCE7;
+  --ok-border:      #BBF7D0;
+  --emerald:        #059669;
+  --emerald-bright: #10B981;
+  --emerald-dark:   #065F46;
+  --emerald-bg:     #ECFDF5;
+  --danger-bright:  #EF4444;
+  --danger-dark:    #B91C1C;
+  --danger-bg:      #FEE2E2;
+  --danger-border:  #FECACA;
+  --amber:          #F59E0B;
+  --amber-bg:       #FEF3C7;
+  --amber-border:   #FDE68A;
+  --orange:         #C2410C;
+  --orange-bright:  #EA580C;
+  --orange-bg:      #FFF7ED;
+  --orange-border:  #FDBA74;
+  --blue:           #2563EB;
+  --blue-bright:    #3B82F6;
+  --blue-bg:        #EFF4FF;
+  --blue-border:    #BFDBFE;
+  --violet:         #7C3AED;
+  --violet-bg:      #F5F3FF;
 }
 
 /* ── Dark theme (soft slate) ── */
@@ -114,6 +153,41 @@
   --text-soft:       #7E93AB;
   --text-gray:       #7E93AB;
   --text-gray-light: #546070;
+
+  --surface:        #2F3647;
+  --surface-soft:   #2A3140;
+  --surface-muted:  #343C4E;
+  --line:           #3B4560;
+  --line-strong:    #4A5570;
+  --line-slate:     #3B4560;
+  --ink-strong:     #E5EAF2;
+  --ink:            #CDD5E0;
+  --ink-2:          #B6C0D0;
+  --ink-muted:      #546070;
+  --ok-bright:      #34D399;
+  --ok-bg:          #14291E;
+  --ok-border:      #14532D;
+  --emerald:        #34D399;
+  --emerald-bright: #34D399;
+  --emerald-dark:   #6EE7B7;
+  --emerald-bg:     #0F2A22;
+  --danger-bright:  #F87171;
+  --danger-dark:    #FCA5A5;
+  --danger-bg:      #2D1515;
+  --danger-border:  #7F1D1D;
+  --amber:          #FBBF24;
+  --amber-bg:       #2D2410;
+  --amber-border:   #78350F;
+  --orange:         #FB923C;
+  --orange-bright:  #FB923C;
+  --orange-bg:      #2E1F14;
+  --orange-border:  #7C2D12;
+  --blue:           #60A5FA;
+  --blue-bright:    #60A5FA;
+  --blue-bg:        #1B2740;
+  --blue-border:    #1E3A8A;
+  --violet:         #A78BFA;
+  --violet-bg:      #251F3A;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

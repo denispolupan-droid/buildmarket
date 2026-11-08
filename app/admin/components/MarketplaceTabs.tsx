@@ -11,7 +11,7 @@ function PromLogo() {
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
         <rect x="1" y="1" width="16" height="16" rx="3.5" stroke="#7C3AED" strokeWidth="2.2"/>
       </svg>
-      <span style={{ fontSize: 15, fontWeight: 800, color: '#7C3AED', letterSpacing: '-0.3px', fontFamily: 'inherit' }}>
+      <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--violet)', letterSpacing: '-0.3px', fontFamily: 'inherit' }}>
         prom
       </span>
     </span>
@@ -27,7 +27,7 @@ function RozetkaLogo() {
         <ellipse cx="13" cy="8.2" rx="1.4" ry="1.6" fill="white"/>
         <path d="M6.2 12.5 Q10 16.2 13.8 12.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
       </svg>
-      <span style={{ fontSize: 13, fontWeight: 900, color: '#111', letterSpacing: '0.8px', fontFamily: 'inherit' }}>
+      <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--ink-strong)', letterSpacing: '0.8px', fontFamily: 'inherit' }}>
         ROZETKA
       </span>
     </span>
@@ -41,7 +41,7 @@ function EpicentrLogo() {
         <rect x="1" y="1" width="16" height="16" rx="3.5" fill="#FF7A00"/>
         <path d="M5.5 5.5h7M5.5 9h5.5M5.5 12.5h7" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
       </svg>
-      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', letterSpacing: '-0.2px', fontFamily: 'inherit' }}>
+      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink-strong)', letterSpacing: '-0.2px', fontFamily: 'inherit' }}>
         Епіцентр
       </span>
     </span>
@@ -93,14 +93,14 @@ export default function MarketplaceTabs({ active, activeBg, activeText, tabs }: 
           border-radius: 999px;
           font-size: 13px;
           font-weight: 500;
-          color: #64748B;
+          color: var(--text-soft);
           text-decoration: none;
           transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
           white-space: nowrap;
         }
         .mktab:hover:not(.mktab--active) {
           background: rgba(0,0,0,0.06);
-          color: #1E293B;
+          color: var(--ink);
           transform: translateY(-1px);
         }
         .mktab--active {

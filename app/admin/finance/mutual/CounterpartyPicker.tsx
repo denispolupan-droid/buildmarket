@@ -114,7 +114,7 @@ export default function CounterpartyPicker({
             </div>
           )}
           {options.map(o => {
-            const color = Math.abs(o.balance) < 0.005 ? 'var(--text-muted)' : o.balance > 0 ? '#15803D' : '#B45309';
+            const color = Math.abs(o.balance) < 0.005 ? 'var(--text-muted)' : o.balance > 0 ? 'var(--color-success)' : 'var(--color-warn)';
             return (
               <button key={o.ref} type="button" onClick={() => choose(o)}
                 style={{

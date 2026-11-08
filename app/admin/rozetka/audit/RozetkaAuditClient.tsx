@@ -103,9 +103,9 @@ export default function RozetkaAuditClient({
   }
 
   const CHIP: Record<Flag, React.CSSProperties> = {
-    ok:    { background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' },
-    warn:  { background: 'var(--bg-warn)', color: 'var(--color-warn)', border: '1px solid #FDE68A' },
-    error: { background: 'var(--bg-danger)', color: 'var(--color-danger)', border: '1px solid #FECACA' },
+    ok:    { background: 'var(--emerald-bg)', color: 'var(--emerald)', border: '1px solid #A7F3D0' },
+    warn:  { background: 'var(--bg-warn)', color: 'var(--color-warn)', border: '1px solid var(--amber-border)' },
+    error: { background: 'var(--bg-danger)', color: 'var(--color-danger)', border: '1px solid var(--danger-border)' },
   };
 
   return (
@@ -113,7 +113,7 @@ export default function RozetkaAuditClient({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
         <Link href="/admin/rozetka/products" style={{ fontSize: 13, color: 'var(--text-soft)', textDecoration: 'none' }}>← Товари</Link>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1E293B', margin: 0 }}>Аудит назв Rozetka</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>Аудит назв Rozetka</h1>
 
         {/* Summary chips */}
         <span style={{ fontSize: 12, color: 'var(--text-soft)' }}>{total} товарів</span>
@@ -127,8 +127,8 @@ export default function RozetkaAuditClient({
         {(['all', 'issues', 'ok'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{
             padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            background: filter === f ? '#1E293B' : '#F1F5F9',
-            color:      filter === f ? '#fff'    : 'var(--text-secondary)',
+            background: filter === f ? 'var(--ink)' : 'var(--bg-page)',
+            color:      filter === f ? 'var(--surface)'    : 'var(--text-secondary)',
             border: 'none',
           }}>
             {f === 'all' ? 'Всі' : f === 'issues' ? `Проблемні (${nError + nWarn})` : `OK (${nOk})`}
@@ -142,12 +142,12 @@ export default function RozetkaAuditClient({
       </div>
 
       {/* Table */}
-      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
         {/* Column headers */}
         <div style={{
           display: 'grid', gridTemplateColumns: '90px 1fr 1fr 90px 36px',
           gap: 0, padding: '6px 12px',
-          background: '#F1F5F9', borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-page)', borderBottom: '1px solid var(--border)',
           fontSize: 11, fontWeight: 600, color: 'var(--text-soft)', textTransform: 'uppercase', letterSpacing: '.04em',
         }}>
           <div>Арт. / Кат.</div>
@@ -170,7 +170,7 @@ export default function RozetkaAuditClient({
             <div key={p.sku} style={{
               display: 'grid', gridTemplateColumns: '90px 1fr 1fr 90px 36px',
               gap: 0, padding: '7px 12px', borderBottom: '1px solid var(--bg-soft)', alignItems: 'start',
-              background: row.flag === 'error' ? '#FFFAFA' : row.flag === 'warn' ? '#FFFDF5' : '#fff',
+              background: row.flag === 'error' ? '#FFFAFA' : row.flag === 'warn' ? '#FFFDF5' : 'var(--surface)',
             }}>
               {/* SKU + category */}
               <div>
@@ -197,9 +197,9 @@ export default function RozetkaAuditClient({
                   style={{
                     width: '100%', boxSizing: 'border-box',
                     padding: '4px 7px', borderRadius: 5, fontSize: 12, lineHeight: 1.4,
-                    border: `1px solid ${isEdited ? '#BFDBFE' : row.flag === 'error' ? '#FECACA' : row.flag === 'warn' ? '#FDE68A' : 'var(--border)'}`,
+                    border: `1px solid ${isEdited ? 'var(--blue-border)' : row.flag === 'error' ? 'var(--danger-border)' : row.flag === 'warn' ? 'var(--amber-border)' : 'var(--border)'}`,
                     background: row.isManual || isEdited ? 'var(--brand-blue-light)' : 'transparent',
-                    color: '#1E293B',
+                    color: 'var(--ink)',
                   }}
                 />
                 {row.issues.length > 0 && (
@@ -212,7 +212,7 @@ export default function RozetkaAuditClient({
                   </div>
                 )}
                 {row.isManual && !isEdited && (
-                  <div style={{ fontSize: 10, color: '#2563EB', marginTop: 2 }}>✎ ручна назва</div>
+                  <div style={{ fontSize: 10, color: 'var(--blue)', marginTop: 2 }}>✎ ручна назва</div>
                 )}
               </div>
 
@@ -232,8 +232,8 @@ export default function RozetkaAuditClient({
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '4px 6px', borderRadius: 4,
-                      background: saved[p.sku] ? '#ECFDF5' : '#2563EB',
-                      color: saved[p.sku] ? '#059669' : '#fff',
+                      background: saved[p.sku] ? 'var(--emerald-bg)' : 'var(--blue)',
+                      color: saved[p.sku] ? 'var(--emerald)' : 'var(--surface)',
                       border: 'none', cursor: 'pointer',
                     }}
                   >

@@ -39,11 +39,11 @@ interface Category {
 }
 
 function marginColor(pct: number) {
-  if (pct >= 30) return '#16A34A';
+  if (pct >= 30) return 'var(--status-instock)';
   if (pct >= 20) return '#65A30D';
-  if (pct >= 10) return '#D97706';
-  if (pct >= 0)  return '#EA580C';
-  return '#DC2626';
+  if (pct >= 10) return 'var(--status-order)';
+  if (pct >= 0)  return 'var(--orange-bright)';
+  return 'var(--color-danger)';
 }
 
 const TH: React.CSSProperties = {
@@ -343,17 +343,17 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111' }}>Товари Rozetka</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--ink-strong)' }}>Товари Rozetka</h1>
           <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-gray)' }}>
             {totalEnabled} / {products.length} увімкнено в Rozetka
             <span style={{ marginLeft: 8, color: 'var(--color-warn)', fontWeight: 600 }}>· {Object.values(smart).filter(Boolean).length} у Smart</span>
             <span style={{ marginLeft: 8 }}>· доставка {delivery.perParcel} грн</span>
             <button onClick={() => setTariffOpen(v => !v)}
-              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid #FDBA74', background: tariffOpen ? '#FFF7ED' : '#fff', color: 'var(--color-warn)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 7, border: '1px solid var(--orange-border)', background: tariffOpen ? 'var(--orange-bg)' : 'var(--surface)', color: 'var(--color-warn)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               Тарифи Rozetka
             </button>
             <button onClick={() => { setSlaOpen(v => !v); loadSlaReport(); }}
-              style={{ marginLeft: 6, padding: '2px 10px', borderRadius: 7, border: '1px solid #6EE7B7', background: slaOpen ? '#ECFDF5' : '#fff', color: '#065F46', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ marginLeft: 6, padding: '2px 10px', borderRadius: 7, border: '1px solid #6EE7B7', background: slaOpen ? 'var(--emerald-bg)' : 'var(--surface)', color: 'var(--emerald-dark)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               Точки видачі
             </button>
           </p>
@@ -364,35 +364,35 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
       {slaOpen && (
         <div style={{ margin: '0 0 20px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #6EE7B7', background: 'var(--bg-success)', maxWidth: 860 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#065F46' }}>Доставка в точки видачі Rozetka</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--emerald-dark)' }}>Доставка в точки видачі Rozetka</span>
             <button onClick={() => loadSlaReport(true)} disabled={slaLoading}
-              style={{ padding: '2px 9px', borderRadius: 6, border: '1px solid #A7F3D0', background: '#fff', color: '#065F46', fontSize: 11.5, fontWeight: 600, cursor: slaLoading ? 'default' : 'pointer', opacity: slaLoading ? 0.5 : 1 }}>
+              style={{ padding: '2px 9px', borderRadius: 6, border: '1px solid #A7F3D0', background: 'var(--surface)', color: 'var(--emerald-dark)', fontSize: 11.5, fontWeight: 600, cursor: slaLoading ? 'default' : 'pointer', opacity: slaLoading ? 0.5 : 1 }}>
               {slaLoading ? 'Оновлюю…' : 'Оновити'}
             </button>
             {slaData && (
               <button onClick={downloadSlaCsv}
-                style={{ padding: '2px 9px', borderRadius: 6, border: '1px solid #A7F3D0', background: '#fff', color: '#065F46', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
+                style={{ padding: '2px 9px', borderRadius: 6, border: '1px solid #A7F3D0', background: 'var(--surface)', color: 'var(--emerald-dark)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
                 CSV
               </button>
             )}
           </div>
 
           {slaLoading && !slaData && <div style={{ fontSize: 13, color: '#047857' }}>Читаю набори доставки і всі товари Rozetka…</div>}
-          {slaError && <div style={{ fontSize: 13, color: '#B91C1C' }}>Помилка: {slaError}</div>}
+          {slaError && <div style={{ fontSize: 13, color: 'var(--danger-dark)' }}>Помилка: {slaError}</div>}
 
           {slaData && (
             <>
-              <div style={{ fontSize: 13, color: '#374151', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 12 }}>
                 {slaData.totals.items} товарів ·{' '}
-                <b style={{ color: '#065F46' }}>{slaData.totals.withPickup} з точками видачі</b> ·{' '}
+                <b style={{ color: 'var(--emerald-dark)' }}>{slaData.totals.withPickup} з точками видачі</b> ·{' '}
                 <b style={{ color: 'var(--color-warn)' }}>{slaData.totals.withoutPickup} без</b>
               </div>
 
               {/* Набори доставки */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                 {slaData.slas.map(s => (
-                  <div key={s.id} style={{ padding: '7px 10px', borderRadius: 8, background: '#fff', border: `1px solid ${s.pickup ? '#A7F3D0' : '#E5E7EB'}` }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: s.pickup ? '#065F46' : 'var(--text-gray)' }}>
+                  <div key={s.id} style={{ padding: '7px 10px', borderRadius: 8, background: 'var(--surface)', border: `1px solid ${s.pickup ? '#A7F3D0' : 'var(--line)'}` }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: s.pickup ? 'var(--emerald-dark)' : 'var(--text-gray)' }}>
                       {s.pickup ? '✅' : '❌'} {s.title}
                       <span style={{ fontWeight: 500, color: 'var(--text-gray-light)' }}>
                         {' '}· {s.itemCount} товарів{s.isStandard ? ' · стандартний набір' : ''}{s.isReserve ? ' · резерв' : ''}
@@ -406,24 +406,24 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
               {/* Групи, де набір розʼїхався */}
               {slaData.groups.length > 0 && (
                 <>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', marginBottom: 6 }}>
                     Групи без точок видачі ({slaData.groups.length})
                   </div>
-                  <div style={{ maxHeight: 220, overflowY: 'auto', background: '#fff', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                  <div style={{ maxHeight: 220, overflowY: 'auto', background: 'var(--surface)', borderRadius: 8, border: '1px solid var(--line)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                       <thead>
-                        <tr style={{ position: 'sticky', top: 0, background: '#F9FAFB' }}>
+                        <tr style={{ position: 'sticky', top: 0, background: 'var(--surface-soft)' }}>
                           <th style={{ textAlign: 'left',  padding: '5px 10px', color: 'var(--text-gray)', fontWeight: 600 }}>Група</th>
                           <th style={{ textAlign: 'right', padding: '5px 10px', color: 'var(--color-warn)', fontWeight: 600 }}>без точок</th>
-                          <th style={{ textAlign: 'right', padding: '5px 10px', color: '#065F46', fontWeight: 600 }}>з точками</th>
+                          <th style={{ textAlign: 'right', padding: '5px 10px', color: 'var(--emerald-dark)', fontWeight: 600 }}>з точками</th>
                         </tr>
                       </thead>
                       <tbody>
                         {slaData.groups.map(g => (
-                          <tr key={g.group} style={{ borderTop: '1px solid #F3F4F6' }}>
-                            <td style={{ padding: '4px 10px', color: '#374151' }}>{g.group}</td>
+                          <tr key={g.group} style={{ borderTop: '1px solid var(--surface-muted)' }}>
+                            <td style={{ padding: '4px 10px', color: 'var(--ink-2)' }}>{g.group}</td>
                             <td style={{ padding: '4px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--color-warn)' }}>{g.off}</td>
-                            <td style={{ padding: '4px 10px', textAlign: 'right', color: g.on ? '#065F46' : '#D1D5DB' }}>{g.on}</td>
+                            <td style={{ padding: '4px 10px', textAlign: 'right', color: g.on ? 'var(--emerald-dark)' : 'var(--line-strong)' }}>{g.on}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -440,9 +440,9 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                     {slaAllOff ? '▾' : '▸'} Перелік товарів без точок видачі ({slaData.off.length})
                   </button>
                   {slaAllOff && (
-                    <div style={{ maxHeight: 300, overflowY: 'auto', marginTop: 6, background: '#fff', borderRadius: 8, border: '1px solid #E5E7EB', padding: '6px 10px' }}>
+                    <div style={{ maxHeight: 300, overflowY: 'auto', marginTop: 6, background: 'var(--surface)', borderRadius: 8, border: '1px solid var(--line)', padding: '6px 10px' }}>
                       {slaData.off.map(i => (
-                        <div key={i.article} style={{ fontSize: 12, color: '#374151', padding: '2px 0', borderBottom: '1px solid #F9FAFB' }}>
+                        <div key={i.article} style={{ fontSize: 12, color: 'var(--ink-2)', padding: '2px 0', borderBottom: '1px solid var(--surface-soft)' }}>
                           <span style={{ color: 'var(--text-gray-light)', fontFamily: 'monospace' }}>{i.article}</span>{' '}
                           {i.name}
                           <span style={{ color: 'var(--text-gray-light)' }}> · {i.stock} шт · {i.slaTitle}</span>
@@ -464,14 +464,14 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
 
       {/* Умови Smart — редагований тариф компенсації доставки */}
       {tariffOpen && (
-        <div style={{ margin: '0 0 20px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid #FDBA74', background: 'var(--bg-warn)', maxWidth: 640 }}>
+        <div style={{ margin: '0 0 20px', padding: '14px 18px', borderRadius: 12, border: '1.5px solid var(--orange-border)', background: 'var(--bg-warn)', maxWidth: 640 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-warn)', marginBottom: 10 }}>
             Компенсація вартості доставки Smart (грн з ПДВ, за сумою замовлення)
           </div>
           {/* Сітка, а не flex: колонки однакової ширини в усіх рядках, тож поля
               вводу стоять одне під одним. У flex кожен рядок міряв себе сам —
               підпис «400 – 700» коротший за «замовлення до», і поля розʼїжджались. */}
-          <div style={{ display: 'grid', gridTemplateColumns: `${LABEL_COL}px 64px auto 16px 64px auto`, alignItems: 'center', gap: '8px 6px', fontSize: 13, color: '#374151' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `${LABEL_COL}px 64px auto 16px 64px auto`, alignItems: 'center', gap: '8px 6px', fontSize: 13, color: 'var(--ink-2)' }}>
             {tariffDraft.map((b, i) => {
               const isLast = i === tariffDraft.length - 1;
               const prevUpTo = i > 0 ? tariffDraft[i - 1].upTo : null;
@@ -496,7 +496,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
 
           {/* Доставка в точки видачі — той самий блок, бо збір і компенсація Smart
               взаємовиключні: Smart-замовлення сюди не потрапляє взагалі. */}
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #FDE68A' }}>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--amber-border)' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-warn)', marginBottom: 4 }}>
               Доставка в точки видачі Rozetka (грн з ПДВ, за відправлення)
             </div>
@@ -504,7 +504,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
               Списується з логістичного балансу при передачі перевізникові. Ставка нижче — запасна:
               якщо в накладній є фактична сума, беремо її. Для Smart-замовлень збір не нараховується.
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: `${LABEL_COL}px 64px auto`, alignItems: 'center', gap: '8px 6px', fontSize: 13, color: '#374151' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `${LABEL_COL}px 64px auto`, alignItems: 'center', gap: '8px 6px', fontSize: 13, color: 'var(--ink-2)' }}>
               <span style={{ justifySelf: 'end' }}>організація видачі</span>
               <input value={deliveryDraft.perParcel}
                 onChange={e => setDeliveryDraft(d => ({ ...d, perParcel: e.target.value }))} style={NUM_INPUT} />
@@ -518,7 +518,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
           {tariffError && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-danger)', fontWeight: 600 }}>{tariffError}</div>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
             <button onClick={saveTariff} disabled={tariffSaving}
-              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: 'var(--color-warn)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
+              style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: 'var(--color-warn)', color: 'var(--surface)', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: tariffSaving ? 0.6 : 1 }}>
               {tariffSaving ? 'Зберігаю…' : 'Зберегти'}
             </button>
             <span style={{ fontSize: 12, color: 'var(--text-warn-dark)' }}>
@@ -530,7 +530,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap', background: '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap', background: 'var(--surface)' }}>
           <input type="checkbox"
             checked={filteredRows.length > 0 && filteredRows.every(r => selected.has(r.p.sku))}
             ref={el => { if (el) el.indeterminate = filteredRows.some(r => selected.has(r.p.sku)) && !filteredRows.every(r => selected.has(r.p.sku)); }}
@@ -538,15 +538,15 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
               if (e.target.checked) setSelected(new Set(filteredRows.map(r => r.p.sku)));
               else setSelected(prev => { const s = new Set(prev); filteredRows.forEach(r => s.delete(r.p.sku)); return s; });
             }}
-            style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
+            style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
           {filteredRows.every(r => selected.has(r.p.sku)) && filteredRows.length > 0 ? 'Зняти вибір' : 'Вибрати всі'}
         </label>
         <button
           onClick={() => setCollapsed(allCollapsed ? Object.fromEntries(allSlugs.map(s => [s, false])) : Object.fromEntries(allSlugs.map(s => [s, true])))}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, background: '#fff', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 5, height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, background: 'var(--surface)', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
           {allCollapsed ? <><ChevronDown size={13} /> Розгорнути всі</> : <><ChevronRight size={13} /> Згорнути всі</>}
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', background: '#fff' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 42, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', background: 'var(--surface)' }}>
           <span>Всі в Rozetka</span>
           <button
             onClick={() => {
@@ -556,8 +556,8 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                 : `Вимкнути всі ${products.length} товарів з Rozetka?`;
               if (window.confirm(msg)) toggleAll(next);
             }}
-            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? '#22C55E' : totalEnabled > 0 ? 'var(--border-success)' : '#CBD5E1', transition: 'background 0.2s' }}>
-            <span style={{ position: 'absolute', top: 2, left: totalEnabled === products.length ? 18 : totalEnabled > 0 ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+            style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: totalEnabled === products.length ? 'var(--ok-bright)' : totalEnabled > 0 ? 'var(--border-success)' : 'var(--line-slate)', transition: 'background 0.2s' }}>
+            <span style={{ position: 'absolute', top: 2, left: totalEnabled === products.length ? 18 : totalEnabled > 0 ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </button>
         </label>
         <div style={{ position: 'relative', flex: '1 1 220px' }}>
@@ -567,12 +567,12 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
             style={{ width: '100%', height: 42, paddingLeft: 38, paddingRight: 14, borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
         </div>
         <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)}
-          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterBrand ? 'var(--brand-blue-light)' : '#fff', minWidth: 150 }}>
+          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterBrand ? 'var(--brand-blue-light)' : 'var(--surface)', minWidth: 150 }}>
           <option value="">Всі бренди</option>
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterStatus ? 'var(--brand-blue-light)' : '#fff', minWidth: 180 }}>
+          style={{ height: 42, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, background: filterStatus ? 'var(--brand-blue-light)' : 'var(--surface)', minWidth: 180 }}>
           <option value="">Всі статуси Rozetka</option>
           <option value="on">Увімкнено в Rozetka</option>
           <option value="off">Виключено з Rozetka</option>
@@ -588,7 +588,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
             <span style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
           </div>
           <button onClick={applyGlobalMarkup} disabled={globalSaving || !globalMarkup}
-            style={{ height: 42, padding: '0 14px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: globalMarkup && !globalSaving ? 'pointer' : 'default', background: globalMarkup && !globalSaving ? '#2563EB' : '#F1F5F9', color: globalMarkup && !globalSaving ? '#fff' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            style={{ height: 42, padding: '0 14px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: globalMarkup && !globalSaving ? 'pointer' : 'default', background: globalMarkup && !globalSaving ? 'var(--blue)' : 'var(--bg-page)', color: globalMarkup && !globalSaving ? 'var(--surface)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {globalSaving ? 'Зберігаю...' : 'Застосувати'}
           </button>
         </div>
@@ -597,7 +597,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
       {/* Знайдено */}
       <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 12 }}>
         Знайдено: <strong>{filteredRows.length}</strong> товарів у <strong>{grouped.size}</strong> категоріях
-        {selected.size > 0 && <span style={{ marginLeft: 8, color: '#2563EB', fontWeight: 600 }}>· вибрано {selected.size}</span>}
+        {selected.size > 0 && <span style={{ marginLeft: 8, color: 'var(--blue)', fontWeight: 600 }}>· вибрано {selected.size}</span>}
       </div>
 
       {/* Grouped categories */}
@@ -619,7 +619,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
             : null;
 
           return (
-            <div key={catSlug} style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <div key={catSlug} style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
 
               {/* Category header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--bg-soft)', borderBottom: isCollapsed ? 'none' : '1px solid var(--border)' }}>
@@ -629,15 +629,15 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                 <button
                   onClick={() => bulkToggle(catSlug, !allOn)}
                   title={allOn ? 'Вимкнути всі в Rozetka' : 'Увімкнути всі в Rozetka'}
-                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? '#22C55E' : someOn ? 'var(--border-success)' : '#CBD5E1', transition: 'background 0.2s' }}>
-                  <span style={{ position: 'absolute', top: 2, left: allOn ? 18 : someOn ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                  style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: allOn ? 'var(--ok-bright)' : someOn ? 'var(--border-success)' : 'var(--line-slate)', transition: 'background 0.2s' }}>
+                  <span style={{ position: 'absolute', top: 2, left: allOn ? 18 : someOn ? 10 : 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </button>
-                <span onClick={() => setCollapsed(p => ({ ...p, [catSlug]: !isCollapsed }))} style={{ fontWeight: 600, fontSize: 13, color: '#1E293B', flex: 1, cursor: 'pointer' }}>
+                <span onClick={() => setCollapsed(p => ({ ...p, [catSlug]: !isCollapsed }))} style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)', flex: 1, cursor: 'pointer' }}>
                   {cat?.name ?? catSlug}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rows.length} товарів</span>
-                {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FFF7ED', color: 'var(--text-warn-dark)' }}>комісія {commission}%</span>}
-                {rows.some(r => smart[r.p.sku]) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FEF3C7', color: 'var(--color-warn)', fontWeight: 700 }}>Smart {rows.filter(r => smart[r.p.sku]).length}</span>}
+                {commission > 0 && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'var(--orange-bg)', color: 'var(--text-warn-dark)' }}>комісія {commission}%</span>}
+                {rows.some(r => smart[r.p.sku]) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'var(--amber-bg)', color: 'var(--color-warn)', fontWeight: 700 }}>Smart {rows.filter(r => smart[r.p.sku]).length}</span>}
                 {avgMarkup !== null && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'var(--brand-blue-light)', color: 'var(--color-info)' }}>наценка ~{avgMarkup}%</span>}
                 {!cat?.rozetka_category_id && catSlug !== '—' && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'var(--bg-danger)', color: 'var(--color-danger)' }}>без rz_id</span>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -645,11 +645,11 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                   <div style={{ position: 'relative' }}>
                     <input value={catMarkupInputs[catSlug] ?? ''} onChange={e => setCatMarkupInputs(p => ({ ...p, [catSlug]: e.target.value }))} onKeyDown={e => e.key === 'Enter' && applyBulkMarkup(catSlug)}
                       type="number" min="0" max="200" step="1" placeholder={catMkp != null ? String(catMkp) : '0'}
-                      style={{ padding: '3px 18px 3px 6px', borderRadius: 4, border: '1px solid #CBD5E1', fontSize: 11, width: 52, boxSizing: 'border-box' }} />
+                      style={{ padding: '3px 18px 3px 6px', borderRadius: 4, border: '1px solid var(--line-slate)', fontSize: 11, width: 52, boxSizing: 'border-box' }} />
                     <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
                   </div>
                   <button onClick={() => applyBulkMarkup(catSlug)} disabled={catSaving === catSlug || !catMarkupInputs[catSlug]}
-                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', background: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--brand-blue-light)' : '#F1F5F9', color: catMarkupInputs[catSlug] && catSaving !== catSlug ? '#2563EB' : 'var(--text-muted)', border: `1px solid ${catMarkupInputs[catSlug] && catSaving !== catSlug ? '#BFDBFE' : 'var(--border)'}`, cursor: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'pointer' : 'default' }}>
+                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', background: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--brand-blue-light)' : 'var(--bg-page)', color: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--blue)' : 'var(--text-muted)', border: `1px solid ${catMarkupInputs[catSlug] && catSaving !== catSlug ? 'var(--blue-border)' : 'var(--border)'}`, cursor: catMarkupInputs[catSlug] && catSaving !== catSlug ? 'pointer' : 'default' }}>
                     {catSaving === catSlug ? 'Зберігаю...' : 'Застосувати'}
                   </button>
                 </div>
@@ -668,7 +668,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                             const allSel = rows.every(r => selected.has(r.p.sku));
                             setSelected(prev => { const s = new Set(prev); rows.forEach(r => allSel ? s.delete(r.p.sku) : s.add(r.p.sku)); return s; });
                           }}
-                          style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
+                          style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
                       </th>
                       <th style={{ ...TH, width: 90 }}>SKU</th>
                       <th style={TH}>Назва</th>
@@ -695,14 +695,14 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                       const hasRzName  = rzNames[p.sku] !== '';
 
                       return (
-                        <tr key={p.sku} style={{ borderBottom: '1px solid #F1F5F9', background: isSelected ? 'rgba(37,99,235,0.03)' : undefined, opacity: isOn ? 1 : 0.45 }}>
+                        <tr key={p.sku} style={{ borderBottom: '1px solid var(--bg-page)', background: isSelected ? 'rgba(37,99,235,0.03)' : undefined, opacity: isOn ? 1 : 0.45 }}>
                           <td style={{ padding: '8px 8px 8px 16px' }}>
                             <input type="checkbox" checked={isSelected} onChange={() => setSelected(prev => { const s = new Set(prev); s.has(p.sku) ? s.delete(p.sku) : s.add(p.sku); return s; })}
-                              style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#2563EB' }} />
+                              style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--blue)' }} />
                           </td>
                           <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>{p.sku}</td>
                           <td style={{ padding: '8px 12px', maxWidth: 280 }}>
-                            <div style={{ fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                            <div style={{ fontWeight: 500, color: 'var(--ink-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                             {p.volume && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.volume}</div>}
                           </td>
                           <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.brand}</td>
@@ -715,13 +715,13 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                                 )}
                               </div>
                             ) : (
-                              <span style={{ fontSize: 11, color: '#D1D5DB' }}>—</span>
+                              <span style={{ fontSize: 11, color: 'var(--line-strong)' }}>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#111' }}>
-                            {cost != null ? `${cost.toFixed(0)} ₴` : retailPrice > 0 ? <span style={{ color: 'var(--text-muted)' }}>{retailPrice.toFixed(0)} ₴</span> : <span style={{ color: '#D1D5DB' }}>—</span>}
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--ink-strong)' }}>
+                            {cost != null ? `${cost.toFixed(0)} ₴` : retailPrice > 0 ? <span style={{ color: 'var(--text-muted)' }}>{retailPrice.toFixed(0)} ₴</span> : <span style={{ color: 'var(--line-strong)' }}>—</span>}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', color: rComm > 0 ? 'var(--text-warn-dark)' : '#D1D5DB', fontWeight: 500 }}>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', color: rComm > 0 ? 'var(--text-warn-dark)' : 'var(--line-strong)', fontWeight: 500 }}>
                             {rComm > 0 ? `${rComm}%` : '—'}
                           </td>
                           <td style={{ padding: '4px 8px', textAlign: 'right' }}>
@@ -735,35 +735,35 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                                   onChange={e => setMarkups(prev => ({ ...prev, [p.sku]: e.target.value }))}
                                   onBlur={e => saveMarkup(p.sku, e.target.value)}
                                   placeholder={rCatMkp != null ? `${rCatMkp}` : '0'}
-                                  style={{ width: 56, height: 26, padding: '0 18px 0 6px', borderRadius: 5, border: '1px solid var(--border)', fontSize: 12, background: markups[p.sku] ? 'var(--brand-blue-light)' : '#fff', outline: savingMarkup === p.sku ? '2px solid #93C5FD' : undefined }} />
+                                  style={{ width: 56, height: 26, padding: '0 18px 0 6px', borderRadius: 5, border: '1px solid var(--border)', fontSize: 12, background: markups[p.sku] ? 'var(--brand-blue-light)' : 'var(--surface)', outline: savingMarkup === p.sku ? '2px solid #93C5FD' : undefined }} />
                                 <span style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#111', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--ink-strong)', whiteSpace: 'nowrap' }}>
                             {rPrice != null ? (
                               <span title={isSmart && baseRz != null ? `База ${baseRz} ₴ + Smart-надбавка ${rPrice - baseRz} ₴` : undefined}>
                                 {rPrice} ₴
-                                {isSmart && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 800, color: 'var(--color-warn)', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 4, padding: '1px 4px', verticalAlign: 'middle' }}>S</span>}
+                                {isSmart && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 800, color: 'var(--color-warn)', background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', borderRadius: 4, padding: '1px 4px', verticalAlign: 'middle' }}>S</span>}
                               </span>
-                            ) : <span style={{ color: '#D1D5DB' }}>—</span>}
+                            ) : <span style={{ color: 'var(--line-strong)' }}>—</span>}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                             {marginPct != null
-                              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? '#ECFDF5' : marginPct >= 10 ? 'var(--bg-warn)' : 'var(--bg-danger)', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
-                              : <span style={{ color: '#D1D5DB' }}>—</span>}
+                              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: marginPct >= 20 ? 'var(--emerald-bg)' : marginPct >= 10 ? 'var(--bg-warn)' : 'var(--bg-danger)', color: marginColor(marginPct) }}>{marginPct.toFixed(1)}%</span>
+                              : <span style={{ color: 'var(--line-strong)' }}>—</span>}
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <button onClick={() => toggleSmart(p.sku)} disabled={isSmartToggling}
                               title={isSmart ? 'Вимкнути Smart-надбавку в ціні фіда' : 'Увімкнути Smart (ціна у фіді виросте на компенсацію доставки). Не забудьте синхронно підключити/відключити товар у кабінеті Rozetka!'}
-                              style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isSmartToggling ? 'wait' : 'pointer', padding: 0, background: isSmart ? '#F59E0B' : '#CBD5E1', transition: 'background 0.2s', opacity: isSmartToggling ? 0.6 : 1 }}>
-                              <span style={{ position: 'absolute', top: 2, left: isSmart ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                              style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isSmartToggling ? 'wait' : 'pointer', padding: 0, background: isSmart ? 'var(--amber)' : 'var(--line-slate)', transition: 'background 0.2s', opacity: isSmartToggling ? 0.6 : 1 }}>
+                              <span style={{ position: 'absolute', top: 2, left: isSmart ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                             </button>
                           </td>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                             <button onClick={() => toggleProduct(p.sku)} disabled={isToggling}
-                              style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isToggling ? 'wait' : 'pointer', padding: 0, background: isOn ? '#22C55E' : '#CBD5E1', transition: 'background 0.2s', opacity: isToggling ? 0.6 : 1 }}>
-                              <span style={{ position: 'absolute', top: 2, left: isOn ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                              style={{ position: 'relative', width: 36, height: 20, borderRadius: 10, border: 'none', cursor: isToggling ? 'wait' : 'pointer', padding: 0, background: isOn ? 'var(--ok-bright)' : 'var(--line-slate)', transition: 'background 0.2s', opacity: isToggling ? 0.6 : 1 }}>
+                              <span style={{ position: 'absolute', top: 2, left: isOn ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                             </button>
                           </td>
                           {/* Rozetka name edit */}
@@ -772,20 +772,20 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
                               <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                                 <input type="text" value={editName} onChange={e => setEditName(e.target.value)} autoFocus
                                   placeholder="авто"
-                                  style={{ width: 180, height: 26, padding: '0 5px', border: '1.5px solid #7C3AED', borderRadius: 5, fontSize: 11, outline: 'none' }} />
+                                  style={{ width: 180, height: 26, padding: '0 5px', border: '1.5px solid var(--violet)', borderRadius: 5, fontSize: 11, outline: 'none' }} />
                                 <button onClick={() => saveName(p.sku)} disabled={savingName}
                                   style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--status-instock)', background: 'var(--bg-success)', color: 'var(--status-instock)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <Check size={11} />
                                 </button>
                                 <button onClick={() => setEditSku(null)}
-                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--border)', background: '#F9FAFB', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  style={{ width: 24, height: 24, borderRadius: 5, border: '1.5px solid var(--border)', background: 'var(--surface-soft)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <X size={11} />
                                 </button>
                               </div>
                             ) : (
                               <button onClick={() => { setEditSku(p.sku); setEditName(rzNames[p.sku]); }}
                                 title={hasRzName ? `Rozetka-назва: ${rzNames[p.sku]}` : 'Встановити Rozetka-назву'}
-                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: hasRzName ? '#F5F3FF' : 'transparent', color: hasRzName ? '#7C3AED' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: hasRzName ? 'var(--violet-bg)' : 'transparent', color: hasRzName ? 'var(--violet)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Pencil size={11} />
                               </button>
                             )}
@@ -803,7 +803,7 @@ export default function RozetkaProductsClient({ products, stock, categories, sma
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-soft)' }}>
-        {([['#16A34A', '≥ 30%'], ['#65A30D', '20–30%'], ['#D97706', '10–20%'], ['#EA580C', '0–10%'], ['#DC2626', '< 0%']] as [string, string][]).map(([color, label]) => (
+        {([['var(--status-instock)', '≥ 30%'], ['#65A30D', '20–30%'], ['var(--status-order)', '10–20%'], ['var(--orange-bright)', '0–10%'], ['var(--color-danger)', '< 0%']] as [string, string][]).map(([color, label]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} /> {label}
           </div>

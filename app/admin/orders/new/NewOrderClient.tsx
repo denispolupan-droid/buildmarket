@@ -203,8 +203,8 @@ export default function NewOrderClient() {
             <button key={ch.value} onClick={() => setChannelCode(ch.value)}
               style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                 border: `1.5px solid ${channelCode === ch.value ? 'var(--navy)' : 'var(--border)'}`,
-                background: channelCode === ch.value ? 'var(--navy)' : '#fff',
-                color: channelCode === ch.value ? '#fff' : 'var(--text-secondary)' }}>
+                background: channelCode === ch.value ? 'var(--navy)' : 'var(--surface)',
+                color: channelCode === ch.value ? 'var(--surface)' : 'var(--text-secondary)' }}>
               {ch.label}
             </button>
           ))}
@@ -235,7 +235,7 @@ export default function NewOrderClient() {
                   <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                     {[c.company, c.phone, c.email].filter(Boolean).join(' · ')}
-                    {c.type && <span style={{ marginLeft: '6px', background: '#EFF4FF', color: 'var(--navy)', borderRadius: '4px', padding: '1px 5px' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>}
+                    {c.type && <span style={{ marginLeft: '6px', background: 'var(--blue-bg)', color: 'var(--navy)', borderRadius: '4px', padding: '1px 5px' }}>{c.type === 'wholesale' ? 'Опт' : 'Роздріб'}</span>}
                   </span>
                 </button>
               ))}
@@ -287,7 +287,7 @@ export default function NewOrderClient() {
                   style={{ width: '50px', height: '28px', border: '1px solid var(--border)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', outline: 'none' }} />
                 <span style={{ color: 'var(--text-secondary)', minWidth: '80px', textAlign: 'right' }}>{(item.price * item.qty).toFixed(0)} грн</span>
                 <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}
-                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: '2px', display: 'flex' }}>
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--danger-bright)', padding: '2px', display: 'flex' }}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -329,7 +329,7 @@ export default function NewOrderClient() {
             <input placeholder="Ціна" type="number" min={0} value={addPrice} onChange={e => setAddPrice(e.target.value)}
               style={{ height: '34px', padding: '0 8px', border: '1.5px solid var(--border)', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
             <button onClick={addItem}
-              style={{ height: '34px', width: '34px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ height: '34px', width: '34px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Plus size={15} />
             </button>
           </div>
@@ -364,7 +364,7 @@ export default function NewOrderClient() {
                 <button key={sub} onClick={() => setNovaSubtype(sub)}
                   style={{ flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                     border: `1.5px solid ${novaSubtype === sub ? 'var(--navy)' : 'var(--border)'}`,
-                    background: novaSubtype === sub ? '#EFF4FF' : '#fff',
+                    background: novaSubtype === sub ? 'var(--blue-bg)' : 'var(--surface)',
                     color: novaSubtype === sub ? 'var(--navy)' : 'var(--text-soft)' }}>
                   {sub === 'warehouse' ? '📦 Відділення' : sub === 'postomat' ? '🏧 Поштомат' : '🚚 Кур\'єр'}
                 </button>
@@ -403,7 +403,7 @@ export default function NewOrderClient() {
       </div>
 
       <button onClick={handleSubmit} disabled={submitting}
-        style={{ width: '100%', height: '44px', borderRadius: '10px', border: 'none', background: 'var(--navy)', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+        style={{ width: '100%', height: '44px', borderRadius: '10px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: '14px', fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
         {submitting ? 'Збереження...' : `Створити замовлення${totalPrice > 0 ? ` · ${totalPrice.toFixed(2)} грн` : ''}`}
       </button>
     </div>

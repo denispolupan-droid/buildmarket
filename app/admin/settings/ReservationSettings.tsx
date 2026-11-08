@@ -78,7 +78,7 @@ export default function ReservationSettings({ initialTtlDays }: Props) {
           style={{
             height: '34px', padding: '0 16px', borderRadius: '8px', border: 'none',
             background: saved ? 'var(--color-success)' : 'var(--brand-blue)',
-            color: '#fff', fontSize: '13px', fontWeight: 600,
+            color: 'var(--surface)', fontSize: '13px', fontWeight: 600,
             cursor: saving ? 'wait' : 'pointer',
             transition: 'background 0.2s',
           }}

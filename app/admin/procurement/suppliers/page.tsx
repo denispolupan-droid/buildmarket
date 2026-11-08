@@ -38,7 +38,7 @@ export default async function SuppliersStockPage() {
 
   return (
     <div style={{ maxWidth: '960px' }}>
-      <style>{`.supplier-row:hover { border-color: #BFDBFE !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }`}</style>
+      <style>{`.supplier-row:hover { border-color: var(--blue-border) !important; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }`}</style>
 
       <SectionBar count={`${n} ${plural(n, 'постачальник', 'постачальники', 'постачальників')}`} />
 
@@ -56,7 +56,7 @@ export default async function SuppliersStockPage() {
                 padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px',
                 cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
               }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#EFF4FF',
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--blue-bg)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Package size={18} color="#1E3A5F" />
                 </div>

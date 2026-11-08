@@ -59,12 +59,12 @@ interface Props {
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string }> = {
-  expensive:   { icon: <TrendingUp size={14} />,    label: 'Дорого',    color: '#EF4444', bg: '#FEF2F2' },
-  warning:     { icon: <AlertTriangle size={14} />, label: 'Увага',     color: '#F59E0B', bg: '#FFFBEB' },
-  ok:          { icon: <CheckCircle size={14} />,   label: 'ОК',        color: '#10B981', bg: '#ECFDF5' },
-  cheap:       { icon: <TrendingDown size={14} />,  label: 'Нижче ринку', color: '#3B82F6', bg: '#EFF6FF' },
-  not_found:   { icon: <XCircle size={14} />,       label: 'Не знайдено', color: '#9CA3AF', bg: '#F9FAFB' },
-  not_checked: { icon: <HelpCircle size={14} />,    label: 'Не перевірено', color: '#9CA3AF', bg: '#F9FAFB' },
+  expensive:   { icon: <TrendingUp size={14} />,    label: 'Дорого',    color: 'var(--danger-bright)', bg: '#FEF2F2' },
+  warning:     { icon: <AlertTriangle size={14} />, label: 'Увага',     color: 'var(--amber)', bg: '#FFFBEB' },
+  ok:          { icon: <CheckCircle size={14} />,   label: 'ОК',        color: 'var(--emerald-bright)', bg: 'var(--emerald-bg)' },
+  cheap:       { icon: <TrendingDown size={14} />,  label: 'Нижче ринку', color: 'var(--blue-bright)', bg: '#EFF6FF' },
+  not_found:   { icon: <XCircle size={14} />,       label: 'Не знайдено', color: '#9CA3AF', bg: 'var(--surface-soft)' },
+  not_checked: { icon: <HelpCircle size={14} />,    label: 'Не перевірено', color: '#9CA3AF', bg: 'var(--surface-soft)' },
 };
 
 type Filter = 'all' | 'expensive' | 'warning' | 'ok' | 'cheap' | 'not_found' | 'not_checked';
@@ -115,18 +115,18 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '6px 10px', borderRadius: 8,
-          background: i === 0 ? 'var(--bg-success)' : '#F9FAFB',
-          border: `1px solid ${i === 0 ? '#BBF7D0' : '#E5E7EB'}`,
+          background: i === 0 ? 'var(--bg-success)' : 'var(--surface-soft)',
+          border: `1px solid ${i === 0 ? 'var(--ok-border)' : 'var(--line)'}`,
           fontSize: 13,
         }}>
           <span style={{
             padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 700,
             background: r.source === 'rozetka' ? '#EEF2FF'
                       : r.source === 'epicentr' ? 'var(--bg-success)'
-                      : '#FFF7ED',
+                      : 'var(--orange-bg)',
             color:      r.source === 'rozetka' ? '#4338CA'
                       : r.source === 'epicentr' ? 'var(--color-success)'
-                      : '#C2410C',
+                      : 'var(--orange)',
           }}>
             {r.source === 'rozetka' ? 'Rozetka'
            : r.source === 'epicentr' ? 'Epicentr'
@@ -136,13 +136,13 @@ function ResultsDrawer({ results }: { results: MarketPrice[] }) {
             href={r.url} target="_blank" rel="noreferrer"
             style={{
               flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              color: '#111', textDecoration: 'none', fontWeight: 500,
+              color: 'var(--ink-strong)', textDecoration: 'none', fontWeight: 500,
             }}
             title={r.url}
           >
             {r.title}
           </a>
-          <span style={{ fontWeight: 700, color: '#111', whiteSpace: 'nowrap' }}>
+          <span style={{ fontWeight: 700, color: 'var(--ink-strong)', whiteSpace: 'nowrap' }}>
             {r.price.toLocaleString('uk-UA')} ₴
           </span>
           <span style={{ fontSize: 11, color: 'var(--text-gray-light)' }}>
@@ -295,8 +295,8 @@ export default function PricingClient({ rows, categories }: Props) {
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 18px', borderRadius: 10,
-                background: isBatchRunning ? '#E5E7EB' : '#10B981',
-                color: isBatchRunning ? 'var(--text-gray-light)' : '#fff',
+                background: isBatchRunning ? 'var(--line)' : 'var(--emerald-bright)',
+                color: isBatchRunning ? 'var(--text-gray-light)' : 'var(--surface)',
                 border: 'none', cursor: isBatchRunning ? 'not-allowed' : 'pointer',
                 fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
               }}
@@ -310,8 +310,8 @@ export default function PricingClient({ rows, categories }: Props) {
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '10px 20px', borderRadius: 10,
-              background: isBatchRunning ? '#E5E7EB' : 'var(--color-info)',
-              color: isBatchRunning ? 'var(--text-gray-light)' : '#fff',
+              background: isBatchRunning ? 'var(--line)' : 'var(--color-info)',
+              color: isBatchRunning ? 'var(--text-gray-light)' : 'var(--surface)',
               border: 'none', cursor: isBatchRunning ? 'not-allowed' : 'pointer',
               fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap',
             }}
@@ -337,7 +337,7 @@ export default function PricingClient({ rows, categories }: Props) {
             onChange={e => setSearch(e.target.value)}
             style={{
               width: '100%', height: 44, paddingLeft: 42, paddingRight: 16,
-              borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 14, outline: 'none',
+              borderRadius: 10, border: '1px solid var(--line)', fontSize: 14, outline: 'none',
             }}
           />
         </div>
@@ -346,8 +346,8 @@ export default function PricingClient({ rows, categories }: Props) {
           onChange={e => setFilterCategory(e.target.value)}
           style={{
             flex: '0 1 240px', height: 44, padding: '0 16px', borderRadius: 10,
-            border: '1px solid #E5E7EB', fontSize: 14,
-            background: filterCategory ? 'var(--brand-blue-light)' : '#fff',
+            border: '1px solid var(--line)', fontSize: 14,
+            background: filterCategory ? 'var(--brand-blue-light)' : 'var(--surface)',
           }}
         >
           <option value="">Всі категорії</option>
@@ -362,7 +362,7 @@ export default function PricingClient({ rows, categories }: Props) {
         <div style={{ fontSize: 13, color: 'var(--text-gray)' }}>
           Знайдено: {visibleRows.length} товарів
           {someSelected && (
-            <span style={{ marginLeft: 8, color: '#10B981', fontWeight: 600 }}>
+            <span style={{ marginLeft: 8, color: 'var(--emerald-bright)', fontWeight: 600 }}>
               · вибрано {selected.size}
             </span>
           )}
@@ -373,7 +373,7 @@ export default function PricingClient({ rows, categories }: Props) {
               onClick={() => setSelected(new Set(visibleRows.map(r => r.sku)))}
               style={{
                 height: 30, padding: '0 12px', borderRadius: 8,
-                border: '1px solid #E5E7EB', background: '#fff',
+                border: '1px solid var(--line)', background: 'var(--surface)',
                 color: 'var(--text-gray)', fontSize: 13, cursor: 'pointer',
               }}
             >
@@ -385,7 +385,7 @@ export default function PricingClient({ rows, categories }: Props) {
               onClick={() => setSelected(new Set())}
               style={{
                 height: 30, padding: '0 12px', borderRadius: 8,
-                border: '1px solid #E5E7EB', background: '#fff',
+                border: '1px solid var(--line)', background: 'var(--surface)',
                 color: 'var(--text-gray)', fontSize: 13, cursor: 'pointer',
               }}
             >
@@ -407,16 +407,16 @@ export default function PricingClient({ rows, categories }: Props) {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 14px', borderRadius: 10,
-                background: filter === s ? cfg.bg : '#F9FAFB',
-                color:      filter === s ? cfg.color : '#374151',
-                border:    `1.5px solid ${filter === s ? cfg.color + '60' : '#E5E7EB'}`,
+                background: filter === s ? cfg.bg : 'var(--surface-soft)',
+                color:      filter === s ? cfg.color : 'var(--ink-2)',
+                border:    `1.5px solid ${filter === s ? cfg.color + '60' : 'var(--line)'}`,
                 cursor: 'pointer', fontWeight: 600, fontSize: 13,
               }}
             >
               {cfg.icon} {cfg.label}
               <span style={{
-                marginLeft: 2, background: filter === s ? cfg.color : '#E5E7EB',
-                color: filter === s ? '#fff' : 'var(--text-gray)',
+                marginLeft: 2, background: filter === s ? cfg.color : 'var(--line)',
+                color: filter === s ? 'var(--surface)' : 'var(--text-gray)',
                 borderRadius: 20, padding: '1px 7px', fontSize: 12,
               }}>
                 {count}
@@ -429,7 +429,7 @@ export default function PricingClient({ rows, categories }: Props) {
             onClick={() => setFilter('all')}
             style={{
               padding: '8px 14px', borderRadius: 10, background: 'transparent',
-              border: '1.5px solid #E5E7EB', color: 'var(--text-gray)',
+              border: '1.5px solid var(--line)', color: 'var(--text-gray)',
               cursor: 'pointer', fontSize: 13, fontWeight: 600,
             }}
           >
@@ -440,7 +440,7 @@ export default function PricingClient({ rows, categories }: Props) {
 
       {/* Table */}
       <div style={{
-        background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+        background: 'var(--surface)', borderRadius: 14, border: '1px solid var(--line)',
         overflow: 'hidden',
       }}>
         {/* Table header */}
@@ -448,7 +448,7 @@ export default function PricingClient({ rows, categories }: Props) {
           display: 'grid',
           gridTemplateColumns: '32px 1fr 95px 95px 110px 110px 90px 110px 130px 100px',
           padding: '12px 16px',
-          background: '#F9FAFB', borderBottom: '1px solid #E5E7EB',
+          background: 'var(--surface-soft)', borderBottom: '1px solid var(--line)',
           fontSize: 12, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase',
           letterSpacing: '0.05em',
         }}>
@@ -466,7 +466,7 @@ export default function PricingClient({ rows, categories }: Props) {
             onClick={() => setSortByDemand(v => !v)}
             style={{
               textAlign: 'center', background: 'none', border: 'none', padding: 0,
-              cursor: 'pointer', fontWeight: 700, fontSize: 12, color: sortByDemand ? '#F59E0B' : 'var(--text-gray)',
+              cursor: 'pointer', fontWeight: 700, fontSize: 12, color: sortByDemand ? 'var(--amber)' : 'var(--text-gray)',
               textTransform: 'uppercase', letterSpacing: '0.05em',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
             }}
@@ -495,7 +495,7 @@ export default function PricingClient({ rows, categories }: Props) {
           const isSelected  = selected.has(row.sku);
 
           return (
-            <div key={row.sku} style={{ borderBottom: '1px solid #F3F4F6' }}>
+            <div key={row.sku} style={{ borderBottom: '1px solid var(--surface-muted)' }}>
               {/* Main row */}
               <div style={{
                 display: 'grid',
@@ -513,7 +513,7 @@ export default function PricingClient({ rows, categories }: Props) {
                 />
                 {/* Product name */}
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: '#111' }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink-strong)' }}>
                     {row.brand && <span style={{ color: '#4B5563', marginRight: 4 }}>{row.brand}</span>}
                     {row.name.split('—')[0].trim()}
                   </div>
@@ -529,7 +529,7 @@ export default function PricingClient({ rows, categories }: Props) {
                       href={`https://prom.ua/ua/search?search_term=${encodeURIComponent(buildSearchQuery(row.name, row.volume))}`}
                       target="_blank" rel="noreferrer"
                       style={{
-                        fontFamily: 'monospace', background: '#F1F5F9',
+                        fontFamily: 'monospace', background: 'var(--bg-page)',
                         padding: '1px 5px', borderRadius: 4,
                         color: 'var(--text-soft)', textDecoration: 'none',
                       }}
@@ -561,18 +561,18 @@ export default function PricingClient({ rows, categories }: Props) {
 
                 {/* Prices */}
                 <span style={{ textAlign: 'right', fontWeight: 700, fontSize: 13, color: 'var(--navy)' }}>{fmt(row.our_price_retail)}</span>
-                <span style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: '#374151' }}>{fmt(row.our_price)}</span>
-                <span style={{ textAlign: 'right', color: '#374151', fontSize: 13 }}>{fmt(c?.market_min ?? null)}</span>
+                <span style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: 'var(--ink-2)' }}>{fmt(row.our_price)}</span>
+                <span style={{ textAlign: 'right', color: 'var(--ink-2)', fontSize: 13 }}>{fmt(c?.market_min ?? null)}</span>
 
                 {/* Demand badge */}
                 {(() => {
                   const n = c?.match_count ?? 0;
-                  if (!c) return <span style={{ textAlign: 'center', color: '#D1D5DB', fontSize: 13 }}>—</span>;
+                  if (!c) return <span style={{ textAlign: 'center', color: 'var(--line-strong)', fontSize: 13 }}>—</span>;
                   const [emoji, label, color, bg] =
-                    n >= 8 ? ['🔥', 'Хіт',    '#B45309', '#FEF3C7'] :
+                    n >= 8 ? ['🔥', 'Хіт',    'var(--color-warn)', 'var(--amber-bg)'] :
                     n >= 4 ? ['📈', 'Добре',   '#0369A1', '#E0F2FE'] :
-                    n >= 1 ? ['📦', 'Є',       '#6B7280', '#F3F4F6'] :
-                             ['💤', 'Мало',    '#9CA3AF', '#F9FAFB'];
+                    n >= 1 ? ['📦', 'Є',       '#6B7280', 'var(--surface-muted)'] :
+                             ['💤', 'Мало',    '#9CA3AF', 'var(--surface-soft)'];
                   return (
                     <div style={{ textAlign: 'center' }}>
                       <span style={{
@@ -591,10 +591,10 @@ export default function PricingClient({ rows, categories }: Props) {
                 <span style={{
                   textAlign: 'right', fontWeight: 700, fontSize: 13,
                   color: delta == null ? 'var(--text-gray-light)'
-                       : delta > 10   ? '#EF4444'
-                       : delta > 0    ? '#F59E0B'
-                       : delta < -10  ? '#3B82F6'
-                       : '#10B981',
+                       : delta > 10   ? 'var(--danger-bright)'
+                       : delta > 0    ? 'var(--amber)'
+                       : delta < -10  ? 'var(--blue-bright)'
+                       : 'var(--emerald-bright)',
                 }}>
                   {fmtDelta(delta)}
                 </span>
@@ -617,7 +617,7 @@ export default function PricingClient({ rows, categories }: Props) {
                     title="Перевірити"
                     style={{
                       padding: '5px 8px', borderRadius: 7,
-                      background: 'transparent', border: '1.5px solid #E5E7EB',
+                      background: 'transparent', border: '1.5px solid var(--line)',
                       cursor: isLoading ? 'not-allowed' : 'pointer',
                       color: 'var(--text-gray)', display: 'flex', alignItems: 'center',
                     }}
@@ -630,7 +630,7 @@ export default function PricingClient({ rows, categories }: Props) {
                       title="Деталі"
                       style={{
                         padding: '5px 8px', borderRadius: 7,
-                        background: 'transparent', border: '1.5px solid #E5E7EB',
+                        background: 'transparent', border: '1.5px solid var(--line)',
                         cursor: 'pointer', color: 'var(--text-gray)',
                         display: 'flex', alignItems: 'center',
                       }}
@@ -646,7 +646,7 @@ export default function PricingClient({ rows, categories }: Props) {
                 <div style={{
                   padding: '0 16px 14px 16px',
                   background: '#FAFAFA',
-                  borderTop: '1px solid #F3F4F6',
+                  borderTop: '1px solid var(--surface-muted)',
                 }}>
                   <ResultsDrawer results={c.results} />
                 </div>
@@ -660,7 +660,7 @@ export default function PricingClient({ rows, categories }: Props) {
       {batchProgress && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24,
-          background: 'var(--color-info)', color: '#fff',
+          background: 'var(--color-info)', color: 'var(--surface)',
           padding: '12px 20px', borderRadius: 12,
           fontSize: 14, fontWeight: 600,
           boxShadow: '0 4px 24px rgba(0,0,0,0.2)',

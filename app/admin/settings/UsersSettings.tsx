@@ -111,7 +111,7 @@ export default function UsersSettings() {
                 <span style={{
                   fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px',
                   color: u.role === 'admin' ? 'var(--color-info)' : 'var(--color-success)',
-                  background: u.role === 'admin' ? '#DBEAFE' : '#DCFCE7',
+                  background: u.role === 'admin' ? '#DBEAFE' : 'var(--ok-bg)',
                   flexShrink: 0,
                 }}>
                   {u.role === 'admin' ? 'Адмін' : 'Менеджер'}
@@ -122,7 +122,7 @@ export default function UsersSettings() {
                 {u.last_sign_in_at
                   ? <span>Останній вхід: {fmtDate(u.last_sign_in_at)}</span>
                   : u.invited_at
-                  ? <span style={{ color: '#F59E0B' }}>⏳ Запрошення не прийнято</span>
+                  ? <span style={{ color: 'var(--amber)' }}>⏳ Запрошення не прийнято</span>
                   : null}
               </div>
             </div>
@@ -136,7 +136,7 @@ export default function UsersSettings() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: '30px', height: '30px', borderRadius: '7px',
                   border: '1px solid var(--border-danger)', background: 'none',
-                  color: '#EF4444', cursor: deleting === u.id ? 'default' : 'pointer',
+                  color: 'var(--danger-bright)', cursor: deleting === u.id ? 'default' : 'pointer',
                   opacity: deleting === u.id ? 0.5 : 1, flexShrink: 0,
                 }}
               >
@@ -177,7 +177,7 @@ export default function UsersSettings() {
               height: '36px', padding: '0 16px', borderRadius: '8px',
               border: 'none', fontSize: '13px', fontWeight: 700,
               background: email.includes('@') ? 'var(--navy)' : 'var(--text-muted)',
-              color: '#fff', cursor: sending || !email.includes('@') ? 'default' : 'pointer',
+              color: 'var(--surface)', cursor: sending || !email.includes('@') ? 'default' : 'pointer',
             }}
           >
             {sending ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}

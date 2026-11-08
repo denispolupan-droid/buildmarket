@@ -22,7 +22,7 @@ const OPEX_UA: Record<string, string> = {
 
 const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmtInt(Math.abs(n))} ₴`;
 const signedExact = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmtMoney(Math.abs(n))} ₴`;
-const colorOf = (n: number) => (n < 0 ? '#C2410C' : 'var(--color-success)');
+const colorOf = (n: number) => (n < 0 ? 'var(--orange)' : 'var(--color-success)');
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '7px 0', borderBottom: '1px solid var(--border-light, var(--border))', fontSize: '13px' };

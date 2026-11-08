@@ -463,9 +463,9 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
               const isSelected = priceMode === opt.value;
               return (
                 <button key={opt.value} type="button" onClick={() => setPriceMode(opt.value)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? 'var(--navy)' : 'var(--border)'}`, background: isSelected ? '#EFF4FF' : 'var(--bg-soft)' }}>
-                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? 'var(--navy)' : '#CBD5E1'}`, background: isSelected ? 'var(--navy)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${isSelected ? 'var(--navy)' : 'var(--border)'}`, background: isSelected ? 'var(--blue-bg)' : 'var(--bg-soft)' }}>
+                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${isSelected ? 'var(--navy)' : 'var(--line-slate)'}`, background: isSelected ? 'var(--navy)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isSelected && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--surface)' }} />}
                   </div>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{opt.label}</div>
@@ -482,7 +482,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
               Скасувати
             </button>
             <button onClick={confirmImport} disabled={parsing}
-              style={{ flex: 2, height: '38px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: parsing ? 0.7 : 1 }}>
+              style={{ flex: 2, height: '38px', borderRadius: '8px', border: 'none', background: 'var(--navy)', color: 'var(--surface)', cursor: 'pointer', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', opacity: parsing ? 0.7 : 1 }}>
               {parsing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
               Завантажити
             </button>
@@ -533,10 +533,10 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
             onClick={() => fileRef.current?.click()}
-            style={{ border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 20px', cursor: 'pointer', background: dragging ? '#EFF4FF' : 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.15s' }}>
+            style={{ border: `2px dashed ${dragging ? 'var(--navy)' : 'var(--border)'}`, borderRadius: '10px', padding: '14px 20px', cursor: 'pointer', background: dragging ? 'var(--blue-bg)' : 'var(--bg-soft)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.15s' }}>
             {parsing
               ? <><Loader2 size={18} color="#1E3A5F" style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: '13px', color: 'var(--navy)' }}>Читаємо файл...</span></>
-              : <><Upload size={18} color={dragging ? '#1E3A5F' : '#94A3B8'} />
+              : <><Upload size={18} color={dragging ? 'var(--navy)' : 'var(--ink-muted)'} />
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Завантажити з Excel / CSV</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Перетягніть файл або натисніть · Колонки: Код, Назва, Кількість, Ціна</div>
@@ -547,7 +547,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
           </div>
 
           {unmatchedCount > 0 && (
-            <div style={{ padding: '8px 14px', background: '#FEF3C7', borderRadius: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{ padding: '8px 14px', background: 'var(--amber-bg)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-warn)', display: 'flex', gap: '6px', alignItems: 'center' }}>
               <AlertCircle size={13} />
               {unmatchedCount} артикул(ів) не знайдено в базі — перевірте вручну (підсвічені помаранчевим)
             </div>
@@ -628,7 +628,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                         onChange={e => setLineField(idx, 'cost_price', parseFloat(e.target.value) || 0)} />
                       <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }}>₴</span>
                       {line.catalog_price != null && line.catalog_price !== line.cost_price && lastPriceMap[line.sku] == null && (
-                        <div style={{ fontSize: '9px', color: line.cost_price === 0 ? '#F59E0B' : 'var(--text-muted)', textAlign: 'right', marginTop: '3px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '9px', color: line.cost_price === 0 ? 'var(--amber)' : 'var(--text-muted)', textAlign: 'right', marginTop: '3px', whiteSpace: 'nowrap' }}>
                           {line.cost_price === 0 ? '⚠ роздріб' : 'прайс'}: {fmt(line.catalog_price)} ₴
                         </div>
                       )}
@@ -650,7 +650,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                       </div>
                       {line.matched && demandMap[line.sku] && (
                         <div title={`${demandMap[line.sku].orders} замовлень клієнтів очікують цей товар`}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px', fontSize: '9px', fontWeight: 700, color: 'var(--text-warn-dark)', background: '#FEF3C7', border: '1px solid #FDE68A', padding: '1px 5px', borderRadius: '4px', cursor: 'default' }}>
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px', fontSize: '9px', fontWeight: 700, color: 'var(--text-warn-dark)', background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', padding: '1px 5px', borderRadius: '4px', cursor: 'default' }}>
                           🛒 {demandMap[line.sku].orders} зам. · {demandMap[line.sku].qty} шт
                         </div>
                       )}
@@ -658,7 +658,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
 
                     <button onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
                       disabled={lines.length === 1}
-                      style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? '#EF4444' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      style={{ background: 'none', border: 'none', cursor: lines.length > 1 ? 'pointer' : 'default', color: lines.length > 1 ? 'var(--danger-bright)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
@@ -722,7 +722,7 @@ export default function NewPOModal({ initialData, zIndex = 1003, onMinimize, onC
                 onMouseDown={() => selectNameSuggestion(suggestionAnchor.idx, s)}
                 onMouseEnter={() => setActiveDropdownIdx(i)}
                 title={`${s.brand} ${s.name}`.trim()}
-                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden', background: isActive ? '#EFF4FF' : 'transparent', transition: 'background 0.1s' }}>
+                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'baseline', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden', background: isActive ? 'var(--blue-bg)' : 'transparent', transition: 'background 0.1s' }}>
                 <span style={{ color: isActive ? 'var(--navy)' : 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', flexShrink: 0 }}>{s.sku}</span>
                 <span style={{ fontWeight: 700, color: 'var(--navy)', flexShrink: 0 }}>{s.brand}</span>
                 <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>

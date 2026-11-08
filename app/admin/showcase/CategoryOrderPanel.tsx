@@ -92,7 +92,7 @@ export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, whiteSpace: 'nowrap',
                   background: isCard ? 'var(--navy)' : 'var(--bg-soft)',
-                  color: isCard ? '#fff' : 'var(--text-secondary)',
+                  color: isCard ? 'var(--surface)' : 'var(--text-secondary)',
                   border: isCard ? 'none' : '1px solid var(--border)',
                 }}>
                   {isCard ? 'картка' : 'пігулка'}
@@ -112,7 +112,7 @@ export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
       {canEdit && !loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
           <button onClick={save} disabled={saving || !dirty}
-            style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: 'var(--navy)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
+            style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: 'var(--navy)', color: 'var(--surface)', fontSize: 13, fontWeight: 700, cursor: saving || !dirty ? 'default' : 'pointer', opacity: saving || !dirty ? 0.5 : 1 }}>
             {saving ? 'Зберігаю…' : 'Зберегти порядок'}
           </button>
           {dirty && (

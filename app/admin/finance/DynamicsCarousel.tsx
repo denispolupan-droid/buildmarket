@@ -57,7 +57,7 @@ function DayBars({ d }: { d: Dynamics['daily'] }) {
   const panels = [
     { top: 16, h: 128, min: 0, max: maxRev, vals: revVals, color: () => 'var(--brand-blue)', trend: 'var(--brand-blue)', label: 'Продажі', tip: (i: number, v: number) => `${d.labels[i]}: продажі ${fmt(v)} ₴ · ${d.counts[i]} зам.` },
     // Нижня межа 222 — лишає ~14px повітря до рядка дат у тому ж полотні
-    { top: 166, h: 56, min: minProf, max: maxProf, vals: profVals, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), trend: '#15803D', label: 'Прибуток · очік.', tip: (i: number, v: number) => `${d.labels[i]}: очікуваний прибуток ${fmt(v)} ₴` },
+    { top: 166, h: 56, min: minProf, max: maxProf, vals: profVals, color: (v: number) => (v >= 0 ? 'var(--color-success)' : 'var(--color-danger)'), trend: 'var(--color-success)', label: 'Прибуток · очік.', tip: (i: number, v: number) => `${d.labels[i]}: очікуваний прибуток ${fmt(v)} ₴` },
   ];
 
   return (
@@ -146,7 +146,7 @@ function MonthChart({ m }: { m: Dynamics['months'] }) {
   const panels = [
     { top: 28, h: 116, min: 0, max: maxRev, vals: m.revenue, color: () => 'var(--brand-blue)', label: 'Продажі', labelColor: 'var(--brand-blue)', showTop: true,
       tip: (i: number, v: number) => `${title(i)}: продажі ${fmt(v)} ₴ · ${m.counts[i]} зам.${m.counts[i] ? ` · сер. чек ${fmt(Math.round(v / m.counts[i]))} ₴` : ''}` },
-    { top: 166, h: 56, min: minProf, max: maxProf, vals: m.profit, color: (v: number) => (v >= 0 ? '#15803D' : '#DC2626'), label: 'Прибуток · очік.', labelColor: '#15803D', showTop: false,
+    { top: 166, h: 56, min: minProf, max: maxProf, vals: m.profit, color: (v: number) => (v >= 0 ? 'var(--color-success)' : 'var(--color-danger)'), label: 'Прибуток · очік.', labelColor: 'var(--color-success)', showTop: false,
       tip: (i: number, v: number) => `${title(i)}: очікуваний прибуток ${fmt(v)} ₴${m.revenue[i] > 0 ? ` · ${Math.round(v / m.revenue[i] * 100)}% від продажів` : ''}` },
   ];
   return (
@@ -363,7 +363,7 @@ export default function DynamicsCarousel({ data }: { data: Dynamics }) {
         {SLIDES.map(s => (
           <button key={s.key} onClick={() => setSlide(s.key)}
             style={{ padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer',
-              color: slide === s.key ? '#fff' : 'var(--text-secondary)', background: slide === s.key ? 'var(--navy)' : 'var(--bg-soft)' }}>
+              color: slide === s.key ? 'var(--surface)' : 'var(--text-secondary)', background: slide === s.key ? 'var(--navy)' : 'var(--bg-soft)' }}>
             {s.label}
           </button>
         ))}

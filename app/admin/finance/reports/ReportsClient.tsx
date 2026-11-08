@@ -116,14 +116,14 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
   // ── P&L rows ────────────────────────────────────────────────────────────────
   const plRows = [
     { label: 'Виручка',                          value: pl.revenue,        bold: true,  color: 'var(--text-primary)', pctOf: null },
-    { label: 'Собівартість (FIFO)',               value: -pl.cogs,          bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Комісії маркетплейсів',             value: -pl.marketplace_commission, bold: false, color: '#DC2626',    pctOf: pl.revenue },
-    { label: 'Доставка й комісії НП',             value: -pl.np_delivery,   bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Комісія еквайрингу',                value: -pl.acquiring_fee, bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Валовий прибуток',                 value: pl.gross_profit,   bold: true,  color: pl.gross_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true },
-    { label: 'Операційні витрати',               value: -pl.op_expenses,   bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Податки',                          value: -pl.taxes,         bold: false, color: '#DC2626',             pctOf: pl.revenue },
-    { label: 'Чистий прибуток',                  value: pl.net_profit,     bold: true,  color: pl.net_profit >= 0 ? '#15803D' : '#DC2626', pctOf: pl.revenue, sep: true, big: true },
+    { label: 'Собівартість (FIFO)',               value: -pl.cogs,          bold: false, color: 'var(--color-danger)',             pctOf: pl.revenue },
+    { label: 'Комісії маркетплейсів',             value: -pl.marketplace_commission, bold: false, color: 'var(--color-danger)',    pctOf: pl.revenue },
+    { label: 'Доставка й комісії НП',             value: -pl.np_delivery,   bold: false, color: 'var(--color-danger)',             pctOf: pl.revenue },
+    { label: 'Комісія еквайрингу',                value: -pl.acquiring_fee, bold: false, color: 'var(--color-danger)',             pctOf: pl.revenue },
+    { label: 'Валовий прибуток',                 value: pl.gross_profit,   bold: true,  color: pl.gross_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)', pctOf: pl.revenue, sep: true },
+    { label: 'Операційні витрати',               value: -pl.op_expenses,   bold: false, color: 'var(--color-danger)',             pctOf: pl.revenue },
+    { label: 'Податки',                          value: -pl.taxes,         bold: false, color: 'var(--color-danger)',             pctOf: pl.revenue },
+    { label: 'Чистий прибуток',                  value: pl.net_profit,     bold: true,  color: pl.net_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)', pctOf: pl.revenue, sep: true, big: true },
     ...(pl.corrections !== 0 ? [{ label: 'Коригування (поза прибутком)', value: pl.corrections, bold: false, color: 'var(--text-muted)', pctOf: null }] : []),
   ];
 
@@ -278,9 +278,9 @@ export default function ReportsClient({ pl, cf, dateFrom, dateTo }: Props) {
             </div>
             {[
               { label: 'Залишок на початок', value: cf.opening, bold: true, color: 'var(--text-primary)', indent: false, sep: false, big: false },
-              ...cf.inflows.map(f  => ({ label: `+ ${CF_INFLOW_LABELS[f.key]  ?? f.key}`, value: f.amount, bold: false, color: '#15803D', indent: true, sep: false, big: false })),
-              ...cf.outflows.map(f => ({ label: `− ${CF_OUTFLOW_LABELS[f.key] ?? f.key}`, value: f.amount, bold: false, color: '#DC2626', indent: true, sep: false, big: false })),
-              { label: 'Залишок на кінець', value: cf.closing, bold: true, color: cf.closing >= 0 ? 'var(--text-primary)' : '#DC2626', indent: false, sep: true, big: true },
+              ...cf.inflows.map(f  => ({ label: `+ ${CF_INFLOW_LABELS[f.key]  ?? f.key}`, value: f.amount, bold: false, color: 'var(--color-success)', indent: true, sep: false, big: false })),
+              ...cf.outflows.map(f => ({ label: `− ${CF_OUTFLOW_LABELS[f.key] ?? f.key}`, value: f.amount, bold: false, color: 'var(--color-danger)', indent: true, sep: false, big: false })),
+              { label: 'Залишок на кінець', value: cf.closing, bold: true, color: cf.closing >= 0 ? 'var(--text-primary)' : 'var(--color-danger)', indent: false, sep: true, big: true },
             ].map((row, i) => (
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',

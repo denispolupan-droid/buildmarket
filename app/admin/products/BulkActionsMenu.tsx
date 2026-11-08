@@ -197,7 +197,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
       {error && !prompt && (
         <div style={{
           position: 'absolute', top: 40, right: 0, zIndex: 42, width: 280,
-          background: 'var(--bg-danger)', border: '1px solid #FECACA', color: '#B91C1C',
+          background: 'var(--bg-danger)', border: '1px solid var(--danger-border)', color: 'var(--danger-dark)',
           borderRadius: 8, padding: '10px 12px', fontSize: 12,
         }}>
           {error}
@@ -234,7 +234,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
                 onClick={closeReport}
                 style={{
                   height: 38, padding: '0 18px', borderRadius: 9, border: 'none',
-                  background: 'var(--navy)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  background: 'var(--navy)', color: 'var(--surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 }}
               >
                 Зрозуміло
@@ -315,7 +315,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
             )}
 
             {error && (
-              <div style={{ marginTop: 12, background: 'var(--bg-danger)', border: '1px solid #FECACA', color: '#B91C1C', borderRadius: 8, padding: '9px 12px', fontSize: 12 }}>
+              <div style={{ marginTop: 12, background: 'var(--bg-danger)', border: '1px solid var(--danger-border)', color: 'var(--danger-dark)', borderRadius: 8, padding: '9px 12px', fontSize: 12 }}>
                 {error}
               </div>
             )}
@@ -334,7 +334,7 @@ export default function BulkActionsMenu({ skus, categories, brands, onDone }: Pr
                 style={{
                   height: 38, padding: '0 18px', borderRadius: 9, border: 'none',
                   background: prompt === 'delete' ? 'var(--color-danger)' : 'var(--navy)',
-                  color: '#fff', fontSize: 13, fontWeight: 600,
+                  color: 'var(--surface)', fontSize: 13, fontWeight: 600,
                   cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
                 }}
               >

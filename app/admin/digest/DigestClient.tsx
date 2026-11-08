@@ -12,7 +12,7 @@ type Run = {
 };
 type HistoryRow = { id: string; at: string; by: string; cost: number; error: string | null; sent: boolean; headline: string | null };
 
-const DOT: Record<Signal['level'], string> = { red: '#DC2626', yellow: '#CA8A04', green: '#15803D', info: '#64748B' };
+const DOT: Record<Signal['level'], string> = { red: 'var(--color-danger)', yellow: '#CA8A04', green: 'var(--color-success)', info: 'var(--text-soft)' };
 
 export default function DigestClient({ enabled: initialEnabled, history }: { enabled: boolean; history: HistoryRow[] }) {
   const [enabled, setEnabled] = useState(initialEnabled);
@@ -48,7 +48,7 @@ export default function DigestClient({ enabled: initialEnabled, history }: { ena
   const btn = (primary: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 7, height: 36, padding: '0 16px', borderRadius: 9,
     border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)',
-    color: primary ? '#fff' : 'var(--text-secondary)', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
+    color: primary ? 'var(--surface)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
   });
 
   return (

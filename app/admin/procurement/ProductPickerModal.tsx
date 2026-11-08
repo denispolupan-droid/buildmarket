@@ -157,7 +157,7 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
                         selectCategory(root.slug);
                       }
                     }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: isActive ? '#EFF4FF' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: isActive ? 'var(--navy)' : 'var(--text-primary)', borderLeft: isActive ? '3px solid var(--navy)' : '3px solid transparent' }}>
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: isActive ? 'var(--blue-bg)' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: isActive ? 'var(--navy)' : 'var(--text-primary)', borderLeft: isActive ? '3px solid var(--navy)' : '3px solid transparent' }}>
                     {children.length > 0
                       ? (isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />)
                       : <span style={{ display: 'inline-block', width: '12px' }} />
@@ -170,7 +170,7 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
                       <button
                         key={child.slug}
                         onClick={() => selectCategory(child.slug)}
-                        style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '5px 12px 5px 28px', background: isChildActive ? '#EFF4FF' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', fontWeight: isChildActive ? 600 : 400, color: isChildActive ? 'var(--navy)' : 'var(--text-secondary)', borderLeft: isChildActive ? '3px solid #4880B8' : '3px solid transparent' }}>
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '5px 12px 5px 28px', background: isChildActive ? 'var(--blue-bg)' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '12px', fontWeight: isChildActive ? 600 : 400, color: isChildActive ? 'var(--navy)' : 'var(--text-secondary)', borderLeft: isChildActive ? '3px solid var(--brand-blue)' : '3px solid transparent' }}>
                         {child.name}
                       </button>
                     );
@@ -230,7 +230,7 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
                       </span>
                       {/* Name */}
                       <div style={{ minWidth: 0 }}>
-                        {p.brand && <span style={{ fontSize: '11px', fontWeight: 700, color: '#4880B8', marginRight: '5px' }}>{p.brand}</span>}
+                        {p.brand && <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-blue)', marginRight: '5px' }}>{p.brand}</span>}
                         <span style={{ fontSize: '12px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline' }}>{p.name}</span>
                       </div>
                       {/* Price */}
@@ -243,7 +243,7 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
                           <>
                             <button
                               onClick={() => setQty(p.sku, sel!.qty - 1)}
-                              style={{ width: '22px', height: '22px', borderRadius: '5px', border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              style={{ width: '22px', height: '22px', borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <Minus size={10} />
                             </button>
                             <input
@@ -251,11 +251,11 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
                               value={sel!.qty}
                               min={1}
                               onChange={e => setQty(p.sku, parseInt(e.target.value) || 1)}
-                              style={{ width: '38px', textAlign: 'center', border: '1.5px solid #4880B8', borderRadius: '5px', fontSize: '12px', fontWeight: 700, padding: '2px 0', color: 'var(--navy)', background: '#EFF4FF', outline: 'none' }}
+                              style={{ width: '38px', textAlign: 'center', border: '1.5px solid var(--brand-blue)', borderRadius: '5px', fontSize: '12px', fontWeight: 700, padding: '2px 0', color: 'var(--navy)', background: 'var(--blue-bg)', outline: 'none' }}
                             />
                             <button
                               onClick={() => setQty(p.sku, sel!.qty + 1)}
-                              style={{ width: '22px', height: '22px', borderRadius: '5px', border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              style={{ width: '22px', height: '22px', borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <Plus size={10} />
                             </button>
                           </>
@@ -295,7 +295,7 @@ export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Pr
             <button
               onClick={handleAdd}
               disabled={selectedCount === 0}
-              style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: selectedCount > 0 ? 'var(--navy)' : '#CBD5E1', color: '#fff', cursor: selectedCount > 0 ? 'pointer' : 'default', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px' }}>
+              style={{ height: '36px', padding: '0 20px', borderRadius: '8px', border: 'none', background: selectedCount > 0 ? 'var(--navy)' : 'var(--line-slate)', color: 'var(--surface)', cursor: selectedCount > 0 ? 'pointer' : 'default', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px' }}>
               <Package size={14} />
               Додати в замовлення{selectedCount > 0 ? ` (${selectedCount})` : ''}
             </button>

@@ -147,13 +147,13 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
                 const d = meta?.payment_defer_date;
                 const dLabel = d ? new Date(d).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }) : '—';
                 payBadge = (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--text-warn-dark)', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--text-warn-dark)', background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
                     📅 до {dLabel}
                   </span>
                 );
               } else if (status === 'partial') {
                 payBadge = (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: '#C2410C', background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 700, color: 'var(--orange)', background: 'var(--orange-bg)', border: '1px solid var(--orange-border)', borderRadius: '5px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
                     ⚠ Частково
                   </span>
                 );
@@ -194,7 +194,7 @@ export default function ReceiptsWrapper({ rows }: { rows: Receipt[] }) {
                 <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--color-success)' }}>
                   {r.total_cost ? `${fmt(Number(r.total_cost))} ₴` : '—'}
                 </span>
-                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: lc > 0 ? 700 : 400, color: lc > 0 ? '#7C3AED' : 'var(--text-muted)' }}>
+                <span style={{ textAlign: 'right', fontSize: '13px', fontWeight: lc > 0 ? 700 : 400, color: lc > 0 ? 'var(--violet)' : 'var(--text-muted)' }}>
                   {lc > 0 ? `+${fmt(lc)} ₴` : '—'}
                 </span>
                 <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>

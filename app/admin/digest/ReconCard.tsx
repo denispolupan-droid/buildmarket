@@ -24,7 +24,7 @@ function FixRow({ fix, onDone }: { fix: Fix; onDone: (id: string) => void }) {
   }
   const small = (primary: boolean): React.CSSProperties => ({
     height: 26, padding: '0 10px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)', color: primary ? '#fff' : 'var(--text-secondary)',
+    border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)', color: primary ? 'var(--surface)' : 'var(--text-secondary)',
   });
   return (
     <div style={{ marginLeft: 16, marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'var(--bg-secondary, rgba(100,116,139,.07))' }}>
@@ -45,7 +45,7 @@ function FixRow({ fix, onDone }: { fix: Fix; onDone: (id: string) => void }) {
     </div>
   );
 }
-const DOT: Record<Finding['level'], string> = { red: '#DC2626', yellow: '#CA8A04', green: '#15803D', info: '#64748B' };
+const DOT: Record<Finding['level'], string> = { red: 'var(--color-danger)', yellow: '#CA8A04', green: 'var(--color-success)', info: 'var(--text-soft)' };
 const ORDER = ['red', 'yellow', 'info', 'green'];
 
 /**
@@ -76,7 +76,7 @@ export default function ReconCard({ last }: { last: { at: string; findings: Find
   const btn = (primary: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 7, height: 34, padding: '0 14px', borderRadius: 9,
     border: primary ? 'none' : '1.5px solid var(--border)', background: primary ? 'var(--navy)' : 'var(--bg-card)',
-    color: primary ? '#fff' : 'var(--text-secondary)', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
+    color: primary ? 'var(--surface)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1,
   });
 
   return (

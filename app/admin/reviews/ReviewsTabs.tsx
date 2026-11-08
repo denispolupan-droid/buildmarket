@@ -19,7 +19,7 @@ export default function ReviewsTabs({ reviews, initialTab }: { reviews: Review[]
         <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Відгуки</h1>
         <div style={{ display: 'flex', gap: '6px', marginTop: '14px' }}>
           {([
-            ['site', 'Сайт', Star, pendingCount, '#1E3A5F', '#EBF1F8'],
+            ['site', 'Сайт', Star, pendingCount, 'var(--navy)', '#EBF1F8'],
             ['rozetka', 'Rozetka', Store, 0, '#6366F1', '#EEF2FF'],
           ] as const).map(([key, label, Icon, badge, accent, tint]) => {
             const active = tab === key;
@@ -38,7 +38,7 @@ export default function ReviewsTabs({ reviews, initialTab }: { reviews: Review[]
                 }}>
                 <Icon size={14} color={accent} /> {label}
                 {badge > 0 && (
-                  <span style={{ background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, borderRadius: '9px', padding: '1px 6px' }}>{badge}</span>
+                  <span style={{ background: 'var(--danger-bright)', color: 'var(--surface)', fontSize: '10px', fontWeight: 700, borderRadius: '9px', padding: '1px 6px' }}>{badge}</span>
                 )}
               </button>
             );
