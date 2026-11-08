@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 // Модель націнок: правила + попередній перегляд. Нічого не змінює у фідах —
 // показує, якою стане кожна ціна, ЯКЩО модель увімкнути. Вмикання — окремим кроком,
@@ -43,29 +44,14 @@ const uah = (n: number) => `${Math.round(n).toLocaleString('uk-UA')} ₴`;
 
 export default function PricingModelClient() {
   const [mp, setMp] = useState<'rozetka' | 'prom'>('rozetka');
-  const [data, setData] = useState<Data | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Попередні цифри лишаються на екрані, поки рахується інший маркетплейс
+  const query = useAdminQuery<Data>(`/api/admin/pricing-rules?marketplace=${mp}`, { keepPreviousData: true });
+  const data = query.data ?? null;
+  const loading = query.isValidating;
+  const [actionError, setActionError] = useState('');
+  const error = actionError || query.error?.message || '';
   const [filter, setFilter] = useState<'all' | 'excluded' | 'over30' | 'loss'>('all');
   const [saving, setSaving] = useState<number | null>(null);
-
-  async function load(marketplace = mp) {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/admin/pricing-rules?marketplace=${marketplace}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }
-  // load — стабільна за змістом, у залежності кладемо лише маркетплейс
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load(mp); }, [mp]);
 
   async function saveRule(id: number, patch: Partial<Rule>) {
     setSaving(id);
@@ -76,9 +62,10 @@ export default function PricingModelClient() {
         body: JSON.stringify({ id, ...patch }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      await load();
+      setActionError('');
+      await query.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setActionError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(null);
     }
@@ -113,7 +100,7 @@ export default function PricingModelClient() {
         {(['rozetka', 'prom'] as const).map(m => (
           <button
             key={m}
-            onClick={() => setMp(m)}
+            onClick={() => { setMp(m); setActionError(''); }}
             style={{
               height: 34, padding: '0 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
               border: mp === m ? 'none' : '1px solid var(--border)',

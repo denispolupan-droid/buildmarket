@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Loader2, Check, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { rzPhone } from '../../../lib/rz-delivery';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 /**
  * Налаштування «ROZETKA Доставки» (rz-delivery.rozetka.ua) — перевізника сайту.
@@ -66,8 +67,11 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
   const [cityId,    setCityId]    = useState(saved.city ?? '');
   const [cityName,  setCityName]  = useState(saved.city_name ?? '');
 
-  const [points,   setPoints]   = useState<Point[]>([]);
-  const [pointsBusy, setPointsBusy] = useState(false);
+  // Точки здачі потрібні і при першому відкритті (щоб показати вже збережену
+  // з її лімітом), і після зміни міста.
+  const pointsQuery = useAdminQuery<{ points?: Point[] }>(cityId ? `/api/admin/rz-delivery?action=points&city=${encodeURIComponent(cityId)}` : null);
+  const points = pointsQuery.data?.points ?? [];
+  const pointsBusy = pointsQuery.isValidating;
   const [pointId,  setPointId]  = useState(saved.department ?? '');
 
   const [lastName,   setLastName]   = useState(saved.last_name ?? '');
@@ -93,18 +97,6 @@ export default function RzDeliverySettings({ initialToken, initialSender, initia
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  // Точки здачі підвантажуємо і при першому відкритті (щоб показати вже збережену
-  // з її лімітом), і після зміни міста.
-  useEffect(() => {
-    if (!cityId) { setPoints([]); return; }
-    setPointsBusy(true);
-    fetch(`/api/admin/rz-delivery?action=points&city=${encodeURIComponent(cityId)}`)
-      .then(r => r.json())
-      .then((d: { points?: Point[] }) => setPoints(d.points ?? []))
-      .catch(() => setPoints([]))
-      .finally(() => setPointsBusy(false));
-  }, [cityId]);
 
   function searchCity(val: string) {
     setCityQuery(val);

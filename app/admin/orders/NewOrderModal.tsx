@@ -26,6 +26,7 @@ import { cartWeightKg, unweighedCount } from '../../../lib/parcel-weight';
 import { showConfirm } from '../../../lib/confirm';
 import { Modal } from '../../components/admin/ui/Modal';
 import { fmtMoney as fmt } from '../../../lib/format';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 const ProductPickerModal = dynamic(() => import('../procurement/ProductPickerModal'), { ssr: false });
 
@@ -195,14 +196,12 @@ export default function NewOrderModal({
 
   // Конфіг «ROZETKA Доставки»: чи ввімкнена і яка стеля ваги в нашої точки
   // здачі (ліміт є в обох кінців — і в точки покупця, і в нашої).
-  const [rzConfig, setRzConfig] = useState<{ enabled: boolean; maxWeightKg: number | null } | null>(null);
-  useEffect(() => {
-    fetch('/api/rz-delivery/config')
-      .then(r => r.json())
-      .then((d: { enabled?: boolean; maxWeightKg?: number | null }) =>
-        setRzConfig({ enabled: Boolean(d.enabled), maxWeightKg: d.maxWeightKg ?? null }))
-      .catch(() => setRzConfig({ enabled: false, maxWeightKg: null }));
-  }, []);
+  const rzConfigQuery = useAdminQuery<{ enabled?: boolean; maxWeightKg?: number | null }>('/api/rz-delivery/config');
+  // Доступність доставки й ліміт ваги — лише свіжі; під час перечитування конфігу ще немає
+  const rzConfig = rzConfigQuery.isValidating ? null
+    : rzConfigQuery.error ? { enabled: false, maxWeightKg: null }
+    : rzConfigQuery.data ? { enabled: Boolean(rzConfigQuery.data.enabled), maxWeightKg: rzConfigQuery.data.maxWeightKg ?? null }
+    : null;
 
   // ── Order fields ──────────────────────────────────────────────────────────
   const [contact,          setContact]          = useState(initialData.contact);

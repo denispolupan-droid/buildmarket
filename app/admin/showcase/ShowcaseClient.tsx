@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GripVertical, LayoutGrid, Search, X } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { useAdminQuery } from '../../../lib/admin/api';
 // Тільки чисті функції й типи: lib/showcase тягне supabase у серверній частині,
 // але вона під динамічним import() — у клієнтський бандл не потрапляє.
 import {
@@ -31,28 +32,20 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
   // Вкладка категорій не має вітрини товарів — для решти логіки беремо останню
   // обрану поверхню, щоб стан списків не скидався при перемиканні.
   const [surface, setSurface] = useState<ShowcaseSurface>('shop');
-  const [items, setItems]     = useState<Record<ShowcaseSurface, Item[]>>({ shop: [], catalog: [] });
-  const [order, setOrder]     = useState<Record<ShowcaseSurface, string[]>>({ shop: [], catalog: [] });
-  const [loading, setLoading] = useState(true);
+  const query = useAdminQuery<Partial<Record<ShowcaseSurface, Item[]>>>('/api/admin/showcase', {
+    onError: () => showToast('Не вдалося завантажити вітрину', 'error'),
+  });
+  const items: Record<ShowcaseSurface, Item[]> = { shop: query.data?.shop ?? [], catalog: query.data?.catalog ?? [] };
+  // Порядок користувача має пріоритет над збереженим; без запису — правок немає
+  const [picked, setPicked]   = useState<Partial<Record<ShowcaseSurface, string[]>>>({});
+  const order: Record<ShowcaseSurface, string[]> = {
+    shop:    picked.shop ?? items.shop.map(i => i.sku),
+    catalog: picked.catalog ?? items.catalog.map(i => i.sku),
+  };
+  const loading = query.isLoading;
   const [saving, setSaving]   = useState(false);
   const [search, setSearch]   = useState('');
   const [found, setFound]     = useState<Found[]>([]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const d = await fetch('/api/admin/showcase').then(r => r.json());
-      setItems({ shop: d.shop ?? [], catalog: d.catalog ?? [] });
-      setOrder({
-        shop:    (d.shop ?? []).map((i: Item) => i.sku),
-        catalog: (d.catalog ?? []).map((i: Item) => i.sku),
-      });
-    } catch {
-      showToast('Не вдалося завантажити вітрину', 'error');
-    }
-    setLoading(false);
-  }, []);
-  useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
     if (search.trim().length < 2) { setFound([]); return; }
@@ -69,7 +62,7 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
   const byId = new Map(items[surface].map(i => [i.sku, i]));
   const dirty = cur.join(',') !== items[surface].map(i => i.sku).join(',');
 
-  function setCur(next: string[]) { setOrder(o => ({ ...o, [surface]: next })); }
+  function setCur(next: string[]) { setPicked(o => ({ ...o, [surface]: next })); }
 
   const { rowProps, rowStyle } = useDragOrder(cur, setCur);
 
@@ -89,8 +82,8 @@ export default function ShowcaseClient({ canEdit }: { canEdit: boolean }) {
       });
       const d = await res.json();
       if (!res.ok) { showToast(d.error ?? 'Помилка збереження', 'error'); return; }
-      setItems(s => ({ ...s, [surface]: d.items ?? [] }));
-      setOrder(o => ({ ...o, [surface]: (d.items ?? []).map((i: Item) => i.sku) }));
+      await query.update(s => ({ ...s, [surface]: d.items ?? [] }));
+      setPicked(o => ({ ...o, [surface]: undefined }));
       showToast('Вітрину збережено', 'success');
     } catch {
       showToast('Помилка мережі', 'error');

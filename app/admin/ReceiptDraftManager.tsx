@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DraftCloseConfirm from './DraftCloseConfirm';
 import { DRAFT_KEYS, draftCount } from './draft-tab-offset';
+import { useAdminQuery } from '../../lib/admin/api';
 import { X, Minus, PackagePlus } from 'lucide-react';
 import { fmtInt as fmt } from '../../lib/format';
 
@@ -60,12 +61,16 @@ function saveDrafts(d: ReceiptDraft[]) {
   catch { /* quota */ }
 }
 
+const NO_WAREHOUSES: Warehouse[] = [];
+const NO_SUPPLIERS: Supplier[] = [];
+
 export default function ReceiptDraftManager() {
   const [drafts,       setDrafts]       = useState<ReceiptDraft[]>([]);
   const [mounted,      setMounted]      = useState(false);
   const [confirmClose, setConfirmClose] = useState<string | null>(null);
-  const [warehouses,   setWarehouses]   = useState<Warehouse[]>([]);
-  const [suppliers,    setSuppliers]    = useState<Supplier[]>([]);
+  const { data: meta } = useAdminQuery<{ warehouses?: Warehouse[]; suppliers?: Supplier[] }>('/api/admin/procurement/receipt-meta');
+  const warehouses = meta?.warehouses ?? NO_WAREHOUSES;
+  const suppliers  = meta?.suppliers ?? NO_SUPPLIERS;
 
   // How many PO draft tabs are visible (to offset receipt tabs)
   const [poDraftCount, setPoDraftCount] = useState(0);
@@ -74,15 +79,6 @@ export default function ReceiptDraftManager() {
     setDrafts(loadDrafts());
     setPoDraftCount(draftCount(DRAFT_KEYS.po));
     setMounted(true);
-
-    // Load warehouses & suppliers via admin API (needs service role)
-    fetch('/api/admin/procurement/receipt-meta')
-      .then(r => r.ok ? r.json() : { warehouses: [], suppliers: [] })
-      .then(({ warehouses: wh, suppliers: sup }) => {
-        setWarehouses(wh ?? []);
-        setSuppliers(sup ?? []);
-      })
-      .catch(() => { /* ignore */ });
   }, []);
 
   // РњС–РЅС–РјС–Р·СѓРІР°С‚Рё РІСЃС– Receipt, РєРѕР»Рё PO Р°Р±Рѕ Order-РїР°РЅРµР»СЊ СЃС‚Р°С” Р°РєС‚РёРІРЅРѕСЋ

@@ -4,6 +4,8 @@
 // AdminOrders.tsx; тут нічого не рендериться.
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
+import { useSenders } from '../procurement/useSenders';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CreateTTNModal from '../../components/admin/CreateTTNModal';
 import { phoneLocalDigits } from '../../../lib/notify/phone';
@@ -84,14 +86,11 @@ export function useAdminOrders(props: AdminOrdersProps) {
   }, []);
 
   // Список постачальників для вибору фактичного постачальника відвантаження
-  const [suppliersList, setSuppliersList] = useState<{ id: number; name: string }[]>([]);
-  useEffect(() => {
-    fetch('/api/admin/suppliers')
-      .then(r => (r.ok ? r.json() : []))
-      .then((rows: { id: number; name: string }[]) =>
-        setSuppliersList(Array.isArray(rows) ? rows.map(s => ({ id: s.id, name: s.name })) : []))
-      .catch(() => setSuppliersList([]));
-  }, []);
+  const { data: supplierRows } = useAdminQuery<{ id: number; name: string }[]>('/api/admin/suppliers');
+  const suppliersList = useMemo(
+    () => (Array.isArray(supplierRows) ? supplierRows.map(s => ({ id: s.id, name: s.name })) : []),
+    [supplierRows],
+  );
 
   // Модал повернення від покупця
   const [returnFor, setReturnFor] = useState<{ id: string; number: number } | null>(null);
@@ -289,14 +288,7 @@ export function useAdminOrders(props: AdminOrdersProps) {
   const [bulkSending,  setBulkSending]  = useState(false);
   const [bulkResults,  setBulkResults]  = useState<BulkResult[] | null>(null);
   // Відправники (основний + додаткові) — вибір «від кого» слати постачальнику
-  const [senders,      setSenders]      = useState<{ name: string; email: string }[]>([]);
-  const [chosenSender, setChosenSender] = useState('');
-  useEffect(() => {
-    fetch('/api/admin/procurement/senders')
-      .then(r => r.json())
-      .then(d => { const list = d.senders ?? []; setSenders(list); setChosenSender(d.defaultSender || list[0]?.email || ''); })
-      .catch(() => {});
-  }, []);
+  const { senders, chosenSender, setChosenSender } = useSenders();
   const [ttnModalOrder,  setTtnModalOrder]  = useState<Order | null>(null);
   const [rzTtnModal,     setRzTtnModal]     = useState<Order | null>(null);
   // «Деталі ЕН» — перегляд того, що вписано в накладну (усі перевізники)

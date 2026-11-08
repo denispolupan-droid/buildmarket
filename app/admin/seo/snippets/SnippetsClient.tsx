@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { badge, card, chip, hint, num, path as pathStyle, pct, td, tdNum, th, TONE } from '../ui';
 import HelpBox from '../HelpBox';
 import { HELP_SNIPPETS } from '../help-content';
@@ -27,20 +28,9 @@ type Duplicate = { field: 'title' | 'description'; value: string; paths: string[
 
 export default function SnippetsClient() {
   const [days, setDays] = useState<7 | 28 | 90>(28);
-  const [data, setData] = useState<{ rows: Row[]; duplicates: Duplicate[] } | null>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setData(null);
-    setError('');
-    fetch(`/api/admin/seo/snippets?days=${days}&limit=40`)
-      .then(async res => {
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
-        setData(d);
-      })
-      .catch(err => setError(String(err instanceof Error ? err.message : err)));
-  }, [days]);
+  const query = useAdminQuery<{ rows: Row[]; duplicates: Duplicate[] }>(`/api/admin/seo/snippets?days=${days}&limit=40`);
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
 
   const lostTotal = data?.rows.reduce((s, r) => s + r.lostClicks, 0) ?? 0;
 

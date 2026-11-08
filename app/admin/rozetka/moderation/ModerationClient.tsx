@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { RefreshCw, Wand2, Image as ImageIcon, AlertTriangle, Clock, ExternalLink } from 'lucide-react';
 import { classifyReason, type FixKind } from '../../../../lib/rozetka-content-reasons';
 import type { ContentSummary } from '../../../../lib/rozetka-content';
+import { useAdminQuery } from '../../../../lib/admin/api';
 
 const KIND_LABEL: Record<FixKind, string> = {
   text:  'текст — лікується кнопкою',
@@ -24,28 +25,14 @@ const card: React.CSSProperties = {
 };
 
 export default function ModerationClient() {
-  const [data, setData] = useState<ContentSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+  const query = useAdminQuery<ContentSummary>('/api/admin/rozetka/content');
+  const data = query.data ?? null;
+  const loading = query.isValidating;
+  const err = query.error?.message ?? null;
+  const load = query.refresh;
   const [fixing, setFixing] = useState<string[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [kind, setKind] = useState<FixKind | 'all'>('all');
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr(null);
-    try {
-      const res = await fetch('/api/admin/rozetka/content');
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
-      setData(j as ContentSummary);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const rows = useMemo(
     () => (data?.problems ?? []).filter(p => kind === 'all' || p.kinds.includes(kind)),

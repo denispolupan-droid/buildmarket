@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, Loader2, Check, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 type Settlement = { Ref: string; Present: string; MainDescription: string; Area: string; RegionsDescription: string };
 type Warehouse  = { Ref: string; Description: string; Number: string; CityRef: string };
@@ -73,8 +74,9 @@ export default function NpSenderSettings({
   const [whLoading,    setWhLoading]    = useState(false);
 
   // Step 3b: Pickup address
-  const [npAddresses,  setNpAddresses]  = useState<NpAddress[]>([]);
-  const [addrLoading,  setAddrLoading]  = useState(false);
+  const addressesQuery = useAdminQuery<{ addresses?: NpAddress[] }>(senderType === 'address' && apiKey ? '/api/admin/np-addresses' : null);
+  const npAddresses = addressesQuery.data?.addresses ?? [];
+  const addrLoading = addressesQuery.isValidating;
   const [selectedAddr, setSelectedAddr] = useState<NpAddress | null>(
     initialAddressRef ? { Ref: initialAddressRef, Description: initialAddressDesc } : null
   );
@@ -103,16 +105,6 @@ export default function NpSenderSettings({
       .then((data: Warehouse[]) => setWarehouses(data));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Load pickup addresses if address mode
-  useEffect(() => {
-    if (senderType !== 'address' || !apiKey) return;
-    setAddrLoading(true);
-    fetch('/api/admin/np-addresses')
-      .then(r => r.json())
-      .then(d => setNpAddresses(d.addresses ?? []))
-      .finally(() => setAddrLoading(false));
-  }, [senderType, apiKey]);
 
   async function checkApiKey(key: string) {
     if (!key.trim()) return;

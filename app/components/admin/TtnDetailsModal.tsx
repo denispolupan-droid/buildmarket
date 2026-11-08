@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import { useAdminQuery } from '../../../lib/admin/api';
 import type { TtnDetails } from '../../../lib/ttn-details';
 import { Modal } from './ui/Modal';
 
@@ -15,22 +16,11 @@ type Props = { orderId: string; orderNumber: number; onClose: () => void };
 const caps: React.CSSProperties = { fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' };
 
 export default function TtnDetailsModal({ orderId, orderNumber, onClose }: Props) {
-  const [data, setData] = useState<TtnDetails | null>(null);
-  const [error, setError] = useState('');
+  const details = useAdminQuery<TtnDetails>(`/api/admin/orders/${orderId}/ttn-details`);
+  // Вміст накладної показуємо лише свіжий: ні кешу під час перечитування, ні кешу після збою
+  const data = details.isValidating || details.error ? null : details.data ?? null;
+  const error = details.isValidating ? '' : details.error?.message ?? '';
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/admin/orders/${orderId}/ttn-details`)
-      .then(async r => {
-        const d = await r.json().catch(() => ({}));
-        if (cancelled) return;
-        if (!r.ok || d.error) setError(d.error ?? 'Не вдалося завантажити накладну');
-        else setData(d as TtnDetails);
-      })
-      .catch(() => { if (!cancelled) setError('Збій мережі'); });
-    return () => { cancelled = true; };
-  }, [orderId]);
 
   function copyTtn() {
     if (!data) return;

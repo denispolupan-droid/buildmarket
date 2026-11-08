@@ -6,10 +6,13 @@ import DraftCloseConfirm from './DraftCloseConfirm';
 import { DRAFT_KEYS, draftCount } from './draft-tab-offset';
 import { X, Minus, Trash2, ArrowLeftRight } from 'lucide-react';
 import type { StockDocDraft } from './accounting/NewStockDocModal';
+import { useAdminQuery } from '../../lib/admin/api';
 
 const NewStockDocModal = dynamic(() => import('./accounting/NewStockDocModal'), { ssr: false });
 
 type Warehouse = { id: number; name: string };
+
+const NO_WAREHOUSES: Warehouse[] = [];
 
 const SESSION_KEY    = 'admin_stockdoc_drafts';
 const SIDEBAR_W      = 240;
@@ -28,7 +31,8 @@ export default function StockDocDraftManager() {
   const [drafts,       setDrafts]       = useState<StockDocDraft[]>([]);
   const [mounted,      setMounted]      = useState(false);
   const [confirmClose, setConfirmClose] = useState<string | null>(null);
-  const [warehouses,   setWarehouses]   = useState<Warehouse[]>([]);
+  const { data: meta } = useAdminQuery<{ warehouses?: Warehouse[] }>('/api/admin/procurement/receipt-meta');
+  const warehouses = meta?.warehouses ?? NO_WAREHOUSES;
 
   // Tab offset: come after PO + Receipt + Order tabs
   const [poDraftCount,      setPoDraftCount]      = useState(0);
@@ -41,10 +45,6 @@ export default function StockDocDraftManager() {
     setReceiptDraftCount(draftCount(DRAFT_KEYS.receipt));
     setOrderDraftCount(draftCount(DRAFT_KEYS.order));
     setMounted(true);
-    fetch('/api/admin/procurement/receipt-meta')
-      .then(r => r.ok ? r.json() : { warehouses: [] })
-      .then(({ warehouses: wh }) => setWarehouses(wh ?? []))
-      .catch(() => {});
   }, []);
 
   // Minimize when another doc type panel activates

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { badge, card, chip, hint, td, tdNum, th } from '../ui';
 import type { HiddenCluster, HiddenPhrase } from '../../../api/admin/seo/demand/hidden/route';
 
@@ -16,19 +17,14 @@ type Filter = 'invisible' | 'uncovered' | 'all';
 type Kind = 'all' | 'info' | 'buy';
 
 export default function HiddenDemand() {
-  const [data, setData] = useState<Data | null>(null);
-  const [error, setError] = useState('');
+  const query = useAdminQuery<Data>('/api/admin/seo/demand/hidden');
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
   const [filter, setFilter] = useState<Filter>('invisible');
   const [kind, setKind] = useState<Kind>('all');
   const [lang, setLang] = useState<'all' | 'uk' | 'ru'>('all');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    fetch('/api/admin/seo/demand/hidden')
-      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error); setData(d); })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
 
   const q = search.trim().toLowerCase();
   const keep = (p: HiddenPhrase) =>

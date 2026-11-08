@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { HOME_CATEGORY_CARDS } from '../../../lib/home-categories';
 import { reorderList } from '../../../lib/reorder';
 import { useDragOrder } from './useDragOrder';
@@ -16,25 +17,16 @@ import { useDragOrder } from './useDragOrder';
 type Row = { slug: string; name: string; sortOrder: number; products: number };
 
 export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
-  const [rows, setRows]       = useState<Row[]>([]);
-  const [order, setOrder]     = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const query = useAdminQuery<{ categories?: Row[] }>('/api/admin/categories/order', {
+    onError: () => showToast('Не вдалося завантажити категорії', 'error'),
+  });
+  const rows = query.data?.categories ?? [];
+  const loading = query.isLoading;
+  // Порядок користувача має пріоритет над збереженим; null — правок немає
+  const [picked, setOrder]    = useState<string[] | null>(null);
+  const order = picked ?? rows.map(c => c.slug);
   const [saving, setSaving]   = useState(false);
   const { rowProps, rowStyle } = useDragOrder(order, setOrder);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const d = await fetch('/api/admin/categories/order').then(r => r.json());
-      const list: Row[] = d.categories ?? [];
-      setRows(list);
-      setOrder(list.map(c => c.slug));
-    } catch {
-      showToast('Не вдалося завантажити категорії', 'error');
-    }
-    setLoading(false);
-  }, []);
-  useEffect(() => { void load(); }, [load]);
 
   const bySlug = new Map(rows.map(r => [r.slug, r]));
   const dirty = order.join(',') !== rows.map(r => r.slug).join(',');
@@ -48,8 +40,8 @@ export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
       });
       const d = await res.json();
       if (!res.ok) { showToast(d.error ?? 'Помилка збереження', 'error'); return; }
-      setRows(d.categories ?? []);
-      setOrder((d.categories ?? []).map((c: Row) => c.slug));
+      await query.update(() => ({ categories: d.categories ?? [] }));
+      setOrder(null);
       showToast('Порядок категорій збережено', 'success');
     } catch {
       showToast('Помилка мережі', 'error');
@@ -99,8 +91,8 @@ export default function CategoryOrderPanel({ canEdit }: { canEdit: boolean }) {
                 </span>
                 {canEdit && (
                   <>
-                    <button onClick={() => setOrder(o => reorderList(o, i, i - 1))} disabled={i === 0} style={miniBtn} title="Вище">↑</button>
-                    <button onClick={() => setOrder(o => reorderList(o, i, i + 1))} disabled={i === order.length - 1} style={miniBtn} title="Нижче">↓</button>
+                    <button onClick={() => setOrder(reorderList(order, i, i - 1))} disabled={i === 0} style={miniBtn} title="Вище">↑</button>
+                    <button onClick={() => setOrder(reorderList(order, i, i + 1))} disabled={i === order.length - 1} style={miniBtn} title="Нижче">↓</button>
                   </>
                 )}
               </div>

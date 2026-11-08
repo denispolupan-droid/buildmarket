@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Briefcase, Check, X, Loader2 } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 // Заявки на B2B-доступ (міграція 146): новий оптовик чи дропшипер бачить
 // роздріб, доки адмін не схвалить заявку. Стиль — як у блоці «Користувачі».
@@ -16,21 +17,11 @@ type B2BRequest = {
 const fmtDate = (iso: string) => new Date(iso).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export default function B2BRequests() {
-  const [items, setItems] = useState<B2BRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isValidating: loading, refresh: load } = useAdminQuery<{ requests?: B2BRequest[] }>('/api/admin/b2b-requests', {
+    onError: e => showToast(e.message, 'error'),
+  });
+  const items = data?.requests ?? [];
   const [busy, setBusy] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/b2b-requests');
-      const data = await res.json();
-      if (!res.ok) { showToast(data.error ?? 'Помилка', 'error'); return; }
-      setItems(data.requests ?? []);
-    } finally { setLoading(false); }
-  }
-
-  useEffect(() => { load(); }, []);
 
   async function decide(id: string, action: 'approve' | 'reject') {
     setBusy(id);

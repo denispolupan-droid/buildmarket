@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw, Send, ExternalLink, ThumbsUp, ThumbsDown, Store, Package } from 'lucide-react';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 type Row = {
   kind: 'market' | 'item';
@@ -24,6 +25,8 @@ type Row = {
   replies: Array<{ author: string | null; text: string | null; at: string | null }>;
 };
 
+const NO_ROWS: Row[] = [];
+
 function Stars({ mark }: { mark: number }) {
   return (
     <span style={{ whiteSpace: 'nowrap' }}>
@@ -35,29 +38,24 @@ function Stars({ mark }: { mark: number }) {
 }
 
 export default function RozetkaReviewsClient() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const query = useAdminQuery<{ rows?: Row[] }>('/api/admin/rozetka-reviews');
+  const rows = query.data?.rows ?? NO_ROWS;
+  const loading = query.isValidating;
+  const [actionError, setError] = useState('');
+  const error = actionError || query.error?.message || '';
   const [filter, setFilter] = useState<'all' | 'market' | 'item'>('all');
   const [replyFor, setReplyFor] = useState<string | null>(null);   // `${kind}-${id}`
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
-    try {
-      const res = await fetch('/api/admin/rozetka-reviews');
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error ?? 'Помилка завантаження');
-      setRows(d.rows ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  function load() {
+    setError('');
+    return query.refresh();
+  }
 
-  useEffect(() => { void load(); }, [load]);
+  function patchRows(fn: (r: Row) => Row) {
+    return query.update(cur => cur && { ...cur, rows: cur.rows?.map(fn) });
+  }
 
   async function sendReply(row: Row) {
     if (!replyText.trim() || sending) return;
@@ -69,9 +67,9 @@ export default function RozetkaReviewsClient() {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? 'Не вдалося надіслати');
-      setRows(prev => prev.map(r => r.kind === row.kind && r.id === row.id
+      void patchRows(r => r.kind === row.kind && r.id === row.id
         ? { ...r, unread: false, replies: [...r.replies, { author: 'Ми', text: replyText.trim(), at: new Date().toISOString() }], ourReply: row.kind === 'market' ? replyText.trim() : r.ourReply }
-        : r));
+        : r);
       setReplyFor(null); setReplyText('');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -81,7 +79,7 @@ export default function RozetkaReviewsClient() {
   }
 
   async function markRead(row: Row) {
-    setRows(prev => prev.map(r => r.kind === row.kind && r.id === row.id ? { ...r, unread: false } : r));
+    void patchRows(r => r.kind === row.kind && r.id === row.id ? { ...r, unread: false } : r);
     fetch('/api/admin/rozetka-reviews', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind: row.kind, id: row.id }),

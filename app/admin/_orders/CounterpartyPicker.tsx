@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Pencil, UserPlus } from 'lucide-react';
 import type { CounterpartyOption } from './types';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 /**
  * Контрагент замовлення. Міняють у двох випадках: замовлення оформили не на
@@ -19,22 +20,14 @@ export function CounterpartyPicker({ orderId, customerId, onPicked }: {
   onPicked: (patch: { customer_id: string | null; contact?: string; phone?: string; company?: string | null }) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState<CounterpartyOption | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CounterpartyOption[]>([]);
   const [saving, setSaving] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
   // Ім'я прив'язаного контрагента: у замовленні лежить лише id
-  useEffect(() => {
-    if (!customerId) { setCurrent(null); return; }
-    let alive = true;
-    fetch(`/api/admin/customers/search?id=${customerId}`)
-      .then(r => r.ok ? r.json() : [])
-      .then((rows: CounterpartyOption[]) => { if (alive) setCurrent(rows[0] ?? null); })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, [customerId]);
+  const { data: currentRows } = useAdminQuery<CounterpartyOption[]>(customerId ? `/api/admin/customers/search?id=${customerId}` : null);
+  const current = currentRows?.[0] ?? null;
 
   // Список: спершу останні клієнти, далі — пошук із паузою на набір
   useEffect(() => {

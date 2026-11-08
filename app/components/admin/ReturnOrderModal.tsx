@@ -5,9 +5,10 @@
 // без проводок. Проводки робляться в журналі «Фінанси → Повернення» кнопкою
 // «Товар отримано», коли товар фізично в нас.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { X, Undo2, ExternalLink } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { REASON_LABEL, STAGE_LABEL, type ReturnReason, type ReturnStage, type RefundMethod } from '../../../lib/accounting/returns-rules';
 import { Modal } from './ui/Modal';
 
@@ -25,11 +26,16 @@ export default function ReturnOrderModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [items, setItems]       = useState<ReturnableItem[] | null>(null);
-  const [existing, setExisting] = useState<Existing[]>([]);
-  const [isMp, setIsMp]         = useState(false);
-  const [channel, setChannel]   = useState<string | null>(null);
-  const [loadErr, setLoadErr]   = useState('');
+  const returnQuery = useAdminQuery<{
+    items?: ReturnableItem[]; existing?: Existing[]; is_marketplace?: boolean; channel_code?: string | null;
+  }>(`/api/admin/orders/${orderId}/return`);
+  // Доступну кількість і суму беремо лише свіжими: ні кешу під час перечитування, ні кешу після збою
+  const fresh = returnQuery.isValidating || returnQuery.error ? undefined : returnQuery.data;
+  const items = fresh ? fresh.items ?? [] : null;
+  const existing = fresh?.existing ?? [];
+  const isMp = !!fresh?.is_marketplace;
+  const channel = fresh?.channel_code ?? null;
+  const loadErr = returnQuery.isValidating ? '' : returnQuery.error?.message ?? '';
   const [qty, setQty]           = useState<Record<string, number>>({});
   const [reason, setReason]     = useState<ReturnReason>('surplus');
   const [reasonText, setReasonText] = useState('');
@@ -37,20 +43,6 @@ export default function ReturnOrderModal({
   const [mpUnaware, setMpUnaware] = useState(false);
   const [refund, setRefund]     = useState<'none' | RefundMethod>('none');
   const [saving, setSaving]     = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/admin/orders/${orderId}/return`)
-      .then(async r => {
-        const data = await r.json();
-        if (!r.ok) { setLoadErr(data.error ?? 'Помилка завантаження'); return; }
-        setItems(data.items ?? []);
-        setExisting(data.existing ?? []);
-        setIsMp(!!data.is_marketplace);
-        setChannel(data.channel_code ?? null);
-        setQty(Object.fromEntries((data.items ?? []).map((i: ReturnableItem) => [i.sku, 0])));
-      })
-      .catch(() => setLoadErr('Мережева помилка'));
-  }, [orderId]);
 
   const selected = (items ?? []).filter(i => (qty[i.sku] ?? 0) > 0);
   const total = selected.reduce((s, i) => s + i.price * (qty[i.sku] ?? 0), 0);

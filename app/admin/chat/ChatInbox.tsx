@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 import MarketplaceChatsClient, { type ChatItem } from '../marketplace-chats/MarketplaceChatsClient';
 import SiteChatsPane, { type SiteChatRow } from './SiteChatsPane';
 
@@ -14,6 +15,9 @@ import SiteChatsPane, { type SiteChatRow } from './SiteChatsPane';
 
 type Tab = 'site' | 'mp';
 
+const NO_ITEMS: ChatItem[] = [];
+const NO_ERRORS: string[] = [];
+
 export default function ChatInbox({ rows, initialTab, autoOpenSiteId, autoOpenOrderId, autoOpenChatKey }: {
   rows: SiteChatRow[];
   initialTab: Tab;
@@ -22,25 +26,14 @@ export default function ChatInbox({ rows, initialTab, autoOpenSiteId, autoOpenOr
   autoOpenChatKey?: string | null;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [items, setItemsRaw] = useState<ChatItem[]>([]);
-  const [listLoading, setListLoading] = useState(true);
-  const [listErrors, setListErrors] = useState<string[]>([]);
-  const setItems = useCallback((fn: (prev: ChatItem[]) => ChatItem[]) => setItemsRaw(fn), []);
-
-  const loadList = useCallback(async () => {
-    setListLoading(true);
-    try {
-      const res = await fetch('/api/admin/marketplace-chats');
-      const d = await res.json();
-      if (res.ok) { setItemsRaw(d.items ?? []); setListErrors(d.errors ?? []); }
-      else setListErrors([d.error ?? 'Помилка завантаження']);
-    } catch (e) {
-      setListErrors([e instanceof Error ? e.message : String(e)]);
-    } finally {
-      setListLoading(false);
-    }
-  }, []);
-  useEffect(() => { void loadList(); }, [loadList]);
+  const list = useAdminQuery<{ items?: ChatItem[]; errors?: string[] }>('/api/admin/marketplace-chats');
+  const items = list.data?.items ?? NO_ITEMS;
+  const listLoading = list.isValidating;
+  const listErrors = list.error ? [list.error.message] : (list.data?.errors ?? NO_ERRORS);
+  const updateList = list.update;
+  const setItems = useCallback((fn: (prev: ChatItem[]) => ChatItem[]) => {
+    void updateList(cur => cur && { ...cur, items: fn(cur.items ?? NO_ITEMS) });
+  }, [updateList]);
 
   // Вкладка — в адресі, щоб посилання з Telegram і закладки відкривали потрібну
   const switchTab = (t: Tab) => {
@@ -75,7 +68,7 @@ export default function ChatInbox({ rows, initialTab, autoOpenSiteId, autoOpenOr
 
       {tab === 'mp' ? (
         <MarketplaceChatsClient
-          items={items} setItems={setItems} listLoading={listLoading} listErrors={listErrors} reload={loadList}
+          items={items} setItems={setItems} listLoading={listLoading} listErrors={listErrors} reload={list.refresh}
           autoOpenOrderId={autoOpenOrderId} autoOpenChatKey={autoOpenChatKey}
         />
       ) : (

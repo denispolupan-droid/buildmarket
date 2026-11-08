@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { Save, CheckCircle, Upload, X, AlertTriangle, Download, Search, List, Percent } from 'lucide-react';
 import Link from 'next/link';
+import { useAdminQuery } from '../../../../lib/admin/api';
 
 interface Category {
   slug: string;
@@ -22,6 +23,9 @@ type TariffChange   = { rz_id: string; category_name: string | null; price_from:
 type TariffResult   = { applied: boolean; categories?: number; brackets?: number; added?: number; changed?: number; removed?: number; unchanged?: number; sampleChanges?: TariffChange[]; totalInTable?: number } | null;
 type CatRefEntry    = { rz_id: string; rz_name: string; commission_rz_id: string | null; commission_name: string | null; commission_pct: number | null; our_categories: string[] };
 
+const NO_REFS: RefEntry[] = [];
+const NO_TREE: TreeEntry[] = [];
+
 export default function RozetkaCommissionsClient({ categories }: { categories: Category[] }) {
   const [vals, setVals] = useState<Record<string, { commission: string; markup: string; rz_id: string; rz_name: string; commission_rz_id: string; commission_label: string }>>(
     Object.fromEntries(categories.map(c => [c.slug, {
@@ -36,24 +40,15 @@ export default function RozetkaCommissionsClient({ categories }: { categories: C
 
   const [view, setView] = useState<'commissions' | 'categories'>('commissions');
 
-  const [refs, setRefs] = useState<RefEntry[]>([]);
-  const [tree, setTree] = useState<TreeEntry[]>([]);
+  const refsQuery = useAdminQuery<RefEntry[]>('/api/admin/rozetka/import-commissions');
+  const treeQuery = useAdminQuery<TreeEntry[]>('/api/admin/rozetka/category-tree');
+  const refs = Array.isArray(refsQuery.data) ? refsQuery.data : NO_REFS;
+  const tree = Array.isArray(treeQuery.data) ? treeQuery.data : NO_TREE;
 
   const [catRef,        setCatRef]        = useState<CatRefEntry[]>([]);
   const [catRefLoaded,  setCatRefLoaded]  = useState(false);
   const [catRefLoading, setCatRefLoading] = useState(false);
   const [catSearch,     setCatSearch]     = useState('');
-
-  useEffect(() => {
-    fetch('/api/admin/rozetka/import-commissions')
-      .then(r => r.json())
-      .then((data: RefEntry[]) => Array.isArray(data) && setRefs(data))
-      .catch(() => {});
-    fetch('/api/admin/rozetka/category-tree')
-      .then(r => r.json())
-      .then((data: TreeEntry[]) => Array.isArray(data) && setTree(data))
-      .catch(() => {});
-  }, []);
 
   const refsMap = useMemo(() => new Map(refs.map(r => [r.rz_id, r])), [refs]);
   const treeMap = useMemo(() => new Map(tree.map(t => [t.rz_id, t])), [tree]);

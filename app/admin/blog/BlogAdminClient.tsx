@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Modal } from '../../components/admin/ui/Modal';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 // Блог: генерація статей AI (тільки по кнопці, ~$0.20/стаття), чернетка →
 // перегляд/редагування → публікація. Нові статті йдуть у /blog без деплою.
@@ -38,27 +39,21 @@ type LinkPlan = {
 };
 
 const COST_PER_ARTICLE = 0.20;
+const NO_POSTS: PostRow[] = [];
 
 export default function BlogAdminClient() {
-  const [posts, setPosts] = useState<PostRow[]>([]);
+  const { data: postsData, refresh: load } = useAdminQuery<PostRow[]>('/api/admin/blog');
+  const posts = postsData ?? NO_POSTS;
   const [topic, setTopic] = useState('');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<PostFull | null>(null);
   const [saving, setSaving] = useState(false);
 
-  async function load() {
-    const res = await fetch('/api/admin/blog');
-    if (res.ok) setPosts(await res.json());
-  }
-  useEffect(() => { load(); }, []);
-
   // Автопілот чернеток (крон 1-го і 15-го): вимикач + коли була остання чернетка
-  const [autopilot, setAutopilot] = useState<{ enabled: boolean; lastDraft: { at: string; page: string; title: string | null } | null } | null>(null);
+  const autopilotQuery = useAdminQuery<{ enabled: boolean; lastDraft: { at: string; page: string; title: string | null } | null }>('/api/admin/blog/autopilot');
+  const autopilot = autopilotQuery.data ?? null;
   const [autopilotSaving, setAutopilotSaving] = useState(false);
-  useEffect(() => {
-    fetch('/api/admin/blog/autopilot').then(r => r.ok ? r.json() : null).then(d => d && setAutopilot(d)).catch(() => {});
-  }, []);
   async function toggleAutopilot() {
     if (!autopilot) return;
     setAutopilotSaving(true);
@@ -69,7 +64,7 @@ export default function BlogAdminClient() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setAutopilot(a => a && { ...a, enabled: data.enabled });
+      void autopilotQuery.update(a => a && { ...a, enabled: data.enabled });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

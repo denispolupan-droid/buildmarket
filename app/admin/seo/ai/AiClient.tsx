@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { badge, card, chip, hint, num, path as pathStyle, td, tdNum, th, TONE } from '../ui';
 import { TrendBadge } from '../../finance/overview-charts';
 import HelpBox from '../HelpBox';
@@ -103,20 +104,9 @@ function Kpi({ label, value, prev, note }: { label: string; value: number; prev:
 
 export default function AiClient() {
   const [days, setDays] = useState<7 | 28 | 90>(28);
-  const [data, setData] = useState<Data | null>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setData(null);
-    setError('');
-    fetch(`/api/admin/seo/ai?days=${days}`)
-      .then(async res => {
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error ?? res.statusText);
-        setData(d);
-      })
-      .catch(err => setError(String(err instanceof Error ? err.message : err)));
-  }, [days]);
+  const query = useAdminQuery<Data>(`/api/admin/seo/ai?days=${days}`);
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
 
   const dayLabel = (iso: string) => iso.slice(8, 10) + '.' + iso.slice(5, 7);
 

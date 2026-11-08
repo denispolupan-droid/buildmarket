@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { badge, card, hint, num, path as pathStyle, td, tdNum, th, TONE } from '../ui';
 import { KIND_LABEL } from '../use-seo-actions';
 import HelpBox from '../HelpBox';
@@ -34,19 +35,10 @@ type Summary = {
 const MATURE_DAYS = 7;
 
 export default function LogClient() {
-  const [data, setData] = useState<{ rows: LogRow[]; summary: Summary } | null>(null);
-  const [error, setError] = useState('');
+  const query = useAdminQuery<{ rows: LogRow[]; summary: Summary }>('/api/admin/seo/actions?view=log&limit=300');
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
   const [onlyMeasured, setOnlyMeasured] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/admin/seo/actions?view=log&limit=300')
-      .then(async res => {
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
-        setData(d);
-      })
-      .catch(err => setError(String(err instanceof Error ? err.message : err)));
-  }, []);
 
   // Довідку показуємо і поки дані вантажаться: вона пояснює, що саме зараз
   // рахується, і чому «ще рано» — не помилка

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 // Позначки «що вже робили зі сторінкою» потрібні одразу трьом екранам
 // (Запити, Сторінки, Сніпети) — тримаємо завантаження в одному місці.
@@ -36,18 +37,9 @@ export function actionKey(pageOrPath: string): string {
 }
 
 export function useSeoActions() {
-  const [actions, setActions] = useState<Map<string, PageAction>>(new Map());
-
-  const reload = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/seo/actions');
-      if (!res.ok) return;
-      const rows: PageAction[] = await res.json();
-      setActions(new Map(rows.map(r => [r.page_path, r])));
-    } catch { /* історія не критична для роботи розділу */ }
-  }, []);
-
-  useEffect(() => { void reload(); }, [reload]);
+  // Помилку не показуємо: історія не критична для роботи розділу
+  const { data, refresh: reload } = useAdminQuery<PageAction[]>('/api/admin/seo/actions');
+  const actions = useMemo(() => new Map((data ?? []).map(r => [r.page_path, r])), [data]);
 
   return { actions, reload };
 }

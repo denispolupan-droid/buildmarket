@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Search, Plus, Minus, ChevronRight, ChevronDown, Loader2, Package } from 'lucide-react';
 import { Modal } from '../../components/admin/ui/Modal';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 type Category = { slug: string; name: string; parent_slug: string | null; sort_order: number };
 type CatalogProduct = {
@@ -19,22 +20,14 @@ type Props = {
 };
 
 export default function ProductPickerModal({ zIndex = 1300, onClose, onAdd }: Props) {
-  const [categories,        setCategories]        = useState<Category[]>([]);
+  const { data: catalog } = useAdminQuery<{ categories?: Category[] }>('/api/admin/products/catalog');
+  const categories = catalog?.categories ?? [];
   const [products,          setProducts]          = useState<CatalogProduct[]>([]);
   const [loading,           setLoading]           = useState(false);
   const [selectedCategory,  setSelectedCategory]  = useState<string | null>(null);
   const [expandedRoots,     setExpandedRoots]     = useState<Set<string>>(new Set());
   const [searchQ,           setSearchQ]           = useState('');
   const [selections,        setSelections]        = useState<Map<string, Selection>>(new Map());
-
-  // Load categories once on mount
-  useEffect(() => {
-    fetch('/api/admin/products/catalog')
-      .then(r => r.json())
-      .then(d => {
-        setCategories(d.categories ?? []);
-      });
-  }, []);
 
   // Load products when category or search changes
   const loadProducts = useCallback(async (cat: string | null, q: string) => {

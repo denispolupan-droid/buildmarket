@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Layers, Eye, EyeOff, Search, Trash2 } from 'lucide-react';
 import { getSupabaseBrowser } from '../../../lib/supabase-browser';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 type ContactEntry = {
   name:  string;
@@ -121,21 +122,14 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
 
   // ── Договори постачальника ────────────────────────────────────────────────
   type SupplierContractRow = { id: string; contract_number: string; status: string; payment_terms: string | null; credit_days: number; credit_limit: number };
-  const [supplierContracts,    setSupplierContracts]    = useState<SupplierContractRow[]>([]);
-  const [contractsLoading,     setContractsLoading]     = useState(false);
-  const [showNewSCForm,        setShowNewSCForm]        = useState(false);
+  const contractsQuery = useAdminQuery<SupplierContractRow[]>(editing?.id && !isNew ? `/api/admin/supplier-contracts?supplier_id=${editing.id}` : null);
+  // Умови оплати й кредитний ліміт — лише свіжі: ні кешу під час перечитування, ні кешу після збою
+  const contractsLoading = contractsQuery.isValidating;
+  const supplierContracts = !contractsLoading && !contractsQuery.error && Array.isArray(contractsQuery.data) ? contractsQuery.data : [];
+  const [showNewSCForm,       setShowNewSCForm]        = useState(false);
   const [newSC,                setNewSC]                = useState({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
   const [editingSC,            setEditingSC]            = useState<string | null>(null); // id договору що редагується
   const [editSCForm,           setEditSCForm]           = useState<Partial<SupplierContractRow>>({});
-
-  useEffect(() => {
-    const sid = editing?.id;
-    if (!sid || isNew) { setSupplierContracts([]); return; }
-    setContractsLoading(true);
-    fetch(`/api/admin/supplier-contracts?supplier_id=${sid}`)
-      .then(r => r.json()).then(d => setSupplierContracts(Array.isArray(d) ? d : []))
-      .finally(() => setContractsLoading(false));
-  }, [editing?.id, isNew]);
 
   async function addSupplierContract() {
     if (!editing?.id) return;
@@ -146,7 +140,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
     });
     if (res.ok) {
       const c = await res.json();
-      setSupplierContracts(prev => [c, ...prev]);
+      void contractsQuery.update(prev => [c, ...(prev ?? [])]);
       setShowNewSCForm(false);
       setNewSC({ payment_terms: 'prepay', credit_days: 0, credit_limit: 0 });
     }
@@ -160,7 +154,7 @@ export default function SuppliersClient({ initial, brands }: { initial: Supplier
     });
     if (res.ok) {
       const updated = await res.json();
-      setSupplierContracts(prev => prev.map(c => c.id === id ? updated : c));
+      void contractsQuery.update(prev => prev?.map(c => c.id === id ? updated : c));
       setEditingSC(null);
     }
   }

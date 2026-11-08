@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { badge, card, chip, hint, num, pct, path as pathStyle, td, tdNum, th, TONE } from './ui';
 import { actionKey, KIND_LABEL, type PageAction } from './use-seo-actions';
 
@@ -68,23 +69,11 @@ export default function QueriesTable({
   const [hideDone, setHideDone] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'impressions', desc: true });
 
-  const [rows, setRows] = useState<QueryRow[] | null>(null);
-  const [total, setTotal] = useState(0);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const r = RANGES.find(x => x.key === range)!;
-    setRows(null);
-    setError('');
-    fetch(`/api/admin/seo/gsc?view=queries&days=${days}&min=${r.min}&max=${r.max}&limit=2000&compare=1`)
-      .then(async res => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        setRows(data.rows);
-        setTotal(data.total);
-      })
-      .catch(err => setError(String(err instanceof Error ? err.message : err)));
-  }, [days, range]);
+  const r = RANGES.find(x => x.key === range)!;
+  const query = useAdminQuery<{ rows: QueryRow[]; total: number }>(`/api/admin/seo/gsc?view=queries&days=${days}&min=${r.min}&max=${r.max}&limit=2000&compare=1`);
+  const rows = query.data?.rows ?? null;
+  const total = query.data?.total ?? 0;
+  const error = query.error?.message ?? '';
 
   const visible = useMemo(() => {
     if (!rows) return [];

@@ -1,8 +1,9 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Check, Loader2, Mail, Plus, X } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 export type Sender = { name: string; email: string; anonymize?: boolean };
 type MailSender = { email: string; name: string };
@@ -39,16 +40,10 @@ export default function EmailSettings({ initialFromEmail, initialFromName, initi
   const [defaultSender, setDefaultSender] = useState(initialDefaultSender ?? '');
   const [signatures,  setSignatures]  = useState<Record<string, string>>(initialSignatures ?? {});
   // Адреси, з яких реально можна писати в розділі «Пошта» — беремо з Zoho.
-  const [mailSenders, setMailSenders] = useState<MailSender[]>([]);
+  const mailSendersQuery = useAdminQuery<{ senders?: MailSender[] }>('/api/admin/mail/senders');
+  const mailSenders = Array.isArray(mailSendersQuery.data?.senders) ? mailSendersQuery.data.senders : [];
   const [saving,      setSaving]      = useState(false);
   const [saved,       setSaved]       = useState(false);
-
-  useEffect(() => {
-    fetch('/api/admin/mail/senders')
-      .then(r => r.json())
-      .then(d => setMailSenders(Array.isArray(d.senders) ? d.senders : []))
-      .catch(() => setMailSenders([]));
-  }, []);
 
   async function handleSave() {
     // Валідація додаткових відправників: email обов'язковий і коректний

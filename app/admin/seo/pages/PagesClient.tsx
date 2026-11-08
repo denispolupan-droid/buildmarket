@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { badge, card, chip, hint, num, path as pathStyle, pct, td, tdNum, th, TONE } from '../ui';
 import { actionKey, KIND_LABEL, useSeoActions } from '../use-seo-actions';
 import { pageKind } from '../QueriesTable';
@@ -48,20 +49,9 @@ export default function PagesClient() {
   const [days, setDays] = useState<7 | 28 | 90>(28);
   const [kind, setKind] = useState<(typeof KIND_FILTERS)[number]['key']>('all');
   const [search, setSearch] = useState('');
-  const [rows, setRows] = useState<PageRow[] | null>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setRows(null);
-    setError('');
-    fetch(`/api/admin/seo/gsc?view=pages&days=${days}&limit=2000&compare=1`)
-      .then(async res => {
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
-        setRows(d.rows);
-      })
-      .catch(err => setError(String(err instanceof Error ? err.message : err)));
-  }, [days]);
+  const query = useAdminQuery<{ rows: PageRow[] }>(`/api/admin/seo/gsc?view=pages&days=${days}&limit=2000&compare=1`);
+  const rows = query.data?.rows ?? null;
+  const error = query.error?.message ?? '';
 
   const visible = useMemo(() => {
     if (!rows) return [];
@@ -161,19 +151,9 @@ export default function PagesClient() {
 }
 
 function Cannibalization({ days }: { days: number }) {
-  const [data, setData] = useState<Conflict[] | null>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setData(null);
-    fetch(`/api/admin/seo/cannibal?days=${days}`)
-      .then(async res => {
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
-        setData(d.conflicts);
-      })
-      .catch(err => setError(String(err instanceof Error ? err.message : err)));
-  }, [days]);
+  const query = useAdminQuery<{ conflicts: Conflict[] }>(`/api/admin/seo/cannibal?days=${days}`);
+  const data = query.data?.conflicts ?? null;
+  const error = query.error?.message ?? '';
 
   return (
     <section style={{ ...card, marginBottom: 18 }}>
@@ -211,18 +191,9 @@ function Cannibalization({ days }: { days: number }) {
 }
 
 function Coverage() {
-  const [data, setData] = useState<Coverage | null>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetch('/api/admin/seo/coverage?days=90')
-      .then(async res => {
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
-        setData(d);
-      })
-      .catch(err => setError(String(err instanceof Error ? err.message : err)));
-  }, []);
+  const query = useAdminQuery<Coverage>('/api/admin/seo/coverage?days=90');
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
 
   return (
     <section style={card}>

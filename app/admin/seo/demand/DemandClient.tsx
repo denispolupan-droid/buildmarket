@@ -1,7 +1,8 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useAdminQuery } from '../../../../lib/admin/api';
 import { card, chip, hint, td, tdNum, th } from '../ui';
 
 // «Попит» відповідає на питання закупівлі, а не SEO: що люди шукають, куди
@@ -44,21 +45,10 @@ export default function DemandClient() {
   const [tab, setTab] = useState<'products' | 'gaps'>('products');
   const [onlyOutOfStock, setOnlyOutOfStock] = useState(false);
   const [search, setSearch] = useState('');
-  const [data, setData] = useState<Data | null>(null);
-  const [error, setError] = useState('');
+  const query = useAdminQuery<Data>(`/api/admin/seo/gsc?view=demand&days=${days}&limit=100`);
+  const data = query.data ?? null;
+  const error = query.error?.message ?? '';
   const [open, setOpen] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    setData(null);
-    setError('');
-    fetch(`/api/admin/seo/gsc?view=demand&days=${days}&limit=100`)
-      .then(async res => {
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error);
-        setData(d);
-      })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)));
-  }, [days]);
 
   const products = useMemo(() => {
     let rows = data?.products ?? [];

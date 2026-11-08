@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Trash2, Send, Loader2, UserPlus, ShieldCheck, User } from 'lucide-react';
 import { showToast } from '../../../lib/toast';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 type UserEntry = {
   id: string;
@@ -21,23 +22,12 @@ const inp: React.CSSProperties = {
 };
 
 export default function UsersSettings() {
-  const [users,   setUsers]   = useState<UserEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isValidating: loading, refresh: load, update } = useAdminQuery<{ users?: UserEntry[] }>('/api/admin/users');
+  const users = data?.users ?? [];
   const [email,   setEmail]   = useState('');
   const [name,    setName]    = useState('');
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/users');
-      const data = await res.json();
-      setUsers(data.users ?? []);
-    } finally { setLoading(false); }
-  }
-
-  useEffect(() => { load(); }, []);
 
   async function invite() {
     if (!email.includes('@')) { showToast('Введіть коректний email', 'error'); return; }
@@ -63,7 +53,7 @@ export default function UsersSettings() {
       const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) { showToast(data.error ?? 'Помилка видалення', 'error'); return; }
-      setUsers(prev => prev.filter(u => u.id !== id));
+      void update(prev => prev && { ...prev, users: prev.users?.filter(u => u.id !== id) });
     } finally { setDeleting(null); }
   }
 

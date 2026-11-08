@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Mail, Send, Inbox, Trash2, FileText, RefreshCw, Pencil, X, Reply, ChevronLeft } from 'lucide-react';
 import { Modal } from '../../components/admin/ui/Modal';
+import { useAdminQuery } from '../../../lib/admin/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -195,12 +196,23 @@ function ComposeModal({ onClose, replyTo, senders }: {
   );
 }
 
+const NO_FOLDERS: Folder[] = [];
+const NO_SENDERS: Sender[] = [];
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function MailClient() {
-  const [connected,   setConnected]   = useState<boolean | null>(null);
-  const [folders,     setFolders]     = useState<Folder[]>([]);
-  const [selFolder,   setSelFolder]   = useState<Folder | null>(null);
+  const statusQuery = useAdminQuery<{ connected?: boolean }>('/api/admin/mail/status');
+  // Помилка API означає «не підключена», збій мережі лишає екран завантаження — як і раніше
+  const connected = statusQuery.data ? !!statusQuery.data.connected : statusQuery.error?.status ? false : null;
+  // Дозволені адреси відправника (основна + аліаси)
+  const sendersQuery = useAdminQuery<{ senders?: Sender[] }>(connected ? '/api/admin/mail/senders' : null);
+  const senders = Array.isArray(sendersQuery.data?.senders) ? sendersQuery.data.senders : NO_SENDERS;
+  const foldersQuery = useAdminQuery<{ data?: Folder[] }>(connected ? '/api/admin/mail/folders' : null);
+  const folders = foldersQuery.data?.data ?? NO_FOLDERS;
+  // Вибір користувача має пріоритет; типово — «Вхідні», інакше перша папка
+  const [pickedFolder, setSelFolder] = useState<Folder | null>(null);
+  const selFolder = pickedFolder ?? folders.find(f => f.folderName.toLowerCase() === 'inbox') ?? folders[0] ?? null;
   const [messages,    setMessages]    = useState<Message[]>([]);
   const [selMessage,  setSelMessage]  = useState<Message | null>(null);
   const [msgContent,  setMsgContent]  = useState<MessageContent | null>(null);
@@ -208,37 +220,7 @@ export default function MailClient() {
   const [msgLoading,  setMsgLoading]  = useState(false);
   const [compose,     setCompose]     = useState(false);
   const [replyData,   setReplyData]   = useState<{ to: string; subject: string; onBehalf?: string } | undefined>();
-  const [senders,     setSenders]     = useState<Sender[]>([]);
   const [error,       setError]       = useState('');
-
-  // Check connection status
-  useEffect(() => {
-    fetch('/api/admin/mail/status')
-      .then(r => r.json())
-      .then(d => setConnected(d.connected));
-  }, []);
-
-  // Дозволені адреси відправника (основна + аліаси)
-  useEffect(() => {
-    if (!connected) return;
-    fetch('/api/admin/mail/senders')
-      .then(r => r.json())
-      .then(d => setSenders(Array.isArray(d.senders) ? d.senders : []))
-      .catch(() => setSenders([]));
-  }, [connected]);
-
-  // Load folders when connected
-  useEffect(() => {
-    if (!connected) return;
-    fetch('/api/admin/mail/folders')
-      .then(r => r.json())
-      .then(d => {
-        const list: Folder[] = d?.data ?? [];
-        setFolders(list);
-        const inbox = list.find(f => f.folderName.toLowerCase() === 'inbox') ?? list[0];
-        if (inbox) setSelFolder(inbox);
-      });
-  }, [connected]);
 
   // Load messages when folder selected
   const loadMessages = useCallback(async () => {

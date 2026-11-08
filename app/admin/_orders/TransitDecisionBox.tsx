@@ -1,24 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { showToast } from '../../../lib/toast';
+import { useAdminQuery } from '../../../lib/admin/api';
 import { decisionBtn } from './constants';
 import { fmtMoney } from '../../../lib/format';
 
 export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; orderNumber: number }) {
   const router = useRouter();
-  const [amount, setAmount] = useState<number | null>(null);
+  const transit = useAdminQuery<{ ok?: boolean; total?: number | string }>(`/api/admin/orders/${orderId}/transit-resolve`);
+  // Рішення змінює борг: сума лише свіжа — ні кешу під час перечитування, ні кешу після збою
+  const fresh = transit.isValidating || transit.error ? undefined : transit.data;
+  const amount = fresh?.ok ? Number(fresh.total) || 0 : null;
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    fetch(`/api/admin/orders/${orderId}/transit-resolve`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (alive && d?.ok) setAmount(Number(d.total) || 0); })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, [orderId]);
 
   if (!amount || amount <= 0) return null;
 
@@ -39,7 +34,7 @@ export function TransitDecisionBox({ orderId, orderNumber }: { orderId: string; 
         showToast(decision === 'to_supplier'
           ? `Борг перед постачальником знято на ${fmtMoney(Number(data.amount ?? 0))} ₴`
           : `Товар оприбутковано на склад на ${fmtMoney(Number(data.amount ?? 0))} ₴`, 'success');
-        setAmount(0);
+        void transit.update(() => ({ ok: true, total: 0 }));
         router.refresh();
       } else {
         showToast(data.error ?? 'Не вдалося провести рішення', 'error');
