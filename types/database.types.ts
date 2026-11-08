@@ -3202,6 +3202,50 @@ export type Database = {
         }
         Relationships: []
       }
+      order_deal_costs: {
+        Row: {
+          amount: number
+          business_date: string
+          created_at: string
+          id: number
+          meta: Json
+          method: string
+          order_id: string
+          source: string
+          source_ref: string
+        }
+        Insert: {
+          amount: number
+          business_date: string
+          created_at?: string
+          id?: number
+          meta?: Json
+          method: string
+          order_id: string
+          source: string
+          source_ref: string
+        }
+        Update: {
+          amount?: number
+          business_date?: string
+          created_at?: string
+          id?: number
+          meta?: Json
+          method?: string
+          order_id?: string
+          source?: string
+          source_ref?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_deal_costs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_edits: {
         Row: {
           at: string
@@ -3252,50 +3296,6 @@ export type Database = {
           total_before?: number | null
         }
         Relationships: []
-      }
-      order_deal_costs: {
-        Row: {
-          amount: number
-          business_date: string
-          created_at: string
-          id: number
-          meta: Json
-          method: string
-          order_id: string
-          source: string
-          source_ref: string
-        }
-        Insert: {
-          amount: number
-          business_date: string
-          created_at?: string
-          id?: number
-          meta?: Json
-          method: string
-          order_id: string
-          source: string
-          source_ref: string
-        }
-        Update: {
-          amount?: number
-          business_date?: string
-          created_at?: string
-          id?: number
-          meta?: Json
-          method?: string
-          order_id?: string
-          source?: string
-          source_ref?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_deal_costs_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       order_lines: {
         Row: {
