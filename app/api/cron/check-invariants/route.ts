@@ -6,6 +6,7 @@ import type { DriftSummary } from '../../../../lib/accounting/estimate-rules';
 import { log } from '../../../../lib/log';
 import { cronAuthorized } from '../../../../lib/cron-auth';
 import { createServiceClient } from '../../../../lib/supabase-service';
+import { readSetting } from '../../../../lib/secrets';
 import { withApi } from '../../../../lib/api-handler';
 import { findDealCostMismatches, type DealCostMismatch } from '../../../../lib/deal-costs';
 
@@ -95,12 +96,12 @@ async function _GET(req: NextRequest) {
   try {
     const halfHourAgo = new Date(Date.now() - 30 * 60_000).toISOString();
     const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
-    const [{ count: stuck }, { count: failedDay }, { data: sweep }] = await Promise.all([
+    const [{ count: stuck }, { count: failedDay }, sweepLast] = await Promise.all([
       serviceClient.from('outbox_events').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('created_at', halfHourAgo),
       serviceClient.from('outbox_events').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', dayAgo),
-      serviceClient.from('app_settings').select('value').eq('key', 'outbox_sweep_last_run').maybeSingle(),
+      readSetting(serviceClient, 'outbox_sweep_last_run'),
     ]);
-    const sweepAgeMin = sweep?.value ? Math.round((Date.now() - Date.parse(String(sweep.value))) / 60_000) : null;
+    const sweepAgeMin = sweepLast ? Math.round((Date.now() - Date.parse(sweepLast)) / 60_000) : null;
     const problems: string[] = [];
     if ((stuck ?? 0) > 0) problems.push(`pending старше 30 хв: ${stuck}`);
     if ((failedDay ?? 0) > 0) problems.push(`failed за добу: ${failedDay}`);

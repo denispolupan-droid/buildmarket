@@ -59,9 +59,9 @@ async function pushTtn(db: Db, orderId: string, p: PushTtnPayload): Promise<Hand
       if (!target) return { ok: false, skipped: `немає статусу Rozetka для ${p.status}` };
       let live: { status: number; ttn?: string | null } | null = null;
       try { live = await getRozetkaOrderStatusInfo(Number(p.external_id)); } catch { /* кабінет не відповів — підказка з payload */ }
-      // Той самий статус і той самий номер — нічого пушити; заміна ЕН (force_ttn)
-      // мусить доїхати навіть при незмінному статусі
-      if (live?.status === target && (!p.force_ttn || live.ttn === p.ttn)) return { ok: true };
+      // Той самий статус і той самий номер — нічого пушити. Статус збігається, а ЕН у
+      // кабінеті інша або порожня (поставили руками) — пушимо, щоб ЕН доїхала (ревю 08.11)
+      if (live?.status === target && (live.ttn ?? null) === p.ttn) return { ok: true };
       await setRozetkaOrderStatusChained(Number(p.external_id), target, {
         ttn: p.ttn, currentStatus: live?.status ?? p.cabinet_status, ...(p.force_ttn ? { forceTtn: true } : {}),
       });

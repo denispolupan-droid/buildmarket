@@ -50,7 +50,9 @@ export function ttnPushEvents(
     event: opts.event ?? 'order.shipped',
     handler: 'mp.push_ttn',
     payload,
-    dedupe_key: `mp.push_ttn:${payload.channel}:${orderId}:${ttn}:${status}:${fullyShipped ? 'full' : 'part'}`,
+    // Хвилинна мітка: заміна ЕН A→B→A за годину має знову доїхати до кабінету, а
+    // подвійний клік за хвилину — ні (ревю 08.11)
+    dedupe_key: `mp.push_ttn:${payload.channel}:${orderId}:${ttn}:${status}:${fullyShipped ? 'full' : 'part'}:${minuteBucket()}`,
   });
   // Prom приймає ЕН лише для НП/Укрпошти/Meest; «Магазини Rozetka» веде сам
   if (o.prom_order_id && promAcceptsTtnFor(o.delivery_type)) {

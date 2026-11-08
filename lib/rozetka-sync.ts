@@ -10,6 +10,7 @@ import { rozetkaNeedsTtn, rozetkaStatusLabel } from './rozetka-status';
 import { createServiceClient, type TableUpdate, asJson } from './supabase-service';
 import { setOrderLines, type OrderLineInput } from './orders/lines';
 import { loadOrderItems } from './orders/lines-read';
+import { log } from './log';
 
 /** Відмова кабінету на PUT зі статусом+ТТН: {"ttn":["До запитуваного замовлення заборонено прив'язувати ТТН"]} */
 const ROZETKA_TTN_FORBIDDEN = /заборонено прив.?язувати ТТН/i;
@@ -143,11 +144,17 @@ export async function syncRozetkaOrders() {
             // Позиції — через lib/orders/lines (етап C): рядки, похідний items і
             // total_price тригером разом зі знімком кабінету — інакше різниця лишиться
             // й наступний прогін застосує те саме ще раз, по колу.
-            await setOrderLines(db, existing.id, liveItems as unknown as OrderLineInput[], {
-              rozetka_data: asJson({ ...storedData, purchases: rzOrder.purchases, _commission: comm, _items_synced_at: new Date().toISOString() }),
-            });
-            itemsUpdated++;
-            console.log(`[rozetka-sync] items updated from cabinet for order ${rzOrder.id}`);
+            try {
+              await setOrderLines(db, existing.id, liveItems as unknown as OrderLineInput[], {
+                rozetka_data: asJson({ ...storedData, purchases: rzOrder.purchases, _commission: comm, _items_synced_at: new Date().toISOString() }),
+              });
+              itemsUpdated++;
+              console.log(`[rozetka-sync] items updated from cabinet for order ${rzOrder.id}`);
+            } catch (err) {
+              // Одне «дивне» замовлення (кабінет лишив нуль позицій, збій RPC) не має
+              // зривати імпорт решти в цьому прогоні (ревю 08.11)
+              log.error('rozetka.sync.items_update_failed', { order: existing.id, rz: rzOrder.id, err: err instanceof Error ? err.message : String(err) });
+            }
           } else if (!storedData._items_changed) {
             const summary = describeItemsDiff(ourItems, liveItems);
             await db.from('orders').update({

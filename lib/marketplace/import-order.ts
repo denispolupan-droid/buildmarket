@@ -4,6 +4,7 @@ import { log } from '../log';
 import type { MarketplaceAdapter } from './adapter';
 import { stageMarketplaceImport } from './staging';
 import { newOrderLines, linesTotal, type OrderLineInput } from '../orders/lines';
+import { applyPromoToItems } from '../pricing';
 
 type Db = ReturnType<typeof createServiceClient>;
 
@@ -59,8 +60,27 @@ async function importOnce<Raw>(db: Db, adapter: MarketplaceAdapter<Raw>, raw: Ra
   // Колонки площадки обчислювані — типізований insert їх не виводить, тому збираємо
   // рядок окремо; набір колонок той самий, що був у трьох синках.
   const channelCols = { [adapter.idColumn]: externalId, [adapter.dataColumn]: asJson(snapshot) } as unknown as Partial<TableInsert<'orders'>>;
+  // Позиції й сума — через lib/orders/lines (етап C): сума = Σ рядків, її ставить
+  // база; сума площадки лишається в payload (prom_data/rozetka_data) для звірки.
+  // Якщо площадка дала знижку на все замовлення (її total менший за Σ рядків) —
+  // зашиваємо її в построчні ціни, як промокод: інакше покупець оплатив менше, ніж
+  // сума замовлення, і у «Взаєморозрахунках» з'явиться фантомний борг (ревю 08.11).
+  let lines = mapped.items as unknown as OrderLineInput[];
+  const mpTotal = Number(mapped.total_price);
+  const diff = Math.round((linesTotal(lines) - mpTotal) * 100) / 100;
+  if (diff > 0.01) {
+    lines = applyPromoToItems(lines as unknown as Record<string, unknown>[], diff).items as unknown as OrderLineInput[];
+    log.info('mp.import.discount_baked', { mp: adapter.code, externalId, mpTotal, discount: diff });
+  } else if (diff < -0.01) {
+    // Площадка рахує більше за рядки (доставка в сумі, округлення адаптера) — у замовленні
+    // лишається сума рядків (правило I10), розходження має бути видно
+    log.warn('mp.import.total_mismatch', { mp: adapter.code, externalId, mpTotal, linesSum: linesTotal(lines) });
+  }
+  const linesSum = linesTotal(lines);
   const row: TableInsert<'orders'> = {
     ...channelCols,
+    ...newOrderLines(lines),
+    amount_paid:            mapped.paid ? linesSum : 0,
     customer_id:            customerId,
     contact:                mapped.contact,
     phone:                  mapped.phone,
@@ -73,21 +93,11 @@ async function importOnce<Raw>(db: Db, adapter: MarketplaceAdapter<Raw>, raw: Ra
     delivery_warehouse_ref: mapped.delivery_warehouse_ref ?? null,
     payment_type:           mapped.payment_type,
     payment_confirmed:      mapped.paid,
-    amount_paid:            mapped.paid ? mapped.total_price : 0,
     price_type:             'retail',
     comment:                mapped.comment,
-    // Позиції й сума — через lib/orders/lines (етап C): сума = Σ рядків, її ставить
-    // база; сума площадки лишається в payload (prom_data/rozetka_data) для звірки
-    ...newOrderLines(mapped.items as unknown as OrderLineInput[]),
     status:                 'new',
     channel_code:           adapter.code,
   };
-  const linesSum = linesTotal(mapped.items as unknown as OrderLineInput[]);
-  if (Math.abs(linesSum - Number(mapped.total_price)) > 0.01) {
-    // Площадка каже одну суму, рядки дають іншу (доставка в сумі, округлення адаптера) —
-    // у замовленні буде сума рядків (правило I10), а розходження має бути видно
-    log.warn('mp.import.total_mismatch', { mp: adapter.code, externalId, mpTotal: mapped.total_price, linesSum });
-  }
   const { data: inserted, error } = await db.from('orders').insert(row).select('id').single();
 
   if (error) {

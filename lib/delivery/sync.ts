@@ -96,13 +96,17 @@ async function applyUpdate(provider: DeliveryProvider, o: TrackedOrder, u: Parce
   // Скасовані відстежуємо ТІЛЬКИ заради тексту: жодних проводок, сповіщень і «Доставлено»
   if (o.status === 'cancelled') return;
 
-  // 2) Перевізник прийняв
+  // 2) Перевізник прийняв. Якщо посилку вперше бачимо вже врученою (самовивіз у той
+  //    самий день між двома прогонами крона) — «поїхала» покупцю не шлемо і статус
+  //    «відправлено» в кабінет не підказуємо: далі піде «доставлено» (ревю 08.11)
   if (justAccepted) {
     counters.accepted++;
-    if (provider.notifiesParcelEvents) {
-      notifyParcelEvent(o, 'shipped').catch((err: unknown) => log.warn('delivery.notify_shipped_failed', { order: o.id, err: String(err) }));
+    if (u.phase !== 'delivered') {
+      if (provider.notifiesParcelEvents) {
+        notifyParcelEvent(o, 'shipped').catch((err: unknown) => log.warn('delivery.notify_shipped_failed', { order: o.id, err: String(err) }));
+      }
+      if (u.onAccepted) await u.onAccepted();
     }
-    if (u.onAccepted) await u.onAccepted();
   }
   // 3) Прибула — момент, коли покупцю справді є що сказати (дедуп у notifyParcelEvent)
   if (u.phase === 'arrived' && provider.notifiesParcelEvents) {

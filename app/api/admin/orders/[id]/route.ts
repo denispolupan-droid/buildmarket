@@ -223,7 +223,7 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
     if (!editCtx.verdict.allowed) {
       await recordSaleEdit(editCtx, {
         by: user.email ?? 'admin',
-        totalAfter: Number(update.total_price ?? editCtx.totalBefore),
+        totalAfter: linesTotalForGuard ?? editCtx.totalBefore,
         dateAfter: (update.created_at as string | undefined) ?? null,
         itemsBefore, itemsAfter: bodyItems ?? null, blocked: true,
       });
@@ -273,7 +273,7 @@ async function _PATCH(req: NextRequest, { params }: { params: Promise<{ id: stri
   if (editCtx) {
     await recordSaleEdit(editCtx, {
       by: user.email ?? 'admin',
-      totalAfter: Number(update.total_price ?? editCtx.totalBefore),
+      totalAfter: linesTotalForGuard ?? editCtx.totalBefore,
       dateAfter: (update.created_at as string | undefined) ?? null,
       itemsBefore, itemsAfter: bodyItems ?? null, blocked: false,
     });
