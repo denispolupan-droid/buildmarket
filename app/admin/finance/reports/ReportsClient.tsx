@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { CHANNEL_LABELS } from '../../../../lib/channels';
 
 export type PLData = {
   revenue:        number;
@@ -37,10 +38,6 @@ const CF_OUTFLOW_LABELS: Record<string, string> = {
   other_out: 'Інші видатки',
 };
 
-const CHANNEL_LABELS: Record<string, string> = {
-  website: 'Сайт', prom: 'Prom.ua', rozetka: 'Rozetka', epicentr: 'Епіцентр',
-  b2b: 'Опт (B2B)', phone: 'Телефон', retail: 'Роздріб', dropship: 'Дроп',
-};
 
 const EXPENSE_LABELS: Record<string, string> = {
   logistics: 'Доставка', loading: 'Навантаження', customs: 'Мито/брокер',

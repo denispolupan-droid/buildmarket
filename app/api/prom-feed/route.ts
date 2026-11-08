@@ -696,12 +696,15 @@ ${offersXml}
   </shop>
 </yml_catalog>`;
 
+  // Фід рахується з усього каталогу (товари, залишки, характеристики) — десятки
+  // запитів до нано-бази на кожен виклик, а Prom тягне його часто. Кеш на CDN
+  // Vercel на 10 хв (ключ кешу — повний URL разом із ?key=); ціни з кронів
+  // доїдуть у фід із такою ж затримкою — аудит 31.10, п. 19 (окремий пункт без черг).
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
       'Last-Modified': new Date().toUTCString(),
-      'Pragma': 'no-cache',
     },
   });
 }

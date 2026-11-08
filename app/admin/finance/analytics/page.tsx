@@ -9,6 +9,7 @@ import { createServiceClient } from '../../../../lib/supabase-service';
 import { fmtInt as fmt } from '../../../../lib/format';
 import { loadProfitBridge } from '../../../../lib/accounting/profit-bridge';
 import { resolvePeriod, monthStartYmd, kyivStart, UA_MONTHS } from '../period';
+import { CHANNEL_LABELS } from '../../../../lib/channels';
 import ProfitBridgeCard from '../ProfitBridgeCard';
 import OverviewSummary from '../OverviewSummary';
 import { attributeOwnSales } from '../../../../lib/accounting/stock-supplier';
@@ -19,16 +20,6 @@ const db = createServiceClient();
 
 export const dynamic = 'force-dynamic';
 
-const CHANNEL_LABELS: Record<string, string> = {
-  website:  'Сайт',
-  prom:     'Prom.ua',
-  rozetka:  'Rozetka',
-  epicentr: 'Епіцентр',
-  b2b:      'Опт (B2B)',
-  phone:    'Телефон',
-  retail:   'Роздріб',
-  dropship: 'Дроп',
-};
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   // Гейт сторінки: layout пускає admin|manager, а дані тут — лише для admin (аудит 31.10.2026)

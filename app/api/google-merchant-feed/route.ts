@@ -181,11 +181,13 @@ ${items}
   </channel>
 </rss>`;
 
+  // Кеш на CDN Vercel на 10 хв (ключ — повний URL разом із ?key= і ?lang=):
+  // Merchant Center тягне фід за розкладом, перерахунок усього каталогу на
+  // кожен запит зайвий (аудит 31.10, п. 19).
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
-      'Pragma': 'no-cache',
+      'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
     },
   });
 }

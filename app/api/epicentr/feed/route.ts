@@ -196,10 +196,12 @@ async function _GET(req: NextRequest) {
     }));
   }
 
+  // Кеш на CDN Vercel на 10 хв (ключ — повний URL разом із ?key=), як у фідів
+  // Prom/Google/Rozetka: повний перерахунок каталогу на кожен запит зайвий.
   return new NextResponse(lines.join('\n'), {
     headers: {
       'Content-Type': 'application/xml; charset=UTF-8',
-      'Cache-Control': 'private, no-store',
+      'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
     },
   });
 }
