@@ -51,16 +51,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="dns-prefetch" href="https://boaztnparrdoeknajprn.supabase.co" />
         <link rel="preconnect" href="https://pan2.uk" />
         <link rel="dns-prefetch" href="https://pan2.uk" />
-        {/* Темна тема вимкнена: перемикача в UI немає, тож автопідхоплення
-            prefers-color-scheme робило сайт темним у вебв'ю месенджерів
-            (телефон у нічному режимі) без жодного способу повернути світлу.
-            Правила [data-theme="dark"] у globals.css лишаються — просто
-            атрибут ніколи не стає 'dark'. */}
+        {/* Сайт — завжди світлий: перемикача в публічному UI немає, а автопідхоплення
+            prefers-color-scheme робило сайт темним у вебв'ю месенджерів (телефон у
+            нічному режимі) без жодного способу повернути світлу. Темну тему обирає
+            лише менеджер в адмінці (ключ admin_theme, діє на /admin/*; lib/theme.tsx). */}
         <meta name="color-scheme" content="light" />
         {/* Blocking script — applies theme + lang BEFORE first paint, eliminates white flash */}
         <script dangerouslySetInnerHTML={{ __html: `
           try {
-            document.documentElement.setAttribute('data-theme', 'light');
+            var t = 'light';
+            if (location.pathname === '/admin' || location.pathname.indexOf('/admin/') === 0) {
+              if (localStorage.getItem('admin_theme') === 'dark') t = 'dark';
+            }
+            document.documentElement.setAttribute('data-theme', t);
             localStorage.removeItem('theme');
             document.documentElement.lang = location.pathname.indexOf('/ru') === 0 ? 'ru' : 'uk';
           } catch(e) {}

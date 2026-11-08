@@ -11,8 +11,9 @@ function subscribeMobile(onChange: () => void) {
 import { usePathname } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { Store, ExternalLink, ChevronLeft, ChevronRight, Menu, X, Search } from 'lucide-react';
+import { Store, ExternalLink, ChevronLeft, ChevronRight, Menu, X, Search, Sun, Moon } from 'lucide-react';
 import { NAV_GROUPS, isNavActive } from './admin-nav';
+import { useTheme } from '../../../lib/theme';
 import CommandPalette from './CommandPalette';
 
 const T = {
@@ -30,6 +31,7 @@ type Props = { newOrdersCount: number; chatUnreadCount?: number; userLabel?: str
 
 function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Панель менеджера' }: Props) {
   const pathname = usePathname();
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const [collapsed, setCollapsed] = useState(false);
   const [mounted,   setMounted]   = useState(false);
@@ -310,8 +312,25 @@ function SidebarInner({ newOrdersCount, chatUnreadCount = 0, userLabel = 'Пан
         </div>
       )}
 
-      {/* ── Back to site ─────────────────────────────────────────── */}
-      <div style={{ padding: effectiveCollapsed ? '8px 0 12px' : '4px 10px 12px', borderTop: `1px solid ${T.divider}`, display: 'flex', justifyContent: effectiveCollapsed ? 'center' : 'flex-start' }}>
+      {/* ── Back to site + theme ───────────────────────────────────── */}
+      <div style={{ padding: effectiveCollapsed ? '8px 0 12px' : '4px 10px 12px', borderTop: `1px solid ${T.divider}`, display: 'flex', flexDirection: effectiveCollapsed ? 'column' : 'row', alignItems: 'center', gap: '6px', justifyContent: effectiveCollapsed ? 'center' : 'space-between' }}>
+        <button
+          type="button"
+          data-admin-theme-toggle=""
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Світла тема' : 'Темна тема'}
+          aria-label={theme === 'dark' ? 'Увімкнути світлу тему' : 'Увімкнути темну тему'}
+          aria-pressed={theme === 'dark'}
+          style={{
+            order: effectiveCollapsed ? 0 : 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '28px', height: '28px', borderRadius: '6px', flexShrink: 0,
+            background: 'rgba(255,255,255,0.07)', border: `1px solid ${T.divider}`,
+            color: T.textIdle, cursor: 'pointer',
+          }}
+        >
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
         <Link
           href="/"
           title={effectiveCollapsed ? 'На сайт' : undefined}
