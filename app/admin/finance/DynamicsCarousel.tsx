@@ -355,8 +355,8 @@ const SLIDES = [
 ] as const;
 
 export default function DynamicsCarousel({ data }: { data: Dynamics }) {
-  // За замовчуванням — «План» (рішення власника 07.11.2026); без плану — «Дні»
-  const [slide, setSlide] = useState<(typeof SLIDES)[number]['key']>(data.planCum.plan ? 'plan' : 'daily');
+  // За замовчуванням — «Місяці» (рішення власника 09.11.2026)
+  const [slide, setSlide] = useState<(typeof SLIDES)[number]['key']>('months');
   return (
     <div>
       <div style={{ display: 'flex', gap: '3px', marginBottom: '10px', alignItems: 'center' }}>
