@@ -188,9 +188,12 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               return c ? (
                 // flexShrink набагато більший за ПІБ: обидва мали 1, і при
                 // довгому коментарі вони ділили ширину пропорційно — від
-                // «Дмитро Петренко» лишалось «Дм…». Тепер місце віддає чіп.
+                // «Дмитро Петренко» лишалось «Дм…». Тепер місце віддає чіп —
+                // але не вужче за іконку: minWidth = 12 + падінги 5/7 + рамка 2.
+                // З minWidth 0 при довгій назві компанії іконка обрізалась
+                // (№26111060, 10.11); далі стискається вже ПІБ (еліпсис).
                 <span title={c} aria-label="Коментар покупця" className="oc-note"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 100, minWidth: 0,
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 100, minWidth: '26px',
                     padding: '1px 7px 1px 5px', borderRadius: '20px', maxWidth: '220px',
                     background: 'var(--amber-bg)', border: '1px solid var(--border-warn)', color: 'var(--text-warn-dark)',
                     fontSize: '11px', fontWeight: 600, lineHeight: 1.5 }}>
