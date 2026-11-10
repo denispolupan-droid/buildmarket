@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Plus, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { estimateMarketplaceDeliveryFee, splitFeeByRevenue } from '../../../lib/marketplace-delivery-fee';
 import type { Order } from './types';
@@ -16,6 +17,7 @@ export function OrderNoteAndSections({ order }: {
     PRICE_TYPE_LABELS, changePriceType, discMode, setDiscMode, discInput, setDiscInput,
     applyDiscount, selectedMode, setSelectedMode, suppliersList, setShippingSupplier,
   } = useOrdersCtx();
+  const [suppliersOpen, setSuppliersOpen] = useState(false);
   return (
     <>
       {/* Внутрішня нотатка — одним рядком під товарами. Це коментар до
@@ -136,6 +138,7 @@ export function OrderNoteAndSections({ order }: {
                 const grossPct = gross != null && revenue > 0 ? Math.round((gross / revenue) * 1000) / 10 : undefined;
                 const net = gross != null && commission != null ? gross - commission - deliveryExp - mpDeliveryFee - extraExp - payFeeAmt : undefined;
                 const netPct = net != null && revenue > 0 ? Math.round((net / revenue) * 1000) / 10 : undefined;
+                const hasDealCosts = (commission ?? 0) > 0 || deliveryExp > 0 || mpDeliveryFee > 0 || extraExp !== 0 || payFeeAmt > 0;
                 const finalColor = (v: number | undefined) => (v ?? 0) >= 0 ? 'var(--color-success)' : 'var(--color-danger)';
                 const row = (label: string, value: string, opts: { color?: string; strong?: boolean; total?: boolean; sub?: string; title?: string } = {}) => (
                   <div title={opts.title} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px',
@@ -168,8 +171,15 @@ export function OrderNoteAndSections({ order }: {
                       title: payFee!.source === 'fact'
                         ? 'Комісія платіжного сервісу за оплату цього замовлення — точна: винагорода RozetkaPay з реєстру виплати або комісія банку за еквайринг (оплата карткою на сайті) з виписки Monobank.'
                         : 'RozetkaPay ще не виплатила гроші за це замовлення — оцінка за середньою ставкою винагороди за 90 днів.' })}
-                    {row('Валовий прибуток', gross != null ? `${fmtInt(gross)} ₴` : '…', { color: finalColor(gross), strong: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
-                    {((commission ?? 0) > 0 || deliveryExp > 0 || mpDeliveryFee > 0 || extraExp !== 0 || payFeeAmt > 0) && row('Чистий прибуток', net != null ? `${fmtInt(net)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined })}
+                    {/* Назви як в «Огляді»/«Аналітиці» (10.11.2026): «Валовий прибуток» —
+                        після собівартості І витрат угоди (комісії, доставка, оплата);
+                        різниця «виручка − собівартість» — це «Націнка». */}
+                    {hasDealCosts
+                      ? row('Націнка', gross != null ? `${fmtInt(gross)} ₴` : '…', { color: 'var(--text-secondary)', sub: grossPct != null ? `${grossPct}%` : undefined,
+                          title: 'Виручка мінус собівартість, до комісій, доставки й оплати' })
+                      : row('Валовий прибуток', gross != null ? `${fmtInt(gross)} ₴` : '…', { color: finalColor(gross), total: true, sub: grossPct != null ? `${grossPct}%` : undefined })}
+                    {hasDealCosts && row('Валовий прибуток', net != null ? `${fmtInt(net)} ₴` : '…', { color: finalColor(net), total: true, sub: netPct != null ? `${netPct}%` : undefined,
+                      title: 'Націнка мінус комісії, доставка й оплата — так само рахує «Огляд» і «Аналітика»' })}
                   </div>
                 );
               })()}
@@ -377,11 +387,23 @@ export function OrderNoteAndSections({ order }: {
               )}
               </div>
               </div>
-              {/* Прибуток по постачальниках — усередині згортання Фінанси+Логістика */}
-              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <TrendingUp size={12} /> Прибуток по постачальниках
-              </div>
-              {fulfillmentData[order.id] && (() => {
+              {/* Прибуток по постачальниках — усередині згортання Фінанси+Логістика.
+                  Згорнуто за замовчуванням (рішення власника 10.11.2026): підсумок і так
+                  у «Фінансах», а розбивка потрібна зрідка — кілька постачальників
+                  в одному замовленні або пошук збиткової позиції. */}
+              <button type="button" onClick={() => setSuppliersOpen(v => !v)}
+                aria-expanded={suppliersOpen}
+                title="Валовий прибуток кожної позиції й кожного постачальника"
+                style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: suppliersOpen ? 'var(--brand-blue)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                {suppliersOpen ? <ChevronUp size={12} /> : <TrendingUp size={12} />} Прибуток по постачальниках
+                {!suppliersOpen && fulfillmentData[order.id] && (
+                  <span style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>
+                    · {fulfillmentData[order.id].by_supplier.map(g => g.supplier_name ?? 'Невідомий').join(', ')}
+                  </span>
+                )}
+              </button>
+              {suppliersOpen && fulfillmentData[order.id] && (() => {
                 const fi = fulfillmentData[order.id];
                 // Per-SKU marketplace commission (Prom/Rozetka) для показу в розбивці по позиціях
                 const commItems = order.channel_code === 'prom' ? order.prom_data?._commission?.items
@@ -396,10 +418,12 @@ export function OrderNoteAndSections({ order }: {
                 // звичайному замовленні постачальник один, тож уся сума йде йому) і показуємо
                 // окремим рядком — інакше підсумок групи мовчки не сходився б із «Економікою».
                 const mpFee = estimateMarketplaceDeliveryFee(order, feeTariffs);
-                const feeShares = splitFeeByRevenue(
-                  mpFee?.amount ?? 0,
-                  fi.by_supplier.map(g => g.items.reduce((s, it) => s + it.sale_price * it.qty, 0)),
-                );
+                const groupRevenue = fi.by_supplier.map(g => g.items.reduce((s, it) => s + it.sale_price * it.qty, 0));
+                const feeShares = splitFeeByRevenue(mpFee?.amount ?? 0, groupRevenue);
+                // Комісія за оплату (RozetkaPay / еквайринг) — теж на замовлення, ділимо так само;
+                // без неї підсумок не сходився з «Фінансами» (10.11.2026)
+                const payFeeAmt = fi.payment_fee?.amount ?? 0;
+                const payShares = splitFeeByRevenue(payFeeAmt, groupRevenue);
                 const activeReservations = (fi.reservations ?? []).filter(r => r.reservation_status === 'active');
                 return (
                   <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)', fontSize: '12px' }}>
@@ -418,14 +442,15 @@ export function OrderNoteAndSections({ order }: {
                     {fi.by_supplier.map((group, gi) => {
                       const groupComm = group.items.reduce((s, it) => s + (commBySku.get(it.sku)?.amt ?? 0), 0);
                       const groupFee = feeShares[gi] ?? 0;
-                      const groupNet = group.total_margin - groupComm - groupFee;
+                      const groupPay = payShares[gi] ?? 0;
+                      const groupNet = group.total_margin - groupComm - groupFee - groupPay;
                       return (
                       <div key={gi} style={{ borderBottom: gi < fi.by_supplier.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-                        <div title={`Валовий прибуток ${fmtInt(group.total_margin)}${groupComm > 0 ? ` − комісія ${fmtInt(groupComm)}` : ''}${groupFee > 0 ? ` − ${mpFee!.label.toLowerCase()} ${fmtInt(groupFee)}` : ''} = ${fmtInt(groupNet)} ₴`}
+                        <div title={`Націнка ${fmtInt(group.total_margin)}${groupComm > 0 ? ` − комісія ${fmtInt(groupComm)}` : ''}${groupFee > 0 ? ` − ${mpFee!.label.toLowerCase()} ${fmtInt(groupFee)}` : ''}${groupPay > 0 ? ` − комісія за оплату ${fmtInt(groupPay)}` : ''} = валовий прибуток ${fmtInt(groupNet)} ₴`}
                           style={{ padding: '7px 12px', background: 'var(--bg-soft)', fontWeight: 700, color: 'var(--text-primary)', fontSize: '11px', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                           <span>📦 {group.supplier_name ?? 'Невідомий поставщик'}</span>
                           <span style={{ color: groupNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {groupNet >= 0 ? '+' : ''}{fmtInt(groupNet)} грн{(hasComm || groupFee > 0) ? ' чистими' : ''}
+                            {groupNet >= 0 ? '+' : ''}{fmtInt(groupNet)} грн
                           </span>
                         </div>
                         {group.items.map((item, ii) => {
@@ -437,7 +462,7 @@ export function OrderNoteAndSections({ order }: {
                               <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                               <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.qty} шт</span>
                               <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontSize: '11px' }}
-                                title={hasComm && c ? `Валовий прибуток ${fmtInt(item.margin)} − комісія ${fmtInt(c.amt)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
+                                title={hasComm && c ? `Націнка ${fmtInt(item.margin)} − комісія ${fmtInt(c.amt)}${c.pct ? ` (${c.pct}%)` : ''}` : 'Собівартість → продаж'}>
                                 {fmtInt(item.cost_price)}→{fmtInt(item.sale_price)}{hasComm && c ? ` −${fmtInt(c.amt)}к` : ''}
                               </span>
                               <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
@@ -451,6 +476,13 @@ export function OrderNoteAndSections({ order }: {
                             style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)', fontSize: '12px', color: 'var(--text-secondary)' }}>
                             <span>🚚 {mpFee!.label}{fi.by_supplier.length > 1 ? ' · частка' : ''}</span>
                             <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--orange)' }}>−{fmtInt(groupFee)} грн</span>
+                          </div>
+                        )}
+                        {groupPay > 0 && (
+                          <div title={fi.payment_fee?.source === 'fact' ? 'Комісія платіжного сервісу за це замовлення — факт' : 'Оцінка за середньою ставкою за 90 днів'}
+                            style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '6px 12px', alignItems: 'center', borderTop: '1px solid var(--border-light)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            <span>💳 Комісія за оплату{fi.payment_fee?.source === 'fact' ? '' : ' ≈'}{fi.by_supplier.length > 1 ? ' · частка' : ''}</span>
+                            <span style={{ whiteSpace: 'nowrap', fontWeight: 700, color: 'var(--orange)' }}>−{fmtInt(groupPay)} грн</span>
                           </div>
                         )}
                       </div>
