@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { resolveDeliverySubtype } from '../../../lib/np-postomat';
+import { npCitySearchName } from '../../../lib/np-resolve';
 import type { CourierAddressResult, StreetSuggestion } from '../../../lib/np-address';
 import { legalRecipientFromCustomer, taxNumberLabel, type LegalRecipient } from '../../../lib/np-legal-recipient';
 import { X, Search, MapPin, Loader2, Package, CreditCard, Truck, Banknote, Building2, User } from 'lucide-react';
@@ -274,7 +275,13 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
     // has to confirm a match rather than search from scratch.
     if (!name) return;
     setCityLoading(true);
-    npRequest('Address', 'searchSettlements', { CityName: name, Limit: 5, Page: 1 })
+    // Спершу назва без типу й області («пгт. Безлюдовка» НП не знаходить), потім — як є
+    const cleaned = npCitySearchName(name);
+    (async () => {
+      const first: { Addresses: Settlement[] }[] = await npRequest('Address', 'searchSettlements', { CityName: cleaned || name, Limit: 5, Page: 1 });
+      if (first[0]?.Addresses?.length || !cleaned || cleaned === name) return first;
+      return npRequest('Address', 'searchSettlements', { CityName: name, Limit: 5, Page: 1 });
+    })()
       .then((data: { Addresses: Settlement[] }[]) => {
         const match = data[0]?.Addresses?.[0];
         if (!match) return;

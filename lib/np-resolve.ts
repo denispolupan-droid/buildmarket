@@ -14,6 +14,23 @@ import { isPostomatText } from './np-postomat';
 
 export type NpWarehouseLike = { Ref: string; Description: string; Number: string };
 
+/**
+ * Назва міста з замовлення → рядок для Address.searchSettlements.
+ * Prom віддає місто з типом і областю, часто російською: «пгт. Безлюдовка»,
+ * «г. Киев (Киевская обл.)», «с. Кінашів (Івано-Франківська обл.)». НП на
+ * «пгт. Безлюдовка» повертає порожньо, а на «Безлюдовка» знаходить «смт
+ * Безлюдівка» (перевірено наживо 10.11.2026, №26111059 — модалка ТТН лишалась
+ * без міста й поштомату). Тип і область прибираємо; саму назву не чіпаємо —
+ * російське написання НП розуміє.
+ */
+export function npCitySearchName(name: string | null | undefined): string {
+  return String(name ?? '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/^\s*(?:м|г|с|смт|пгт|пос|сел|селище|село|місто|город|поселок|селище міського типу|с-ще|сщ)\.?\s+/iu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Номер відділення/поштомату з тексту адреси: «Відділення №4, …» → '4'. */
 export function warehouseNumberFromAddress(address: string | null | undefined): string | null {
   const m = String(address ?? '').match(/№\s*(\d+)/);

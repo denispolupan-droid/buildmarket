@@ -57,3 +57,17 @@ describe('formNovaSubtype', () => {
     expect(formNovaSubtype('address', 'біля поштомату')).toBe('courier');
   });
 });
+
+describe('npCitySearchName', () => {
+  it('прибирає тип населеного пункту й область (Prom, рос./укр.)', async () => {
+    const { npCitySearchName } = await import('../lib/np-resolve');
+    expect(npCitySearchName('пгт. Безлюдовка')).toBe('Безлюдовка');
+    expect(npCitySearchName('г. Киев (Киевская обл.)')).toBe('Киев');
+    expect(npCitySearchName('с. Кінашів (Івано-Франківська обл.)')).toBe('Кінашів');
+    expect(npCitySearchName('смт. Біла Криниця (Житомирська обл.)')).toBe('Біла Криниця');
+    expect(npCitySearchName("м. П'ятихатки (Харківська обл.)")).toBe("П'ятихатки");
+    expect(npCitySearchName('Тернопіль')).toBe('Тернопіль');
+    expect(npCitySearchName('Миргород')).toBe('Миргород');
+    expect(npCitySearchName(null)).toBe('');
+  });
+});

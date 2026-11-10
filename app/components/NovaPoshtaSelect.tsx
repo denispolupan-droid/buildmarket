@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, Loader2 } from 'lucide-react';
-import { pickWarehouseByAddress, warehouseNumberFromAddress } from '../../lib/np-resolve';
+import { pickWarehouseByAddress, warehouseNumberFromAddress, npCitySearchName } from '../../lib/np-resolve';
 
 type Settlement = {
   Ref: string;
@@ -150,7 +150,13 @@ export default function NovaPoshtaSelect({ mode, lang = 'uk', initialCity = '', 
     resolvedByName.current = true;
     let alive = true;
     setCityLoading(true);
-    npRequest('Address', 'searchSettlements', { CityName: initialCity, Limit: 5, Page: 1 })
+    // Спершу назва без типу й області («пгт. Безлюдовка» НП не знаходить), потім — як є
+    const cleaned = npCitySearchName(initialCity);
+    (async () => {
+      const first: { Addresses: Settlement[] }[] = await npRequest('Address', 'searchSettlements', { CityName: cleaned || initialCity, Limit: 5, Page: 1 });
+      if (first[0]?.Addresses?.length || !cleaned || cleaned === initialCity) return first;
+      return npRequest('Address', 'searchSettlements', { CityName: initialCity, Limit: 5, Page: 1 });
+    })()
       .then(async (data: { Addresses: Settlement[] }[]) => {
         const match = data[0]?.Addresses?.[0];
         if (!match || !alive) return;
