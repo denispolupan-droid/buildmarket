@@ -20,6 +20,10 @@
       "schedule": "4,9,14,19,24,29,34,39,44,49,54,59 * * * *"
     },
     {
+      "path": "/api/cron/epicentr-offers",
+      "schedule": "20 * * * *"
+    },
+    {
       "path": "/api/cron/sync-delivery-status",
       "schedule": "*/30 * * * *"
     },
