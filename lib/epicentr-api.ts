@@ -19,7 +19,7 @@
  * Усі дати API — UTC.
  */
 import { fetchWithTimeout } from './fetch-timeout';
-import { resolveDeliverySubtype } from './np-postomat';
+import { resolveDeliverySubtype, isPostomatText } from './np-postomat';
 import { fromEpicentrId, toEpicentrId } from './epicentr-availability';
 import { createServiceClient } from './supabase-service';
 import { readSetting } from './secrets';
@@ -138,7 +138,7 @@ export interface EpicentrOrder {
   } | null;
   // Лише в картці /v6: населений пункт і відділення перевізника людськими назвами
   settlement?: { id?: string; title?: string; name?: string; region?: string; area?: string } & Record<string, unknown>;
-  office?: { id?: string; title?: string; name?: string; address?: string; number?: string } & Record<string, unknown>;
+  office?: { id?: string; title?: string; name?: string; address?: string; number?: string; type?: number } & Record<string, unknown>;
   hasPreOrderItems?: boolean;
 }
 
@@ -339,15 +339,61 @@ export function epicentrDeliveryType(provider: EpicentrDeliveryProvider | null |
 /**
  * Спосіб оплати → наш payment_type.
  *   pay_on_delivery / pay_on_pickup → cod (наложка: збирає перевізник)
- *   easypay / monobank / prepayment / credit_* → prepaid, якщо payed=true
- *     (гроші вже в Епіцентра, виплатить нам), інакше invoice (чекаємо)
+ *   easypay / monobank / prepayment / credit_* → prepaid, якщо payed=true або
+ *     кошти заблоковані на картці покупця (paymentStatus=hold_set: Епіцентр
+ *     списує холд сам і виплачує нам — перше замовлення 58851611 від 11.11
+ *     прийшло monobank + hold_set + payed=false); інакше invoice (чекаємо)
  *   invoice → invoice (безнал за рахунком)
  */
-export function epicentrPaymentType(provider: EpicentrPaymentProvider | null | undefined, payed: boolean): { paymentType: string; paid: boolean } {
+export function epicentrPaymentType(
+  provider: EpicentrPaymentProvider | null | undefined,
+  payed: boolean,
+  paymentStatus?: EpicentrOrder['address']['shipment']['paymentStatus'] | null,
+): { paymentType: string; paid: boolean } {
   if (provider === 'pay_on_delivery' || provider === 'pay_on_pickup') return { paymentType: 'cod', paid: false };
   if (provider === 'invoice') return { paymentType: 'invoice', paid: payed };
-  if (payed) return { paymentType: 'prepaid', paid: true };
+  if (payed || paymentStatus === 'hold_set') return { paymentType: 'prepaid', paid: true };
   return { paymentType: 'invoice', paid: false };
+}
+
+/** Оплата замовлення за поточним payload (те саме правило, що при імпорті). */
+export function epicentrOrderPaid(order: Pick<EpicentrOrder, 'payed' | 'address'>): boolean {
+  const sh = order.address?.shipment;
+  return epicentrPaymentType(sh?.paymentProvider, order.payed, sh?.paymentStatus).paid;
+}
+
+/** Холд на картці зняли/скасували — гроші покупця більше не заблоковані. */
+export function epicentrHoldLost(order: Pick<EpicentrOrder, 'payed' | 'address'>): boolean {
+  const st = order.address?.shipment?.paymentStatus;
+  return !order.payed && (st === 'hold_canceled' || st === 'hold_unset' || st === 'payment_canceled');
+}
+
+/**
+ * Рядок відділення з картки /v6: «Поштомат №27076: вул. Стрийська, 115д…».
+ * Номер з «№» потрібен модалці ТТН (lib/np-resolve підбирає відділення за ним).
+ * Поштомат НП: type 4 у довіднику Епіцентру або 5-значний номер (перевірено
+ * на 58851611: №27076, type 4, «під'їзд №5»).
+ */
+export function epicentrOfficeLine(order: Pick<EpicentrOrder, 'office' | 'address'>): { line: string | null; postomat: boolean } {
+  const o = order.office;
+  const provider = order.address?.shipment?.provider;
+  const title = humanName(o) ?? (o?.address as string | undefined) ?? null;
+  const num = o?.number != null ? String(o.number).trim() : '';
+  const postomat = provider === 'parcel_box_epicentr'
+    || (provider === 'nova_poshta' && (o?.type === 4 || num.length >= 5))
+    || isPostomatText(title);
+  if (!num) return { line: title, postomat };
+  const label = postomat ? 'Поштомат' : 'Відділення';
+  // Назва вже починається з цього ж «№N» — не дублюємо. Інші «№» у назві («під'їзд №5»)
+  // не рахуються: номер відділення має стояти ПЕРШИМ «№» у рядку (warehouseNumberFromAddress).
+  if (title && new RegExp(`^[^№]*№\\s*${num}(?!\\d)`).test(title)) return { line: title, postomat };
+  return { line: `${label} №${num}${title ? `: ${title}` : ''}`, postomat };
+}
+
+/** Чи відкрив Епіцентр контакти покупця (до підтвердження продавцем вони порожні). */
+export function epicentrHasContacts(order: Pick<EpicentrOrder, 'address'>): boolean {
+  const a = order.address;
+  return Boolean((a?.phone ?? '').trim() || (a?.recipient?.phone ?? '').trim());
 }
 
 function humanName(o: { title?: string; name?: string } | undefined): string | null {
@@ -378,14 +424,14 @@ export function epicentrOrderToOurFormat(order: EpicentrOrder) {
   // у списку — тільки UUID довідника Епіцентру, які в довідник НП не резолвляться.
   // Тому Ref-и НЕ зберігаємо; місто — назвою, адреса — рядком.
   const cityName   = humanName(order.settlement);
-  const officeName = humanName(order.office) ?? (order.office?.address as string | undefined) ?? null;
+  const office     = epicentrOfficeLine(order);
   const house      = sh?.house ? `буд. ${sh.house}${sh.apartment ? `, кв. ${sh.apartment}` : ''}` : null;
-  const deliveryAddress = [cityName, officeName, house].filter(Boolean).join(', ');
+  const deliveryAddress = [cityName, office.line, house].filter(Boolean).join(', ');
   const rawSubtype = sh?.provider === 'courier_delivery' || house ? 'address'
-    : sh?.provider === 'parcel_box_epicentr' ? 'postomat'
+    : office.postomat ? 'postomat'
     : sh?.provider ? 'warehouse' : null;
 
-  const { paymentType, paid } = epicentrPaymentType(sh?.paymentProvider, order.payed);
+  const { paymentType, paid } = epicentrPaymentType(sh?.paymentProvider, order.payed, sh?.paymentStatus);
 
   const items = (order.items ?? []).map(p => ({
     // Наш артикул: externalId картки (з <offer id> фіда, без дефіса) → назад у наш формат

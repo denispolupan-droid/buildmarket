@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   epicentrOrderToOurFormat, epicentrPaymentType, epicentrDeliveryType, ourStatusToEpicentrStatus,
   buildEpicentrComment, EPICENTR_CANCELLED, type EpicentrOrder,
+  epicentrOrderPaid, epicentrHoldLost, epicentrOfficeLine, epicentrHasContacts,
 } from '../lib/epicentr-api';
 import { epicentrPrice, epicentrMargin } from '../lib/marketplace-pricing';
 import { epicentrAvailabilityOf, toEpicentrId, fromEpicentrId } from '../lib/epicentr-availability';
@@ -93,6 +94,40 @@ describe('epicentrOrderToOurFormat', () => {
     expect(m.delivery_type).toBe('courier');
     expect(m.delivery_subtype).toBe('address');
     expect(m.delivery_address).toBe('буд. 12, кв. 4');
+  });
+
+  it('monobank з холдом на картці (hold_set, payed=false) → prepaid, оплачено; холд знято — втрачено', () => {
+    expect(epicentrPaymentType('monobank', false, 'hold_set')).toEqual({ paymentType: 'prepaid', paid: true });
+    expect(epicentrPaymentType('monobank', false, 'payment_waiting')).toEqual({ paymentType: 'invoice', paid: false });
+    expect(epicentrPaymentType('pay_on_delivery', false, 'hold_set')).toEqual({ paymentType: 'cod', paid: false });
+    const o = order();
+    o.address.shipment.paymentProvider = 'monobank';
+    o.address.shipment.paymentStatus = 'hold_set';
+    expect(epicentrOrderPaid(o)).toBe(true);
+    expect(epicentrHoldLost(o)).toBe(false);
+    o.address.shipment.paymentStatus = 'hold_canceled';
+    expect(epicentrOrderPaid(o)).toBe(false);
+    expect(epicentrHoldLost(o)).toBe(true);
+  });
+
+  it('поштомат НП з картки (type 4, №27076) — «Поштомат №…» у адресі для модалки ТТН (58851611)', () => {
+    const o = order({
+      settlement: { title: 'Львів' },
+      office: { number: '27076', type: 4, title: "вул. Стрийська, 115д, під'їзд №5 (ТІЛЬКИ ДЛЯ МЕШКАНЦІВ)" },
+    });
+    const m = epicentrOrderToOurFormat(o);
+    expect(m.delivery_address).toBe("Львів, Поштомат №27076: вул. Стрийська, 115д, під'їзд №5 (ТІЛЬКИ ДЛЯ МЕШКАНЦІВ)");
+    expect(m.delivery_subtype).toBe('postomat');
+    expect(epicentrOfficeLine(order({ office: { number: '12', type: 1, title: 'вул. Городоцька, 1' } })))
+      .toEqual({ line: 'Відділення №12: вул. Городоцька, 1', postomat: false });
+  });
+
+  it('контакти до підтвердження порожні → заглушка й «нема контактів»', () => {
+    const o = order();
+    o.address = { ...o.address, firstName: '', lastName: '', phone: '', email: '', recipient: { firstName: '', lastName: '', phone: '' } };
+    expect(epicentrHasContacts(o)).toBe(false);
+    expect(epicentrOrderToOurFormat(o).contact).toBe('Клієнт Епіцентр');
+    expect(epicentrHasContacts(order())).toBe(true);
   });
 
   it('коментар: «не передзвонювати» + нотатка покупця + коментар до доставки', () => {
