@@ -4,7 +4,7 @@ import {
   buildEpicentrComment, EPICENTR_CANCELLED, type EpicentrOrder,
   epicentrOrderPaid, epicentrHoldLost, epicentrOfficeLine, epicentrHasContacts,
 } from '../lib/epicentr-api';
-import { epicentrPrice, epicentrMargin } from '../lib/marketplace-pricing';
+import { epicentrPrice, epicentrMargin, EPICENTR_PAYMENT_FEE_PCT } from '../lib/marketplace-pricing';
 import { epicentrAvailabilityOf, toEpicentrId, fromEpicentrId } from '../lib/epicentr-availability';
 import { epicentrName, epicentrDescription, epicentrWeightGrams, epicentrBrand } from '../lib/epicentr-content';
 import { mapEpicentrAttributes, toUnit } from '../lib/epicentr-attributes';
@@ -158,8 +158,9 @@ describe('epicentrPrice — формула фіда й пушу', () => {
   // Той самий референс, що в marketplace-pricing.test: вхід 497.30, роздріб 547
   const base = { cost: 497.3, retail: 547, productMarkupPct: 12, categoryMarkupPct: 0 };
 
-  it('вхід × 1.12 ÷ (1 − 0.12) → ceil до 1 грн = 633', () => {
-    expect(epicentrPrice({ ...base, commissionPct: 12 })).toBe(633);
+  it('вхід × 1.12 ÷ (1 − 0.12 − 0.013 оплата) → ceil до 1 грн = 643', () => {
+    expect(EPICENTR_PAYMENT_FEE_PCT).toBe(1.3);
+    expect(epicentrPrice({ ...base, commissionPct: 12 })).toBe(643);
   });
 
   it('без комісії й націнки — роздрібна як є', () => {
@@ -167,12 +168,16 @@ describe('epicentrPrice — формула фіда й пушу', () => {
   });
 
   it('без ціни входу база — роздріб', () => {
-    expect(epicentrPrice({ cost: null, retail: 500, productMarkupPct: null, categoryMarkupPct: 10, commissionPct: 10 })).toBe(Math.ceil(500 * 1.1 / 0.9));
+    expect(epicentrPrice({ cost: null, retail: 500, productMarkupPct: null, categoryMarkupPct: 10, commissionPct: 10 })).toBe(Math.ceil(500 * 1.1 / 0.887));
   });
 
-  it('маржа: ціна × (1 − комісія) − вхід', () => {
+  it('є націнка, комісії категорії немає — оплата все одно закладена', () => {
+    expect(epicentrPrice({ cost: 100, retail: 150, productMarkupPct: 10, categoryMarkupPct: null, commissionPct: 0 })).toBe(Math.ceil(110 / 0.987));
+  });
+
+  it('маржа: ціна × (1 − комісія − оплата) − вхід', () => {
     const m = epicentrMargin({ ...base, commissionPct: 12 })!;
-    expect(m.uah).toBeCloseTo(633 * 0.88 - 497.3, 2);
+    expect(m.uah).toBeCloseTo(643 * 0.867 - 497.3, 2);
     expect(epicentrMargin({ ...base, cost: null, commissionPct: 12 })).toBeNull();
   });
 });

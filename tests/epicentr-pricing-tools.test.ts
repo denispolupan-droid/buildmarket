@@ -60,14 +60,15 @@ describe('звірка комісій Епіцентру з тарифом', () 
 describe('ціна Епіцентру з корекціями — одне правило для фіда й пуша', () => {
   const inp = { cost: 62.51, retail: 73, productMarkupPct: 17.4, categoryMarkupPct: null, commissionPct: 18 };
   it('без корекцій — формула; стара ціна складу лише якщо вища', () => {
-    expect(epicentrOfferPrices(inp, { regular: 1, promo: 1 }, null)).toEqual({ price: 90, oldPrice: null });
-    expect(epicentrOfferPrices(inp, { regular: 1, promo: 1 }, 80)).toEqual({ price: 90, oldPrice: null });
-    expect(epicentrOfferPrices(inp, { regular: 1, promo: 1 }, 99)).toEqual({ price: 90, oldPrice: 99 });
+    // 62.51 × 1.174 ÷ (1 − 0.18 − 0.013) = 90.94 → 91
+    expect(epicentrOfferPrices(inp, { regular: 1, promo: 1 }, null)).toEqual({ price: 91, oldPrice: null });
+    expect(epicentrOfferPrices(inp, { regular: 1, promo: 1 }, 80)).toEqual({ price: 91, oldPrice: null });
+    expect(epicentrOfferPrices(inp, { regular: 1, promo: 1 }, 99)).toEqual({ price: 91, oldPrice: 99 });
   });
   it('акція −10 %: ціна з акцією, стара — без акційного множника (перекреслена на площадці)', () => {
     const r = epicentrOfferPrices(inp, { regular: 1, promo: 0.9 }, null);
     expect(r.price).toBe(epicentrPrice({ ...inp, adjustFactor: 0.9 }));
-    expect(r.oldPrice).toBe(90);
+    expect(r.oldPrice).toBe(91);
   });
   it('тимчасова зміна без акції (+5 %) — нова ціна без старої', () => {
     const r = epicentrOfferPrices(inp, { regular: 1.05, promo: 1 }, null);

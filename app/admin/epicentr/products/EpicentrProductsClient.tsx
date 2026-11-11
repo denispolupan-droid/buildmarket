@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
-import { epicentrPrice, epicentrMargin } from '../../../../lib/marketplace-pricing';
+import { epicentrPrice, epicentrMargin, EPICENTR_PAYMENT_FEE_PCT } from '../../../../lib/marketplace-pricing';
 import { fmtInt as fmt } from '../../../../lib/format';
 
 export type EpiProduct  = { sku: string; name: string; brand: string | null; category_slug: string | null; volume: string | null; on_epicentr: boolean | null; epicentr_markup_pct: number | null };
@@ -126,7 +126,7 @@ export default function EpicentrProductsClient({ products: initialProducts, stoc
                 <td className="num">Вхід</td>
                 <td className="num">Роздріб</td>
                 <td className="num">Націнка %</td>
-                <td className="num">Комісія %</td>
+                <td className="num" title={`Комісія категорії. У ціну й прибуток додатково закладено ${String(EPICENTR_PAYMENT_FEE_PCT).replace('.', ',')} % за онлайн-оплату (monobank)`}>Комісія %</td>
                 <td className="num">Ціна Епіцентр</td>
                 <td className="num">Чистий прибуток</td>
                 <td>Код категорії</td>

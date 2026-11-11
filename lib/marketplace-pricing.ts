@@ -163,13 +163,27 @@ export type EpicentrInputs = {
 };
 
 /**
- * Ціна Епіцентру — та сама схема, що Prom: вхід → націнка → комісія → ceil до 1 грн.
+ * Плата за онлайн-оплату на Епіцентрі (monobank, кабінет → Оплата та доставка),
+ * % від суми — платить продавець. Закладаємо в ціну для ВСІХ замовлень (рішення
+ * власника 11.11.2026): при накладеному платежі це невелика переплата, зате оплата
+ * карткою не з'їдає націнку. Комісія категорії (categories.epicentr_commission_pct)
+ * і сторож тарифів лишаються «чистими» — збір додається лише тут.
+ */
+export const EPICENTR_PAYMENT_FEE_PCT = 1.3;
+
+/** Комісія категорії + плата за оплату — усе, що площадка утримує з ціни. */
+function epicentrDeductPct(commissionPct: number): number {
+  return (commissionPct > 0 ? commissionPct : 0) + EPICENTR_PAYMENT_FEE_PCT;
+}
+
+/**
+ * Ціна Епіцентру — та сама схема, що Prom: вхід → націнка → (комісія + оплата) → ceil до 1 грн.
  * Без комісії й націнки — роздрібна як є (щоб порожні налаштування не ламали фід).
  */
 export function epicentrPrice(inp: EpicentrInputs): number {
   const markup = resolveMarkup(inp.productMarkupPct, inp.categoryMarkupPct);
   if (inp.commissionPct <= 0 && markup <= 0) return ceilStep(inp.retail, 1, inp.adjustFactor);
-  return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, inp.commissionPct, inp.adjustFactor);
+  return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, epicentrDeductPct(inp.commissionPct), inp.adjustFactor);
 }
 
 /**
@@ -189,11 +203,11 @@ export function epicentrOfferPrices(
   return { price, oldPrice: old != null && old > price ? old : null };
 }
 
-/** Чиста маржа Епіцентру: ціна × (1 − комісія) − собівартість. */
+/** Чиста маржа Епіцентру: ціна × (1 − комісія − оплата) − собівартість. */
 export function epicentrMargin(inp: EpicentrInputs): { uah: number; pct: number } | null {
   if (!inp.cost || inp.cost <= 0) return null;
   const price = epicentrPrice(inp);
-  const net = inp.commissionPct > 0 ? price * (1 - inp.commissionPct / 100) : price;
+  const net = price * (1 - epicentrDeductPct(inp.commissionPct) / 100);
   if (net <= 0) return null;
   return { uah: net - inp.cost, pct: ((net - inp.cost) / net) * 100 };
 }
