@@ -17,10 +17,10 @@ type ProductMarkupRow = {
 };
 import { showToast } from '../../../lib/toast';
 import PricesLog from './PricesLog';
-import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, siteMargin, resolveMarkup, markupForPriceChange, type PromPlan } from '../../../lib/marketplace-pricing';
+import { promPrice as libPromPrice, promMargin, promCommissionOf, rozetkaPrice as libRozetkaPrice, rozetkaMargin, epicentrPrice as libEpicentrPrice, epicentrMargin, siteMargin, resolveMarkup, markupForPriceChange, type PromPlan } from '../../../lib/marketplace-pricing';
 import { isMpTarget, type MpSnapshotRow, type MpMarkupItem } from '../../../lib/mp-reprice';
 import {
-  type AdjChannel, type AdjRow,
+  type AdjChannel, type AdjRow, ADJ_CHANNEL_LABEL,
   addDays, adjState, buildFactorMap, factorLabel, factorOf, hasPromo, kyivToday, totalFactor,
 } from '../../../lib/price-adjustments';
 import PricesAdjustments from './PricesAdjustments';
@@ -38,6 +38,7 @@ interface Product {
   is_active:          boolean;
   prom_markup_pct:    number | null;
   rozetka_markup_pct: number | null;
+  epicentr_markup_pct: number | null;
   rozetka_smart:      boolean | null;
   image:              string | null;
 }
@@ -65,6 +66,8 @@ interface Category {
   prom_markup_pct:            number | null;
   rozetka_commission_pct:     number | null;
   rozetka_markup_pct:         number | null;
+  epicentr_commission_pct:    number | null;
+  epicentr_markup_pct:        number | null;
   description:                string | null;
 }
 
@@ -104,12 +107,12 @@ interface LocalOverride {
 
 // set_markup — лише для маркетплейсів: «націнка = N %» замість зміни ціни
 type RepricingType = 'multiply_cost' | 'increase_pct' | 'fixed' | 'set_markup';
-// rozetka / prom / mp — переоцінка маркетплейсів: міняється товарна націнка
+// rozetka / prom / epicentr / mp (усі МП) — переоцінка маркетплейсів: міняється товарна націнка
 // (products.*_markup_pct), ціну від неї рахує фід (lib/marketplace-pricing)
-type RepricingTarget = 'retail' | 'unit' | 'drop' | 'all' | 'rozetka' | 'prom' | 'mp';
+type RepricingTarget = 'retail' | 'unit' | 'drop' | 'all' | 'rozetka' | 'prom' | 'epicentr' | 'mp';
 
 /** Локальна зміна товарних націнок МП цієї сесії (undefined = не чіпали). */
-type MpLocal = { rz?: number | null; prom?: number | null };
+type MpLocal = { rz?: number | null; prom?: number | null; epi?: number | null };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -260,10 +263,13 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
         const mp = mpLocal.get(p.sku);
         const promProdMarkup = mp && 'prom' in mp ? (mp.prom ?? null) : n(p.prom_markup_pct);
         const rzProdMarkup   = mp && 'rz'   in mp ? (mp.rz   ?? null) : n(p.rozetka_markup_pct);
+        const epiProdMarkup  = mp && 'epi'  in mp ? (mp.epi  ?? null) : n(p.epicentr_markup_pct);
         const fPromAdj = factorOf(factorMap, 'prom', p.sku);
         const fRzAdj   = factorOf(factorMap, 'rozetka', p.sku);
         const fProm = totalFactor(fPromAdj);
         const fRz   = totalFactor(fRzAdj);
+        const fEpiAdj = factorOf(factorMap, 'epicentr', p.sku);
+        const fEpi    = totalFactor(fEpiAdj);
         const promInputs = {
           cost, retail: retail ?? unit ?? 0,
           manualOverride: n(s?.price_wholesale),
@@ -292,6 +298,19 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
         const rzMrg     = hasRzBase ? rozetkaMargin(rzInputs) : null;
         const rzOld     = hasRzBase && hasPromo(fRzAdj) ? libRozetkaPrice({ ...rzInputs, adjustFactor: fRzAdj.regular }) : null;
 
+        // Епіцентр — та сама формула, що у фіді й щогодинному пуші (lib/marketplace-pricing)
+        const epiInputs = {
+          cost, retail: retail ?? 0,
+          productMarkupPct: epiProdMarkup,
+          categoryMarkupPct: n(cat?.epicentr_markup_pct),
+          commissionPct: n(cat?.epicentr_commission_pct) ?? 0,
+          adjustFactor: fEpi,
+        };
+        const hasEpiBase = (retail ?? 0) > 0;
+        const epiPrice   = hasEpiBase ? libEpicentrPrice(epiInputs) : null;
+        const epiMrg     = hasEpiBase ? epicentrMargin(epiInputs) : null;
+        const epiOld     = hasEpiBase && hasPromo(fEpiAdj) ? libEpicentrPrice({ ...epiInputs, adjustFactor: fEpiAdj.regular }) : null;
+
         const retailMrg = retail != null ? siteMargin(retail, cost) : null;
 
         // Актуальна акційна ціна: локальний override цієї сесії → БД; щойно
@@ -302,6 +321,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
           p, cost, unit, retail, drop, locked, cat, promPrice, promMrg, rzPrice, rzMrg, retailMrg, promo, s,
           // для переоцінки МП: вхідні дані формули й товарні націнки (null = категорійна)
           promInputs, rzInputs, hasPromBase, hasRzBase, promProdMarkup, rzProdMarkup,
+          epiInputs, hasEpiBase, epiProdMarkup, epiPrice, epiMrg, epiOld, fEpiAdj, fEpi,
           promManual: (promInputs.manualOverride ?? 0) > 0,
           // корекції МП: множники каналів і ціна без акції
           fPromAdj, fRzAdj, fProm, fRz, promOld, rzOld,
@@ -477,6 +497,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 
   const mpWantsRz   = repricingTarget === 'rozetka' || repricingTarget === 'mp';
   const mpWantsProm = repricingTarget === 'prom'    || repricingTarget === 'mp';
+  const mpWantsEpi  = repricingTarget === 'epicentr' || repricingTarget === 'mp';
   const isMp        = isMpTarget(repricingTarget);
 
   // ── Акція / зміна «до дати» на МП — корекція (міграція 147) ─────────────────
@@ -487,7 +508,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
   // показує площадці зі старою (перекресленою) ціною. Без галочки й без дати
   // повернення переоцінка МП, як і раніше, міняє наценку — постійну ціну.
   const isMpAdj = isMp && (repricingIsPromo || !!repricingRevertAt);
-  const mpAdjChannels: AdjChannel[] = repricingTarget === 'rozetka' ? ['rozetka'] : repricingTarget === 'prom' ? ['prom'] : ['prom', 'rozetka'];
+  const mpAdjChannels: AdjChannel[] = repricingTarget === 'rozetka' ? ['rozetka'] : repricingTarget === 'prom' ? ['prom']
+    : repricingTarget === 'epicentr' ? ['epicentr'] : ['prom', 'rozetka', 'epicentr'];
 
   /** Відсоток корекції для товару й каналу; null — товар у каналі пропускаємо. */
   const adjPct = useCallback((r: typeof rows[0], ch: AdjChannel): number | null => {
@@ -497,7 +519,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     if (repricingType !== 'set_markup') return null;
     // «Націнка = N %» як тимчасова зміна: зсув, що дає ту саму ціну, що й така наценка
     if (ch === 'prom' && r.promManual) return null; // ручна ціна від наценки не залежить
-    const inp = ch === 'rozetka' ? r.rzInputs : r.promInputs;
+    const inp = ch === 'rozetka' ? r.rzInputs : ch === 'epicentr' ? r.epiInputs : r.promInputs;
     const cur = resolveMarkup(inp.productMarkupPct, inp.categoryMarkupPct);
     return Math.round(((1 + val / 100) / (1 + cur / 100) - 1) * 100 * 1e6) / 1e6;
   }, [repricingValue, repricingType]);
@@ -510,17 +532,23 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
       // Для акції стара ціна (без акційних корекцій) — та, що піде у фід перекресленою.
       const pr = mpWantsRz   ? adjPct(r, 'rozetka') : null;
       const pp = mpWantsProm ? adjPct(r, 'prom')    : null;
+      const pe = mpWantsEpi  ? adjPct(r, 'epicentr') : null;
       const m = (pct: number | null) => 1 + (pct ?? 0) / 100;
       const rzRegular   = r.fRzAdj.regular   * (repricingIsPromo ? 1 : m(pr));
       const rzPromo     = r.fRzAdj.promo     * (repricingIsPromo ? m(pr) : 1);
       const promRegular = r.fPromAdj.regular * (repricingIsPromo ? 1 : m(pp));
       const promPromo   = r.fPromAdj.promo   * (repricingIsPromo ? m(pp) : 1);
+      const epiRegular  = r.fEpiAdj.regular  * (repricingIsPromo ? 1 : m(pe));
+      const epiPromo    = r.fEpiAdj.promo    * (repricingIsPromo ? m(pe) : 1);
+      const epiPrice  = r.hasEpiBase ? libEpicentrPrice({ ...r.epiInputs, adjustFactor: epiRegular * epiPromo }) : null;
+      const epiOld    = r.hasEpiBase && Math.abs(epiPromo - 1) > 1e-12 ? libEpicentrPrice({ ...r.epiInputs, adjustFactor: epiRegular }) : null;
       const rzPrice   = r.hasRzBase   ? libRozetkaPrice({ ...r.rzInputs,   adjustFactor: rzRegular * rzPromo })     : null;
       const promPrice = r.hasPromBase ? libPromPrice({ ...r.promInputs, adjustFactor: promRegular * promPromo }) : null;
       const rzOld     = r.hasRzBase   && Math.abs(rzPromo - 1) > 1e-12   ? libRozetkaPrice({ ...r.rzInputs,   adjustFactor: rzRegular })   : null;
       const promOld   = r.hasPromBase && Math.abs(promPromo - 1) > 1e-12 ? libPromPrice({ ...r.promInputs, adjustFactor: promRegular }) : null;
       return { rzMarkup: r.rzProdMarkup, rzPrice, promMarkup: r.promProdMarkup, promPrice, rzPct: pr, promPct: pp, rzOld, promOld,
-        rzF: rzRegular * rzPromo, promF: promRegular * promPromo };
+        rzF: rzRegular * rzPromo, promF: promRegular * promPromo,
+        epiMarkup: r.epiProdMarkup, epiPrice, epiPct: pe, epiOld, epiF: epiRegular * epiPromo };
     }
     const calc = (cur: number) => repricingType === 'set_markup' ? Math.round(val * 100) / 100 : markupForPriceChange(cur, val);
 
@@ -528,9 +556,12 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     const promMarkup = ok && mpWantsProm ? calc(resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct)) : r.promProdMarkup;
     const rzPrice    = r.hasRzBase   ? libRozetkaPrice({ ...r.rzInputs,   productMarkupPct: rzMarkup })   : null;
     const promPrice  = r.hasPromBase ? libPromPrice({ ...r.promInputs, productMarkupPct: promMarkup }) : null;
+    const epiMarkup  = ok && mpWantsEpi ? calc(resolveMarkup(r.epiInputs.productMarkupPct, r.epiInputs.categoryMarkupPct)) : r.epiProdMarkup;
+    const epiPrice   = r.hasEpiBase ? libEpicentrPrice({ ...r.epiInputs, productMarkupPct: epiMarkup }) : null;
     return { rzMarkup, rzPrice, promMarkup, promPrice, rzPct: null as number | null, promPct: null as number | null, rzOld: r.rzOld, promOld: r.promOld,
-      rzF: r.fRz, promF: r.fProm };
-  }, [repricingValue, repricingType, mpWantsRz, mpWantsProm, isMpAdj, adjPct, repricingIsPromo]);
+      rzF: r.fRz, promF: r.fProm,
+      epiMarkup, epiPrice, epiPct: null as number | null, epiOld: r.epiOld, epiF: r.fEpi };
+  }, [repricingValue, repricingType, mpWantsRz, mpWantsProm, mpWantsEpi, isMpAdj, adjPct, repricingIsPromo]);
 
   // Попередження переоцінки МП (не блокують): продаж у мінус після комісії і
   // акція поверх уже діючої (знижки перемножаться)
@@ -541,11 +572,12 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
       const a = mpAfter(r);
       const rzM   = mpWantsRz   && r.hasRzBase   ? rozetkaMargin({ ...r.rzInputs,   productMarkupPct: a.rzMarkup,   adjustFactor: a.rzF })   : null;
       const promM = mpWantsProm && r.hasPromBase ? promMargin({ ...r.promInputs, productMarkupPct: a.promMarkup, adjustFactor: a.promF }) : null;
-      if ((rzM && rzM.uah < 0) || (promM && promM.uah < 0)) loss++;
-      if (isMpAdj && repricingIsPromo && ((mpWantsRz && hasPromo(r.fRzAdj)) || (mpWantsProm && hasPromo(r.fPromAdj)))) stacked++;
+      const epiM  = mpWantsEpi  && r.hasEpiBase  ? epicentrMargin({ ...r.epiInputs, productMarkupPct: a.epiMarkup, adjustFactor: a.epiF }) : null;
+      if ((rzM && rzM.uah < 0) || (promM && promM.uah < 0) || (epiM && epiM.uah < 0)) loss++;
+      if (isMpAdj && repricingIsPromo && ((mpWantsRz && hasPromo(r.fRzAdj)) || (mpWantsProm && hasPromo(r.fPromAdj)) || (mpWantsEpi && hasPromo(r.fEpiAdj)))) stacked++;
     }
     return loss || stacked ? { loss, stacked } : null;
-  }, [isMp, isMpAdj, repricingIsPromo, repricingValue, selectedRows, mpAfter, mpWantsRz, mpWantsProm]);
+  }, [isMp, isMpAdj, repricingIsPromo, repricingValue, selectedRows, mpAfter, mpWantsRz, mpWantsProm, mpWantsEpi]);
 
   async function applyMpAdjustments() {
     setSaving(true);
@@ -564,8 +596,8 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
         const a = mpAfter(r);
         snapshot.push({
           sku: r.p.sku, name: r.p.name,
-          before: { ...(mpWantsRz && { rz_price: r.rzPrice }), ...(mpWantsProm && { prom_price: r.promPrice }) },
-          after:  { ...(mpWantsRz && { rz_price: a.rzPrice }), ...(mpWantsProm && { prom_price: a.promPrice }) },
+          before: { ...(mpWantsRz && { rz_price: r.rzPrice }), ...(mpWantsProm && { prom_price: r.promPrice }), ...(mpWantsEpi && { epi_price: r.epiPrice }) },
+          after:  { ...(mpWantsRz && { rz_price: a.rzPrice }), ...(mpWantsProm && { prom_price: a.promPrice }), ...(mpWantsEpi && { epi_price: a.epiPrice }) },
         });
       }
       if (!items.length) {
@@ -626,7 +658,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
 
   async function resetMpAdjustments() {
     if (!resetSkus.length) return;
-    const chLabel = mpAdjChannels.map(c => (c === 'prom' ? 'Prom' : 'Rozetka')).join(' + ');
+    const chLabel = mpAdjChannels.map(c => ADJ_CHANNEL_LABEL[c]).join(' + ');
     if (!confirm(`Вимкнути всі акції й тимчасові зміни (${chLabel}) у ${resetSkus.length} товарів? Ціни повернуться до розрахунку від наценки.`)) return;
     setSaving(true);
     try {
@@ -652,10 +684,12 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
     if (!showPreview || !isMp) return [];
     return selectedRows.map(r => ({
       sku: r.p.sku, name: r.p.name, brand: r.p.brand, volume: r.p.volume,
-      promManual: r.promManual, fRz: r.fRz, fProm: r.fProm,
+      promManual: r.promManual, fRz: r.fRz, fProm: r.fProm, fEpi: r.fEpi,
       before: { rzMarkup: r.rzProdMarkup, rzPrice: r.rzPrice, promMarkup: r.promProdMarkup, promPrice: r.promPrice,
+                epiMarkup: r.epiProdMarkup, epiPrice: r.epiPrice,
                 rzEff: resolveMarkup(r.rzInputs.productMarkupPct, r.rzInputs.categoryMarkupPct),
-                promEff: resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct) },
+                promEff: resolveMarkup(r.promInputs.productMarkupPct, r.promInputs.categoryMarkupPct),
+                epiEff: resolveMarkup(r.epiInputs.productMarkupPct, r.epiInputs.categoryMarkupPct) },
       after: mpAfter(r),
     }));
   }, [showPreview, isMp, selectedRows, mpAfter]);
@@ -682,6 +716,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
         const after:  MpSnapshotRow['after']  = {};
         if (mpWantsRz)   { item.rozetka_markup_pct = a.rzMarkup;   before.rz_markup   = r.rzProdMarkup;   before.rz_price   = r.rzPrice;   after.rz_markup   = a.rzMarkup;   after.rz_price   = a.rzPrice; }
         if (mpWantsProm) { item.prom_markup_pct    = a.promMarkup; before.prom_markup = r.promProdMarkup; before.prom_price = r.promPrice; after.prom_markup = a.promMarkup; after.prom_price = a.promPrice; }
+        if (mpWantsEpi)  { item.epicentr_markup_pct = a.epiMarkup; before.epi_markup = r.epiProdMarkup; before.epi_price = r.epiPrice; after.epi_markup = a.epiMarkup; after.epi_price = a.epiPrice; }
         items.push(item);
         snapshot.push({ sku: r.p.sku, name: r.p.name, before, after });
       }
@@ -705,6 +740,7 @@ export default function PricesClient({ products, stock, categories, promoMap, ma
             const cur = { ...(next.get(it.sku) ?? {}) };
             if ('rozetka_markup_pct' in it) cur.rz   = it.rozetka_markup_pct ?? null;
             if ('prom_markup_pct'    in it) cur.prom = it.prom_markup_pct    ?? null;
+            if ('epicentr_markup_pct' in it) cur.epi = it.epicentr_markup_pct ?? null;
             next.set(it.sku, cur);
           }
           return next;
@@ -1463,7 +1499,8 @@ async function sendEmail(){
                 <optgroup label="Маркетплейси (націнка)">
                   <option value="rozetka">Rozetka</option>
                   <option value="prom">Prom</option>
-                  <option value="mp">Prom + Rozetka</option>
+                  <option value="epicentr">Епіцентр</option>
+                  <option value="mp">Усі маркетплейси</option>
                 </optgroup>
               </select>
             </div>
@@ -1603,6 +1640,8 @@ async function sendEmail(){
                     {mpWantsRz   && <th scope="col" style={thSmall}>{isMpAdj ? 'Rozetka: корекція' : 'Націнка Rozetka'}</th>}
                     {mpWantsProm && <th scope="col" style={thSmall}>Prom: до → після</th>}
                     {mpWantsProm && <th scope="col" style={thSmall}>{isMpAdj ? 'Prom: корекція' : 'Націнка Prom'}</th>}
+                    {mpWantsEpi  && <th scope="col" style={thSmall}>Епіцентр: до → після</th>}
+                    {mpWantsEpi  && <th scope="col" style={thSmall}>{isMpAdj ? 'Епіцентр: корекція' : 'Націнка Епіцентр'}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1634,6 +1673,15 @@ async function sendEmail(){
                       {mpWantsProm && <td style={{ padding: '5px 10px' }}>{isMpAdj
                         ? <AdjChange current={row.fProm} added={row.after.promPct} />
                         : <MarkupChange before={row.before.promEff} beforeIsCat={row.before.promMarkup == null} after={row.after.promMarkup} />}</td>}
+                      {mpWantsEpi  && <td style={{ padding: '5px 10px' }}>
+                        <PreviewChange before={row.before.epiPrice} after={row.after.epiPrice} />
+                        {isMpAdj && row.after.epiOld != null && row.after.epiOld > (row.after.epiPrice ?? 0) && (
+                          <div style={{ fontSize: 10, color: 'var(--orange)' }}>у фіді стара: <s>{row.after.epiOld} ₴</s></div>
+                        )}
+                      </td>}
+                      {mpWantsEpi  && <td style={{ padding: '5px 10px' }}>{isMpAdj
+                        ? <AdjChange current={row.fEpi} added={row.after.epiPct} />
+                        : <MarkupChange before={row.before.epiEff} beforeIsCat={row.before.epiMarkup == null} after={row.after.epiMarkup} />}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -1721,6 +1769,7 @@ async function sendEmail(){
                       <th scope="col" style={{ ...th, width: 85, whiteSpace: 'nowrap' }}>Дроп</th>
                       <th scope="col" style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Prom</th>
                       <th scope="col" style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Rozetka</th>
+                      <th scope="col" style={{ ...th, width: 90, whiteSpace: 'nowrap' }}>Ціна Епіцентр</th>
                       <th scope="col" style={{ width: 60, padding: '8px 12px' }} />
                     </tr>
                   </thead>
@@ -1864,6 +1913,18 @@ async function sendEmail(){
                                 {r.rzMrg && (
                                   <div title="Чистий прибуток Rozetka: ціна без Smart × (1 − комісія) − собівартість (Smart-надбавка йде на компенсацію доставки)" style={{ fontSize: 10, fontWeight: 600, color: marginColor(r.rzMrg.pct) }}>
                                     +{Math.round(r.rzMrg.uah)} ₴ · {r.rzMrg.pct.toFixed(0)}%
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ padding: '8px 14px', fontSize: 13, color: 'var(--text-gray)' }} title="Ціна Епіцентру — як у фіді й щогодинному пуші (наценка й комісія — розділ «Епіцентр → Товари»)">
+                                {r.epiOld != null && r.epiPrice != null && r.epiOld > r.epiPrice && (
+                                  <span style={{ color: 'var(--text-gray-light)', textDecoration: 'line-through', marginRight: 4 }}>{r.epiOld} ₴</span>
+                                )}
+                                {r.epiPrice != null ? `${r.epiPrice} ₴` : '—'}
+                                <AdjChip f={r.fEpiAdj} />
+                                {r.epiMrg && (
+                                  <div title="Чистий прибуток Епіцентру: ціна × (1 − комісія) − собівартість" style={{ fontSize: 10, fontWeight: 600, color: marginColor(r.epiMrg.pct) }}>
+                                    +{Math.round(r.epiMrg.uah)} ₴ · {r.epiMrg.pct.toFixed(0)}%
                                   </div>
                                 )}
                               </td>

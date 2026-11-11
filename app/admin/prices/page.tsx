@@ -13,7 +13,7 @@ const db = createServiceClient();
 
 export const metadata = { title: 'Ціни — Адмін' };
 
-const PRODUCT_SELECT = 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct, rozetka_markup_pct, rozetka_smart, image, sort_order';
+const PRODUCT_SELECT = 'sku, name, brand, volume, category_slug, is_active, prom_markup_pct, rozetka_markup_pct, epicentr_markup_pct, rozetka_smart, image, sort_order';
 
 export default async function PricesPage() {
   await requireStaffPage('admin', 'manager');
@@ -28,7 +28,7 @@ export default async function PricesPage() {
       .order('id')
       .range(f, t)),
     db.from('categories')
-      .select('slug, name, parent_slug, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct, rozetka_commission_pct, rozetka_markup_pct, description, sort_order'),
+      .select('slug, name, parent_slug, prom_commission_pct, prom_commission_pct_econom, prom_markup_pct, rozetka_commission_pct, rozetka_markup_pct, epicentr_commission_pct, epicentr_markup_pct, description, sort_order'),
     db.from('price_change_log')
       .select('snapshot, revert_at')
       .eq('is_promo', true)
@@ -58,7 +58,7 @@ export default async function PricesPage() {
 
   type AdminProdRow = {
     sku: string; name: string; brand: string; volume: string | null; category_slug: string | null;
-    is_active: boolean; prom_markup_pct: number | null; rozetka_markup_pct: number | null;
+    is_active: boolean; prom_markup_pct: number | null; rozetka_markup_pct: number | null; epicentr_markup_pct: number | null;
     rozetka_smart: boolean | null; image: string | null; sort_order: number | null;
   };
 

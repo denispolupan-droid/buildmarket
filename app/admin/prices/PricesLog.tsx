@@ -43,14 +43,17 @@ const TARGET_LABEL: Record<string, string> = {
   all:     'Всі',
   rozetka: 'Rozetka',
   prom:    'Prom',
-  mp:      'Prom + Rozetka',
+  epicentr: 'Епіцентр',
+  // До 11.11.2026 «mp» = Prom + Rozetka; з появою Епіцентру — усі маркетплейси
+  mp:      'Усі маркетплейси',
 };
 
 // Знімок переоцінки МП: ціна фіда й товарна націнка (null = категорійна) по каналах
 const MP_COLS: Record<string, { price: string; markup: string; label: string }[]> = {
   rozetka: [{ price: 'rz_price', markup: 'rz_markup', label: 'Rozetka' }],
   prom:    [{ price: 'prom_price', markup: 'prom_markup', label: 'Prom' }],
-  mp:      [{ price: 'prom_price', markup: 'prom_markup', label: 'Prom' }, { price: 'rz_price', markup: 'rz_markup', label: 'Rozetka' }],
+  epicentr: [{ price: 'epi_price', markup: 'epi_markup', label: 'Епіцентр' }],
+  mp:      [{ price: 'prom_price', markup: 'prom_markup', label: 'Prom' }, { price: 'rz_price', markup: 'rz_markup', label: 'Rozetka' }, { price: 'epi_price', markup: 'epi_markup', label: 'Епіцентр' }],
 };
 
 function mpCell(rec: Record<string, number | null> | undefined, col: { price: string; markup: string }) {
@@ -130,8 +133,8 @@ export default function PricesLog() {
   async function revertMp(entry: LogEntry) {
     const when = formatDate(entry.created_at);
     const msg = entry.adjustment
-      ? `Відкотити корекцію від ${when} (${entry.count ?? 0} товарів)?\n\nЦіни Prom/Rozetka повернуться рівно на її внесок; наценки й інші акції не зміняться.`
-      : `Відкотити переоцінку від ${when} (${entry.count ?? 0} товарів)?\n\nНацінки Prom/Rozetka повернуться до значень, що були до неї; фіди перерахують ціни від поточної собівартості.`;
+      ? `Відкотити корекцію від ${when} (${entry.count ?? 0} товарів)?\n\nЦіни маркетплейсів повернуться рівно на її внесок; наценки й інші акції не зміняться.`
+      : `Відкотити переоцінку від ${when} (${entry.count ?? 0} товарів)?\n\nНацінки маркетплейсів повернуться до значень, що були до неї; фіди перерахують ціни від поточної собівартості.`;
     if (!confirm(msg)) return;
     setReverting(entry.id);
     try {
@@ -304,7 +307,7 @@ export default function PricesLog() {
                   <button
                     onClick={() => revertMp(entry)}
                     disabled={reverting === entry.id}
-                    title={isAdj ? 'Вимкнути — ціни повернуться на її внесок, наценки й інші акції лишаться' : 'Повернути націнки Prom/Rozetka, що були до цієї переоцінки'}
+                    title={isAdj ? 'Вимкнути — ціни повернуться на її внесок, наценки й інші акції лишаться' : 'Повернути націнки маркетплейсів, що були до цієї переоцінки'}
                     style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: '1px solid #DDD6FE', background: 'var(--violet-bg)', color: '#5B21B6', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                     <Undo2 size={10} /> {reverting === entry.id ? '...' : isPending ? 'Скасувати' : 'Відкотити'}
                   </button>

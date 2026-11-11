@@ -9,7 +9,8 @@ export type EpiProduct  = { sku: string; name: string; brand: string | null; cat
 export type EpiStock    = { sku: string; price_cost: number | null; price_retail: number | null; stock_status: string | null };
 export type EpiCategory = { slug: string; name: string; epicentr_commission_pct: number | null; epicentr_markup_pct: number | null; epicentr_category_code: string | null };
 
-type Props = { products: EpiProduct[]; stock: EpiStock[]; categories: EpiCategory[]; fallbackPct: number };
+/** factors — множник активних корекцій (акції / зміни «до дати» з «Цін»), лише ≠ 1. */
+type Props = { products: EpiProduct[]; stock: EpiStock[]; categories: EpiCategory[]; fallbackPct: number; factors: Record<string, number> };
 
 const inp: React.CSSProperties = { width: 64, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12.5, textAlign: 'right', background: 'var(--surface)' };
 const codeInp: React.CSSProperties = { ...inp, width: 90, textAlign: 'left', fontFamily: 'monospace' };
@@ -21,7 +22,7 @@ const codeInp: React.CSSProperties = { ...inp, width: 90, textAlign: 'left', fon
  * товарний override націнки, розрахункова ціна та чистий прибуток ТІЄЮ САМОЮ
  * формулою, що йде у фід і в пуш через API (lib/marketplace-pricing.epicentrPrice).
  */
-export default function EpicentrProductsClient({ products: initialProducts, stock, categories: initialCats, fallbackPct }: Props) {
+export default function EpicentrProductsClient({ products: initialProducts, stock, categories: initialCats, fallbackPct, factors }: Props) {
   const [products, setProducts] = useState(initialProducts);
   const [cats, setCats]         = useState(initialCats);
   const [q, setQ]               = useState('');
@@ -172,7 +173,7 @@ export default function EpicentrProductsClient({ products: initialProducts, stoc
                     const s = stockMap.get(p.sku);
                     const cost = s?.price_cost != null ? Number(s.price_cost) : null;
                     const retail = Number(s?.price_retail ?? 0);
-                    const inputs = { cost, retail, productMarkupPct: p.epicentr_markup_pct, categoryMarkupPct: cat?.epicentr_markup_pct, commissionPct: Number(commPct) };
+                    const inputs = { cost, retail, productMarkupPct: p.epicentr_markup_pct, categoryMarkupPct: cat?.epicentr_markup_pct, commissionPct: Number(commPct), adjustFactor: factors[p.sku] ?? 1 };
                     const price = retail > 0 ? epicentrPrice(inputs) : 0;
                     const margin = retail > 0 ? epicentrMargin(inputs) : null;
                     const out = s?.stock_status && s.stock_status !== 'in_stock';
@@ -193,7 +194,10 @@ export default function EpicentrProductsClient({ products: initialProducts, stoc
                             onBlur={e => setMarkup(p, e.target.value)} />
                         </td>
                         <td className="num muted">{commPct}</td>
-                        <td className="num">{price ? `${fmt(price)} ₴` : '—'}</td>
+                        <td className="num" title={factors[p.sku] ? `Діє корекція з «Цін»: ×${factors[p.sku].toFixed(3)}` : undefined}>
+                          {price ? `${fmt(price)} ₴` : '—'}
+                          {factors[p.sku] && <span style={{ marginLeft: 4, fontSize: 10.5, color: 'var(--color-warn)' }}>{factors[p.sku] < 1 ? 'акція' : 'корекція'}</span>}
+                        </td>
                         <td className="num" style={{ color: margin ? (margin.uah >= 0 ? 'var(--color-success)' : 'var(--color-danger)') : undefined }}>
                           {margin ? `${fmt(margin.uah)} ₴ · ${margin.pct.toFixed(1)}%` : '—'}
                         </td>

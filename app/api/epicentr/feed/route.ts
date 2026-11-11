@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { createServiceClient } from '../../../../lib/supabase-service';
 import { fetchAllRows } from '../../../../lib/db-paginate';
-import { epicentrPrice } from '../../../../lib/marketplace-pricing';
+import { epicentrOfferPrices } from '../../../../lib/marketplace-pricing';
+import { loadFactorMap } from '../../../../lib/price-adjustments-db';
+import { factorOf } from '../../../../lib/price-adjustments';
 import { mpDescription } from '../../../../lib/marketplace-description';
 import { epicentrAvailabilityOf, toEpicentrId } from '../../../../lib/epicentr-availability';
 import { EPICENTR_COUNTRY_CODE, EPICENTR_BRAND_CODE } from '../../../../lib/epicentr-dictionaries';
@@ -92,6 +94,7 @@ async function _GET(req: NextRequest) {
   }
 
   const catMap = new Map<string, Cat>(categories.map(c => [c.slug, c]));
+  const factors = await loadFactorMap(db, ['epicentr']);
   // Статичні JPEG для Епіцентру, які вже лежать у R2 (lib/epicentr-images)
   const jpegManifest = await readEpicentrManifest();
   const missingJpegs = new Set<string>();
@@ -113,14 +116,14 @@ async function _GET(req: NextRequest) {
     const cat   = catMap.get(p.category_slug)!;
 
     const retail = Number(stock.price_retail);
-    const price  = epicentrPrice({
+    // Акції й тимчасові зміни з «Цін» (корекції каналу epicentr) — те саме правило, що в пуші
+    const { price, oldPrice: priceOld } = epicentrOfferPrices({
       cost: stock.price_cost != null ? Number(stock.price_cost) : null,
       retail,
       productMarkupPct: p.epicentr_markup_pct != null ? Number(p.epicentr_markup_pct) : null,
       categoryMarkupPct: cat.epicentr_markup_pct != null ? Number(cat.epicentr_markup_pct) : null,
       commissionPct: Number(cat.epicentr_commission_pct ?? 0),
-    });
-    const priceOld = stock.price_old ? Number(stock.price_old) : null;
+    }, factorOf(factors, 'epicentr', p.sku), stock.price_old ? Number(stock.price_old) : null);
 
     const inStock = epicentrAvailabilityOf(p.on_epicentr === true, stock) === 'in_stock';
 
@@ -144,7 +147,7 @@ async function _GET(req: NextRequest) {
     // offer id — без розділових знаків (вимога XML): 1603-014 → 1603014
     lines.push(`    <offer id="${x(toEpicentrId(p.sku))}" available="${inStock ? 'true' : 'false'}">`);
     lines.push(`      <price>${price}</price>`);
-    if (priceOld && priceOld > price) lines.push(`      <price_old>${priceOld}</price_old>`);
+    if (priceOld) lines.push(`      <price_old>${priceOld}</price_old>`);
     lines.push(`      <availability>${inStock ? 'in_stock' : 'out_of_stock'}</availability>`);
     // Код категорії Епіцентру = код набору характеристик (перевірено по /v2/pim/categories:
     // attributeSets[].code збігається з code категорії)

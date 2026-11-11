@@ -1,8 +1,9 @@
 /**
  * Переоцінка маркетплейсів з розділу «Ціни».
  *
- * Ціни Rozetka/Prom не зберігаються — фід рахує їх на льоту від собівартості
- * через націнку товару (products.rozetka_markup_pct / prom_markup_pct) або,
+ * Ціни Rozetka/Prom/Епіцентру не зберігаються — фід (для Епіцентру й щогодинний
+ * пуш /v1/offers) рахує їх на льоту від собівартості через націнку товару
+ * (products.rozetka_markup_pct / prom_markup_pct / epicentr_markup_pct) або,
  * коли товарної немає, категорії (lib/marketplace-pricing). Тому переоцінка МП
  * міняє не ціну, а товарну націнку: нова націнка = така, щоб ціна зросла на
  * N % (markupForPriceChange) або просто задане число.
@@ -23,7 +24,7 @@ import { insertPriceChangeLog } from './price-change-log';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = SupabaseClient<any, any, any>;
 
-export const MP_TARGETS = ['rozetka', 'prom', 'mp'] as const;
+export const MP_TARGETS = ['rozetka', 'prom', 'epicentr', 'mp'] as const;
 export type MpTarget = typeof MP_TARGETS[number];
 
 export function isMpTarget(target: string | null | undefined): target is MpTarget {
@@ -36,6 +37,8 @@ export type MpChannelState = {
   rz_price?: number | null;
   prom_markup?: number | null;
   prom_price?: number | null;
+  epi_markup?: number | null;
+  epi_price?: number | null;
 };
 
 export type MpSnapshotRow = {
@@ -49,7 +52,18 @@ export type MpMarkupItem = {
   sku: string;
   rozetka_markup_pct?: number | null;
   prom_markup_pct?: number | null;
+  epicentr_markup_pct?: number | null;
 };
+
+/** Колонка products ↔ ключ націнки/ціни у знімку журналу — по каналу. */
+export type MpMarkupKey = 'rozetka_markup_pct' | 'prom_markup_pct' | 'epicentr_markup_pct';
+export const MP_FIELDS: readonly { col: MpMarkupKey; markup: 'rz_markup' | 'prom_markup' | 'epi_markup'; price: 'rz_price' | 'prom_price' | 'epi_price' }[] = [
+  { col: 'rozetka_markup_pct',  markup: 'rz_markup',   price: 'rz_price' },
+  { col: 'prom_markup_pct',     markup: 'prom_markup', price: 'prom_price' },
+  { col: 'epicentr_markup_pct', markup: 'epi_markup',  price: 'epi_price' },
+];
+/** Поточні товарні націнки; канал, якого немає в об'єкті, — «не знаємо» (не дрейф). */
+export type MpMarkups = { [K in MpMarkupKey]?: number | null };
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -66,7 +80,7 @@ export function normalizeMpItems(raw: unknown): { items: MpMarkupItem[]; errors:
     if (!sku) { errors.push('порожній sku'); continue; }
     const item: MpMarkupItem = { sku };
     let has = false;
-    for (const key of ['rozetka_markup_pct', 'prom_markup_pct'] as const) {
+    for (const { col: key } of MP_FIELDS) {
       if (!(key in r)) continue;
       const v = r[key];
       if (v === null) { item[key] = null; has = true; continue; }
@@ -88,8 +102,7 @@ export function mpRevertItems(snapshot: MpSnapshotRow[]): MpMarkupItem[] {
   for (const row of snapshot) {
     const item: MpMarkupItem = { sku: row.sku };
     let has = false;
-    if ('rz_markup' in row.before)   { item.rozetka_markup_pct = row.before.rz_markup ?? null; has = true; }
-    if ('prom_markup' in row.before) { item.prom_markup_pct    = row.before.prom_markup ?? null; has = true; }
+    for (const f of MP_FIELDS) if (f.markup in row.before) { item[f.col] = row.before[f.markup] ?? null; has = true; }
     if (has) out.push(item);
   }
   return out;
@@ -102,7 +115,7 @@ export function mpRevertItems(snapshot: MpSnapshotRow[]): MpMarkupItem[] {
  */
 export function mpDriftedSkus(
   snapshot: MpSnapshotRow[],
-  current: Map<string, { rozetka_markup_pct: number | null; prom_markup_pct: number | null }>,
+  current: Map<string, MpMarkups>,
 ): string[] {
   const eq = (a: number | null | undefined, b: number | null | undefined) =>
     (a ?? null) === null ? (b ?? null) === null : b != null && Math.abs(Number(a) - Number(b)) < 0.005;
@@ -110,9 +123,7 @@ export function mpDriftedSkus(
   for (const row of snapshot) {
     const cur = current.get(row.sku);
     if (!cur) continue;
-    const rzDrift   = 'rz_markup'   in row.after && !eq(row.after.rz_markup,   cur.rozetka_markup_pct);
-    const promDrift = 'prom_markup' in row.after && !eq(row.after.prom_markup, cur.prom_markup_pct);
-    if (rzDrift || promDrift) out.push(row.sku);
+    if (MP_FIELDS.some(f => f.markup in row.after && !eq(row.after[f.markup], cur[f.col]))) out.push(row.sku);
   }
   return out;
 }
@@ -125,8 +136,7 @@ export function mpApplyItems(snapshot: MpSnapshotRow[]): MpMarkupItem[] {
   for (const row of snapshot) {
     const item: MpMarkupItem = { sku: row.sku };
     let has = false;
-    if ('rz_markup' in row.after)   { item.rozetka_markup_pct = row.after.rz_markup ?? null; has = true; }
-    if ('prom_markup' in row.after) { item.prom_markup_pct    = row.after.prom_markup ?? null; has = true; }
+    for (const f of MP_FIELDS) if (f.markup in row.after) { item[f.col] = row.after[f.markup] ?? null; has = true; }
     if (has) out.push(item);
   }
   return out;
@@ -140,19 +150,18 @@ export function mpApplyItems(snapshot: MpSnapshotRow[]): MpMarkupItem[] {
  */
 export function refreshMpBefore(
   snapshot: MpSnapshotRow[],
-  current: Map<string, { rozetka_markup_pct: number | null; prom_markup_pct: number | null }>,
+  current: Map<string, MpMarkups>,
 ): MpSnapshotRow[] {
-  const same = (a: number | null | undefined, b: number | null) =>
-    (a ?? null) === null ? b === null : b != null && Math.abs(Number(a) - b) < 0.005;
+  const same = (a: number | null | undefined, b: number | null | undefined) =>
+    (a ?? null) === null ? (b ?? null) === null : b != null && Math.abs(Number(a) - b) < 0.005;
   return snapshot.map(row => {
     const cur = current.get(row.sku);
     if (!cur) return row;
     const before = { ...row.before };
-    if ('rz_markup' in before && !same(before.rz_markup, cur.rozetka_markup_pct)) {
-      before.rz_markup = cur.rozetka_markup_pct; before.rz_price = null;
-    }
-    if ('prom_markup' in before && !same(before.prom_markup, cur.prom_markup_pct)) {
-      before.prom_markup = cur.prom_markup_pct; before.prom_price = null;
+    for (const f of MP_FIELDS) {
+      if (f.markup in before && !same(before[f.markup], cur[f.col])) {
+        before[f.markup] = cur[f.col] ?? null; before[f.price] = null;
+      }
     }
     return { ...row, before };
   });
@@ -165,8 +174,7 @@ export async function applyMpMarkups(db: Db, items: MpMarkupItem[]): Promise<str
   for (let i = 0; i < items.length; i += CHUNK) {
     await Promise.all(items.slice(i, i + CHUNK).map(async item => {
       const update: Record<string, unknown> = {};
-      if (item.rozetka_markup_pct !== undefined) update.rozetka_markup_pct = item.rozetka_markup_pct;
-      if (item.prom_markup_pct    !== undefined) update.prom_markup_pct    = item.prom_markup_pct;
+      for (const { col } of MP_FIELDS) if (item[col] !== undefined) update[col] = item[col];
       if (!Object.keys(update).length) return;
       const { error } = await db.from('products').update(update).eq('sku', item.sku);
       if (error) errors.push(`${item.sku}: ${error.message}`);
@@ -179,18 +187,18 @@ export async function applyMpMarkups(db: Db, items: MpMarkupItem[]): Promise<str
 export async function loadMpMarkups(
   db: Db,
   skus: string[],
-): Promise<Map<string, { rozetka_markup_pct: number | null; prom_markup_pct: number | null }>> {
-  const out = new Map<string, { rozetka_markup_pct: number | null; prom_markup_pct: number | null }>();
+): Promise<Map<string, MpMarkups>> {
+  const out = new Map<string, MpMarkups>();
   for (let i = 0; i < skus.length; i += 300) {
     const { data } = await db
       .from('products')
-      .select('sku, rozetka_markup_pct, prom_markup_pct')
+      .select('sku, rozetka_markup_pct, prom_markup_pct, epicentr_markup_pct')
       .in('sku', skus.slice(i, i + 300));
     for (const r of data ?? []) {
-      out.set(r.sku, {
-        rozetka_markup_pct: r.rozetka_markup_pct != null ? Number(r.rozetka_markup_pct) : null,
-        prom_markup_pct:    r.prom_markup_pct    != null ? Number(r.prom_markup_pct)    : null,
-      });
+      const row = r as Record<string, unknown>;
+      out.set(String(row.sku), Object.fromEntries(
+        MP_FIELDS.map(({ col }) => [col, row[col] != null ? Number(row[col]) : null]),
+      ) as MpMarkups);
     }
   }
   return out;

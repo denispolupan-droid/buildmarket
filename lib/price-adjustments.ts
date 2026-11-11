@@ -9,16 +9,16 @@
  *
  * Акційні корекції (is_promo) рахуються окремим множником: ціна фіда — з усіма
  * корекціями, стара ціна для площадки — без акційних (Rozetka <price_old>,
- * Prom <price>/<price_promo>).
+ * Prom <price>/<price_promo>, Епіцентр <price_old> / oldPrice у /v1/offers).
  *
  * Дати — за Києвом: корекція діє з starts_on (включно) до ends_on (виключно,
  * «повернути після» = у цю дату ціна вже без корекції).
  */
 
-export const ADJ_CHANNELS = ['prom', 'rozetka'] as const;
+export const ADJ_CHANNELS = ['prom', 'rozetka', 'epicentr'] as const;
 export type AdjChannel = typeof ADJ_CHANNELS[number];
 
-export const ADJ_CHANNEL_LABEL: Record<AdjChannel, string> = { prom: 'Prom', rozetka: 'Rozetka' };
+export const ADJ_CHANNEL_LABEL: Record<AdjChannel, string> = { prom: 'Prom', rozetka: 'Rozetka', epicentr: 'Епіцентр' };
 
 export function isAdjChannel(c: string): c is AdjChannel {
   return (ADJ_CHANNELS as readonly string[]).includes(c);

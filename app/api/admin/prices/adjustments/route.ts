@@ -10,7 +10,7 @@ import { withApi } from '../../../../../lib/api-handler';
 // наценки. Ціни МП рахуються на льоту, тож тут лише записи — без перерахунку
 // й без скидання кешу сайту (вітрину корекції МП не зачіпають).
 //
-// POST  { target: rozetka|prom|mp, type, value, comment?, is_promo?, starts_on?, ends_on?,
+// POST  { target: rozetka|prom|epicentr|mp, type, value, comment?, is_promo?, starts_on?, ends_on?,
 //         items: [{ sku, channel, pct }], snapshot? }      — створити
 // PATCH { action: 'cancel', log_id }                       — вимкнути корекцію (запис журналу)
 // PATCH { action: 'reset', skus, target }                  — вимкнути всі корекції товарів у каналах target

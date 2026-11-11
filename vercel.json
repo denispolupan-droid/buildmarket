@@ -24,6 +24,10 @@
       "schedule": "20 * * * *"
     },
     {
+      "path": "/api/cron/epicentr-commission-watch",
+      "schedule": "15 7 * * 1"
+    },
+    {
       "path": "/api/cron/sync-delivery-status",
       "schedule": "*/30 * * * *"
     },

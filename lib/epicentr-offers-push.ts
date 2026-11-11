@@ -13,7 +13,9 @@
 import { createServiceClient } from './supabase-service';
 import { fetchAllRows } from './db-paginate';
 import { batchUpdateEpicentrOffers, EPICENTR_OFFERS_BATCH, type EpicentrOfferUpdate } from './epicentr-api';
-import { epicentrPrice } from './marketplace-pricing';
+import { epicentrOfferPrices } from './marketplace-pricing';
+import { loadFactorMap } from './price-adjustments-db';
+import { factorOf } from './price-adjustments';
 import { epicentrAvailabilityOf } from './epicentr-availability';
 import { epicentrBrand } from './epicentr-content';
 import { feedVendor } from './brand-feed';
@@ -49,6 +51,7 @@ export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Pr
     }),
   ]);
   const catMap = new Map(cats.map(c => [c.slug, c]));
+  const factors = await loadFactorMap(db, ['epicentr'], opts.onlySkus);
 
   const updates: EpicentrOfferUpdate[] = [];
   for (const p of rows) {
@@ -62,15 +65,16 @@ export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Pr
     const enabled = p.on_epicentr === true && retail > 0;
     const upd: EpicentrOfferUpdate = { sku: p.sku, availability: epicentrAvailabilityOf(enabled, stock) };
     if (enabled) {
-      upd.price = epicentrPrice({
+      // Те саме правило, що у фіді: корекції каналу (акції з «Цін») + стара ціна для акції
+      const { price, oldPrice } = epicentrOfferPrices({
         cost: stock?.price_cost != null ? Number(stock.price_cost) : null,
         retail,
         productMarkupPct: p.epicentr_markup_pct != null ? Number(p.epicentr_markup_pct) : null,
         categoryMarkupPct: cat?.epicentr_markup_pct != null ? Number(cat.epicentr_markup_pct) : null,
         commissionPct: Number(cat?.epicentr_commission_pct ?? 0),
-      });
-      const old = stock?.price_old ? Number(stock.price_old) : null;
-      upd.oldPrice = old && old > upd.price ? old : null;
+      }, factorOf(factors, 'epicentr', p.sku), stock?.price_old ? Number(stock.price_old) : null);
+      upd.price = price;
+      upd.oldPrice = oldPrice;
     }
     updates.push(upd);
   }

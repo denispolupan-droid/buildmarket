@@ -11,11 +11,13 @@
  */
 import {
   getEpicentrOrders, getEpicentrOrder, epicentrOrderToOurFormat, ourStatusToEpicentrStatus, advanceEpicentrOrder, epicentrRank,
-  setEpicentrTTN, hasEpicentrToken, epicentrOrderPaid, epicentrHoldLost, epicentrHasContacts,
+  setEpicentrTTN, hasEpicentrToken, getEpicentrBillingInvoice, epicentrOrderPaid, epicentrHoldLost, epicentrHasContacts,
   EPICENTR_CANCELLED, EPICENTR_TERMINAL,
   type EpicentrOrder,
 } from './epicentr-api';
 import { findCustomerIdByPhone } from './customers';
+import { invoiceCommissionAlerts } from './epicentr-commission-watch';
+import { fromEpicentrId } from './epicentr-availability';
 import { alertAdmin } from './alert';
 import { log } from './log';
 import { getEpicentrFallbackPct } from './epicentr-commission';
@@ -77,6 +79,7 @@ export async function syncEpicentrOrders(): Promise<EpicentrSyncResult> {
     if (res.status === 'created') {
       result.created++;
       if (full.statusCode === 'new') alertNewOrder(full);
+      await checkInvoiceCommission(full);
     }
     else if (res.status === 'skipped' || res.status === 'exists') result.skipped++;
   }
@@ -92,6 +95,29 @@ function alertNewOrder(epi: EpicentrOrder) {
   const items = (epi.items ?? []).map(i => `• ${i.title} × ${i.quantity}`).join('\n');
   alertAdmin(`Епіцентр: нове замовлення ${epi.number} — ${epi.subtotal} ₴`,
     `${items}\n\nПеревірте наявність і підтвердьте (або скасуйте з причиною) до ${kyivTime(new Date(created.getTime() + 2 * 3600e3))} — ліміт Епіцентру 2 год у робочий час. Контакти покупця з'являться після підтвердження.`);
+}
+
+/**
+ * Комісія з рахунку нового замовлення проти ставки категорії, з якої рахуємо ціну.
+ * Епіцентр бере більше — тариф змінився раніше за щотижневу звірку
+ * (/api/cron/epicentr-commission-watch): кажемо одразу. Помилки не ламають синк.
+ */
+async function checkInvoiceCommission(epi: EpicentrOrder) {
+  try {
+    const inv = await getEpicentrBillingInvoice(epi.id);
+    if (!inv?.orderItems?.length) return;
+    const skus = inv.orderItems.map(i => fromEpicentrId(i.externalId ?? '')).filter(Boolean);
+    const { data } = await db.from('products').select('sku, categories(epicentr_commission_pct)').in('sku', skus);
+    const ours = new Map<string, number | null>(((data ?? []) as unknown as { sku: string; categories: { epicentr_commission_pct: number | null } | null }[])
+      .map(p => [p.sku, p.categories?.epicentr_commission_pct != null ? Number(p.categories.epicentr_commission_pct) : null]));
+    const over = invoiceCommissionAlerts(inv.orderItems, ours, fromEpicentrId);
+    if (!over.length) return;
+    alertAdmin(`Епіцентр: комісія в замовленні ${epi.number} вища за нашу`,
+      over.map(o => `• ${o.title}: Епіцентр ${o.theirs} %, у нас ${o.ours ?? '—'} %`).join('\n')
+      + '\n\nЦіна товару рахувалась від меншої комісії. Перевірте ставку категорії в «Епіцентр → Товари».');
+  } catch (err) {
+    log.warn('epicentr.invoice_check_failed', { epi: epi.number, err: err instanceof Error ? err.message : String(err) });
+  }
 }
 
 /** Список + картка /v6 (місто, відділення, контакти після підтвердження). Картка недоступна — лишаємо список. */

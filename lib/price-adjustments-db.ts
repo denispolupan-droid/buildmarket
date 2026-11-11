@@ -190,12 +190,13 @@ export function channelsToTarget(channels: readonly string[]): string {
   return 'mp';
 }
 
-/** target панелі переоцінки → канали корекцій. */
+/** target панелі переоцінки → канали корекцій. «mp» — усі маркетплейси (з 11.11.2026 і Епіцентр). */
 export function targetToChannels(target: string): AdjChannel[] {
   switch (target) {
     case 'rozetka': return ['rozetka'];
     case 'prom':    return ['prom'];
-    case 'mp':      return ['prom', 'rozetka'];
+    case 'epicentr': return ['epicentr'];
+    case 'mp':      return ['prom', 'rozetka', 'epicentr'];
     default:        return [];
   }
 }

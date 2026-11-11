@@ -172,6 +172,23 @@ export function epicentrPrice(inp: EpicentrInputs): number {
   return promPriceFromBase(markupBase(inp.cost, inp.retail), markup, inp.commissionPct, inp.adjustFactor);
 }
 
+/**
+ * Ціна й стара ціна Епіцентру з корекціями (міграції 147/161) — ОДНЕ правило для
+ * фіда й щогодинного пуша /v1/offers. Ціна = формула × усі корекції каналу; при
+ * акції стара ціна = формула без акційного множника (площадка покаже знижку), без
+ * акції — price_old складу, як і раніше. Стара ціна йде лише якщо вона вища.
+ */
+export function epicentrOfferPrices(
+  inp: Omit<EpicentrInputs, 'adjustFactor'>,
+  factor: { regular: number; promo: number },
+  stockOld: number | null,
+): { price: number; oldPrice: number | null } {
+  const price = epicentrPrice({ ...inp, adjustFactor: factor.regular * factor.promo });
+  const promoOld = Math.abs(factor.promo - 1) > 1e-12 ? epicentrPrice({ ...inp, adjustFactor: factor.regular }) : null;
+  const old = promoOld != null && promoOld > price ? promoOld : stockOld;
+  return { price, oldPrice: old != null && old > price ? old : null };
+}
+
 /** Чиста маржа Епіцентру: ціна × (1 − комісія) − собівартість. */
 export function epicentrMargin(inp: EpicentrInputs): { uah: number; pct: number } | null {
   if (!inp.cost || inp.cost <= 0) return null;
