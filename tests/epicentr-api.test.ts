@@ -141,7 +141,7 @@ describe('epicentrOrderToOurFormat', () => {
 describe('статуси', () => {
   it('наш → Епіцентр: підтвердження, відправка, скасування; delivered не пушимо', () => {
     expect(ourStatusToEpicentrStatus('confirmed')).toBe('confirmed_by_merchant');
-    expect(ourStatusToEpicentrStatus('picking')).toBe('confirmed_by_merchant');
+    expect(ourStatusToEpicentrStatus('picking')).toBe('confirmed');
     expect(ourStatusToEpicentrStatus('shipped')).toBe('sent');
     expect(ourStatusToEpicentrStatus('cancelled')).toBe('canceled_by_merchant');
     expect(ourStatusToEpicentrStatus('delivered')).toBeNull();

@@ -1,7 +1,9 @@
 import { Resend } from 'resend';
 import { createServiceClient } from '../supabase-service';
 import { getPromOrder, ourStatusToPromStatus, setPromOrderStatus, setPromTTN } from '../prom-api';
-import { getEpicentrOrder, ourStatusToEpicentrStatus, setEpicentrOrderStatus, setEpicentrTTN } from '../epicentr-api';
+import {
+  getEpicentrOrder, ourStatusToEpicentrStatus, setEpicentrTTN, advanceEpicentrOrder, cancelEpicentrOrder, epicentrRank,
+} from '../epicentr-api';
 import { getRozetkaOrderStatusInfo, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../rozetka-api';
 import { sendTelegramResult } from '../telegram';
 import { buildCustomerStatusEmail } from '../invoice-email';
@@ -29,7 +31,6 @@ export async function runOutboxHandler(db: Db, row: OutboxRow): Promise<HandlerR
 }
 
 const EPICENTR_AT_OR_PAST_SENT = new Set(['sent', 'received', 'delivered', 'completed', 'closed']);
-const EPICENTR_AT_OR_PAST_CONFIRMED = new Set(['confirmed_by_merchant', ...EPICENTR_AT_OR_PAST_SENT]);
 const epicentrClosed = (code: string) => code.startsWith('canceled') || code.startsWith('closed');
 
 async function pushTtn(db: Db, orderId: string, p: PushTtnPayload): Promise<HandlerResult> {
@@ -50,8 +51,10 @@ async function pushTtn(db: Db, orderId: string, p: PushTtnPayload): Promise<Hand
       if (!live) return { ok: false, skipped: 'Епіцентр не знає такого замовлення' };
       if (epicentrClosed(live.statusCode)) return { ok: false, skipped: `Епіцентр: ${live.statusCode}` };
       if (EPICENTR_AT_OR_PAST_SENT.has(live.statusCode) && !p.force_ttn) return { ok: true }; // уже відправлене — нічого пушити
-      await setEpicentrTTN(id, p.ttn);
-      if (p.fully_shipped && !EPICENTR_AT_OR_PAST_SENT.has(live.statusCode)) await setEpicentrOrderStatus(id, 'sent');
+      // Повна відвантажка — покроково до «Відправлено» (через «Підтверджено»); часткова
+      // чи заміна ЕН — лише номер
+      if (p.fully_shipped && !EPICENTR_AT_OR_PAST_SENT.has(live.statusCode)) await advanceEpicentrOrder(id, 'sent', { ttn: p.ttn, live });
+      else await setEpicentrTTN(id, p.ttn);
       return { ok: true };
     }
     case 'rozetka': {
@@ -110,19 +113,20 @@ async function pushStatus(db: Db, orderId: string, p: PushStatusPayload): Promis
       if (!live) return { ok: false, skipped: 'Епіцентр не знає такого замовлення' };
       if (target === 'canceled_by_merchant') {
         if (epicentrClosed(live.statusCode)) return { ok: true };
-        await setEpicentrOrderStatus(id, target, { reason: 'product_not_available' });
+        // З «Нове» Епіцентр приймає лише canceled — обирає cancelEpicentrOrder
+        await cancelEpicentrOrder(id, { reason: 'product_not_available' });
         return { ok: true };
       }
       if (epicentrClosed(live.statusCode)) return { ok: false, skipped: `Епіцентр: ${live.statusCode}` };
       if (target === 'sent') {
         if (EPICENTR_AT_OR_PAST_SENT.has(live.statusCode)) return { ok: true };
         if (!ttn) return { ok: false, skipped: 'без ЕН Епіцентр «Відправлено» не приймає' };
-        await setEpicentrTTN(id, ttn);
-        await setEpicentrOrderStatus(id, 'sent');
+        await advanceEpicentrOrder(id, 'sent', { ttn, live });
         return { ok: true };
       }
-      if (EPICENTR_AT_OR_PAST_CONFIRMED.has(live.statusCode)) return { ok: true };
-      await setEpicentrOrderStatus(id, target);
+      if (target !== 'confirmed_by_merchant' && target !== 'confirmed') return { ok: false, skipped: `статус Епіцентру ${target} не пушимо` };
+      if (epicentrRank(live.statusCode) >= epicentrRank(target)) return { ok: true };
+      await advanceEpicentrOrder(id, target, { live });
       return { ok: true };
     }
     default:

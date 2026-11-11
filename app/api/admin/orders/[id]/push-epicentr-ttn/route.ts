@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
-import { setEpicentrTTN, setEpicentrOrderStatus } from '../../../../../../lib/epicentr-api';
+import { setEpicentrTTN, getEpicentrOrder, advanceEpicentrOrder, epicentrRank } from '../../../../../../lib/epicentr-api';
 import { withApi } from '../../../../../../lib/api-handler';
 
-// Ручний пуш ТТН в Епіцентр (кнопка в журналі, дзеркало push-prom-ttn). Після
-// ТТН одразу переводимо у «Відправлено», якщо у нас замовлення вже відвантажене.
+// Ручний пуш ТТН в Епіцентр (кнопка в журналі, дзеркало push-prom-ttn). Якщо у
+// нас замовлення вже відвантажене — доводимо до «Відправлено» покроково.
 async function _POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff('admin', 'manager');
   if (!auth.ok) return auth.response;
@@ -25,12 +25,13 @@ async function _POST(_req: NextRequest, { params }: { params: Promise<{ id: stri
     if (!ttn) return NextResponse.json({ error: 'ТТН не вказана' }, { status: 400 });
 
     const epiId = String(order.epicentr_order_id);
-    await setEpicentrTTN(epiId, ttn);
-    if (['shipped', 'delivered'].includes(String(order.status))) {
-      try { await setEpicentrOrderStatus(epiId, 'sent'); } catch (err) {
-        // Статус міг уже бути «sent»/далі — ТТН передано, це головне
-        console.warn('[push-epicentr-ttn] sent status skipped:', err instanceof Error ? err.message : err);
-      }
+    // Відвантажене — покроково до «Відправлено» (через «Підтверджено», ТТН усередині);
+    // інакше чи вже відправлене — лише номер
+    const live = await getEpicentrOrder(epiId);
+    if (['shipped', 'delivered'].includes(String(order.status)) && live && epicentrRank(live.statusCode) >= 0 && epicentrRank(live.statusCode) < epicentrRank('sent')) {
+      await advanceEpicentrOrder(epiId, 'sent', { ttn, live });
+    } else {
+      await setEpicentrTTN(epiId, ttn);
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

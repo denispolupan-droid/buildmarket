@@ -10,10 +10,10 @@
  *      скасовуємо в себе те, що скасував покупець/площадка.
  */
 import {
-  getEpicentrOrders, getEpicentrOrder, epicentrOrderToOurFormat, ourStatusToEpicentrStatus, setEpicentrOrderStatus,
+  getEpicentrOrders, getEpicentrOrder, epicentrOrderToOurFormat, ourStatusToEpicentrStatus, advanceEpicentrOrder, epicentrRank,
   setEpicentrTTN, hasEpicentrToken, epicentrOrderPaid, epicentrHoldLost, epicentrHasContacts,
   EPICENTR_CANCELLED, EPICENTR_TERMINAL,
-  type EpicentrOrder, type EpicentrOrderStatus,
+  type EpicentrOrder,
 } from './epicentr-api';
 import { findCustomerIdByPhone } from './customers';
 import { alertAdmin } from './alert';
@@ -26,11 +26,12 @@ import { createServiceClient, type TableUpdate } from './supabase-service';
 
 const db = createServiceClient();
 
-/** З яких живих статусів Епіцентру допушуємо наш цільовий статус. */
-const REPUSH_FROM: Partial<Record<EpicentrOrderStatus, EpicentrOrderStatus[]>> = {
-  confirmed_by_merchant: ['new'],
-  sent:                  ['new', 'confirmed_by_merchant', 'confirmed'],
-};
+/**
+ * Епіцентр: нове замовлення треба підтвердити або скасувати до 2 годин у робочий
+ * час, інакше компанію можуть тимчасово заблокувати (лист менеджера 11.11.2026).
+ * Нагадуємо, якщо замовлення досі «Нове» через стільки хвилин.
+ */
+const SLA_REMIND_MIN = 75;
 
 export type EpicentrSyncResult = {
   ok: boolean;
@@ -71,12 +72,26 @@ export async function syncEpicentrOrders(): Promise<EpicentrSyncResult> {
 
     // Новий — спільний імпорт (скасовані до імпорту адаптер відсіває сам).
     // Місто й відділення людськими назвами є лише в картці /v6 — беремо її.
-    const res = await importMarketplaceOrder(db, adapter, await withCard(epi));
-    if (res.status === 'created') result.created++;
+    const full = await withCard(epi);
+    const res = await importMarketplaceOrder(db, adapter, full);
+    if (res.status === 'created') {
+      result.created++;
+      if (full.statusCode === 'new') alertNewOrder(full);
+    }
     else if (res.status === 'skipped' || res.status === 'exists') result.skipped++;
   }
 
   return result;
+}
+
+const kyivTime = (d: Date) => d.toLocaleTimeString('uk-UA', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit' });
+
+/** Telegram про нове замовлення Епіцентру з дедлайном підтвердження. */
+function alertNewOrder(epi: EpicentrOrder) {
+  const created = new Date(epi.createdAt);
+  const items = (epi.items ?? []).map(i => `• ${i.title} × ${i.quantity}`).join('\n');
+  alertAdmin(`Епіцентр: нове замовлення ${epi.number} — ${epi.subtotal} ₴`,
+    `${items}\n\nПеревірте наявність і підтвердьте (або скасуйте з причиною) до ${kyivTime(new Date(created.getTime() + 2 * 3600e3))} — ліміт Епіцентру 2 год у робочий час. Контакти покупця з'являться після підтвердження.`);
 }
 
 /** Список + картка /v6 (місто, відділення, контакти після підтвердження). Картка недоступна — лишаємо список. */
@@ -153,13 +168,22 @@ async function reconcileExisting(existing: ExistingRow, listEpi: EpicentrOrder, 
   const epi = needsCard ? await withCard(listEpi) : listEpi;
 
   // Освіжаємо знімок payload (статус, оплата, ТТН), зберігаючи наш _commission і мітку оплати
-  const prevData = existing.epicentr_data as { _commission?: unknown; _paySynced?: boolean } | null;
+  const prevData = existing.epicentr_data as { _commission?: unknown; _paySynced?: boolean; _slaWarned?: boolean } | null;
   const snapshot: Record<string, unknown> = {
     ...(epi as unknown as Record<string, unknown>),
     _commission: prevData?._commission,
     _paySynced:  prevData?._paySynced,
+    _slaWarned:  prevData?._slaWarned,
   };
   const patch: Record<string, unknown> = { epicentr_data: snapshot };
+
+  // Досі «Нове» і в нас, і на Епіцентрі — нагадуємо один раз до спливу 2 годин
+  const ageMin = (Date.now() - new Date(epi.createdAt).getTime()) / 60000;
+  if (existing.status === 'new' && epi.statusCode === 'new' && ageMin >= SLA_REMIND_MIN && !prevData?._slaWarned) {
+    snapshot._slaWarned = true;
+    alertAdmin(`Епіцентр: замовлення ${epi.number} не підтверджене ${Math.round(ageMin)} хв`,
+      `Наш №${existing.order_number}. Підтвердіть або скасуйте до ${kyivTime(new Date(new Date(epi.createdAt).getTime() + 2 * 3600e3))} — інакше Епіцентр може тимчасово заблокувати магазин.`);
+  }
 
   const stubToDrop = needsCard ? await fillBuyerAndAddress(existing, epi, patch, result) : null;
 
@@ -201,30 +225,34 @@ async function reconcileExisting(existing: ExistingRow, listEpi: EpicentrOrder, 
   }
   if (EPICENTR_TERMINAL.includes(epi.statusCode)) return;
 
-  // Допуш ТТН (потрібна ДО статусу sent)
   const ourTtn = existing.tracking_number;
   const epiTtn = epi.address?.shipment?.number ?? null;
-  if (['shipped', 'delivered'].includes(existing.status) && ourTtn && ourTtn !== epiTtn) {
+  const desired = ourStatusToEpicentrStatus(existing.status);
+  if (!desired || desired === 'canceled_by_merchant') return;   // скасування доносить outbox з повторами
+
+  // Допуш статусу покроково (за allowed-statuses): до «Відправлено» — разом із ТТН
+  if (epicentrRank(epi.statusCode) < epicentrRank(desired)) {
+    if (desired === 'sent' && !ourTtn) return;                   // без ТТН Епіцентр відправку не прийме
+    try {
+      const target = desired as 'confirmed_by_merchant' | 'confirmed' | 'sent';
+      const now = await advanceEpicentrOrder(epi.id, target, { ttn: ourTtn, live: epi });
+      result.repushed++;
+      if (target === 'sent') result.ttnRepushed++;
+      log.info('epicentr.status_repushed', { order: existing.order_number, epi: epi.number, from: epi.statusCode, to: now });
+    } catch (err) {
+      log.error('epicentr.status_repush_failed', { order: existing.order_number, epi: epi.number, from: epi.statusCode, to: desired, err: err instanceof Error ? err.message : String(err) });
+    }
+    return;
+  }
+
+  // Уже «Відправлено», але ЕН у кабінеті інша (замінили накладну) — виправляємо номер
+  if (desired === 'sent' && ourTtn && ourTtn !== epiTtn) {
     try {
       await setEpicentrTTN(epi.id, ourTtn);
       result.ttnRepushed++;
-      console.log(`[epicentr-sync] re-pushed TTN ${ourTtn} for order ${epi.number}`);
+      log.info('epicentr.ttn_repushed', { order: existing.order_number, epi: epi.number, ttn: ourTtn });
     } catch (err) {
-      console.error('[epicentr-sync] TTN re-push failed:', epi.id, err);
-    }
-  }
-
-  // Допуш статусу
-  const desired = ourStatusToEpicentrStatus(existing.status);
-  if (desired && desired !== 'canceled_by_merchant' && REPUSH_FROM[desired]?.includes(epi.statusCode)) {
-    try {
-      // Відправка без ТТН Епіцентр відхиляє — не пробуємо
-      if (desired === 'sent' && !ourTtn && !epiTtn) return;
-      await setEpicentrOrderStatus(epi.id, desired);
-      result.repushed++;
-      console.log(`[epicentr-sync] re-pushed status ${desired} for order ${epi.number} (was ${epi.statusCode})`);
-    } catch (err) {
-      console.error('[epicentr-sync] status re-push failed:', epi.id, err);
+      log.error('epicentr.ttn_repush_failed', { order: existing.order_number, epi: epi.number, err: err instanceof Error ? err.message : String(err) });
     }
   }
 }

@@ -217,6 +217,77 @@ export async function setEpicentrOrderStatus(
   await epicentrFetch(`/v2/oms/orders/${orderId}/change-status/to/${status}`, { method: 'POST', body });
 }
 
+/** Порядок «вперед» за процесом Епіцентру (лист менеджера 11.11.2026). */
+const EPI_RANK: Partial<Record<EpicentrOrderStatus, number>> = {
+  new: 0, confirmed_by_merchant: 1, confirmed: 2, sent: 3, delivered: 4, received: 4, completed: 5, closed: 6,
+};
+export const epicentrRank = (s: EpicentrOrderStatus | string | null | undefined): number =>
+  EPI_RANK[s as EpicentrOrderStatus] ?? -1;
+
+export type EpicentrForwardTarget = 'confirmed_by_merchant' | 'confirmed' | 'sent';
+
+/**
+ * Провести замовлення Епіцентру вперед ПОКРОКОВО, як вимагає площадка:
+ *   «Нове» → «Підтверджено продавцем» (відкриваються контакти покупця)
+ *          → «Підтверджено» (деталі узгоджено, готуємо відправку)
+ *          → ТТН → «Відправлено» (Епіцентр зазвичай ставить сам після ТТН).
+ * Стрибати з «Нове» одразу в «Підтверджено» не можна (лист менеджера 11.11),
+ * тому кожен крок — лише якщо він є в allowed-statuses. Ідемпотентно: що вже
+ * пройдено — пропускаємо. Повертає статус Епіцентру після дій.
+ */
+export async function advanceEpicentrOrder(
+  orderId: string,
+  target: EpicentrForwardTarget,
+  opts: { ttn?: string | null; live?: EpicentrOrder | null } = {},
+): Promise<EpicentrOrderStatus | null> {
+  const live = opts.live ?? await getEpicentrOrder(orderId);
+  if (!live) throw new Error(`Епіцентр не знає замовлення ${orderId}`);
+  let cur = live.statusCode;
+  if (epicentrRank(cur) < 0) return cur;            // скасоване/повернення — не чіпаємо
+
+  const goal = epicentrRank(target);
+  for (const step of ['confirmed_by_merchant', 'confirmed'] as const) {
+    if (epicentrRank(step) > goal || epicentrRank(cur) >= epicentrRank(step)) continue;
+    const allowed = await getEpicentrAllowedStatuses(orderId);
+    if (!allowed.includes(step)) {
+      throw new Error(`Епіцентр не дозволяє перехід ${cur} → ${step} (дозволено: ${allowed.join(', ') || '—'})`);
+    }
+    await setEpicentrOrderStatus(orderId, step);
+    cur = step;
+  }
+  if (target !== 'sent' || epicentrRank(cur) >= epicentrRank('sent')) return cur;
+
+  if (!opts.ttn) throw new Error('без ЕН Епіцентр «Відправлено» не приймає');
+  await setEpicentrTTN(orderId, opts.ttn);
+  // Після ТТН статус зазвичай стає «Відправлено» сам — перевіряємо, перш ніж ставити
+  const after = await getEpicentrOrder(orderId);
+  if (after && epicentrRank(after.statusCode) >= epicentrRank('sent')) return after.statusCode;
+  const allowed = await getEpicentrAllowedStatuses(orderId);
+  if (allowed.includes('sent')) { await setEpicentrOrderStatus(orderId, 'sent'); return 'sent'; }
+  return after?.statusCode ?? cur;                  // ТТН внесено; статус Епіцентр змінить сам
+}
+
+/**
+ * Скасування продавцем з причиною. З «Нове» Епіцентр дозволяє лише `canceled`
+ * (перевірено allowed-statuses на 58851611; комісії тоді немає), після
+ * підтвердження — `canceled_by_merchant`. Беремо той, що дозволено зараз.
+ */
+export async function cancelEpicentrOrder(
+  orderId: string,
+  cancel: { reason: EpicentrCancelReason; comment?: string } = { reason: 'product_not_available' },
+): Promise<EpicentrOrderStatus | null> {
+  const allowed = await getEpicentrAllowedStatuses(orderId);
+  const code = allowed.includes('canceled_by_merchant') ? 'canceled_by_merchant'
+    : allowed.includes('canceled') ? 'canceled' : null;
+  if (!code) {
+    const live = await getEpicentrOrder(orderId);
+    if (!live || live.statusCode.startsWith('canceled') || live.statusCode.startsWith('closed')) return live?.statusCode ?? null;
+    throw new Error(`Епіцентр не дозволяє скасування зі статусу ${live.statusCode} (дозволено: ${allowed.join(', ') || '—'})`);
+  }
+  await setEpicentrOrderStatus(orderId, code, cancel);
+  return code;
+}
+
 /** Внести номер ТТН (трекінг + автозавершення за фактом вручення). */
 export async function setEpicentrTTN(orderId: string, number: string): Promise<void> {
   await epicentrFetch(`/v1/oms/orders/${orderId}/shipment-number`, {
@@ -293,16 +364,18 @@ export async function batchUpdateEpicentrOffers(items: EpicentrOfferUpdate[]): P
 /**
  * Наш статус → статус Епіцентру, який маємо пушнути. null — нічого не пушимо
  * (Епіцентр сам веде received/completed за фактом вручення по ТТН).
- *   new        → нічого (щойно імпортували)
- *   confirmed/processing → confirmed_by_merchant
- *   shipped    → sent (потребує ТТН — ставимо перед статусом)
- *   cancelled  → canceled_by_merchant (з причиною)
+ *   new        → нічого (щойно імпортували; спершу перевірити наявність)
+ *   confirmed / awaiting_stock → confirmed_by_merchant («прийняли в роботу» — контакти)
+ *   picking    → confirmed («деталі узгоджено, готуємо відправку»)
+ *   shipped    → sent (через confirmed; ТТН — ставимо перед статусом)
+ *   cancelled  → canceled_by_merchant (з причиною; з «Нове» — canceled, див. cancelEpicentrOrder)
+ * Перехід — лише через advanceEpicentrOrder (покроково, за allowed-statuses).
  */
 export function ourStatusToEpicentrStatus(status: string): EpicentrOrderStatus | null {
   switch (status) {
     case 'confirmed':
-    case 'awaiting_stock':
-    case 'picking':      return 'confirmed_by_merchant';
+    case 'awaiting_stock': return 'confirmed_by_merchant';
+    case 'picking':      return 'confirmed';
     case 'shipped':      return 'sent';
     case 'cancelled':    return 'canceled_by_merchant';
     // delivered: «received»/«completed» Епіцентр ставить сам за трекінгом ТТН
