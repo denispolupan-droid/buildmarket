@@ -5,6 +5,7 @@ import { mpRevertItems, mpApplyItems, mpDriftedSkus, refreshMpBefore, normalizeM
 import { ADJ_CHANNELS, ADJ_CHANNEL_LABEL, buildFactorMap, factorOf } from '../lib/price-adjustments';
 import { targetToChannels } from '../lib/price-adjustments-db';
 import { fromEpicentrId } from '../lib/epicentr-availability';
+import { epicentrErrorCodes } from '../lib/epicentr-api';
 
 describe('звірка комісій Епіцентру з тарифом', () => {
   const rates = new Map([
@@ -108,5 +109,13 @@ describe('переоцінка й акції — канал Епіцентр', (
       items: [{ sku: 'A', epicentr_markup_pct: 17.46 }],
       errors: ['B: epicentr_markup_pct = x'],
     });
+  });
+});
+
+describe('коди помилок пакета /v1/offers', () => {
+  it('живий формат — масив об’єктів; свагер — об’єкт', () => {
+    expect(epicentrErrorCodes([{ item: ['batch_update.item.cache_noop'] }])).toEqual(['batch_update.item.cache_noop']);
+    expect(epicentrErrorCodes({ price: ['too_low'], sku: ['bad'] })).toEqual(['too_low', 'bad']);
+    expect(epicentrErrorCodes(undefined)).toEqual([]);
   });
 });

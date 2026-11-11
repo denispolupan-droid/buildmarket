@@ -12,7 +12,7 @@
  */
 import { createServiceClient } from './supabase-service';
 import { fetchAllRows } from './db-paginate';
-import { batchUpdateEpicentrOffers, EPICENTR_OFFERS_BATCH, type EpicentrOfferUpdate } from './epicentr-api';
+import { batchUpdateEpicentrOffers, epicentrErrorCodes, EPICENTR_OFFERS_BATCH, type EpicentrOfferUpdate } from './epicentr-api';
 import { epicentrOfferPrices } from './marketplace-pricing';
 import { loadFactorMap } from './price-adjustments-db';
 import { factorOf } from './price-adjustments';
@@ -99,7 +99,7 @@ export async function pushEpicentrOffers(opts: { onlySkus?: string[] } = {}): Pr
       if (it.status === 'enqueued' || it.status === 'processed') base.enqueued++;
       else if (it.status === 'forbidden') base.unknown++;
       else {
-        const codes = Object.values(it.errors ?? {}).flat();
+        const codes = epicentrErrorCodes(it.errors);
         if (codes.some(c => /cache_noop|duplicate/.test(c))) base.noop++;
         else { base.errors++; if (errorSamples.length < 5) errorSamples.push(`${it.id}: ${codes.join(', ')}`); }
       }

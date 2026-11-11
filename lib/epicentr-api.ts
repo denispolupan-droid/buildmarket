@@ -336,7 +336,21 @@ export interface EpicentrOfferUpdate {
 export interface EpicentrBatchResult {
   total: number;
   requestId: string;
-  items: { id: number | string; idType: 'product_id' | 'sku'; status: 'skipped' | 'enqueued' | 'processed' | 'forbidden'; errors?: Record<string, string[]> }[];
+  items: { id: number | string; idType: 'product_id' | 'sku'; status: 'skipped' | 'enqueued' | 'processed' | 'forbidden'; errors?: EpicentrItemErrors }[];
+}
+
+/**
+ * Помилки елемента пакета. Свагер описує об'єкт «поле → масив рядків», а живий
+ * API (11.11.2026) віддає МАСИВ таких об'єктів: [{"item":["batch_update.item.cache_noop"]}].
+ * Через це «без змін» рахувалось помилкою (727 «помилок» у першому тіку крона).
+ */
+export type EpicentrItemErrors = Record<string, string[]> | Record<string, string[]>[];
+
+/** Усі коди помилок елемента, незалежно від форми (об'єкт чи масив об'єктів). */
+export function epicentrErrorCodes(errors: EpicentrItemErrors | null | undefined): string[] {
+  if (!errors) return [];
+  const objs = Array.isArray(errors) ? errors : [errors];
+  return objs.flatMap(o => Object.values(o ?? {}).flat()).map(String);
 }
 
 export const EPICENTR_OFFERS_BATCH = 200;
