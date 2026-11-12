@@ -2,6 +2,7 @@
 
 import { Check } from 'lucide-react';
 import { PAYMENT_GROUPS } from '../../../lib/payment-method';
+import { CARRIER_FILTERS } from '../../../lib/carriers';
 import { CHANNEL_LABEL } from './constants';
 import { useOrdersCtx } from './OrdersContext';
 
@@ -77,8 +78,7 @@ export function OrdersTableHeader() {
             ];
             const carrierOpts = [
               { value: '', label: 'Всі', n: sum(carrierCounts) },
-              { value: 'nova', label: 'Нова Пошта', n: carrierCounts.nova ?? 0 },
-              { value: 'rozetka', label: 'Rozetka Доставка', n: carrierCounts.rozetka ?? 0 },
+              ...CARRIER_FILTERS.map(c => ({ value: c.value as string, label: c.label, n: carrierCounts[c.value] ?? 0 })),
             ].filter(o => !o.value || o.n > 0 || carrierFilter === o.value);
             // «Всі» — сума лише sent+unsent: у sentCounts є ще лічильники способів відправки
             const sentOpts = [

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { X, ChevronDown, Search, Check, ClipboardList, ArrowDownUp, Plus } from 'lucide-react';
 import SmartDateInput from '../../components/SmartDateInput';
 import { PAYMENT_GROUPS } from '../../../lib/payment-method';
+import { CARRIER_FILTERS } from '../../../lib/carriers';
 import { CHANNEL_LABEL } from './constants';
 import { rozetkaCabinet } from './helpers';
 import { useOrdersCtx } from './OrdersContext';
@@ -245,10 +246,9 @@ export function OrdersToolbar() {
               value={carrierFilter}
               onChange={v => pushFilters({ carrier: v })}
               total={Object.values(carrierCounts).reduce((s, c) => s + c, 0)}
-              options={[
-                { value: 'nova',    label: 'НП',               n: carrierCounts.nova ?? 0 },
-                { value: 'rozetka', label: 'Rozetka Доставка', n: carrierCounts.rozetka ?? 0 },
-              ].filter(o => o.n > 0 || o.value === carrierFilter)}
+              options={CARRIER_FILTERS
+                .map(c => ({ value: c.value as string, label: c.short, n: carrierCounts[c.value] ?? 0 }))
+                .filter(o => o.n > 0 || o.value === carrierFilter)}
               activeColor="#7C2D12" activeBg="#FFF7ED"
             />
             <MobileFilterSelect
@@ -345,7 +345,7 @@ export function OrdersToolbar() {
           const chips: { key: string; label: string; clear: () => void }[] = [];
           if (initialSearch) chips.push({ key: 'q', label: `Пошук: «${initialSearch}»`, clear: () => { setSearchInput(''); pushFilters({ q: '' }); } });
           if (channelFilter) chips.push({ key: 'channel', label: `Канал: ${CHANNEL_LABEL[channelFilter]?.label ?? channelFilter}`, clear: () => pushFilters({ channel: '' }) });
-          if (carrierFilter) chips.push({ key: 'carrier', label: `Доставка: ${carrierFilter === 'nova' ? 'Нова Пошта' : 'Rozetka Доставка'}`, clear: () => pushFilters({ carrier: '' }) });
+          if (carrierFilter) chips.push({ key: 'carrier', label: `Доставка: ${CARRIER_FILTERS.find(c => c.value === carrierFilter)?.label ?? carrierFilter}`, clear: () => pushFilters({ carrier: '' }) });
           if (payFilter) chips.push({ key: 'pay', label: `Оплата: ${PAYMENT_GROUPS.find(g => g.key === payFilter)?.label ?? payFilter}`, clear: () => pushFilters({ pay: '' }) });
           if (retFilter === 'pending') chips.push({ key: 'ret', label: 'Повернення без рішення', clear: () => pushFilters({ ret: '' }) });
           if (sentFilter) chips.push({ key: 'sent', label: ({

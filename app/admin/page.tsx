@@ -12,6 +12,7 @@ import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/pro
 import { orderSearchOr } from '../../lib/pg-filter';
 import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
+import { carrierFilterOf, NOT_NOVA_DELIVERY_TYPES } from '../../lib/carriers';
 import { PAYMENT_GROUPS, paymentGroupOf, parsePaymentGroup } from '../../lib/payment-method';
 import { kyivBounds, statusDateOrFilter, createdOrFilter, matchesEventDate, matchesCreatedDate } from '../../lib/orders/date-filter';
 import { ORDER_TAB_ORDER, ORDER_TAB_LABELS } from '../../lib/orders/status';
@@ -104,8 +105,10 @@ export default async function AdminPage({
       // Обидва «Rozetka» — і маркетплейсна доставка в точку видачі, і власний
       // договір rz-delivery для замовлень сайту: для менеджера це одні й ті самі
       // точки й один процес здачі, різне лише API накладної.
+      // Правило пунктів — carrierFilterOf (lib/carriers), спільне з лічильниками нижче
       if (carrier === 'rozetka')   q = q.in('delivery_type', [ROZETKA_DELIVERY_TYPE, RZ_DELIVERY_TYPE]);
-      else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${ROZETKA_DELIVERY_TYPE},${RZ_DELIVERY_TYPE},pickup)`);
+      else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${NOT_NOVA_DELIVERY_TYPES.join(',')})`);
+      else if (carrier === 'meest' || carrier === 'ukrposhta') q = q.eq('delivery_type', carrier);
       if (pay) q = q.in('payment_method_code', PAYMENT_GROUPS.find(g => g.key === pay)!.codes);
       if (sent === 'sent')        q = q.not('supplier_sent_at', 'is', null);
       else if (sent === 'unsent') q = q.is('supplier_sent_at', null);
@@ -333,8 +336,8 @@ export default async function AdminPage({
     return acc;
   }, {});
   const carrierCounts = (channelRows ?? []).reduce<Record<string, number>>((acc, r) => {
-    if (r.delivery_type === 'pickup') return acc;
-    const key = (r.delivery_type === ROZETKA_DELIVERY_TYPE || r.delivery_type === RZ_DELIVERY_TYPE) ? 'rozetka' : 'nova';
+    const key = carrierFilterOf(r.delivery_type);
+    if (!key) return acc;
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});

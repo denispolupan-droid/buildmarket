@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isNpTracked, isManualPostalCarrier, looksLikeManualTtn } from '../lib/carriers';
+import { isNpTracked, isManualPostalCarrier, looksLikeManualTtn, carrierFilterOf, NOT_NOVA_DELIVERY_TYPES, CARRIER_FILTERS } from '../lib/carriers';
 import { rozetkaDeliveryTypeFor } from '../lib/rozetka-delivery';
 import { promDeliveryTypeFor } from '../lib/prom-api';
 import { isPromLedDelivery } from '../lib/prom-delivery-state';
@@ -88,5 +88,21 @@ describe('planMergeTtn — Укрпошта/Meest не об\'єднуються 
     const plan = planMergeTtn([o('1', 'meest'), o('2', 'meest')]);
     expect(plan.ok).toBe(false);
     if (!plan.ok) expect(plan.error).toMatch(/кабінеті перевізника/);
+  });
+});
+
+describe('carrierFilterOf — пункти фільтра «Доставка» в журналі', () => {
+  it('Meest і Укрпошта — окремо, не «Нова Пошта» (до 12.11 рахувались як НП)', () => {
+    expect(carrierFilterOf('meest')).toBe('meest');
+    expect(carrierFilterOf('ukrposhta')).toBe('ukrposhta');
+    expect(carrierFilterOf('nova')).toBe('nova');
+    expect(carrierFilterOf('nova_poshta')).toBe('nova');
+    expect(carrierFilterOf('rozetka_delivery')).toBe('rozetka');
+    expect(carrierFilterOf('rz_delivery')).toBe('rozetka');
+    expect(carrierFilterOf('pickup')).toBeNull();
+  });
+  it('запит «nova» виключає всіх, кого carrierFilterOf відносить не до НП', () => {
+    for (const t of NOT_NOVA_DELIVERY_TYPES) expect(carrierFilterOf(t)).not.toBe('nova');
+    expect(CARRIER_FILTERS.map(c => c.value)).toEqual(['nova', 'rozetka', 'meest', 'ukrposhta']);
   });
 });

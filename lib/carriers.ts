@@ -42,6 +42,34 @@ export const MANUAL_CARRIER_LABEL: Record<ManualPostalCarrier, string> = {
 };
 
 /**
+ * Фільтр «Доставка» в журналі замовлень — ОДНЕ правило для лічильників і запиту.
+ * До 12.11.2026 «Нова Пошта» означала «все, крім Rozetka й самовивозу», і
+ * замовлення Meest (поштомати Епіцентру) та Укрпошти рахувались як НП.
+ * Обидва «Rozetka» (точки видачі МП і власний договір rz-delivery) — один пункт:
+ * для менеджера це ті самі точки й один процес здачі. Самовивіз — поза фільтром.
+ */
+export type CarrierFilter = 'nova' | 'rozetka' | 'meest' | 'ukrposhta';
+
+export const CARRIER_FILTERS: readonly { value: CarrierFilter; label: string; short: string }[] = [
+  { value: 'nova',      label: 'Нова Пошта',       short: 'НП' },
+  { value: 'rozetka',   label: 'Rozetka Доставка', short: 'Rozetka Доставка' },
+  { value: 'meest',     label: 'Meest',            short: 'Meest' },
+  { value: 'ukrposhta', label: 'Укрпошта',         short: 'Укрпошта' },
+];
+
+/** Пункт фільтра для delivery_type; null — самовивіз (перевізника немає). */
+export function carrierFilterOf(t: string | null | undefined): CarrierFilter | null {
+  const d = (t ?? '').trim();
+  if (d === 'pickup') return null;
+  if (d === 'rozetka_delivery' || d === 'rz_delivery') return 'rozetka';
+  if (isManualPostalCarrier(d)) return d;
+  return 'nova';
+}
+
+/** delivery_type, що НЕ є Новою Поштою (для запиту «nova» — not in (...)). */
+export const NOT_NOVA_DELIVERY_TYPES = ['rozetka_delivery', 'rz_delivery', 'pickup', ...MANUAL_POSTAL_CARRIERS] as const;
+
+/**
  * Номер накладної на вигляд. Укрпошта — штрихкод із 13 цифр (0500012345678) або
  * міжнародний формат (RR123456789UA); Meest — форматів кілька (Prom показував
  * «723-4228988», API віддає barCode іншого вигляду), тож для нього лише латиниця,
