@@ -8,7 +8,8 @@ export const CHANNEL_LABEL: Record<string, { label: string; color: string; bg: s
   phone:    { label: 'Телефон',  color: 'var(--text-primary)', bg: '#F3F4F6' },
   prom:     { label: 'Prom',     color: '#C2410C', bg: '#FFF7ED' },
   rozetka:  { label: 'Rozetka',  color: '#15803D', bg: '#DCFCE7' },
-  epicentr: { label: 'Епіцентр', color: '#9A3412', bg: '#FFEDD5' },
+  // Фірмовий синій Епіцентру, залитий: світлий синій уже в «Магазину»
+  epicentr: { label: 'Епіцентр', color: 'var(--epicentr-ink)', bg: 'var(--epicentr)' },
 };
 
 // Мітка «той самий покупець» (кандидати на одну ТТН): тони чергуються між
