@@ -28,6 +28,10 @@
       "schedule": "15 7 * * 1"
     },
     {
+      "path": "/api/cron/epicentr-attributes-watch",
+      "schedule": "25 7 * * 1"
+    },
+    {
       "path": "/api/cron/sync-delivery-status",
       "schedule": "*/30 * * * *"
     },

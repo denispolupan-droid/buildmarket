@@ -305,19 +305,39 @@ function optionByAlias(raw: string, options: EpiOption[]): EpiOption | null {
   return null;
 }
 
+/* ── щільність фарб (кг ↔ л) ────────────────────────────────────────────── */
+
+/**
+ * Набори, де Епіцентр вимагає І об'єм, І вагу, а фасування відоме в одному:
+ * «Фарба» (3198). Щільності погоджені власником 10.11.2026: водні фарби 1,45,
+ * алкідні/емалі 1,25, лаки/лазурі/просочення 1,0. До 12.11 правило жило лише в
+ * разовому XML — фід ставив кг = л (щільність 1) і не закривав select-и
+ * «Об'єм»/«Вага» (125/58 карток).
+ */
+export const MASS_VOLUME_SETS: readonly string[] = ['3198'];
+
+export function paintDensity(name: string): number {
+  const n = name.toLowerCase();
+  if (/пф-|алкід|емаль|3 в 1|молотков|ґрунт-емаль|гф-|грунт polifarb/.test(n)) return 1.25;
+  if (/лак|лазур|морилк|антисепт|просочен/.test(n)) return 1.0;
+  return 1.45;
+}
+
 /* ── конвертація чисел під суфікс атрибута ──────────────────────────────── */
 
-export function toUnit(raw: string, suffix: string, title: string): number | null {
+/** density — кг/л для перехресної конвертації маса ↔ об'єм (1, якщо не фарба). */
+export function toUnit(raw: string, suffix: string, title: string, density = 1): number | null {
   const s = raw.toLowerCase().replace(/,/g, '.');
   const n = /максимальн/i.test(title) ? (s.match(/-?\d+(?:\.\d+)?/g)?.map(Number).sort((a, b) => b - a)[0] ?? null) : num(raw);
   if (n == null) return null;
   const sfx = norm(suffix);
   const has = (rx: RegExp) => rx.test(s);
   const isMl = has(/мл/), isL = !isMl && has(/(^|[^а-яa-z])л(?![а-яa-z])/), isKg = has(/кг/), isG = !isKg && has(/(^|[^а-яa-z])г(?![а-яa-z])/);
-  if (sfx === 'л')  return isMl ? n / 1000 : isL ? n : isKg ? n : isG ? n / 1000 : null;
-  if (sfx === 'мл') return isMl ? n : isL ? n * 1000 : isKg ? n * 1000 : isG ? n : null;
-  if (sfx === 'кг') return isKg ? n : isG ? n / 1000 : isL ? n : isMl ? n / 1000 : null;
-  if (sfx === 'г')  return isKg ? n * 1000 : isG ? n : isMl ? n : isL ? n * 1000 : null;
+  const d = density > 0 ? density : 1;
+  if (sfx === 'л')  return isMl ? n / 1000 : isL ? n : isKg ? n / d : isG ? n / 1000 / d : null;
+  if (sfx === 'мл') return isMl ? n : isL ? n * 1000 : isKg ? n * 1000 / d : isG ? n / d : null;
+  if (sfx === 'кг') return isKg ? n : isG ? n / 1000 : isL ? n * d : isMl ? n / 1000 * d : null;
+  if (sfx === 'г')  return isKg ? n * 1000 : isG ? n : isMl ? n * d : isL ? n * 1000 * d : null;
   if (sfx === 'год') return has(/хв/) ? n / 60 : has(/діб|дн|доб/) ? n * 24 : has(/сек/) ? n / 3600 : n;
   if (sfx === 'хв') return has(/год/) ? n * 60 : has(/сек/) ? n / 60 : n;
   if (sfx === 'мм') return has(/(^|[^а-яa-z])см/) ? n * 10 : has(/(^|[^а-яa-z])м(?![а-яa-z])/) && !has(/мм/) ? n * 1000 : n;
@@ -340,6 +360,24 @@ function numericOption(raw: string, options: EpiOption[]): EpiOption | null {
   return cands[0] ?? null;
 }
 
+/**
+ * Найближча опція словника з одиницею («9 л», «12,6 кг») після перерахунку
+ * фасування під її одиницю зі щільністю; похибка до 20 % (як 10.11).
+ */
+export function nearestUnitOption(raw: string, options: EpiOption[], density: number): EpiOption | null {
+  let best: { o: EpiOption; e: number } | null = null;
+  for (const o of options) {
+    const unit = (o.ua.match(/(кг|мл|г|л)(?![а-яa-z])/i)?.[1] ?? '').toLowerCase();
+    const on = num(o.ua);
+    if (!unit || on == null || on <= 0) continue;
+    const target = toUnit(raw, unit, '', density);
+    if (target == null || !(target > 0)) continue;
+    const e = Math.abs(on - target) / target;
+    if (!best || e < best.e) best = { o, e };
+  }
+  return best && best.e <= 0.2 ? best.o : null;
+}
+
 /* ── головна функція ────────────────────────────────────────────────────── */
 
 const SKIP_SYSTEM = new Set(['brand', 'country_of_origin', 'measure', 'ratio', 'weight', 'width', 'height', 'length', 'barcodes']);
@@ -348,7 +386,7 @@ const HAY_LABELS = ['Тип', 'Призначення', 'Особливості'
 const inSet = (rule: { set?: string | string[] }, code: string) =>
   !rule.set || (Array.isArray(rule.set) ? rule.set.includes(code) : rule.set === code);
 
-function selectHits(a: EpiAttribute, raw: string, opts: EpiOption[], title: string): EpiOption[] {
+function selectHits(a: EpiAttribute, raw: string, opts: EpiOption[], title: string, density?: number): EpiOption[] {
   let hits: EpiOption[] = [];
   if (title === 'базовий колір' || title === 'колір') hits = baseColors(raw, opts);
   if (!hits.length && a.type === 'multiselect') {
@@ -361,7 +399,8 @@ function selectHits(a: EpiAttribute, raw: string, opts: EpiOption[], title: stri
     }
   }
   if (!hits.length && a.type === 'select') {
-    const o = optionByAlias(raw, opts) ?? matchOption(raw, opts) ?? matchOption(splitMulti(raw)[0] ?? raw, opts) ?? numericOption(raw, opts);
+    const o = optionByAlias(raw, opts) ?? matchOption(raw, opts) ?? matchOption(splitMulti(raw)[0] ?? raw, opts) ?? numericOption(raw, opts)
+      ?? (density ? nearestUnitOption(raw, opts, density) : null);
     if (o) hits = [o];
   }
   if (!hits.length && a.type === 'multiselect') { const o = numericOption(raw, opts); if (o) hits = [o]; }
@@ -373,6 +412,8 @@ export function mapEpicentrAttributes(setCode: string | null | undefined, p: Epi
   const res: EpiMapResult = { params: [], missingRequired: [], unmatched: [] };
   if (!set) return res;
   const code = set.code;
+  // Фарби: маса ↔ об'єм зі щільністю (MASS_VOLUME_SETS); решта — як було (щільність 1, точний збіг)
+  const density = MASS_VOLUME_SETS.includes(code) ? paintDensity(p.name) : undefined;
 
   const chars: Chars = new Map();
   for (const c of p.characteristics ?? []) if (c.label && c.value) chars.set(norm(c.label), c.value.trim());
@@ -391,12 +432,12 @@ export function mapEpicentrAttributes(setCode: string | null | undefined, p: Epi
     for (const raw of raws) {
       lastRaw = raw;
       if (a.type === 'float') {
-        const n = toUnit(raw, a.suffix, a.title);
+        const n = toUnit(raw, a.suffix, a.title, density ?? 1);
         if (n != null && Number.isFinite(n) && n > 0) { param = { code: a.code, title: a.title, type: a.type, value: String(Math.round(n * 1000) / 1000) }; break; }
       } else if (a.type === 'text') {
         param = { code: a.code, title: a.title, type: a.type, value: raw.slice(0, 500) }; break;
       } else {
-        const hits = selectHits(a, raw, opts, title);
+        const hits = selectHits(a, raw, opts, title, density);
         if (hits.length) { param = { code: a.code, title: a.title, type: a.type, valuecode: hits.map(h => h.code).join(','), value: hits.map(h => h.ua).join(', ') }; break; }
       }
     }
