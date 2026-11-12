@@ -30,6 +30,8 @@ type CardProposal = {
   sources: string[];
   issues: { field: string; message: string }[];
   marketplace: { on_prom: boolean; on_rozetka: boolean; on_epicentr: boolean; rozetka_smart: boolean };
+  markups: { prom_markup_pct: number | null; rozetka_markup_pct: number | null; epicentr_markup_pct: number | null; source: 'sibling' | 'category' | 'none' };
+  package_mm: [number, number, number] | null;
   epicentr: { set: string | null; missingRequired: string[]; unmatched: string[] };
 };
 type CardRun = { proposal: CardProposal; runId: string | null; costUsd: number; durationMs: number };
@@ -299,6 +301,8 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
       if (p.pack_qty) setPackQty(p.pack_qty);
       if (p.img_type) setImgType(p.img_type);
       if (p.characteristics.length) setChars(p.characteristics);
+      // Габарити — лише якщо агент знайшов їх у виробника; інакше поля порожні й діє оцінка
+      if (p.package_mm) { setPkgL(String(p.package_mm[0] / 10)); setPkgW(String(p.package_mm[1] / 10)); setPkgH(String(p.package_mm[2] / 10)); }
       // Ціни ще немає — вона прийде з синку постачальника за supplier_sku.
       // Активний товар без ціни показувати на сайті не можна (чек-лист 14.09.2026).
       setIsActive(false);
@@ -682,7 +686,12 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             // Прапорці площадок: новий товар — як у сусідів по категорії (з чернетки
             // агента), існуючий — з чекбоксів «Площадки» нижче
             ...(isNew
-              ? (cardRun ? cardRun.proposal.marketplace : {})
+              // Націнки — теж із чернетки: у категоріях Prom/Епіцентр їх немає (lib/product-card-rules.proposeMarkups)
+              ? (cardRun ? { ...cardRun.proposal.marketplace, ...(cardRun.proposal.markups.source !== 'none' ? {
+                  prom_markup_pct: cardRun.proposal.markups.prom_markup_pct,
+                  rozetka_markup_pct: cardRun.proposal.markups.rozetka_markup_pct,
+                  epicentr_markup_pct: cardRun.proposal.markups.epicentr_markup_pct,
+                } : {}) } : {})
               : { on_prom: onProm, on_rozetka: onRozetka, rozetka_smart: rozetkaSmart, on_epicentr: onEpicentr }),
           },
           stock: {
@@ -869,7 +878,10 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
                 Площадки як у сусідів категорії: Prom {cardRun.proposal.marketplace.on_prom ? '✓' : '—'} · Rozetka {cardRun.proposal.marketplace.on_rozetka ? '✓' : '—'}
                 {cardRun.proposal.marketplace.rozetka_smart ? ' (Smart)' : ''} · Епіцентр {cardRun.proposal.marketplace.on_epicentr ? '✓' : '—'}
                 {cardRun.proposal.epicentr.set ? `, набір ${cardRun.proposal.epicentr.set}${cardRun.proposal.epicentr.missingRequired.length ? '' : ', обовʼязкові атрибути закриті'}` : ''}.
-                Націнки — з категорії. Товар буде <b>неактивним</b>, доки синк постачальника не підтягне ціну за кодом «{supplierSku || '—'}».
+                Націнки {cardRun.proposal.markups.source === 'sibling' ? 'як у лінійки' : cardRun.proposal.markups.source === 'category' ? 'медіана категорії' : '— НЕ ЗНАЙДЕНО, задайте вручну'}:
+                {' '}Prom {cardRun.proposal.markups.prom_markup_pct ?? '—'} % · Rozetka {cardRun.proposal.markups.rozetka_markup_pct ?? '—'} % · Епіцентр {cardRun.proposal.markups.epicentr_markup_pct ?? '—'} %.
+                {cardRun.proposal.package_mm ? ` Габарити упаковки — від виробника: ${cardRun.proposal.package_mm.map(v => v / 10).join(' × ')} см.` : ''}
+                {' '}Товар буде <b>неактивним</b>, доки синк постачальника не підтягне ціну за кодом «{supplierSku || '—'}».
               </div>
               <div style={{ color: 'var(--text-secondary)' }}>
                 Після «Створити товар»: привʼязка до лінійки й коду постачальника, потім описи, FAQ, keywords і MP-опис обома мовами —

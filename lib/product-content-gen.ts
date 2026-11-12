@@ -4,6 +4,7 @@ import { normalizeCharsDb, loadCharDictionary, facetSpecsFor, facetsToChars, nor
 import { THIN_DESCRIPTION_CHARS } from './seo/thresholds';
 import type { CostSink } from './ai-cost';
 import { languageSlips } from './marketplace-description';
+import { SHORT_DESC_MAX, FULL_DESC_MIN_CHARS, FILLER_WORDS, FILLER_RE, isWastedKeyword } from './content-rules';
 import { createServiceClient, type TableUpdate } from './supabase-service';
 
 // ЄДИНИЙ рушій генерації контенту картки товару. Обидва входи — розділ SEO
@@ -68,9 +69,9 @@ const UA_SCHEMA = {
   type: 'object' as const,
   properties: {
     name_ru:          { type: 'string' as const, description: 'Назва товару російською (бренди/артикули/числа без змін, перекладай лише загальні слова)' },
-    description:      { type: 'string' as const, description: 'Короткий опис 150-220 символів' },
+    description:      { type: 'string' as const, description: `Короткий опис до ${SHORT_DESC_MAX} символів, 1–2 речення` },
     description_full: { type: 'string' as const, description: 'Повний опис 250-400 слів, 4-6 абзаців через порожній рядок, без markdown/заголовків' },
-    keywords:         { type: 'string' as const, description: '12-18 пошукових фраз через кому, малими літерами' },
+    keywords:         { type: 'string' as const, description: '10-15 пошукових фраз через кому, малими літерами, без «купити/ціна/оптом» і міст' },
     characteristics: {
       type: 'array' as const,
       items: {
@@ -183,7 +184,7 @@ export async function getCategoryLabels(supabase: Db, categorySlug: string | nul
   return { required: [], optional: Object.values(counts).sort((a, b) => b.n - a.n).slice(0, 15).map(c => c.label), facets: [] };
 }
 
-function buildUaPrompt(
+export function buildUaPrompt(
   product: GenProduct,
   categoryName: string,
   categoryLabels: CategoryLabelSpec,
@@ -206,16 +207,18 @@ function buildUaPrompt(
 ${boost}Згенеруй ПОВНИЙ контент картки товару (усе — українською; name_ru — російською):
 
 1. name_ru — назва товару російською. Бренди, артикули, торгові марки та всі числа/одиниці лишай БЕЗ змін; перекладай лише загальні слова. Без кальки.
-2. description — короткий опис 150-220 символів: що це і для чого, без води.
-3. description_full — розгорнутий опис 250-400 слів, кілька абзаців (порожній рядок між ними), без markdown і заголовків, у такому порядку:
+2. description — короткий опис ДО ${SHORT_DESC_MAX} символів (1–2 речення, піде в meta description): що це + фасування + для чого. Без «${FILLER_WORDS.join('/')}».
+3. description_full — розгорнутий опис 250-400 слів (не менше ${FULL_DESC_MIN_CHARS} знаків), кілька абзаців (порожній рядок між ними), без markdown і заголовків, у такому порядку:
    - призначення і ключова властивість (почни з бренду й назви + фасування);
    - сфера застосування: конкретні поверхні, типи робіт, внутрішні/зовнішні;
    - технічні характеристики своїми словами, вплетені в речення (не списком);
    - переваги перед звичайними аналогами (без назв конкурентів);
    - ПЕРЕДОСТАННІЙ абзац дослівно: "Замовити [тип товару] [назва] можна з доставкою Новою Поштою або в точки видачі ROZETKA по всій Україні — у Київ, Харків, Дніпро, Одесу, Львів та інші міста. Доступна оплата при отриманні або передоплата на зручних для вас умовах.";
-   - ОСТАННІЙ абзац дослівно: "Оформлюйте замовлення в інтернет-магазині FIXLINE і отримайте якісний [за потреби країна-прикметник] продукт швидко та без зайвих клопотів.".
+   - ОСТАННІЙ абзац дослівно: "Оформлюйте замовлення в інтернет-магазині FIXLINE — відправимо швидко та без зайвих клопотів.".
+   Абзаци про доставку, оплату й FIXLINE — лише для сайту: у фіди маркетплейсів іде окремий опис (description_mp).
+   Ніде не вживай «${FILLER_WORDS.join('/')}» — стандарт вимагає фактів замість прикметників.
    Не вигадуй точних числових значень, яких не можеш обґрунтувати з назви/категорії${product.facts ? ' або з ФАКТІВ нижче' : ''}.
-4. keywords — 12-18 пошукових фраз через кому, малими літерами: бренд, тип товару, синоніми, "купити [назва]", "[назва] ціна", "[назва] оптом", "[назва] Київ".
+4. keywords — 10-15 пошукових фраз через кому, малими літерами: бренд, модель, тип товару, синоніми, сфера застосування ("герметик для ванної"). БЕЗ "купити/ціна/оптом" і без міст — фід Prom такі фрази викидає, а SEO-стандарт забороняє міста.
 5. characteristics — рядки label/value з реальних даних назви (6-16 рядків).${labelsHint}   БЕЗ ДУБЛІВ: кожен параметр рівно один рядок; не вигадуй власних синонімічних ярликів поза списками вище. АЛЕ якщо ярлик є в ОБОВ'ЯЗКОВОМУ списку — заповнюй його завжди, навіть якщо він схожий на інший (напр., «Основа» І «Матеріал» разом, коли обидва обов'язкові). Апостроф скрізь звичайний (Об'єм). Порядок: спочатку специфічні, останніми — Бренд і Країна виробника.
 6. faq — 3-4 пари питання/відповідь під реальні пошукові запити (витрата, як застосовувати, чим відрізняється, скільки сохне). Відповіді 2-3 речення, тільки з наданих/загальновідомих даних.${facetsHint}
 
@@ -295,9 +298,25 @@ export async function generateUA(
   const facetKeys = new Set(categoryLabels.facets.map(f => normCharKey(f.label)));
   gen.characteristics = [...facetChars, ...(gen.characteristics ?? []).filter(c => !facetKeys.has(normCharKey(c.label)))];
   delete gen.facets;
-  const words = gen.description_full.split(/\s+/).filter(Boolean).length;
-  if (words < 120) throw new Error(`description too short: ${words} words`);
+  // Межі — ті самі константи, що й у SEO-аудиті (lib/content-rules)
+  const fullLen = gen.description_full.trim().length;
+  if (fullLen < FULL_DESC_MIN_CHARS) throw new Error(`description_full закороткий: ${fullLen} < ${FULL_DESC_MIN_CHARS} знаків`);
+  gen.description = fitShortDescription(gen.description);
+  gen.keywords = gen.keywords.split(',').map(k => k.trim()).filter(k => k && !isWastedKeyword(k)).join(', ');
   return gen;
+}
+
+/**
+ * Короткий опис у межах стандарту: «вода» (якісний/надійний) — геть, довше за
+ * SHORT_DESC_MAX — обрізаємо по реченню чи слову (meta однаково ріже до межі).
+ */
+export function fitShortDescription(text: string): string {
+  let t = text.trim();
+  if (FILLER_RE.test(t)) t = t.replace(/\s*(якісн|надійн)[\p{L}]*/giu, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.])/g, '$1').trim();
+  if (t.length <= SHORT_DESC_MAX) return t;
+  const cut = t.slice(0, SHORT_DESC_MAX);
+  const dot = cut.lastIndexOf('. ');
+  return (dot > SHORT_DESC_MAX * 0.6 ? cut.slice(0, dot + 1) : cut.replace(/\s+\S*$/, '')).trim();
 }
 
 /** RU-переклад текстових полів (Haiku). Назву не перекладаємо (name_ru з UA-виклику). */

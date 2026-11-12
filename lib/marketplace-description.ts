@@ -17,7 +17,7 @@ export function mpDescription(p: {
   description_full?: string | null;
   description?: string | null;
 }): string {
-  return (p.description_mp?.trim() || p.description_full?.trim() || p.description?.trim() || '');
+  return (p.description_mp?.trim() || stripShopParagraphs(p.description_full) || stripShopParagraphs(p.description) || '');
 }
 
 export function mpDescriptionRu(p: {
@@ -25,7 +25,19 @@ export function mpDescriptionRu(p: {
   description_full_ru?: string | null;
   description_ru?: string | null;
 }): string {
-  return (p.description_mp_ru?.trim() || p.description_full_ru?.trim() || p.description_ru?.trim() || '');
+  return (p.description_mp_ru?.trim() || stripShopParagraphs(p.description_full_ru) || stripShopParagraphs(p.description_ru) || '');
+}
+
+/**
+ * Запасний текст (опис сайту) без абзаців про магазин, доставку й посилання:
+ * агент сайту дописує їх дослівно («…доставкою Новою Поштою…», «…в інтернет-
+ * магазині FIXLINE…»), а модерація площадок за них блокує поле. Страховка на
+ * випадок, коли description_mp ще порожній (аудит 12.11.2026).
+ */
+function stripShopParagraphs(text: string | null | undefined): string {
+  const t = text?.trim();
+  if (!t) return '';
+  return t.split(/\n\s*\n/).filter(par => isMpDescriptionClean(par)).join('\n\n').trim();
 }
 
 /** Стоп-сигнали модерації: те, за що Rozetka блокує поле опису. */

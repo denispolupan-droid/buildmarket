@@ -9,6 +9,7 @@ import { createServiceClient } from '../../../lib/supabase-service';
 import { factorOf, hasPromo, totalFactor } from '../../../lib/price-adjustments';
 import { loadFactorMap } from '../../../lib/price-adjustments-db';
 import { withApi } from '../../../lib/api-handler';
+import { COMMERCIAL_KEYWORD_RE } from '../../../lib/content-rules';
 
 const serviceClient = createServiceClient();
 
@@ -635,7 +636,7 @@ async function _GET(request: NextRequest) {
       const numericParamsXml = numericParts.join('\n');
 
       // ── Keywords ───────────────────────────────────────────────────────────
-      const COMMERCIAL = /купити|купить|купіт|ціна|цена|цену|оптом|украина|україна/i;
+      const COMMERCIAL = COMMERCIAL_KEYWORD_RE;   // lib/content-rules — те саме правило, що й в агентів
       const filterCommercial = (kw: string) =>
         dedup([kw]).split(', ').filter(k => !COMMERCIAL.test(k)).join(', ');
 

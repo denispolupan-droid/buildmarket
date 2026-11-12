@@ -6,7 +6,7 @@ import { getCategoryLabels } from './product-content-gen';
 import { normalizeCharsDb } from './characteristics';
 import { logAgentRun, markAgentRunOutcome } from './ai-agent-runs';
 import { mapEpicentrAttributes } from './epicentr-attributes';
-import { canonicalVolume, majority, matchBrand, mostCommon, validateProposal, type ProposalIssue } from './product-card-rules';
+import { canonicalVolume, majority, matchBrand, mostCommon, parsePackageMm, proposeMarkups, validateProposal, type MarkupRow, type ProposalIssue, type ProposedMarkups } from './product-card-rules';
 
 /**
  * Агент заведення картки товару: з назви в прайсі постачальника збирає
@@ -54,6 +54,10 @@ export type CardProposal = {
   issues: ProposalIssue[];
   /** Прапорці площадок — як у більшості сусідів по категорії (націнки лишаємо порожніми: їх дає категорія). */
   marketplace: { on_prom: boolean; on_rozetka: boolean; on_epicentr: boolean; rozetka_smart: boolean };
+  /** Націнки Prom/Rozetka/Епіцентр — як у лінійки або медіана категорії (у категоріях Prom/Епіцентр порожні). */
+  markups: ProposedMarkups;
+  /** Габарити упаковки з сайту/техлиста виробника, мм; null — підставиться оцінка lib/package-dims. */
+  package_mm: [number, number, number] | null;
   /** Перевірка фіду Епіцентру для цієї категорії: чи закриються обовʼязкові атрибути цими характеристиками. */
   epicentr: { set: string | null; missingRequired: string[]; unmatched: string[] };
 };
@@ -158,6 +162,7 @@ const SYSTEM_PROMPT = `Ти — товарознавець інтернет-ма
 - Цифри (витрата, час висихання, щільність, температура) — лише з технічного листа виробника чи його сайту. Шукай у вебі: «<бренд> <модель> технічний лист» / «TDS» / «технические характеристики». Якщо не знайшов — не вигадуй, лиши ярлик без значення й напиши в notes, чого бракує. У sources — URL сторінок, звідки взяв дані.
 - Фасування у форматі «280 мл», «750 мл», «5 кг», «1 л». pack_qty — скільки штук у коробці/упаковці від постачальника, якщо це видно з назви (напр. «12 шт»); інакше 1.
 - name_ru — та сама назва російською: бренди, артикули, числа лишай без змін.
+- package_dims_mm — габарити УПАКОВКИ одиниці товару в мм («Д×Ш×В»), лише якщо вони прямо вказані на сайті чи в техлисті виробника (часто в розділі «Упаковка/Логістика»). Не знайшов — порожній рядок: оцінку за видом товару система підставить сама.
 - Усе українською (крім name_ru). Без markdown.
 
 === ЯК ПРАЦЮВАТИ ===
@@ -207,8 +212,9 @@ const CUSTOM_TOOLS: Anthropic.Tool[] = [
         confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
         notes: { type: 'string', description: 'Для менеджера: що перевірити, чого не знайшов, чому обрав категорію' },
         sources: { type: 'array', items: { type: 'string' }, description: 'URL джерел технічних даних' },
+        package_dims_mm: { type: 'string', description: 'Габарити упаковки «Д×Ш×В» у мм із сайту/техлиста виробника; порожній рядок, якщо не вказано' },
       },
-      required: ['brand', 'category_slug', 'product_type', 'name', 'name_ru', 'volume', 'pack_qty', 'characteristics', 'sibling_sku', 'confidence', 'notes', 'sources'],
+      required: ['brand', 'category_slug', 'product_type', 'name', 'name_ru', 'volume', 'pack_qty', 'characteristics', 'sibling_sku', 'confidence', 'notes', 'sources', 'package_dims_mm'],
       additionalProperties: false,
     },
     strict: true,
@@ -227,6 +233,7 @@ type SubmitInput = {
   brand: string; category_slug: string; product_type: string; name: string; name_ru: string;
   volume: string; pack_qty: number; characteristics: { label: string; value: string }[];
   sibling_sku: string; confidence: 'high' | 'medium' | 'low'; notes: string; sources: string[];
+  package_dims_mm?: string;
 };
 
 // ── Запуск ──────────────────────────────────────────────────────────────────
@@ -325,13 +332,17 @@ export async function proposeProductCard(input: CardInput, opts?: { createdBy?: 
   const category = categorySlugs.has(submit.category_slug) ? submit.category_slug : '';
   const volume = canonicalVolume(submit.volume) ?? submit.volume.trim();
 
-  type Neighbour = { img_type: string | null; on_prom: boolean | null; on_rozetka: boolean | null; on_epicentr: boolean | null; rozetka_smart: boolean | null };
-  const [normalized, spec, { data: neighbours }] = await Promise.all([
+  type Neighbour = MarkupRow & { img_type: string | null; on_prom: boolean | null; on_rozetka: boolean | null; on_epicentr: boolean | null; rozetka_smart: boolean | null };
+  const siblingSku = submit.sibling_sku?.trim() || null;
+  const [normalized, spec, { data: neighbours }, { data: siblingRow }] = await Promise.all([
     normalizeCharsDb(db, submit.characteristics.filter(c => c.label.trim() && c.value.trim()), category || null),
     getCategoryLabels(db, category || null),
     category
-      ? db.from('products').select('img_type, on_prom, on_rozetka, on_epicentr, rozetka_smart').eq('category_slug', category).eq('is_active', true).limit(50)
+      ? db.from('products').select('img_type, on_prom, on_rozetka, on_epicentr, rozetka_smart, prom_markup_pct, rozetka_markup_pct').eq('category_slug', category).eq('is_active', true).limit(50)
       : Promise.resolve({ data: [] as Neighbour[] }),
+    siblingSku
+      ? db.from('products').select('prom_markup_pct, rozetka_markup_pct').eq('sku', siblingSku).maybeSingle()
+      : Promise.resolve({ data: null as MarkupRow | null }),
   ]);
   const nb = (neighbours ?? []) as Neighbour[];
   const characteristics = normalized.map(c => ({ label: c.label, value: c.value }));
@@ -347,6 +358,8 @@ export async function proposeProductCard(input: CardInput, opts?: { createdBy?: 
   };
   // Фід Епіцентру віддає лише атрибути зі словників: перевіряємо наперед, чи
   // закриються обовʼязкові цими характеристиками — щоб менеджер дозаповнив у формі.
+  const markups = proposeMarkups((siblingRow ?? null) as MarkupRow | null, nb);
+  const packageMm = parsePackageMm(submit.package_dims_mm);
   const epiSet = ctx.categories.find(c => c.slug === category)?.epicentr_category_code ?? null;
   const epi = mapEpicentrAttributes(epiSet, {
     name: submit.name, volume, characteristics,
@@ -369,12 +382,14 @@ export async function proposeProductCard(input: CardInput, opts?: { createdBy?: 
     pack_qty: Math.max(1, Math.round(submit.pack_qty || 1)),
     characteristics,
     img_type: imgType,
-    sibling_sku: submit.sibling_sku?.trim() || null,
+    sibling_sku: siblingSku,
     confidence: submit.confidence,
     notes: submit.notes.trim(),
     sources: submit.sources.filter(s => /^https?:\/\//.test(s)).slice(0, 8),
     issues: [],
     marketplace,
+    markups,
+    package_mm: packageMm,
     epicentr,
   };
   proposal.issues = validateProposal(proposal, { categorySlugs, requiredLabels: spec.required });
@@ -384,6 +399,7 @@ export async function proposeProductCard(input: CardInput, opts?: { createdBy?: 
   if (!categorySlugs.has(submit.category_slug) && submit.category_slug) {
     proposal.issues.unshift({ field: 'category_slug', message: `Модель запропонувала неіснуючу категорію «${submit.category_slug}»` });
   }
+  if (markups.source === 'none') proposal.issues.push({ field: 'markups', message: 'Немає з чого взяти націнки (ні лінійки, ні сусідів з націнкою) — задайте Prom/Rozetka/Епіцентр вручну, інакше ціна на площадках буде без прибутку' });
   if (brandPick.isNew) proposal.issues.push({ field: 'brand', message: `Бренду «${brandPick.brand}» ще немає в каталозі — перевірте написання` });
 
   const durationMs = Date.now() - started;

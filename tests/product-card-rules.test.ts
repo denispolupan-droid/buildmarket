@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canonicalVolume, majority, matchBrand, mostCommon, validateProposal } from '../lib/product-card-rules';
+import { canonicalVolume, majority, matchBrand, mostCommon, parsePackageMm, proposeMarkups, validateProposal } from '../lib/product-card-rules';
 
 describe('majority', () => {
   it('більшість сусідів вирішує; без сусідів — fallback', () => {
@@ -60,5 +60,28 @@ describe('validateProposal', () => {
     expect(fields).toContain('name');
     expect(fields).toContain('category_slug');
     expect(issues.find(i => i.field === 'characteristics')?.message).toContain('Основа');
+  });
+});
+
+describe('proposeMarkups — націнки нової картки', () => {
+  it('як у лінійки; Епіцентр = Prom (рішення 11.11)', () => {
+    expect(proposeMarkups({ prom_markup_pct: '21.4', rozetka_markup_pct: '12.00' }, []))
+      .toEqual({ prom_markup_pct: 21.4, rozetka_markup_pct: 12, epicentr_markup_pct: 21.4, source: 'sibling' });
+  });
+  it('без лінійки — медіана категорії (null не рахуємо)', () => {
+    const n = [{ prom_markup_pct: 20, rozetka_markup_pct: 10 }, { prom_markup_pct: 25, rozetka_markup_pct: 12 }, { prom_markup_pct: null, rozetka_markup_pct: null }, { prom_markup_pct: 30, rozetka_markup_pct: 11 }];
+    expect(proposeMarkups(null, n)).toEqual({ prom_markup_pct: 25, rozetka_markup_pct: 11, epicentr_markup_pct: 25, source: 'category' });
+  });
+  it('нема ні лінійки, ні сусідів з націнкою — none (форма попередить)', () => {
+    expect(proposeMarkups({ prom_markup_pct: null, rozetka_markup_pct: null }, [{ prom_markup_pct: null, rozetka_markup_pct: null }]).source).toBe('none');
+  });
+});
+
+describe('parsePackageMm', () => {
+  it('різні записи габаритів', () => {
+    expect(parsePackageMm('230x55x55')).toEqual([230, 55, 55]);
+    expect(parsePackageMm('310 × 65 × 65 мм')).toEqual([310, 65, 65]);
+    expect(parsePackageMm('')).toBeNull();
+    expect(parsePackageMm('230x55')).toBeNull();
   });
 });

@@ -81,3 +81,42 @@ export function validateProposal(p: {
   if (missing.length) issues.push({ field: 'characteristics', message: `Не заповнено обовʼязкові: ${missing.join(', ')}` });
   return issues;
 }
+
+// ── Націнки нового товару ────────────────────────────────────────────────────
+
+export type MarkupRow = { prom_markup_pct: number | string | null; rozetka_markup_pct: number | string | null };
+export type ProposedMarkups = {
+  prom_markup_pct: number | null; rozetka_markup_pct: number | null; epicentr_markup_pct: number | null;
+  source: 'sibling' | 'category' | 'none';
+};
+
+const num = (v: unknown): number | null => (v == null || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null);
+function median(xs: number[]): number | null {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return Math.round((s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) * 100) / 100;
+}
+
+/**
+ * Націнки для нової картки. У категоріях націнки Prom і Епіцентру ПОРОЖНІ (є лише
+ * Rozetka), ціна там тримається на націнці товару — без неї новий товар ішов на
+ * Prom/Епіцентр за «вхід + комісія», без прибутку (12.11.2026: 3 такі товари).
+ * Беремо як у лінійки (sibling), інакше медіану по категорії. Епіцентр = Prom —
+ * рішення власника 11.11.2026 («наценка як на Prom»).
+ */
+export function proposeMarkups(sibling: MarkupRow | null, neighbours: MarkupRow[]): ProposedMarkups {
+  const sp = num(sibling?.prom_markup_pct), sr = num(sibling?.rozetka_markup_pct);
+  if (sp != null || sr != null) return { prom_markup_pct: sp, rozetka_markup_pct: sr, epicentr_markup_pct: sp, source: 'sibling' };
+  const p = median(neighbours.map(n => num(n.prom_markup_pct)).filter((v): v is number => v != null));
+  const r = median(neighbours.map(n => num(n.rozetka_markup_pct)).filter((v): v is number => v != null));
+  if (p == null && r == null) return { prom_markup_pct: null, rozetka_markup_pct: null, epicentr_markup_pct: null, source: 'none' };
+  return { prom_markup_pct: p, rozetka_markup_pct: r, epicentr_markup_pct: p, source: 'category' };
+}
+
+/** «230x55x55», «230 × 55 × 55 мм» → [230, 55, 55] (мм); інакше null. */
+export function parsePackageMm(raw: string | null | undefined): [number, number, number] | null {
+  const n = (raw ?? '').replace(/,/g, '.').match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  if (n.length !== 3 || n.some(v => !(v > 0 && v <= 5000))) return null;
+  return n.map(v => Math.round(v)) as [number, number, number];
+}
