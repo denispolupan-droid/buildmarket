@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isNpTracked, isManualPostalCarrier, looksLikeManualTtn, carrierFilterOf, NOT_NOVA_DELIVERY_TYPES, CARRIER_FILTERS } from '../lib/carriers';
+import { isNpTracked, isManualPostalCarrier, looksLikeManualTtn, carrierFilterOf, NOT_NOVA_DELIVERY_TYPES, CARRIER_FILTERS, parseCarrierFilters, carrierDeliveryTypeFilter, type CarrierFilter } from '../lib/carriers';
 import { rozetkaDeliveryTypeFor } from '../lib/rozetka-delivery';
 import { promDeliveryTypeFor } from '../lib/prom-api';
 import { isPromLedDelivery } from '../lib/prom-delivery-state';
@@ -104,5 +104,27 @@ describe('carrierFilterOf — пункти фільтра «Доставка» �
   it('запит «nova» виключає всіх, кого carrierFilterOf відносить не до НП', () => {
     for (const t of NOT_NOVA_DELIVERY_TYPES) expect(carrierFilterOf(t)).not.toBe('nova');
     expect(CARRIER_FILTERS.map(c => c.value)).toEqual(['nova', 'rozetka', 'meest', 'ukrposhta']);
+  });
+});
+
+describe("кілька пунктів «Доставка» — одна умова на delivery_type", () => {
+  const TYPES = ["nova", "nova_poshta", "rozetka_delivery", "rz_delivery", "meest", "ukrposhta", "pickup", "courier"];
+  const matches = (f: ReturnType<typeof carrierDeliveryTypeFilter>, t: string) =>
+    !f || (f.op === "in" ? f.types.includes(t) : !f.types.includes(t));
+  it("збігається з carrierFilterOf для будь-якого набору пунктів", () => {
+    const all = CARRIER_FILTERS.map(c => c.value);
+    for (let mask = 1; mask < 1 << all.length; mask++) {
+      const sel = all.filter((_, i) => mask & (1 << i)) as CarrierFilter[];
+      const f = carrierDeliveryTypeFilter(sel);
+      for (const t of TYPES) {
+        const k = carrierFilterOf(t);
+        expect(matches(f, t), `${sel.join(",")} / ${t}`).toBe(k !== null && sel.includes(k));
+      }
+    }
+  });
+  it("розбір адреси: невідоме відкидається, порядок — як у меню", () => {
+    expect(parseCarrierFilters("meest,rozetka,foo")).toEqual(["rozetka", "meest"]);
+    expect(parseCarrierFilters("")).toEqual([]);
+    expect(carrierDeliveryTypeFilter([])).toBeNull();
   });
 });

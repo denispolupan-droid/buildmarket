@@ -81,6 +81,12 @@ export function parsePaymentGroup(param: string | null | undefined): PaymentGrou
   return '';
 }
 
+/** ?pay=cod,online → обрані групи без повторів (мультивибір у журналі, 12.11.2026). */
+export function parsePaymentGroups(param: string | null | undefined): PaymentGroupKey[] {
+  const keys = new Set((param ?? '').split(',').map(s => parsePaymentGroup(s.trim())).filter(Boolean) as PaymentGroupKey[]);
+  return PAYMENT_GROUPS.map(g => g.key).filter(k => keys.has(k));
+}
+
 export type PaymentSource = {
   channel_code?: string | null;
   prom_data?: Record<string, unknown> | null;

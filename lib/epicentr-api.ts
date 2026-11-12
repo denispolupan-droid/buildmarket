@@ -533,6 +533,18 @@ export function epicentrHasContacts(order: Pick<EpicentrOrder, 'address'>): bool
   return Boolean((a?.phone ?? '').trim() || (a?.recipient?.phone ?? '').trim());
 }
 
+/**
+ * Платник за рахунком (ТОВ/ФОП), якого покупець вказав при оформленні з оплатою
+ * «Рахунок» (12.11.2026, №26111077 «ТОВ Єдрон»). Є лише в картці /v6 і лише після
+ * підтвердження — у списку /v4 цих полів немає. ЄДРПОУ (8) або ІПН (10) цифр.
+ */
+export function epicentrPayer(order: Pick<EpicentrOrder, 'address'>): { name: string; govNumber: string } | null {
+  const name = (order.address?.payerName ?? '').replace(/\s+/g, ' ').trim();
+  const govNumber = (order.address?.govNumber ?? '').replace(/\s/g, '');
+  if (!name || !/^(\d{8}|\d{10})$/.test(govNumber)) return null;
+  return { name, govNumber };
+}
+
 function humanName(o: { title?: string; name?: string } | undefined): string | null {
   return (o?.title ?? o?.name ?? '').toString().trim() || null;
 }

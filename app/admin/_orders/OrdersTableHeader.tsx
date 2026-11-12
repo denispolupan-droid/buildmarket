@@ -45,9 +45,21 @@ export function OrdersTableHeader() {
             const funnel = (filled: boolean) => (
               <svg width="11" height="11" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
             );
-            const flt = (key: 'channel' | 'carrier' | 'pay' | 'sent', label: string, current: string, options: { value: string; label: string; n: number }[], apply: (v: string) => void) => {
+            // multi — кілька значень через кому (канал, доставка, оплата; 12.11.2026):
+            // клік перемикає пункт і меню лишається відкритим, «Всі» — скидає.
+            // «Склад» — одиничний вибір: там змішані два різні виміри.
+            const flt = (key: 'channel' | 'carrier' | 'pay' | 'sent', label: string, current: string, options: { value: string; label: string; n: number }[], apply: (v: string) => void, multi = false) => {
               const active = !!current;
               const open = hdrMenu === key;
+              const picked = new Set(current ? current.split(',') : []);
+              const isOn = (v: string) => (v ? picked.has(v) : !current);
+              const choose = (v: string) => {
+                if (!multi || !v) { setHdrMenu(null); apply(v); return; }
+                const next = new Set(picked);
+                if (next.has(v)) next.delete(v); else next.add(v);
+                // Порядок — як у меню, щоб адреса не залежала від порядку кліків
+                apply(options.map(o => o.value).filter(x => x && next.has(x)).join(','));
+              };
               return (
                 <span className="oc-th-filter">
                   <button type="button" className={`oc-th-funnel${active ? ' active' : ''}${open ? ' open' : ''}`}
@@ -58,9 +70,9 @@ export function OrdersTableHeader() {
                   {open && (
                     <div role="menu" className="oc-th-menu">
                       {options.map(o => (
-                        <button type="button" role="menuitemradio" aria-checked={current === o.value} key={o.value || '_all'}
-                          className={`oc-th-menu-item${current === o.value ? ' active' : ''}`}
-                          onClick={() => { setHdrMenu(null); apply(o.value); }}>
+                        <button type="button" role={multi && o.value ? 'menuitemcheckbox' : 'menuitemradio'} aria-checked={isOn(o.value)} key={o.value || '_all'}
+                          className={`oc-th-menu-item${isOn(o.value) ? ' active' : ''}`}
+                          onClick={() => choose(o.value)}>
                           <span>{o.label}</span><span className="oc-th-menu-n">{o.n}</span>
                         </button>
                       ))}
@@ -70,16 +82,18 @@ export function OrdersTableHeader() {
               );
             };
             const sum = (m: Record<string, number>) => Object.values(m).reduce((s, c) => s + c, 0);
+            // Обраний пункт лишається в меню навіть із нулем — щоб його можна було зняти
+            const has = (cur: string, v: string) => cur.split(',').includes(v);
             const channelOpts = [
               { value: '', label: 'Всі', n: sum(channelCounts) },
               ...Object.entries(CHANNEL_LABEL)
-                .filter(([v]) => (channelCounts[v] ?? 0) > 0 || channelFilter === v)
+                .filter(([v]) => (channelCounts[v] ?? 0) > 0 || has(channelFilter, v))
                 .map(([v, c]) => ({ value: v, label: c.label, n: channelCounts[v] ?? 0 })),
             ];
             const carrierOpts = [
               { value: '', label: 'Всі', n: sum(carrierCounts) },
               ...CARRIER_FILTERS.map(c => ({ value: c.value as string, label: c.label, n: carrierCounts[c.value] ?? 0 })),
-            ].filter(o => !o.value || o.n > 0 || carrierFilter === o.value);
+            ].filter(o => !o.value || o.n > 0 || has(carrierFilter, o.value));
             // «Всі» — сума лише sent+unsent: у sentCounts є ще лічильники способів відправки
             const sentOpts = [
               { value: '', label: 'Всі', n: (sentCounts.sent ?? 0) + (sentCounts.unsent ?? 0) },
@@ -92,7 +106,7 @@ export function OrdersTableHeader() {
             const payOpts = [
               { value: '', label: 'Всі', n: sum(payCounts) },
               ...PAYMENT_GROUPS
-                .filter(g => (payCounts[g.key] ?? 0) > 0 || payFilter === g.key)
+                .filter(g => (payCounts[g.key] ?? 0) > 0 || has(payFilter, g.key))
                 .map(g => ({ value: g.key, label: g.label, n: payCounts[g.key] ?? 0 })),
             ];
             const th = (key: string, label: string, style?: React.CSSProperties) => {
@@ -120,15 +134,15 @@ export function OrdersTableHeader() {
                 <span style={{ flex: '0 1 calc(50% - 266px)', minWidth: 0 }}>{th('contact', 'Клієнт')}</span>
                 <span style={{ width: '84px', flexShrink: 0, textAlign: 'right', paddingRight: '24px', boxSizing: 'border-box' }}>{th('total_price', 'Сума')}</span>
                 {/* Колонки з лійкою — без overflow: hidden, інакше меню обрізалось би */}
-                <span className={carrierFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ flex: 1, minWidth: '200px', whiteSpace: 'nowrap' }}>{th('delivery_type', 'Доставка')}{flt('carrier', 'доставка', carrierFilter, carrierOpts, v => pushFilters({ carrier: v }))}</span>
+                <span className={carrierFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ flex: 1, minWidth: '200px', whiteSpace: 'nowrap' }}>{th('delivery_type', 'Доставка')}{flt('carrier', 'доставка', carrierFilter, carrierOpts, v => pushFilters({ carrier: v }), true)}</span>
                 {/* 118px — рівно як у комірки статусу в рядку (.oc-status). Було 104,
                     і заголовок стояв на 14px правіше за плашку під ним. */}
                 <span style={{ width: '118px', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>{th('status', 'Статус')}</span>
                 {/* 76 і 58 px — ширше за «Відпр.», бо в цих двох є лійка; комірки
                     рядка нижче мають ті самі ширини */}
-                <span className={channelFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '76px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('channel_code', 'Канал')}{flt('channel', 'канал', channelFilter, channelOpts, v => pushFilters({ channel: v }))}</span>
+                <span className={channelFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '76px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('channel_code', 'Канал')}{flt('channel', 'канал', channelFilter, channelOpts, v => pushFilters({ channel: v }), true)}</span>
                 <span className={sentFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '96px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('fulfillment_mode', 'Склад')}{flt('sent', 'склад', sentFilter, sentOpts, v => pushFilters({ sent: v }))}</span>
-                <span className={payFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '58px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('payment_method_code', 'Опл.')}{flt('pay', 'оплата', payFilter, payOpts, v => pushFilters({ pay: v }))}</span>
+                <span className={payFilter ? 'oc-th-cell filtered' : 'oc-th-cell'} style={{ width: '58px', flexShrink: 0, whiteSpace: 'nowrap' }}>{th('payment_method_code', 'Опл.')}{flt('pay', 'оплата', payFilter, payOpts, v => pushFilters({ pay: v }), true)}</span>
                 <span style={{ width: '34px', flexShrink: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>Дзв.</span>
                 <div style={{ width: '14px', flexShrink: 0 }} />
               </>

@@ -10,10 +10,8 @@ import { SMART_TARIFF_KEY, parseSmartTariff } from '../../lib/rozetka-smart-tari
 import { ROZETKA_DELIVERY_TARIFF_KEY, parseRozetkaDeliveryTariff } from '../../lib/rozetka-delivery-tariff';
 import { PROM_DELIVERY_TARIFF_KEY, parsePromDeliveryTariff } from '../../lib/prom-delivery-fee';
 import { orderSearchOr } from '../../lib/pg-filter';
-import { ROZETKA_DELIVERY_TYPE } from '../../lib/rozetka-delivery';
-import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
-import { carrierFilterOf, NOT_NOVA_DELIVERY_TYPES } from '../../lib/carriers';
-import { PAYMENT_GROUPS, paymentGroupOf, parsePaymentGroup } from '../../lib/payment-method';
+import { carrierFilterOf, carrierDeliveryTypeFilter, parseCarrierFilters } from '../../lib/carriers';
+import { PAYMENT_GROUPS, paymentGroupOf, parsePaymentGroups } from '../../lib/payment-method';
 import { kyivBounds, statusDateOrFilter, createdOrFilter, matchesEventDate, matchesCreatedDate } from '../../lib/orders/date-filter';
 import { ORDER_TAB_ORDER, ORDER_TAB_LABELS } from '../../lib/orders/status';
 import { createServiceClient } from '../../lib/supabase-service';
@@ -47,8 +45,13 @@ export default async function AdminPage({
     pay: payParam, ret: retParam, sent: sentParam,
   } = await searchParams;
   const search  = (qParam ?? '').trim();
-  const channel = channelParam ?? '';
-  const carrier = carrierParam ?? '';
+  // Канал, доставка й оплата — мультивибір через кому (?carrier=rozetka,meest,
+  // 12.11.2026); старі посилання з одним значенням працюють як і раніше.
+  // Коди каналу йдуть у PostgREST in(...) — лише [a-z0-9_].
+  const channels = [...new Set((channelParam ?? '').split(',').map(s => s.trim()).filter(s => /^[a-z0-9_]+$/.test(s)))];
+  const carriers = parseCarrierFilters(carrierParam);
+  const channel = channels.join(',');
+  const carrier = carriers.join(',');
   // Чи надіслано постачальнику (orders.supplier_sent_at): фільтр колонки «Відпр.»
   // + спосіб відправки (orders.fulfillment_mode): склад / постачальник / змішана — у тому ж
   // меню колонки «Відправка» (06.11.2026)
@@ -57,7 +60,8 @@ export default async function AdminPage({
   // (див. міграцію 099). Фільтрувати по payment_type не можна: у частини
   // замовлень маркетплейсів він розходиться з фактичним способом оплати.
   // Фільтр — групою (Накладений / Онлайн / Рахунок / Інше), див. PAYMENT_GROUPS.
-  const pay = parsePaymentGroup(payParam);
+  const pays = parsePaymentGroups(payParam);
+  const pay = pays.join(',');
   // Зріз «повернення без рішення» (див. applyReturnPendingFilter нижче)
   const ret = retParam === 'pending' ? 'pending' : '';
   // Сортування — кліком по заголовку колонки журналу (15.10.2026); тут — білий
@@ -99,17 +103,17 @@ export default async function AdminPage({
     if (dateOr) q = q.or(dateOr);
     if (!opts?.ignoreFacets) {
       // Замовлення з сайту історично лежать і як 'website', і як NULL
-      if (channel === 'website') q = q.or('channel_code.is.null,channel_code.eq.website');
-      else if (channel)          q = q.eq('channel_code', channel);
+      if (channels.includes('website')) q = q.or(`channel_code.is.null,channel_code.in.(${channels.join(',')})`);
+      else if (channels.length)        q = q.in('channel_code', channels);
       // Самовивіз перевізника не має і не потрапляє в жоден фільтр (як carrierOf у клієнті)
       // Обидва «Rozetka» — і маркетплейсна доставка в точку видачі, і власний
       // договір rz-delivery для замовлень сайту: для менеджера це одні й ті самі
       // точки й один процес здачі, різне лише API накладної.
       // Правило пунктів — carrierFilterOf (lib/carriers), спільне з лічильниками нижче
-      if (carrier === 'rozetka')   q = q.in('delivery_type', [ROZETKA_DELIVERY_TYPE, RZ_DELIVERY_TYPE]);
-      else if (carrier === 'nova') q = q.not('delivery_type', 'in', `(${NOT_NOVA_DELIVERY_TYPES.join(',')})`);
-      else if (carrier === 'meest' || carrier === 'ukrposhta') q = q.eq('delivery_type', carrier);
-      if (pay) q = q.in('payment_method_code', PAYMENT_GROUPS.find(g => g.key === pay)!.codes);
+      const dt = carrierDeliveryTypeFilter(carriers);
+      if (dt?.op === 'in')          q = q.in('delivery_type', dt.types);
+      else if (dt?.op === 'not_in') q = q.not('delivery_type', 'in', `(${dt.types.join(',')})`);
+      if (pays.length) q = q.in('payment_method_code', PAYMENT_GROUPS.filter(g => pays.includes(g.key)).flatMap(g => g.codes));
       if (sent === 'sent')        q = q.not('supplier_sent_at', 'is', null);
       else if (sent === 'unsent') q = q.is('supplier_sent_at', null);
       else if (sent)              q = q.eq('fulfillment_mode', sent);

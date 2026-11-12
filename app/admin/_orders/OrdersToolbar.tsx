@@ -344,9 +344,11 @@ export function OrdersToolbar() {
           const fmtD = (d: string) => d.length >= 10 ? `${d.slice(8, 10)}.${d.slice(5, 7)}` : d;
           const chips: { key: string; label: string; clear: () => void }[] = [];
           if (initialSearch) chips.push({ key: 'q', label: `Пошук: «${initialSearch}»`, clear: () => { setSearchInput(''); pushFilters({ q: '' }); } });
-          if (channelFilter) chips.push({ key: 'channel', label: `Канал: ${CHANNEL_LABEL[channelFilter]?.label ?? channelFilter}`, clear: () => pushFilters({ channel: '' }) });
-          if (carrierFilter) chips.push({ key: 'carrier', label: `Доставка: ${CARRIER_FILTERS.find(c => c.value === carrierFilter)?.label ?? carrierFilter}`, clear: () => pushFilters({ carrier: '' }) });
-          if (payFilter) chips.push({ key: 'pay', label: `Оплата: ${PAYMENT_GROUPS.find(g => g.key === payFilter)?.label ?? payFilter}`, clear: () => pushFilters({ pay: '' }) });
+          // Мультивибір (через кому) — підписи через « + »
+          const names = (cur: string, nameOf: (v: string) => string | undefined) => cur.split(',').map(v => nameOf(v) ?? v).join(' + ');
+          if (channelFilter) chips.push({ key: 'channel', label: `Канал: ${names(channelFilter, v => CHANNEL_LABEL[v]?.label)}`, clear: () => pushFilters({ channel: '' }) });
+          if (carrierFilter) chips.push({ key: 'carrier', label: `Доставка: ${names(carrierFilter, v => CARRIER_FILTERS.find(c => c.value === v)?.label)}`, clear: () => pushFilters({ carrier: '' }) });
+          if (payFilter) chips.push({ key: 'pay', label: `Оплата: ${names(payFilter, v => PAYMENT_GROUPS.find(g => g.key === v)?.label)}`, clear: () => pushFilters({ pay: '' }) });
           if (retFilter === 'pending') chips.push({ key: 'ret', label: 'Повернення без рішення', clear: () => pushFilters({ ret: '' }) });
           if (sentFilter) chips.push({ key: 'sent', label: ({
             sent: 'Постачальнику: надіслано', unsent: 'Постачальнику: ще не надіслано',
@@ -420,14 +422,19 @@ function MobileFilterSelect({ label, allLabel, value, onChange, options, total, 
 }) {
   const current = options.find(o => o.value === value);
   const active = Boolean(value);
+  // Кілька значень (обрано на десктопі лійкою, через кому): нативний <select>
+  // одиничний — показуємо «N обрано», вибір пункту замінює набір одним значенням
+  const multiN = !current && value.includes(',') ? value.split(',').length : 0;
+  const multiTitle = multiN ? value.split(',').map(v => options.find(o => o.value === v)?.label ?? v).join(' + ') : '';
   return (
-    <label className={`oc-mfilter${active ? ' is-active' : ''}${className ? ' ' + className : ''}`} title={active ? (current?.label ?? value) : label}
+    <label className={`oc-mfilter${active ? ' is-active' : ''}${className ? ' ' + className : ''}`} title={active ? (multiTitle || current?.label || value) : label}
       style={active ? { color: activeColor ?? 'var(--navy)', background: activeBg ?? 'var(--blue-bg)', borderColor: activeColor ?? 'var(--navy)' } : undefined}>
       {icon}
-      <span className="oc-mfilter__text">{active ? (current?.short ?? current?.label ?? value) : label}</span>
+      <span className="oc-mfilter__text">{active ? (multiN ? `${label}: ${multiN}` : (current?.short ?? current?.label ?? value)) : label}</span>
       <ChevronDown size={13} aria-hidden />
       <select value={value} onChange={e => onChange(e.target.value)} aria-label={label}>
         <option value="">{total == null ? allLabel : `${allLabel} (${total})`}</option>
+        {multiN > 0 && <option value={value}>{multiTitle}</option>}
         {options.map(o => <option key={o.value} value={o.value}>{o.n == null ? o.label : `${o.label} (${o.n})`}</option>)}
       </select>
     </label>

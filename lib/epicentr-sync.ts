@@ -11,7 +11,7 @@
  */
 import {
   getEpicentrOrders, getEpicentrOrder, epicentrOrderToOurFormat, ourStatusToEpicentrStatus, advanceEpicentrOrder, epicentrRank,
-  setEpicentrTTN, hasEpicentrToken, getEpicentrBillingInvoice, epicentrOrderPaid, epicentrHoldLost, epicentrHasContacts,
+  setEpicentrTTN, hasEpicentrToken, getEpicentrBillingInvoice, epicentrOrderPaid, epicentrHoldLost, epicentrHasContacts, epicentrPayer,
   EPICENTR_CANCELLED, EPICENTR_TERMINAL,
   type EpicentrOrder,
 } from './epicentr-api';
@@ -62,7 +62,7 @@ export async function syncEpicentrOrders(): Promise<EpicentrSyncResult> {
   for (const epi of orders) {
     const { data: existing } = await db
       .from('orders')
-      .select('id, order_number, status, payment_confirmed, total_price, comment, epicentr_data, tracking_number, status_history, contact, phone, email, delivery_address, delivery_city_name, customer_id')
+      .select('id, order_number, status, payment_confirmed, total_price, comment, epicentr_data, tracking_number, status_history, contact, phone, email, delivery_address, delivery_city_name, customer_id, company')
       .eq('epicentr_order_id', epi.id)
       .maybeSingle();
 
@@ -137,6 +137,7 @@ type ExistingRow = {
   status_history: { status: string; at: string; by: string }[] | null;
   contact: string | null; phone: string | null; email: string | null;
   delivery_address: string | null; delivery_city_name: string | null; customer_id: string | null;
+  company: string | null;
 };
 
 const PLACEHOLDER_CONTACT = 'Клієнт Епіцентр';
@@ -178,6 +179,36 @@ async function fillBuyerAndAddress(existing: ExistingRow, epi: EpicentrOrder, pa
   return null;
 }
 
+/**
+ * Платник за рахунком → рахунок на підприємство без ручного вводу (12.11.2026):
+ * orders.company + invoice_as_company, а реквізити — у картку контрагента
+ * (lib/invoice-buyer бере їх звідти). Є картка з таким ЄДРПОУ — переносимо
+ * замовлення на неї (взаєморозрахунки ведуться по підприємству); ні — дописуємо
+ * юр. назву й ЄДРПОУ в картку покупця, лише в порожні поля.
+ */
+async function fillPayer(existing: ExistingRow, epi: EpicentrOrder, patch: Record<string, unknown>) {
+  const payer = epicentrPayer(epi);
+  if (!payer) return;
+  patch.company = payer.name;
+  patch.invoice_as_company = true;
+  const custId = (patch.customer_id as string | undefined) ?? existing.customer_id;
+  const { data: byTax } = await db.from('customers').select('id').eq('tax_number', payer.govNumber).order('created_at').limit(1);
+  const known = byTax?.[0]?.id ?? null;
+  if (known) {
+    if (known !== custId) patch.customer_id = known;
+  } else if (custId) {
+    const { data: c } = await db.from('customers').select('company, legal_name, tax_number').eq('id', custId).maybeSingle();
+    if (c && !c.tax_number) {
+      const upd: TableUpdate<'customers'> = { tax_number: payer.govNumber };
+      if (!c.legal_name) upd.legal_name = payer.name;
+      if (!c.company) upd.company = payer.name;
+      const { error } = await db.from('customers').update(upd).eq('id', custId).is('tax_number', null);
+      if (error) log.warn('epicentr.payer_fill_failed', { customer: custId, err: error.message });
+    }
+  }
+  log.info('epicentr.payer_filled', { order: existing.order_number, epi: epi.number, gov: payer.govNumber, linked: Boolean(known) });
+}
+
 /** Видаляє клієнта-заглушку, якщо на ньому не лишилось замовлень (виклик — після перенесення). */
 async function dropStubCustomer(stubId: string) {
   const { count, error: cntErr } = await db.from('orders').select('id', { count: 'exact', head: true }).eq('customer_id', stubId);
@@ -189,17 +220,21 @@ async function dropStubCustomer(stubId: string) {
 async function reconcileExisting(existing: ExistingRow, listEpi: EpicentrOrder, result: EpicentrSyncResult) {
   // Епіцентр віддає контакти покупця лише після підтвердження продавцем, а місто й
   // відділення — лише в картці /v6. Поки чогось бракує — читаємо картку.
+  const prevData = existing.epicentr_data as { _commission?: unknown; _paySynced?: boolean; _slaWarned?: boolean; _payerChecked?: boolean } | null;
   const live = !['cancelled', 'delivered'].includes(existing.status) && !EPICENTR_TERMINAL.includes(listEpi.statusCode);
-  const needsCard = live && (!existing.phone || !existing.delivery_address);
+  // Оплата за рахунком: платника (ТОВ/ФОП, ЄДРПОУ) Епіцентр віддає лише в картці —
+  // читаємо її, поки не перевірили після відкриття контактів (_payerChecked)
+  const needsPayer = listEpi.address?.shipment?.paymentProvider === 'invoice' && !existing.company && !prevData?._payerChecked;
+  const needsCard = live && (!existing.phone || !existing.delivery_address || needsPayer);
   const epi = needsCard ? await withCard(listEpi) : listEpi;
 
   // Освіжаємо знімок payload (статус, оплата, ТТН), зберігаючи наш _commission і мітку оплати
-  const prevData = existing.epicentr_data as { _commission?: unknown; _paySynced?: boolean; _slaWarned?: boolean } | null;
   const snapshot: Record<string, unknown> = {
     ...(epi as unknown as Record<string, unknown>),
     _commission: prevData?._commission,
     _paySynced:  prevData?._paySynced,
     _slaWarned:  prevData?._slaWarned,
+    _payerChecked: prevData?._payerChecked,
   };
   const patch: Record<string, unknown> = { epicentr_data: snapshot };
 
@@ -212,6 +247,11 @@ async function reconcileExisting(existing: ExistingRow, listEpi: EpicentrOrder, 
   }
 
   const stubToDrop = needsCard ? await fillBuyerAndAddress(existing, epi, patch, result) : null;
+  // Картку справді прочитали (є контакти) — платник або є, або його не буде
+  if (needsPayer && epi !== listEpi && epicentrHasContacts(epi)) {
+    snapshot._payerChecked = true;
+    await fillPayer(existing, epi, patch);
+  }
 
   // Пізня оплата: онлайн-оплата (або холд на картці) з'являється ПІСЛЯ створення
   // замовлення. Ставимо один раз (_paySynced) — ручне зняття оплати не перебиваємо.

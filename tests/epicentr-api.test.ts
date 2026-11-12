@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   epicentrOrderToOurFormat, epicentrPaymentType, epicentrDeliveryType, ourStatusToEpicentrStatus,
   buildEpicentrComment, EPICENTR_CANCELLED, type EpicentrOrder,
-  epicentrOrderPaid, epicentrHoldLost, epicentrOfficeLine, epicentrHasContacts,
+  epicentrOrderPaid, epicentrHoldLost, epicentrOfficeLine, epicentrHasContacts, epicentrPayer,
 } from '../lib/epicentr-api';
 import { epicentrPrice, epicentrMargin, EPICENTR_PAYMENT_FEE_PCT } from '../lib/marketplace-pricing';
 import { epicentrAvailabilityOf, toEpicentrId, fromEpicentrId } from '../lib/epicentr-availability';
@@ -336,5 +336,21 @@ describe('epicentr-images — адреси статичних JPEG', () => {
     expect(jpegKeyFor('aura/x-1')).toBe('epicentr/aura/x-1.jpg');
     expect(staticJpegUrl('дніпро-м/5596-207')).toMatch(/\/img\/products\/epicentr\/%D0%B4%D0%BD%D1%96%D0%BF%D1%80%D0%BE-%D0%BC\/5596-207\.jpg$/);
     expect(dynamicJpegUrl('aura/x-1')).toMatch(/\/api\/epicentr\/img\/aura\/x-1\.jpg$/);
+  });
+});
+
+describe("epicentrPayer — платник за рахунком з картки /v6", () => {
+  const card = (payerName: string | null, govNumber: string | null) => ({ address: { payerName, govNumber } }) as never;
+  it("ТОВ з ЄДРПОУ (№26111077)", () => {
+    expect(epicentrPayer(card("ТОВ Єдрон", "45292949"))).toEqual({ name: "ТОВ Єдрон", govNumber: "45292949" });
+  });
+  it("ФОП з ІПН (10 цифр), пробіли прибираються", () => {
+    expect(epicentrPayer(card("  ФОП  Іванов ", "3198 107136"))).toEqual({ name: "ФОП Іванов", govNumber: "3198107136" });
+  });
+  it("без назви чи з кривим кодом — немає платника", () => {
+    expect(epicentrPayer(card(null, "45292949"))).toBeNull();
+    expect(epicentrPayer(card("ТОВ Х", "123"))).toBeNull();
+    expect(epicentrPayer(card("ТОВ Х", "123456789"))).toBeNull();
+    expect(epicentrPayer({ address: {} } as never)).toBeNull();
   });
 });

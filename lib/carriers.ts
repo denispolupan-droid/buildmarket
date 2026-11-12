@@ -69,6 +69,32 @@ export function carrierFilterOf(t: string | null | undefined): CarrierFilter | n
 /** delivery_type, що НЕ є Новою Поштою (для запиту «nova» — not in (...)). */
 export const NOT_NOVA_DELIVERY_TYPES = ['rozetka_delivery', 'rz_delivery', 'pickup', ...MANUAL_POSTAL_CARRIERS] as const;
 
+/** delivery_type кожного пункту, крім «nova» (вона — «все інше»). */
+const CARRIER_DELIVERY_TYPES: Record<Exclude<CarrierFilter, 'nova'>, readonly string[]> = {
+  rozetka: ['rozetka_delivery', 'rz_delivery'],
+  meest: ['meest'],
+  ukrposhta: ['ukrposhta'],
+};
+
+/** ?carrier=rozetka,meest → обрані пункти (невідомі відкидаються, порядок — як у CARRIER_FILTERS). */
+export function parseCarrierFilters(raw: string | null | undefined): CarrierFilter[] {
+  const want = new Set((raw ?? '').split(',').map(s => s.trim()));
+  return CARRIER_FILTERS.map(c => c.value).filter(v => want.has(v));
+}
+
+/**
+ * Кілька пунктів фільтра «Доставка» (12.11.2026: друк ТТН Rozetka + Meest з одного
+ * відділення) → одна умова на delivery_type. З «nova» — «not in» без типів інших
+ * обраних пунктів (НП = все, крім Rozetka/Meest/Укрпошти/самовивозу), без неї — «in».
+ * Той самий результат, що й carrierFilterOf по кожному рядку (тест у carriers.test).
+ */
+export function carrierDeliveryTypeFilter(sel: readonly CarrierFilter[]): { op: 'in' | 'not_in'; types: string[] } | null {
+  if (!sel.length) return null;
+  const others = sel.filter((c): c is Exclude<CarrierFilter, 'nova'> => c !== 'nova').flatMap(c => CARRIER_DELIVERY_TYPES[c]);
+  if (sel.includes('nova')) return { op: 'not_in', types: NOT_NOVA_DELIVERY_TYPES.filter(t => !others.includes(t)) };
+  return { op: 'in', types: others };
+}
+
 /**
  * Номер накладної на вигляд. Укрпошта — штрихкод із 13 цифр (0500012345678) або
  * міжнародний формат (RR123456789UA); Meest — форматів кілька (Prom показував
