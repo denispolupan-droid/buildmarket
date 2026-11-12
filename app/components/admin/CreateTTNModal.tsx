@@ -194,6 +194,9 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   const [senderWhOpen,  setSenderWhOpen]  = useState(false);
 
   const [weightLines,   setWeightLines]   = useState<WeightLine[]>([]);
+  // Коробка з габаритів товарів (lib/package-dims): поштомат — підставляємо в
+  // порожні поля; звичайне відділення — лише підказка (у НП не передаємо)
+  const [autoBox, setAutoBox] = useState<{ dims: [number, number, number]; label: string; volumetricKg: number } | null>(null);
   const [weightLoading, setWeightLoading] = useState(false);
   // Місця відправлення, як у кабінеті НП: у кожного своя вага й габарити — НП
   // рахує об'ємну вагу по кожному окремо (OptionsSeat). Одне місце — перший рядок:
@@ -210,6 +213,14 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
   // Габарити місць: усі або жодного (тоді НП візьме лише вагу); для поштомату — обов'язково
   const anyDims = seatRows.some(r => r.width || r.height || r.length);
   const needSeatDims = isPostomat || (multiSeat && anyDims);
+  // Поштомат: порожні габарити першого місця — з підібраної коробки (НП: Ш, В, Д)
+  const row0Empty = !seatRows[0].width && !seatRows[0].height && !seatRows[0].length;
+  useEffect(() => {
+    if (!isPostomat || !autoBox || !row0Empty) return;
+    setSeatField(0, 'length', String(autoBox.dims[0]));
+    setSeatField(0, 'width', String(autoBox.dims[1]));
+    setSeatField(0, 'height', String(autoBox.dims[2]));
+  }, [isPostomat, autoBox, row0Empty, setSeatField]);
   const [cost,          setCost]          = useState(String(Math.ceil(order.total_price)));
   const [description,   setDescription]   = useState('Будівельні матеріали');
 
@@ -346,6 +357,7 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
       .then(d => {
         setWeightLines(d.lines ?? []);
         if (d.totalWeightKg > 0) setAutoWeight(d.totalWeightKg);
+        if (d.box) setAutoBox(d.box);
       })
       .finally(() => setWeightLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -913,7 +925,19 @@ export default function CreateTTNModal({ order, onClose, onCreated }: Props) {
                   <div><label style={lbl}>Висота</label> <input style={inp} type="number" min="1" step="1" placeholder="см" value={seatRows[0].height} onChange={e => setSeatField(0, 'height', e.target.value)} /></div>
                   <div><label style={lbl}>Довжина</label><input style={inp} type="number" min="1" step="1" placeholder="см" value={seatRows[0].length} onChange={e => setSeatField(0, 'length', e.target.value)} /></div>
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>Поштомат вимагає габарити для створення ТТН</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                  Поштомат вимагає габарити для створення ТТН{autoBox ? ` · підставлено коробку ${autoBox.label} за габаритами товарів` : ''}
+                </div>
+              </div>
+            )}
+
+            {/* Звичайне відділення: габарити НЕ передаємо (рішення власника 12.11) —
+                оцінка з запасом підняла б об'ємну вагу, а доплатив би покупець;
+                відділення поміряє посилку саме. Лише підказка, яка коробка вийде. */}
+            {!isPostomat && !multiSeat && autoBox && (
+              <div style={{ marginTop: '8px', fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                Орієнтовно коробка {autoBox.label} {autoBox.dims.join('×')} см — об&apos;ємна вага ≈ {String(autoBox.volumetricKg).replace('.', ',')} кг
+                {autoBox.volumetricKg > totalWeight && totalWeight > 0 ? ' (більша за фактичну — пакуйте щільніше)' : ''}. У НП габарити не передаємо — відділення поміряє саме.
               </div>
             )}
           </section>

@@ -4717,6 +4717,9 @@ export type Database = {
           on_prom: boolean | null
           on_rozetka: boolean | null
           pack_qty: number
+          package_height_mm: number | null
+          package_length_mm: number | null
+          package_width_mm: number | null
           product_type: string | null
           prom_markup_pct: number | null
           prom_portal_url: string | null
@@ -4771,6 +4774,9 @@ export type Database = {
           on_prom?: boolean | null
           on_rozetka?: boolean | null
           pack_qty?: number
+          package_height_mm?: number | null
+          package_length_mm?: number | null
+          package_width_mm?: number | null
           product_type?: string | null
           prom_markup_pct?: number | null
           prom_portal_url?: string | null
@@ -4825,6 +4831,9 @@ export type Database = {
           on_prom?: boolean | null
           on_rozetka?: boolean | null
           pack_qty?: number
+          package_height_mm?: number | null
+          package_length_mm?: number | null
+          package_width_mm?: number | null
           product_type?: string | null
           prom_markup_pct?: number | null
           prom_portal_url?: string | null

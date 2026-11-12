@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { EPICENTR_MEEST_LABEL, meestSeatProblem, type EpicentrMeestProvider, type ParcelBoxCell } from '../../../lib/epicentr-meest';
@@ -39,6 +39,9 @@ export default function EpicentrMeestTtnModal({ order, onClose, onCreated }: Pro
   const [declared, setDeclared] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Коробка, підібрана з габаритів товарів (lib/package-dims); поки людина не правила — підставляємо її
+  const [autoBox, setAutoBox] = useState<{ dims: [number, number, number]; label: string } | null>(null);
+  const dimsTouched = useRef(false);
 
   useEffect(() => {
     fetch(`/api/admin/orders/${order.id}/epicentr-meest-ttn`)
@@ -60,9 +63,18 @@ export default function EpicentrMeestTtnModal({ order, onClose, onCreated }: Pro
       body: JSON.stringify({ items: order.items.map(i => ({ sku: i.sku, qty: i.qty })) }),
     })
       .then(r => r.json())
-      .then((d: { totalWeightKg?: number }) => { if ((d.totalWeightKg ?? 0) > 0) setWeight(String(d.totalWeightKg)); })
+      .then((d: { totalWeightKg?: number; box?: { dims: [number, number, number]; label: string } | null }) => {
+        if ((d.totalWeightKg ?? 0) > 0) setWeight(String(d.totalWeightKg));
+        if (d.box) setAutoBox(d.box);
+      })
       .catch(() => { /* вагу введуть руками */ });
   }, [order.items]);
+
+  // Підібрана коробка перекриває коробку «за замовчуванням» — але не ручні правки
+  useEffect(() => {
+    if (!autoBox || !info || dimsTouched.current) return;
+    setLength(String(autoBox.dims[0])); setWidth(String(autoBox.dims[1])); setHeight(String(autoBox.dims[2]));
+  }, [autoBox, info]);
 
   const n = (s: string) => parseFloat(s.replace(',', '.'));
   const seat = { weightKg: n(weight), lengthCm: n(length), widthCm: n(width), heightCm: n(height) };
@@ -92,7 +104,7 @@ export default function EpicentrMeestTtnModal({ order, onClose, onCreated }: Pro
     <label style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '5px' }}>{label}</div>
       <div style={{ position: 'relative' }}>
-        <input value={v} onChange={e => set(e.target.value)} inputMode="decimal"
+        <input value={v} onChange={e => { if (set !== setWeight && set !== setDeclared) dimsTouched.current = true; set(e.target.value); }} inputMode="decimal"
           style={{ width: '100%', height: '38px', padding: '0 34px 0 10px', boxSizing: 'border-box', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '14px' }} />
         <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: 'var(--text-muted)' }}>{suffix}</span>
       </div>
@@ -138,7 +150,7 @@ export default function EpicentrMeestTtnModal({ order, onClose, onCreated }: Pro
             {field(height, setHeight, 'Висота', 'см')}
           </div>
           <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.45, marginTop: '-6px' }}>
-            Оцінка — сума замовлення; від неї Meest рахує страхування (0,5 % понад 200 ₴).
+            {autoBox ? `Коробка ${autoBox.label} (${autoBox.dims.join('×')} см) — підібрана за габаритами товарів. ` : ''}Оцінка — сума замовлення; від неї Meest рахує страхування (0,5 % понад 200 ₴).
           </div>
 
           {info && problem && (weight || length) && (

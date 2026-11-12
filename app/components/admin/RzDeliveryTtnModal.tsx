@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from './ui/Modal';
 
@@ -45,6 +45,10 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Коробка з габаритів товарів (lib/package-dims) — перекриває «коробку за
+  // замовчуванням» з налаштувань, поки менеджер не правив габарити руками
+  const [autoBox, setAutoBox] = useState<{ dims: [number, number, number]; label: string } | null>(null);
+  const dimsTouched = useRef(false);
 
   const mergedKey = (order.mergedIds ?? []).join(',');
   useEffect(() => {
@@ -68,9 +72,17 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
       body: JSON.stringify({ items: order.items.map(i => ({ sku: i.sku, qty: i.qty })) }),
     })
       .then(r => r.json())
-      .then((d: { totalWeightKg?: number }) => { if ((d.totalWeightKg ?? 0) > 0) setWeight(String(d.totalWeightKg)); })
+      .then((d: { totalWeightKg?: number; box?: { dims: [number, number, number]; label: string } | null }) => {
+        if ((d.totalWeightKg ?? 0) > 0) setWeight(String(d.totalWeightKg));
+        if (d.box) setAutoBox(d.box);
+      })
       .catch(() => { /* вагу введуть руками */ });
   }, [order.items]);
+
+  useEffect(() => {
+    if (!autoBox || loading || dimsTouched.current) return;
+    setLength(String(autoBox.dims[0])); setWidth(String(autoBox.dims[1])); setHeight(String(autoBox.dims[2]));
+  }, [autoBox, loading]);
 
   const weightNum = parseFloat(weight);
   const overLimit = sender?.limitKg != null && Number.isFinite(weightNum) && weightNum > sender.limitKg;
@@ -108,7 +120,7 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
     <label style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '5px' }}>{label}</div>
       <div style={{ position: 'relative' }}>
-        <input value={v} onChange={e => set(e.target.value)} inputMode="decimal"
+        <input value={v} onChange={e => { if (set === setLength || set === setWidth || set === setHeight) dimsTouched.current = true; set(e.target.value); }} inputMode="decimal"
           style={{ width: '100%', height: '38px', padding: '0 34px 0 10px', boxSizing: 'border-box', borderRadius: '9px', border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '14px' }} />
         <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: 'var(--text-muted)' }}>{suffix}</span>
       </div>
@@ -154,6 +166,11 @@ export default function RzDeliveryTtnModal({ order, onClose, onCreated }: Props)
             {num(width, setWidth, 'Ширина', 'см')}
             {num(height, setHeight, 'Висота', 'см')}
           </div>
+          {autoBox && (
+            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '-6px' }}>
+              Коробка {autoBox.label} ({autoBox.dims.join('×')} см) — підібрана за габаритами товарів; виправте, якщо пакуєте інакше.
+            </div>
+          )}
 
           <div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>

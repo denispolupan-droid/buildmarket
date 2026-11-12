@@ -9,6 +9,8 @@ import CharValueInput from './CharValueInput';
 import CharLabelInput from './CharLabelInput';
 import { normCharKey } from '../../../../lib/characteristics';
 import FacetValueInput from './FacetValueInput';
+import { estimateItemPackage } from '../../../../lib/package-dims';
+import { parseWeightKg } from '../../../../lib/parcel-weight';
 
 /** Чернетка картки від ШІ-агента (POST /api/admin/products/propose). */
 type CardProposal = {
@@ -206,6 +208,11 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
   const [productType, setProductType] = useState(product?.product_type ?? '');
   const [volume, setVolume] = useState(product?.volume ?? '');
   const [packQty, setPackQty] = useState(product?.pack_qty ?? 1);
+  // Габарити упаковки, см у полях (у БД мм). Порожньо — накладні беруть оцінку
+  const mmToCm = (v: number | null | undefined) => (v ? String(Math.round(v) / 10) : '');
+  const [pkgL, setPkgL] = useState(mmToCm(product?.package_length_mm));
+  const [pkgW, setPkgW] = useState(mmToCm(product?.package_width_mm));
+  const [pkgH, setPkgH] = useState(mmToCm(product?.package_height_mm));
   const [minOrder, setMinOrder] = useState(product?.min_order ?? 1);
   const [description, setDescription] = useState(product?.description ?? '');
   const [descriptionRu, setDescriptionRu] = useState(product?.description_ru ?? '');
@@ -645,6 +652,12 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             category_slug: categorySlug || null,
             product_type: productType || null,
             volume: volume || null,
+            // Габарити — лише всі три разом; інакше null (оцінка)
+            ...(() => {
+              const mm = [pkgL, pkgW, pkgH].map(v => Math.round(parseFloat(v.replace(',', '.')) * 10));
+              const ok = mm.every(v => Number.isFinite(v) && v > 0 && v <= 5000);
+              return { package_length_mm: ok ? mm[0] : null, package_width_mm: ok ? mm[1] : null, package_height_mm: ok ? mm[2] : null };
+            })(),
             pack_qty: packQty,
             min_order: minOrder,
             name_ru: nameRu || null,
@@ -955,6 +968,29 @@ export default function ProductForm({ product, categories, isNew, promUrls = [] 
             <input type="number" value={minOrder} onChange={e => setMinOrder(Number(e.target.value))} style={inputStyle} min={1} />
           </div>
         </div>
+
+        {(() => {
+          // Оцінка — та сама, що підставляють накладні й фід Епіцентру (lib/package-dims)
+          const est = estimateItemPackage(name, parseWeightKg(volume) * 1000);
+          const estCm = est.dims.map(v => Math.round(v) / 10);
+          const filled = [pkgL, pkgW, pkgH].filter(v => v.trim()).length;
+          return (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>Габарити упаковки, см (Д × Ш × В)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                {([[pkgL, setPkgL, 0], [pkgW, setPkgW, 1], [pkgH, setPkgH, 2]] as const).map(([v, set, i]) => (
+                  <input key={i} type="text" inputMode="decimal" value={v} onChange={e => set(e.target.value)}
+                    style={inputStyle} placeholder={String(estCm[i])} />
+                ))}
+              </div>
+              <div style={{ fontSize: '12px', color: filled > 0 && filled < 3 ? 'var(--color-warn)' : 'var(--text-muted)', marginTop: '5px' }}>
+                {filled > 0 && filled < 3
+                  ? 'Заповніть усі три — інакше збережеться порожньо й піде оцінка'
+                  : `Порожньо — оцінка за назвою й вагою: ${estCm.join(' × ')} см (${est.kind}). Йде в накладні Rozetka/Meest/поштомати НП і у фід Епіцентру.`}
+              </div>
+            </div>
+          );
+        })()}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
           <div>

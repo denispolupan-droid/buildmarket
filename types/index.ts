@@ -62,6 +62,10 @@ export type Product = {
   on_rozetka?: boolean | null;
   rozetka_smart?: boolean | null;
   on_epicentr?: boolean | null;
+  /** Габарити упаковки, мм — ручні (міграція 162); null — оцінка lib/package-dims */
+  package_length_mm?: number | null;
+  package_width_mm?: number | null;
+  package_height_mm?: number | null;
   created_at: string;
   updated_at: string;
 };

@@ -12,6 +12,7 @@ import { resolveCountry } from '../../../../lib/brand-country';
 import { mapEpicentrAttributes } from '../../../../lib/epicentr-attributes';
 import { readEpicentrManifest, ensureEpicentrJpegs, webpRelFromImage, staticJpegUrl, dynamicJpegUrl } from '../../../../lib/epicentr-images';
 import { feedVendor } from '../../../../lib/brand-feed';
+import { itemPackage } from '../../../../lib/package-dims';
 import { withApi } from '../../../../lib/api-handler';
 
 /**
@@ -70,7 +71,9 @@ async function _GET(req: NextRequest) {
     description: string | null; description_full: string | null; description_mp: string | null;
     stock: Stock | Stock[] | null;
     characteristics: Char[] | null;
+    package_length_mm: number | null; package_width_mm: number | null; package_height_mm: number | null;
   };
+  const pkgOf = (p: Product) => ({ package_length_mm: p.package_length_mm, package_width_mm: p.package_width_mm, package_height_mm: p.package_height_mm });
 
   const [categories, products] = await Promise.all([
     fetchAllRows<Cat>((from, to) => db
@@ -81,7 +84,7 @@ async function _GET(req: NextRequest) {
       .range(from, to)),
     (/* TODO(types): форма рядка рукописна — колонки звужені фільтрами запиту */ fetchAllRows((from, to) => db.from('products').select(`
       sku, name, rozetka_name, brand, category_slug, slug, image, color, volume,
-      on_epicentr, epicentr_markup_pct,
+      on_epicentr, epicentr_markup_pct, package_length_mm, package_width_mm, package_height_mm,
       description, description_full, description_mp,
       stock:product_stock(price_retail, price_cost, price_old, stock_qty, stock_status),
       characteristics:product_characteristics(label, value, sort_order)
@@ -187,6 +190,13 @@ async function _GET(req: NextRequest) {
         lines.push(`      <param paramcode="${x(a.code)}" name="${x(a.title)}"><![CDATA[${a.value.replace(/]]>/g, ']]]]><![CDATA[>')}]]></param>`);
       }
     }
+    // Габарити упаковки, мм — обов'язкові в чеклисті Епіцентру (з 11.2026). Формат
+    // той самий, що прийняв одноразовий імпорт 09.11: <width>/<height>/<length>
+    // наприкінці offer, висота — найбільша сторона. Ручні з картки, інакше оцінка.
+    const pkg = itemPackage({ name: p.name, weightG: weight ?? 0, ...pkgOf(p) });
+    lines.push(`      <width>${Math.round(pkg.dims[1])}</width>`);
+    lines.push(`      <height>${Math.round(pkg.dims[0])}</height>`);
+    lines.push(`      <length>${Math.round(pkg.dims[2])}</length>`);
     lines.push('    </offer>');
   }
 

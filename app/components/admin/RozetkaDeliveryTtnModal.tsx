@@ -171,6 +171,9 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
     finally { setSenderSaving(false); }
   }
 
+  // Коробка з габаритів товарів (lib/package-dims) — замість типових 30×20×15
+  const [autoBox, setAutoBox] = useState<{ dims: [number, number, number]; label: string } | null>(null);
+
   // Вага рахується з карток товарів тим самим роутом, що й для Нової Пошти
   useEffect(() => {
     if (!order.items?.length) return;
@@ -180,11 +183,24 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
       body: JSON.stringify({ items: order.items.map(i => ({ sku: i.sku, qty: i.qty })) }),
     })
       .then(r => r.json())
-      .then(d => {
-        if (d.totalWeightKg > 0) setAutoWeight(d.totalWeightKg);
+      .then((d: { totalWeightKg?: number; box?: { dims: [number, number, number]; label: string } | null }) => {
+        if ((d.totalWeightKg ?? 0) > 0) setAutoWeight(d.totalWeightKg!);
+        if (d.box) setAutoBox(d.box);
       })
       .catch(() => { /* вагу введуть руками */ });
   }, [order.items, setAutoWeight]);
+
+  // Коробка — лише поки перше місце ще з типовими габаритами (ручні правки не чіпаємо)
+  const row0 = editRows[0];
+  const row0Default = row0.length === '30' && row0.width === '20' && row0.height === '15';
+  const boxApplied = useRef(false);
+  useEffect(() => {
+    if (!autoBox || !row0Default || boxApplied.current) return;
+    boxApplied.current = true;
+    setSeatField(0, 'length', String(autoBox.dims[0]));
+    setSeatField(0, 'width', String(autoBox.dims[1]));
+    setSeatField(0, 'height', String(autoBox.dims[2]));
+  }, [autoBox, row0Default, setSeatField]);
 
   async function submit() {
     setError(''); setBusy(true);
@@ -399,7 +415,9 @@ export default function RozetkaDeliveryTtnModal({ order, onClose, onCreated }: P
                   {placesStepper}
                 </div>
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <div style={fieldLabel}>Габарити, Д × Ш × В</div>
+                  <div style={fieldLabel} title={autoBox ? `Коробка ${autoBox.label} — підібрана за габаритами товарів` : undefined}>
+                    Габарити, Д × Ш × В{autoBox ? ` · ${autoBox.label}` : ''}
+                  </div>
                   {dimsField(0)}
                 </div>
               </div>
