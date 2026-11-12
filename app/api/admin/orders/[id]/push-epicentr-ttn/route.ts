@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
-import { setEpicentrTTN, getEpicentrOrder, advanceEpicentrOrder, epicentrRank } from '../../../../../../lib/epicentr-api';
+import { ensureEpicentrTTN, getEpicentrOrder, advanceEpicentrOrder, epicentrRank } from '../../../../../../lib/epicentr-api';
 import { withApi } from '../../../../../../lib/api-handler';
 
 // Ручний пуш ТТН в Епіцентр (кнопка в журналі, дзеркало push-prom-ttn). Якщо у
@@ -31,7 +31,7 @@ async function _POST(_req: NextRequest, { params }: { params: Promise<{ id: stri
     if (['shipped', 'delivered'].includes(String(order.status)) && live && epicentrRank(live.statusCode) >= 0 && epicentrRank(live.statusCode) < epicentrRank('sent')) {
       await advanceEpicentrOrder(epiId, 'sent', { ttn, live });
     } else {
-      await setEpicentrTTN(epiId, ttn);
+      await ensureEpicentrTTN(epiId, ttn, live);
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

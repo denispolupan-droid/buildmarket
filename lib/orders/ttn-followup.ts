@@ -27,7 +27,7 @@ export type TtnFollowUpAction = 'ship' | 'push-rozetka' | 'push-prom' | 'push-ep
  * Звідки взявся номер: виписали через API перевізника чи вписали руками.
  * Різниця лише для точок видачі Rozetka — див. нижче.
  */
-export type TtnSource = 'api' | 'manual';
+export type TtnSource = 'api' | 'manual' | 'marketplace';
 
 export function ttnFollowUpAction(o: TtnFollowUpOrder, source: TtnSource = 'api'): TtnFollowUpAction {
   // Дропшип: відвантаження сам створює видаткову і доносить номер у маркетплейс.
@@ -45,7 +45,9 @@ export function ttnFollowUpAction(o: TtnFollowUpOrder, source: TtnSource = 'api'
 
   if (o.channel_code === 'prom' && o.status !== 'new') return 'push-prom';
 
-  if (o.channel_code === 'epicentr' && o.status !== 'new') return 'push-epicentr';
+  // 'marketplace' — накладну виписала сама площадка (Meest-Епіцентр): номер у
+  // кабінеті вже є, пушити нічого. Статус «Відправлено» донесе відвантаження.
+  if (o.channel_code === 'epicentr' && o.status !== 'new' && source !== 'marketplace') return 'push-epicentr';
 
   return 'none';
 }

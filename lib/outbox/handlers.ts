@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 import { createServiceClient } from '../supabase-service';
 import { getPromOrder, ourStatusToPromStatus, setPromOrderStatus, setPromTTN } from '../prom-api';
 import {
-  getEpicentrOrder, ourStatusToEpicentrStatus, setEpicentrTTN, advanceEpicentrOrder, cancelEpicentrOrder, epicentrRank,
+  getEpicentrOrder, ourStatusToEpicentrStatus, ensureEpicentrTTN, advanceEpicentrOrder, cancelEpicentrOrder, epicentrRank,
 } from '../epicentr-api';
 import { getRozetkaOrderStatusInfo, ourStatusToRozetkaStatus, setRozetkaOrderStatusChained } from '../rozetka-api';
 import { sendTelegramResult } from '../telegram';
@@ -54,7 +54,7 @@ async function pushTtn(db: Db, orderId: string, p: PushTtnPayload): Promise<Hand
       // Повна відвантажка — покроково до «Відправлено» (через «Підтверджено»); часткова
       // чи заміна ЕН — лише номер
       if (p.fully_shipped && !EPICENTR_AT_OR_PAST_SENT.has(live.statusCode)) await advanceEpicentrOrder(id, 'sent', { ttn: p.ttn, live });
-      else await setEpicentrTTN(id, p.ttn);
+      else await ensureEpicentrTTN(id, p.ttn, live);
       return { ok: true };
     }
     case 'rozetka': {

@@ -65,6 +65,7 @@ const CARRIER_LABEL: Record<TtnCarrier, string> = {
   np: 'Нова Пошта',
   rz_delivery: 'ROZETKA Доставка',
   rozetka_delivery: 'Rozetka (маркетплейс)',
+  epicentr_meest: 'Meest через Епіцентр',
 };
 
 const PAYER_LABEL: Record<string, string> = {

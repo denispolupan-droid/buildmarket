@@ -5,6 +5,7 @@ import { stripCityPrefix } from '../../../lib/orders/delivery-line';
 import { RZ_DELIVERY_TYPE } from '../../../lib/rz-delivery';
 import { trackHref } from '../../../lib/delivery-label';
 import { isManualPostalCarrier, MANUAL_CARRIER_LABEL, looksLikeManualTtn } from '../../../lib/carriers';
+import { epicentrMeestProvider, EPICENTR_MEEST_LABEL } from '../../../lib/epicentr-meest';
 import { DELIVERY_NEEDS_CITY } from './constants';
 import type { Order } from './types';
 import { useOrdersCtx } from './OrdersContext';
@@ -23,7 +24,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
     ttnSaving, replaceTTN, saveTTN, setTtnModalOrder, registryAdded, registryAdding,
     addToRegistry, printLabel, rzLabelBusy, isAdmin, setNpReturnFor, deleteTTN,
     ttnDeleting, setRzTtnModal, addRzToReception, rzRegBusy, rzReception, printRzReception,
-    deleteRzTtn, returnRzTrack, setRzOwnTtnModal,
+    deleteRzTtn, returnRzTrack, setRzOwnTtnModal, setEpiMeestTtnModal,
   } = useOrdersCtx();
   return (
     <>
@@ -464,8 +465,19 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
           const busy = ttnSaving === order.id;
           const canSave = valid && changed && !busy && !order.tracking_number;
           const href = order.tracking_number ? trackHref(carrier, order.tracking_number) : null;
+          // Поштомати й пункти видачі Епіцентру: накладну виписує Епіцентр за нашим
+          // договором Meest — кнопкою звідси (роут epicentr-meest-ttn)
+          const epiMeest = order.channel_code === 'epicentr' ? epicentrMeestProvider(order.epicentr_data) : null;
           return (
             <>
+              {epiMeest && !order.tracking_number && (
+                <button onClick={() => setEpiMeestTtnModal(order)}
+                  disabled={order.status === 'new'}
+                  title={order.status === 'new' ? 'Спершу підтвердіть замовлення' : `Накладна Meest на ${EPICENTR_MEEST_LABEL[epiMeest]} — виписує Епіцентр, доставку платимо ми`}
+                  style={{ height: '34px', padding: '0 14px', marginBottom: '6px', borderRadius: '9px', border: 'none', background: 'var(--color-success)', color: 'var(--surface)', fontSize: '12.5px', fontWeight: 700, cursor: order.status === 'new' ? 'default' : 'pointer', opacity: order.status === 'new' ? 0.5 : 1 }}>
+                  Створити накладну Meest
+                </button>
+              )}
               <div className="oc-ttn-row" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
                   <Hash size={12} color="#94A3B8" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }} />
@@ -493,6 +505,13 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   </button>
                 ) : (
                   <>
+                    {epiMeest && (
+                      <button onClick={() => printLabel(order.id, 'epicentr-meest-ttn')} disabled={rzLabelBusy === order.id}
+                        title="Надрукувати накладну Meest"
+                        style={{ height: '32px', width: '32px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {rzLabelBusy === order.id ? '…' : <Printer size={14} />}
+                      </button>
+                    )}
                     {href && (
                       <a href={href} target="_blank" rel="noopener noreferrer" title={`Відстеження ${label}`}
                         style={{ height: '32px', width: '32px', borderRadius: '7px', border: '1px solid var(--border)', color: 'var(--brand-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -514,7 +533,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   {carrier === 'ukrposhta' ? 'Штрихкод Укрпошти — 13 цифр (або RR123456789UA)' : 'Номер Meest — латиниця, цифри й дефіс'}
                 </div>
               )}
-              {!order.tracking_number && (
+              {!order.tracking_number && !epiMeest && (
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Накладну створіть у кабінеті {order.channel_code === 'epicentr' ? 'Епіцентру' : order.channel_code === 'rozetka' ? 'Rozetka' : order.channel_code === 'prom' ? 'Prom' : label} і вставте номер.
                 </div>

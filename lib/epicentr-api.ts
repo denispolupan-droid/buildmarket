@@ -258,7 +258,9 @@ export async function advanceEpicentrOrder(
   if (target !== 'sent' || epicentrRank(cur) >= epicentrRank('sent')) return cur;
 
   if (!opts.ttn) throw new Error('без ЕН Епіцентр «Відправлено» не приймає');
-  await setEpicentrTTN(orderId, opts.ttn);
+  // Накладну Meest-Епіцентр виписує сам Епіцентр — той самий номер уже в картці,
+  // перезаписувати його не треба (і небезпечно: це прив'язка до відправлення Meest)
+  if (live.address?.shipment?.number !== opts.ttn) await setEpicentrTTN(orderId, opts.ttn);
   // Після ТТН статус зазвичай стає «Відправлено» сам — перевіряємо, перш ніж ставити
   const after = await getEpicentrOrder(orderId);
   if (after && epicentrRank(after.statusCode) >= epicentrRank('sent')) return after.statusCode;
@@ -294,6 +296,54 @@ export async function setEpicentrTTN(orderId: string, number: string): Promise<v
     method: 'PATCH',
     body: JSON.stringify({ number }),
   });
+}
+
+/**
+ * Внести номер, лише якщо в картці Епіцентру інший. Для накладних Meest-Епіцентр
+ * номер з'являється в картці сам у момент створення — повторний PATCH зайвий.
+ */
+export async function ensureEpicentrTTN(orderId: string, number: string, live?: EpicentrOrder | null): Promise<void> {
+  const card = live ?? await getEpicentrOrder(orderId);
+  if (card?.address?.shipment?.number === number) return;
+  await setEpicentrTTN(orderId, number);
+}
+
+/* ── Накладні Meest через Епіцентр (поштомати й пункти видачі Епіцентру) ── */
+
+export type EpicentrMeestOfficeRow = { id: string; settlementId: string; title: string; address?: string | null; isActive?: boolean };
+
+/** Населені пункти довідника відправника Meest (sender) за назвою. */
+export async function findEpicentrMeestSenderSettlements(title: string): Promise<{ id: string; title: string }[]> {
+  const q = new URLSearchParams({ title, limit: '20' });
+  const d = await epicentrFetch<{ items?: { id: string; title: string }[] }>(`/v3/deliveries/providers/meest/participants/sender/settlements?${q}`);
+  return d?.items ?? [];
+}
+
+/** Відділення Meest відправника в населеному пункті (усі сторінки). */
+export async function getEpicentrMeestSenderOffices(settlementId: string): Promise<EpicentrMeestOfficeRow[]> {
+  const out: EpicentrMeestOfficeRow[] = [];
+  for (let offset = 0; offset < 1000; offset += 100) {
+    const d = await epicentrFetch<{ items?: EpicentrMeestOfficeRow[] }>(
+      `/v3/deliveries/providers/meest/participants/sender/settlements/${settlementId}/offices?limit=100&offset=${offset}`);
+    const items = d?.items ?? [];
+    out.push(...items);
+    if (items.length < 100) break;
+  }
+  return out;
+}
+
+/**
+ * Створити накладну Meest на замовлення (Епіцентр виписує її за договором продавця).
+ * Відповідь 201 без тіла — номер з'являється в картці (address.shipment.number).
+ */
+export async function createEpicentrShipment(orderId: string, provider: string, body: unknown): Promise<void> {
+  await epicentrFetch(`/v3/oms/orders/${orderId}/shipping/${provider}`, { method: 'POST', body: JSON.stringify(body) });
+}
+
+/** Файл накладної для друку (base64; зазвичай PDF). */
+export async function getEpicentrShipmentFile(provider: string, number: string): Promise<string | null> {
+  const d = await epicentrFetch<{ file?: string }>(`/v3/deliveries/${provider}/invoices/${encodeURIComponent(number)}`);
+  return d?.file ?? null;
 }
 
 export async function addEpicentrOrderComment(orderId: string, content: string): Promise<void> {

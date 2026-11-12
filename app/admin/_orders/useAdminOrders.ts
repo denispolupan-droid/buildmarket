@@ -304,6 +304,8 @@ export function useAdminOrders(props: AdminOrdersProps) {
   // Накладна власного договору «ROZETKA Доставки» (замовлення сайту) — окреме
   // вікно й окремий роут, щоб не плутати з маркетплейсним rzTtnModal вище
   const [rzOwnTtnModal,  setRzOwnTtnModal]  = useState<Order | null>(null);
+  // Накладна Meest-Епіцентр (поштомати й пункти видачі Епіцентру) — виписує Епіцентр
+  const [epiMeestTtnModal, setEpiMeestTtnModal] = useState<Order | null>(null);
   // Об'єднана посилка для обох Rozetka-вікон: усі замовлення групи (перше —
   // основне, з нього виписується накладна). null — звичайне одиночне вікно.
   const [rzMergeGroup,   setRzMergeGroup]   = useState<Order[] | null>(null);
@@ -1693,7 +1695,7 @@ export function useAdminOrders(props: AdminOrdersProps) {
    * PDF розгортаємо в blob і відкриваємо у вкладці: data:-URL на PDF Chrome
    * блокує, а зберігати файл на диск заради одного друку зайве.
    */
-  async function printLabel(id: string, path: 'ttn' | 'rz-ttn' | 'rozetka-delivery-ttn') {
+  async function printLabel(id: string, path: 'ttn' | 'rz-ttn' | 'rozetka-delivery-ttn' | 'epicentr-meest-ttn') {
     setRzLabelBusy(id);
     try {
       const res = await fetch(`/api/admin/orders/${id}/${path}?label=1`);
@@ -1976,6 +1978,8 @@ export function useAdminOrders(props: AdminOrdersProps) {
     setTtnDetailsFor,
     rzOwnTtnModal,
     setRzOwnTtnModal,
+    epiMeestTtnModal,
+    setEpiMeestTtnModal,
     rzMergeGroup,
     setRzMergeGroup,
     rzLabelBusy,

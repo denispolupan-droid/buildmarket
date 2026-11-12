@@ -9,6 +9,7 @@ import NpReturnModal from '../../components/admin/NpReturnModal';
 import RozetkaDeliveryTtnModal from '../../components/admin/RozetkaDeliveryTtnModal';
 import TtnDetailsModal from '../../components/admin/TtnDetailsModal';
 import RzDeliveryTtnModal from '../../components/admin/RzDeliveryTtnModal';
+import EpicentrMeestTtnModal from '../../components/admin/EpicentrMeestTtnModal';
 import { useOrdersCtx } from './OrdersContext';
 import { Modal } from '../../components/admin/ui/Modal';
 
@@ -19,6 +20,7 @@ export function BulkSupplierSendModal() {
     returnFor, setReturnFor, router, npReturnFor, setNpReturnFor, invoiceCfg,
     setInvoiceCfg, setOrders, ttnModalOrder, setTtnModalOrder, setTtnValues, finishTtnFlow,
     ttnDetailsFor, setTtnDetailsFor, rzOwnTtnModal, rzMergeGroup, setRzOwnTtnModal, setRzMergeGroup,
+    epiMeestTtnModal, setEpiMeestTtnModal,
     rzTtnModal, setRzTtnModal, mergeModal, setMergeModal,
   } = useOrdersCtx();
   return (
@@ -252,6 +254,26 @@ export function BulkSupplierSendModal() {
           />
         );
       })()}
+
+      {epiMeestTtnModal && (
+        <EpicentrMeestTtnModal
+          order={{
+            id: epiMeestTtnModal.id, order_number: epiMeestTtnModal.order_number,
+            items: epiMeestTtnModal.items.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })),
+          }}
+          onClose={() => setEpiMeestTtnModal(null)}
+          onCreated={(ttn, warning) => {
+            const id = epiMeestTtnModal.id;
+            setEpiMeestTtnModal(null);
+            if (!ttn) { showToast(warning ?? 'Накладну створено, номер підтягнеться за хвилину', 'success', 8000); return; }
+            setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: ttn } : o));
+            setTtnValues(prev => ({ ...prev, [id]: ttn }));
+            showToast(`Накладна Meest створена: ${ttn}`, 'success', 5000);
+            // Номер Епіцентр знає сам — хвіст лише відвантажує дропшип
+            void finishTtnFlow([id], 'marketplace');
+          }}
+        />
+      )}
 
       {rzTtnModal && (() => {
         const group = rzMergeGroup ?? [rzTtnModal];

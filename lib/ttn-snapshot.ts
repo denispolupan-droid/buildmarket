@@ -10,7 +10,7 @@
  * показується (`snapshotFor`).
  */
 
-export type TtnCarrier = 'np' | 'rz_delivery' | 'rozetka_delivery';
+export type TtnCarrier = 'np' | 'rz_delivery' | 'rozetka_delivery' | 'epicentr_meest';
 
 export type TtnSnapshot = {
   carrier:     TtnCarrier;
