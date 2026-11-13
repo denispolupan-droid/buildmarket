@@ -30,11 +30,12 @@ type OrderRow = {
   tracking_number: string | null; total_price: number | null; amount_paid: number | null; payment_type: string | null;
   payment_method_code: string | null; items: { name?: string }[] | null; contact: string | null; phone: string | null;
   delivery_city_name: string | null; delivery_address: string | null;
+  delivery_city_ref: string | null; delivery_warehouse_ref: string | null;
 };
 
 async function loadOrder(id: string): Promise<{ order?: OrderRow; error?: string; status?: number }> {
   const { data } = await createServiceClient().from('orders')
-    .select('id, order_number, channel_code, delivery_type, status, tracking_number, total_price, amount_paid, payment_type, payment_method_code, items, contact, phone, delivery_city_name, delivery_address')
+    .select('id, order_number, channel_code, delivery_type, status, tracking_number, total_price, amount_paid, payment_type, payment_method_code, items, contact, phone, delivery_city_name, delivery_address, delivery_city_ref, delivery_warehouse_ref')
     .eq('id', id).maybeSingle();
   const order = data as OrderRow | null;
   if (!order) return { error: 'Замовлення не знайдено', status: 404 };
@@ -75,9 +76,15 @@ async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string
     }
 
     const parsed = parseMeestPoint(order.delivery_address, order.delivery_city_name);
+    // Замовлення сайту несе точний пункт (branchID/cityID з чекауту); маркетплейси — лише адресу
+    const exact = async () => {
+      if (!order.delivery_warehouse_ref || !order.delivery_city_ref) return null;
+      const br = (await meestBranches(order.delivery_city_ref)).find(b => b.branchID === order.delivery_warehouse_ref);
+      return br ? { city: { cityID: order.delivery_city_ref, name: order.delivery_city_name ?? '', region: '', district: '', hasBranches: true }, branch: br } : null;
+    };
     const [sender, senderBranch, box, point] = await Promise.all([
       senderContact(), meestSenderBranch(), getRzBox(),
-      parsed ? meestFindPoint(parsed.city, parsed.number).catch(() => null) : Promise.resolve(null),
+      exact().catch(() => null).then(e => e ?? (parsed ? meestFindPoint(parsed.city, parsed.number).catch(() => null) : null)),
     ]);
     return NextResponse.json({
       sender, senderBranch: senderBranch.title,

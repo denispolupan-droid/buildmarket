@@ -11,10 +11,14 @@ import { Search, MapPin, Loader2, Clock } from 'lucide-react';
 // після оплати. Тому вага йде в запит, а фільтрує сервер.
 
 type City = { id: string; name: string; region_name: string; district_name?: string | null };
-type Department = { id: string; label: string; schedule: string[]; limitKg: number | null };
+type Department = { id: string; label: string; schedule: string[]; limitKg: number | null; postomat?: boolean };
 
 type Props = {
   weightKg: number;
+  /** Перевізник: ROZETKA Доставка (типово) чи Meest Пошта (13.11.2026) — інші довідники й підписи */
+  provider?: 'rz' | 'meest';
+  /** Вибрана точка цілком (Meest: поштомат чи відділення — у підтип доставки) */
+  onDepartmentPicked?: (d: Department | null) => void;
   lang?: 'uk' | 'ru';
   /** Уже вибране раніше — щоб після повторного монтування (згорнута й
    *  розгорнута чернетка замовлення) вибір відновлювався цілком. Колбеки
@@ -28,6 +32,11 @@ type Props = {
   onDepartmentChange?: (label: string) => void;
   onDepartmentIdChange?: (id: string) => void;
 };
+
+const MEEST_T = {
+  uk: { pointLabel: 'Відділення або поштомат Meest', pointPh: '№ або вулиця...', loading: 'Завантаження відділень...', empty: 'У цьому місті немає відділень Meest, які приймуть посилку такої ваги', emptyCity: 'У цьому місті немає відділень Meest' },
+  ru: { pointLabel: 'Отделение или почтомат Meest', pointPh: '№ или улица...', loading: 'Загрузка отделений...', empty: 'В этом городе нет отделений Meest, которые примут посылку такого веса', emptyCity: 'В этом городе нет отделений Meest' },
+} as const;
 
 const RZ_T = {
   uk: {
@@ -54,9 +63,10 @@ const RZ_T = {
 
 export default function RzDeliverySelect({
   weightKg, lang = 'uk', initialCity = '', initialCityId = '', initialDepartment = '',
-  onCityChange, onCityIdChange, onDepartmentChange, onDepartmentIdChange,
+  onCityChange, onCityIdChange, onDepartmentChange, onDepartmentIdChange, provider = 'rz', onDepartmentPicked,
 }: Props) {
-  const tr = RZ_T[lang];
+  const tr = provider === 'meest' ? { ...RZ_T[lang], ...MEEST_T[lang] } : RZ_T[lang];
+  const apiBase = provider === 'meest' ? '/api/meest' : '/api/rz-delivery';
 
   const [cityQuery,   setCityQuery]   = useState(initialCity);
   const [cities,      setCities]      = useState<City[]>([]);
@@ -95,7 +105,7 @@ export default function RzDeliverySelect({
 
   const loadDepartments = useCallback((cityId: string) => {
     setDepLoading(true);
-    fetch(`/api/rz-delivery/departments?city=${encodeURIComponent(cityId)}&weight=${weightKg}`)
+    fetch(`${apiBase}/${provider === 'meest' ? 'branches' : 'departments'}?city=${encodeURIComponent(cityId)}&weight=${weightKg}`)
       .then(r => r.json())
       .then((d: { departments?: Department[]; total?: number }) => {
         setDepartments(d.departments ?? []);
@@ -103,7 +113,7 @@ export default function RzDeliverySelect({
       })
       .catch(() => { setDepartments([]); setDepTotal(0); })
       .finally(() => setDepLoading(false));
-  }, [weightKg]);
+  }, [weightKg, apiBase, provider]);
 
   // Вага змінилась (покупець правив кошик у сусідній вкладці або міняв кількість) —
   // перезбираємо список і скидаємо вибір, якщо точка більше не підходить.
@@ -116,7 +126,7 @@ export default function RzDeliverySelect({
   useEffect(() => {
     if (selectedDep || !initialDepartment || !departments.length) return;
     const dep = departments.find(d => d.label === initialDepartment);
-    if (dep) setSelectedDep(dep);
+    if (dep) { setSelectedDep(dep); onDepartmentPicked?.(dep); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departments]);
 
@@ -126,6 +136,7 @@ export default function RzDeliverySelect({
       setDepQuery('');
       onDepartmentIdChange?.('');
       onDepartmentChange?.('');
+      onDepartmentPicked?.(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departments]);
@@ -138,7 +149,7 @@ export default function RzDeliverySelect({
       const q = val.trim();
       if (q.length < 2) { setCities([]); return; }
       setCityLoading(true);
-      fetch(`/api/rz-delivery/cities?q=${encodeURIComponent(q)}`)
+      fetch(`${apiBase}/cities?q=${encodeURIComponent(q)}`)
         .then(r => r.json())
         .then((d: { cities?: City[] }) => { setCities(d.cities ?? []); setCityOpen(true); })
         .catch(() => setCities([]))
@@ -157,6 +168,7 @@ export default function RzDeliverySelect({
     onCityIdChange?.(c.id);
     onDepartmentChange?.('');
     onDepartmentIdChange?.('');
+    onDepartmentPicked?.(null);
   }
 
   function selectDep(d: Department) {
@@ -165,6 +177,7 @@ export default function RzDeliverySelect({
     setDepOpen(false);
     onDepartmentChange?.(d.label);
     onDepartmentIdChange?.(d.id);
+    onDepartmentPicked?.(d);
   }
 
   const filteredDeps = departments.filter(d => d.label.toLowerCase().includes(depQuery.toLowerCase()));

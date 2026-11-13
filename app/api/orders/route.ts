@@ -16,6 +16,8 @@ import { getRzSender, isRzDeliveryEnabled } from '../../../lib/rz-delivery-api';
 import { cartWeightKg } from '../../../lib/parcel-weight';
 import { withApi } from '../../../lib/api-handler';
 import { npWarehouseDescription } from '../../../lib/np-api';
+import { meestBranches } from '../../../lib/meest-ship';
+import { log } from '../../../lib/log';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -97,6 +99,29 @@ async function _POST(req: NextRequest) {
         return NextResponse.json({
           error: `Замовлення важче за ${limit} кг — ROZETKA Доставка недоступна. Оберіть Нову Пошту.`,
         }, { status: 400 });
+    }
+  }
+
+  // Meest (договір 10031120, 13.11.2026): пункт має існувати в обраному місті й
+  // прийняти посилку такої ваги (Міні-відділення — до 10 кг). Довіднику браузера
+  // не віримо: накладну потім виписуємо саме на цей branchID.
+  if (deliveryType === 'meest') {
+    if (!deliveryWarehouseRef || !deliveryCityRef)
+      return NextResponse.json({ error: 'Оберіть відділення або поштомат Meest' }, { status: 400 });
+    try {
+      const branch = (await meestBranches(String(deliveryCityRef))).find(b => b.branchID === String(deliveryWarehouseRef));
+      if (!branch) return NextResponse.json({ error: 'Це відділення Meest зараз недоступне — оберіть інше' }, { status: 400 });
+      const maxKg = branch.limits?.weightPlaceMax ?? null;
+      if (maxKg != null) {
+        const { data: vols } = await admin.from('products').select('sku, volume').in('sku', skus);
+        const volBySku = new Map((vols ?? []).map(v => [v.sku, v.volume as string | null]));
+        const weightKg = cartWeightKg(rawItems.map(it => ({ volume: volBySku.get(String(it.sku)) ?? null, qty: Number(it.qty) })));
+        if (weightKg > maxKg)
+          return NextResponse.json({ error: `Замовлення важче за ${maxKg} кг — це відділення Meest його не прийме. Оберіть інше відділення чи Нову Пошту.` }, { status: 400 });
+      }
+    } catch (err) {
+      // Довідник Meest не відповів — не втрачаємо замовлення: пункт перевірить менеджер при накладній
+      log.warn('order.meest_branch_check_failed', { err: err instanceof Error ? err.message : String(err) });
     }
   }
 

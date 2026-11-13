@@ -286,6 +286,8 @@ const DELIVERY_LABELS: Record<string, string> = {
   pickup: 'Самовивіз зі складу',
   rozetka_delivery: 'Точка видачі Rozetka',
   rz_delivery: 'Точка видачі ROZETKA',
+  meest: 'Meest Пошта (відділення / поштомат)',
+  ukrposhta: 'Укрпошта',
 };
 
 const PAYMENT_LABELS: Record<string, string> = {

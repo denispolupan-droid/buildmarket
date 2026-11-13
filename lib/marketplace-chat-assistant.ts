@@ -62,6 +62,7 @@ const STATUS_LABELS: Record<string, string> = {
 const DELIVERY_LABELS: Record<string, string> = {
   nova: 'Нова Пошта', nova_poshta: 'Нова Пошта', kharkiv: 'адресна доставка по Харкову',
   pickup: 'самовивіз', rz_delivery: 'ROZETKA Доставка (точка видачі)', rozetka_delivery: 'доставка Rozetka',
+  meest: 'Meest Пошта', ukrposhta: 'Укрпошта',
 };
 
 const PAYMENT_LABELS: Record<string, string> = {

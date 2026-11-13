@@ -74,7 +74,10 @@ const T = {
     deliveryNova: 'Нова Пошта',
     deliveryRz: 'ROZETKA Доставка',
     deliveryRzSub: 'Точки видачі ROZETKA',
+    deliveryMeest: 'Meest Пошта',
+    deliveryMeestSub: 'Відділення або поштомат',
     errRzPoint: 'Оберіть місто та точку видачі ROZETKA',
+    errMeestPoint: 'Оберіть відділення або поштомат Meest',
     payCard: 'Карткою онлайн',
     payCardSub: 'Visa, Mastercard, Apple/Google Pay',
     payCodLabel: 'Накладний платіж',
@@ -151,7 +154,10 @@ const T = {
     deliveryNova: 'Новая Почта',
     deliveryRz: 'ROZETKA Доставка',
     deliveryRzSub: 'Точки выдачи ROZETKA',
+    deliveryMeest: 'Meest Почта',
+    deliveryMeestSub: 'Отделение или почтомат',
     errRzPoint: 'Выберите город и точку выдачи ROZETKA',
+    errMeestPoint: 'Выберите отделение или почтомат Meest',
     payCard: 'Картой онлайн',
     payCardSub: 'Visa, Mastercard, Apple/Google Pay',
     payCodLabel: 'Наложенный платёж',
@@ -471,6 +477,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [rzCityName,        setRzCityName]        = useState('');
   const [rzDepId,           setRzDepId]           = useState('');
   const [rzDepLabel,        setRzDepLabel]        = useState('');
+  // Meest (13.11.2026) ділить з ROZETKA поля точки (місто/пункт) — одночасно
+  // активний лише один перевізник, а clearDelivery чистить їх при зміні; тут — лише підтип
+  const [meestPostomat,     setMeestPostomat]     = useState(false);
   // null — конфіг ще не приїхав; опцію не малюємо, доки не знаємо, чи вона жива
   const [rzConfig, setRzConfig] = useState<{ enabled: boolean; maxWeightKg: number | null } | null>(null);
 
@@ -493,6 +502,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     // logo — офіційні файли з сайтів перевізників (public/images/carriers, завантажено 04.11.2026)
     { value: 'nova', label: tr.deliveryNova, sub: null as string | null, logo: '/images/carriers/nova-poshta.svg' },
     ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub, logo: '/images/carriers/rozetka-mark.svg' }] : []),
+    // Meest — наш договір 10031120 (13.11.2026); логотипа поки немає — іконка
+    { value: 'meest', label: tr.deliveryMeest, sub: tr.deliveryMeestSub, logo: '' },
   ];
 
   // Спосіб міг прийти з минулого замовлення (підстановка вище) або перестати
@@ -637,7 +648,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     if (delivery === 'nova' && !novaSubtype) e.add('novaSubtype');
     if (delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && !novaWarehouseRef) e.add('address');
     if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
-    if (delivery === RZ_DELIVERY_TYPE && !rzDepId) e.add('rzPoint');
+    if ((delivery === RZ_DELIVERY_TYPE || delivery === 'meest') && !rzDepId) e.add('rzPoint');
     if (!payment)         e.add('payment');
     return e;
   }
@@ -752,17 +763,17 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
           contact: [lastName, firstName, middleName].filter(Boolean).join(' '),
           phone, email,
           deliveryType: delivery,
-          deliverySubtype: delivery === 'nova' ? novaSubtype : null,
-          deliveryAddress: (delivery === RZ_DELIVERY_TYPE ? rzDepLabel : address) || null,
+          deliverySubtype: delivery === 'nova' ? novaSubtype : delivery === 'meest' ? (meestPostomat ? 'postomat' : 'warehouse') : null,
+          deliveryAddress: (delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? rzDepLabel : address) || null,
           // Ідентифікатори точок ROZETKA — uuid, а не Ref НП; лягають у ті самі
           // колонки, бо роль однакова, а перевізника видно по delivery_type.
           deliveryCityRef: delivery === 'nova' ? (novaCityRef || null)
-            : delivery === RZ_DELIVERY_TYPE ? (rzCityId || null) : null,
+            : delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? (rzCityId || null) : null,
           deliveryCityName: delivery === 'nova' ? (novaCityName || null)
-            : delivery === RZ_DELIVERY_TYPE ? (rzCityName || null) : null,
+            : delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? (rzCityName || null) : null,
           deliveryWarehouseRef: delivery === 'nova'
             ? ((novaSubtype === 'warehouse' || novaSubtype === 'postomat') && novaWarehouseRef ? novaWarehouseRef : null)
-            : delivery === RZ_DELIVERY_TYPE ? (rzDepId || null) : null,
+            : delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? (rzDepId || null) : null,
           paymentType: payment,
           comment: [comment, noCallback ? '⛔ Не передзвонювати для підтвердження' : ''].filter(Boolean).join('\n') || null,
           items,
@@ -879,6 +890,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       return [tr.deliveryNova, sub, place].filter(Boolean).join(' · ');
     }
     if (delivery === RZ_DELIVERY_TYPE) return [tr.deliveryRz, [shortCity(rzCityName), rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    if (delivery === 'meest') return [tr.deliveryMeest, [shortCity(rzCityName), rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
     return '';
   })();
   const paymentSummary = PAYMENT_OPTIONS.find(o => o.value === payment)?.label ?? '';
@@ -1036,8 +1048,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           {opt.label}
                           {opt.sub && <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
                         </span>
-                        {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG, next/image тут зайвий */}
-                        <img src={opt.logo} alt="" aria-hidden className="cart-carrier-logo" />
+                        {opt.logo
+                          // eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG, next/image тут зайвий
+                          ? <img src={opt.logo} alt="" aria-hidden className="cart-carrier-logo" />
+                          : <Truck size={22} aria-hidden color="var(--text-secondary)" style={{ flexShrink: 0 }} />}
                         {delivery === opt.value && !reopened.delivery && (
                           <button
                             onClick={e => { e.preventDefault(); clearDelivery(); }}
@@ -1123,6 +1137,28 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         </div>
                       )}
 
+                      {/* Meest Пошта — відділення або поштомат (той самий вибір, довідники Meest) */}
+                      {opt.value === 'meest' && delivery === 'meest' && (
+                        <div style={{ marginTop: '10px', paddingLeft: '14px' }}>
+                          <RzDeliverySelect
+                            provider="meest"
+                            weightKg={orderWeightKg}
+                            lang={lang}
+                            initialCity={rzInit.current?.city}
+                            initialCityId={rzInit.current?.cityId}
+                            initialDepartment={rzInit.current?.dep}
+                            onCityChange={setRzCityName}
+                            onCityIdChange={setRzCityId}
+                            onDepartmentChange={setRzDepLabel}
+                            onDepartmentPicked={d => setMeestPostomat(Boolean(d?.postomat))}
+                            onDepartmentIdChange={id => {
+                              setRzDepId(id);
+                              if (id) setErrors(s => { const n = new Set(s); n.delete('rzPoint'); return n; });
+                            }}
+                          />
+                        </div>
+                      )}
+
                       {/* Kharkiv delivery address */}
                       {opt.value === 'kharkiv' && delivery === 'kharkiv' && (
                         <div style={{ marginTop: '10px', paddingLeft: '14px' }}>
@@ -1158,7 +1194,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                 {errors.has('delivery') &&<p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errDelivery}</p>}
                 {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errNovaSubtype}</p>}
                 {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errAddress}</p>}
-                {errors.has('rzPoint') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errRzPoint}</p>}
+                {errors.has('rzPoint') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{delivery === 'meest' ? tr.errMeestPoint : tr.errRzPoint}</p>}
               </Section>
               </div>
 
