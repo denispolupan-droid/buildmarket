@@ -574,9 +574,16 @@ export function useAdminOrders(props: AdminOrdersProps) {
   }
 
   async function confirmMissingTtn(orderIds: string[]): Promise<boolean> {
-    const missingTtn = orderIds.some(oid => !orders.find(o => o.id === oid)?.tracking_number);
-    if (!missingTtn) return true;
-    return showConfirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
+    // Кілька вибраних — називаємо, у яких саме немає ТТН (13.11.2026: «для цього
+    // замовлення» при пакетній відправці не казало, про яке з них мова)
+    const missing = orderIds
+      .map(oid => orders.find(o => o.id === oid))
+      .filter((o): o is NonNullable<typeof o> => !!o && !o.tracking_number)
+      .map(o => `#${o.order_number}`);
+    if (!missing.length) return true;
+    if (orderIds.length === 1) return showConfirm('ТТН не створена для цього замовлення. Все одно відправити постачальнику?');
+    const list = missing.length > 8 ? `${missing.slice(0, 8).join(', ')} і ще ${missing.length - 8}` : missing.join(', ');
+    return showConfirm(`ТТН не створена для ${missing.length === 1 ? 'замовлення' : 'замовлень'} ${list}. Все одно відправити постачальнику?`);
   }
 
   // Поштучна відправка — модалка веде по одному замовленню (вибір контакту, коментар).
