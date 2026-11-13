@@ -3,6 +3,7 @@ import { providerFor, DELIVERY_PROVIDERS } from '../lib/delivery/registry';
 import { npDocUpdate, npPhase } from '../lib/delivery/providers/nova-poshta';
 import { rzTrackUpdate } from '../lib/delivery/providers/rz-delivery';
 import { rozetkaPointsUpdates, rzSettled } from '../lib/delivery/providers/rozetka-points';
+import { meestUpdate, meestPhase } from '../lib/delivery/providers/meest';
 import type { TrackedOrder } from '../lib/delivery/types';
 
 const order = (over: Partial<TrackedOrder> = {}): TrackedOrder => ({
@@ -17,7 +18,7 @@ describe('реєстр перевізників', () => {
     expect(providerFor('rozetka_delivery').code).toBe('rozetka');
     expect(providerFor('rz_delivery').code).toBe('rzOwn');
     expect(providerFor('ukrposhta').code).toBe('manual');
-    expect(providerFor('meest').code).toBe('manual');
+    expect(providerFor('meest').code).toBe('meest');
     expect(providerFor('nova_poshta').code).toBe('np');
     expect(providerFor('nova').code).toBe('np');
     expect(providerFor('pickup').code).toBe('np');
@@ -83,5 +84,35 @@ describe('точки видачі Rozetka: лідер об’єднаної по
     expect(rozetkaPointsUpdates([a], new Map()).size).toBe(0);
     expect(rzSettled(order({ status: 'cancelled', flags: ['return_received'] }))).toBe(true);
     expect(rzSettled(order({ status: 'cancelled', flags: [] }))).toBe(false);
+  });
+});
+
+describe("Meest — публічний трекер (коди з таблиці Meest)", () => {
+  const ev = (statusCode: string, eventDate: string, city = "Kharkiv") => ({ statusCode, eventDate, city, eventDescription: "x" });
+  it("№26111073: створено → прийнято → виїхала — у дорозі, прийнято перевізником", () => {
+    const u = meestUpdate([ev("2", "2026-11-12 11:11:08"), ev("606", "2026-11-12 17:38:11"), ev("8081", "2026-11-12 18:56:12")])!;
+    expect(u.phase).toBe("in_transit");
+    expect(u.carrierAccepted).toBe(true);
+    expect(u.statusText).toBe("Meest: Виїхала з відділення відправника (Kharkiv)");
+  });
+  it("лише створено — не прийнято", () => {
+    const u = meestUpdate([ev("2", "2026-11-12 11:11:08")])!;
+    expect(u.phase).toBe("created");
+    expect(u.carrierAccepted).toBe(false);
+  });
+  it("фази: 1214 прибула, 1622 доручено, 1825/1620 повернення; невідомий код — у дорозі", () => {
+    expect(meestPhase("1214")).toBe("arrived");
+    expect(meestPhase("1622")).toBe("delivered");
+    expect(meestPhase("1825")).toBe("returning");
+    expect(meestPhase("1620")).toBe("returning");
+    expect(meestPhase("9999")).toBe("in_transit");
+  });
+  it("остання подія — за датою, не за порядком у масиві", () => {
+    const u = meestUpdate([ev("1622", "2026-11-14 10:00:00", "Kyiv"), ev("1214", "2026-11-13 09:00:00", "Kyiv")])!;
+    expect(u.phase).toBe("delivered");
+    expect(u.statusText).toBe("Meest: Доручено");
+  });
+  it("без подій — без оновлення", () => {
+    expect(meestUpdate([])).toBeNull();
   });
 });

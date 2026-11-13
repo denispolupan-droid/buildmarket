@@ -64,7 +64,7 @@ export type TrackContext = { actor: string };
 
 export interface DeliveryProvider {
   /** Ключ для результату синку й логів. */
-  code: 'np' | 'rozetka' | 'rzOwn' | 'manual';
+  code: 'np' | 'rozetka' | 'rzOwn' | 'meest' | 'manual';
   label: string;
   /** Чи цей провайдер веде замовлення з таким delivery_type. */
   handles(deliveryType: string | null | undefined): boolean;

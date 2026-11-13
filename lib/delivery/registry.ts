@@ -2,6 +2,7 @@ import { novaPoshtaProvider } from './providers/nova-poshta';
 import { rozetkaPointsProvider } from './providers/rozetka-points';
 import { rzDeliveryProvider } from './providers/rz-delivery';
 import { manualPostalProvider } from './providers/manual-postal';
+import { meestProvider } from './providers/meest';
 import type { DeliveryProvider } from './types';
 
 /**
@@ -11,6 +12,7 @@ import type { DeliveryProvider } from './types';
 export const DELIVERY_PROVIDERS: readonly DeliveryProvider[] = [
   rozetkaPointsProvider,
   rzDeliveryProvider,
+  meestProvider,          // раніше за manual: Meest тепер відстежуємо публічним трекером
   manualPostalProvider,
   novaPoshtaProvider,
 ];

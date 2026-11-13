@@ -7,9 +7,11 @@ import type { DeliveryProvider } from '../types';
  * менеджер кнопкою. Провайдер існує, щоб конвеєр не плутав їх із Новою Поштою
  * (інцидент 02.11.2026: їхні номери йшли в трекінг НП як «не знайдено»).
  */
+// З 13.11.2026 Meest веде providers/meest (стоїть у реєстрі раніше) — сюди
+// фактично потрапляє лише Укрпошта.
 export const manualPostalProvider: DeliveryProvider = {
   code: 'manual',
-  label: 'Укрпошта / Meest (вручну)',
+  label: 'Укрпошта (вручну)',
   handles: t => isManualPostalCarrier(t),
   notifiesParcelEvents: false,
   async track() { return new Map(); },
