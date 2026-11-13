@@ -20,6 +20,8 @@ export const SECRET_KEYS: ReadonlySet<string> = new Set([
   'rozetkapay_api_password',
   'epicentr_api_token',
   'rz_delivery_token',
+  // Meest Пошта (договір 10031120, 13.11.2026): логін/пароль API і поточні токени
+  'meest_api_username', 'meest_api_password', 'meest_api_token', 'meest_api_refresh_token',
   'mono_personal_token', 'mono_webhook_secret',
   'novapay_refresh_token', 'novapay_refresh_token_prev', 'novapay_certificate', 'novapay_certificate_prev', 'novapay_jwt',
   'google_ads_client_secret', 'google_ads_developer_token', 'google_ads_refresh_token',
