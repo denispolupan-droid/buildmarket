@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import { getOrderFulfillmentInfo } from '../../../../../../lib/accounting/dropship';
+import { loadOwnStockSources } from '../../../../../../lib/accounting/own-stock-source';
 import { resolveOrderFulfillment } from '../../../../../../lib/accounting/fulfillment';
 import { getOrderReservations } from '../../../../../../lib/accounting/reservations';
 import { knownItemPlan, type KnownSource } from '../../../../../../lib/orders/item-sources';
@@ -42,8 +43,7 @@ async function _GET(
   const fixed = await knownItemPlan(db, id);
   const allFixed = items.length > 0 && items.every(i => fixed.has(i.sku));
 
-  const [info, plan, reservations, balances, stockRows, ledgerRows, confirmedSales] = await Promise.all([
-    getOrderFulfillmentInfo(items as unknown as Parameters<typeof getOrderFulfillmentInfo>[0]),
+  const [plan, reservations, balances, stockRows, ledgerRows, confirmedSales] = await Promise.all([
     allFixed
       ? Promise.resolve(planFromFixed(items, fixed))
       : resolveOrderFulfillment(
@@ -73,6 +73,14 @@ async function _GET(
       .eq('status', 'confirmed')
       .is('reversal_of', null),
   ]);
+
+  // Позиції з власного складу — фактичний постачальник і ціна партії (FIFO), а
+  // не прив'язка товару: куплене на склад у «Ринку» не показуємо як ЗРХ (13.11.2026)
+  const ownItems = plan.items
+    .filter(p => (fixed.get(p.sku)?.fulfillment_type ?? p.fulfillment_type) === 'own')
+    .map(p => ({ sku: p.sku, qty: Number(p.qty), warehouse_id: Number(fixed.get(p.sku)?.warehouse_id ?? p.warehouse_id) || 0 }));
+  const ownSources = ownItems.length ? await loadOwnStockSources(db, id, ownItems) : undefined;
+  const info = await getOrderFulfillmentInfo(items as unknown as Parameters<typeof getOrderFulfillmentInfo>[0], ownSources);
 
   // ── Факт з проводок (тільки якщо є хоча б одна проведена РН) ──
   let fact: { revenue: number; cogs: number; commission: number; delivery: number; extra: number; posted_docs: number } | null = null;

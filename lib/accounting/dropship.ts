@@ -24,6 +24,7 @@ import type { OrderItem } from '../../types';
 import { saleLinePrice } from './sale-party';
 import { postPartnerSaleOffset, reversePartnerSaleOffset } from './partner-ledger';
 import { loadOrderItems } from '../orders/lines-read';
+import type { SourcePart } from './own-stock-source';
 
 // ── Информация о выполнении заказа ────────────────────────────────────────────
 
@@ -59,8 +60,14 @@ export type OrderFulfillmentInfo = {
   margin_pct:    number;
 };
 
+/**
+ * ownSources — позиції з власного складу: фактичні партії (постачальник і ціна
+ * партії, lib/accounting/own-stock-source). Для них рядок ділиться по
+ * постачальниках партій замість прив'язки товару й поточної price_cost.
+ */
 export async function getOrderFulfillmentInfo(
   orderItems: OrderItem[],
+  ownSources?: Map<string, SourcePart[]>,
 ): Promise<OrderFulfillmentInfo> {
   const db = createServiceClient();
   const skus = orderItems.map(i => i.sku);
@@ -105,8 +112,32 @@ export async function getOrderFulfillmentInfo(
     (supplierRows ?? []).map(s => [s.id, s.name]),
   );
 
+  // Позиції з власного складу — частинами за фактичними партіями; решта
+  // кількості (партій не вистачило) іде звичайним шляхом нижче
+  const ownInfos: FulfillmentItemInfo[] = [];
+  const restItems: OrderItem[] = [];
+  for (const item of orderItems) {
+    const parts = ownSources?.get(item.sku) ?? [];
+    let left = Number(item.qty);
+    for (const p of parts) {
+      const qty = Math.min(p.qty, left);
+      if (qty <= 0) break;
+      left -= qty;
+      const revenue = qty * item.price;
+      const cost = qty * p.unit_cost;
+      ownInfos.push({
+        sku: item.sku, name: item.name, qty, sale_price: item.price, cost_price: p.unit_cost,
+        supplier_id: p.supplier_id, supplier_name: p.supplier_id ? (supplierNameMap.get(p.supplier_id) ?? null) : null,
+        supplier_sku: skuMapByOurSku.get(item.sku)?.supplier_sku ?? stockMap.get(item.sku)?.supplier_sku ?? null,
+        revenue, cost, margin: revenue - cost,
+        margin_pct: revenue > 0 ? Math.round((revenue - cost) / revenue * 1000) / 10 : 0,
+      });
+    }
+    if (left > 0) restItems.push(left === Number(item.qty) ? item : { ...item, qty: left });
+  }
+
   // Строим информацию по каждой позиции
-  const itemInfos: FulfillmentItemInfo[] = orderItems.map(item => {
+  const itemInfos: FulfillmentItemInfo[] = [...ownInfos, ...restItems.map(item => {
     const stock      = stockMap.get(item.sku);
     const skuMapping = skuMapByOurSku.get(item.sku);
 
@@ -136,7 +167,7 @@ export async function getOrderFulfillmentInfo(
       margin,
       margin_pct: revenue > 0 ? Math.round(margin / revenue * 1000) / 10 : 0,
     };
-  });
+  })];
 
   // Группируем по поставщику
   const supplierGroups = new Map<string, FulfillmentSupplierGroup>();
