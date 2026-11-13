@@ -99,7 +99,7 @@ export function OrdersBulkBar() {
                 // Meest-Епіцентр (файл накладної віддає Епіцентр)
                 const printable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number
                   && (['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? '')
-                    || (o.delivery_type === 'meest' && o.channel_code === 'epicentr')));
+                    || o.delivery_type === 'meest'));
                 if (printable.length === 0) return null;
                 return (
                   <button className="proc-btn" onClick={bulkPrintLabels} disabled={bulkPrinting}

@@ -15,7 +15,8 @@ import type { DeliveryProvider, ParcelPhase, ParcelUpdate, TrackedOrder } from '
  */
 const TRACK_URL = 'https://t.meest-group.com/get_int.php?what=tracking&out=json&lang=ua&number=';
 
-export type MeestEvent = { eventDate?: string; city?: string; statusCode?: string | number; eventDescription?: string };
+/** descrUa — український текст події з офіційного API (публічний трекер дає лише англійський) */
+export type MeestEvent = { eventDate?: string; city?: string; statusCode?: string | number; eventDescription?: string; descrUa?: string };
 
 const CODE_UA: Record<string, string> = {
   '2': 'Створено, ще не здано',
@@ -81,7 +82,7 @@ export function meestUpdate(events: MeestEvent[]): ParcelUpdate | null {
   const last = sorted[sorted.length - 1];
   const code = String(last.statusCode);
   const desc = (last.eventDescription ?? '').trim();
-  const label = CODE_UA[code] || phraseUa(desc) || desc || `Статус ${code}`;
+  const label = (last.descrUa ?? '').trim() || CODE_UA[code] || phraseUa(desc) || desc || `Статус ${code}`;
   const city = (last.city ?? '').trim();
   return {
     statusText: `Meest: ${label}${city && code !== DELIVERED_CODE ? ` (${city})` : ''}`,
@@ -104,9 +105,27 @@ async function fetchMeestEvents(ttn: string): Promise<MeestEvent[] | null> {
   }
 }
 
+/**
+ * Офіційне API (договір 10031120, з 13.11.2026): той самий код події й текст
+ * українською. Порожньо чи помилка — null, тоді йдемо в публічний трекер.
+ * Імпорт динамічний: модуль API тягне клієнт Supabase, а meestUpdate покритий
+ * юніт-тестами без .env.
+ */
+async function fetchOfficialEvents(ttn: string): Promise<MeestEvent[] | null> {
+  try {
+    const { meestTracking, meestEventText, meestEventCity } = await import('../../meest-ship');
+    const evs = await meestTracking(ttn);
+    if (!evs.length) return null;
+    return evs.map(e => ({ statusCode: e.eventCode, eventDate: e.eventDateTime, city: meestEventCity(e), descrUa: meestEventText(e) }));
+  } catch (err) {
+    log.warn('delivery.meest_official_track_failed', { ttn, err: err instanceof Error ? err.message : String(err) });
+    return null;
+  }
+}
+
 export const meestProvider: DeliveryProvider = {
   code: 'meest',
-  label: 'Meest (публічний трекер)',
+  label: 'Meest (API договору, запасний — публічний трекер)',
   handles: t => (t ?? '').trim() === 'meest',
   // Покупцю Епіцентру/Rozetka/Prom про рух пише сама площадка
   notifiesParcelEvents: false,
@@ -118,7 +137,7 @@ export const meestProvider: DeliveryProvider = {
       if (!ttn) continue;
       if (!byTtn.has(ttn)) {
         try {
-          const events = await fetchMeestEvents(ttn);
+          const events = (await fetchOfficialEvents(ttn)) ?? (await fetchMeestEvents(ttn));
           byTtn.set(ttn, events ? meestUpdate(events) : null);
         } catch (err) {
           log.warn('delivery.meest_track_failed', { order: o.order_number, ttn, err: err instanceof Error ? err.message : String(err) });

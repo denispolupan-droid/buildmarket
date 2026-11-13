@@ -89,6 +89,20 @@ export async function meestFetch<T>(path: string, init: { method?: string; body?
   return (env.result ?? (env as unknown)) as T;
 }
 
+/** Двійкова відповідь (PDF стікера) — з тим самим токеном і повтором після 401. */
+export async function meestFile(path: string): Promise<Buffer> {
+  let token = await readSetting(db(), 'meest_api_token');
+  if (!token) { await meestLogin(); token = await readSetting(db(), 'meest_api_token'); }
+  const call = (t: string) => fetchWithTimeout(`${MEEST_API}${path}`, { headers: { token: t, Accept: 'application/pdf' } });
+  let res = await call(token!);
+  if (res.status === 401) { await meestRefresh(); res = await call((await readSetting(db(), 'meest_api_token'))!); }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!res.ok || buf.subarray(0, 4).toString() !== '%PDF') {
+    throw new Error(`Meest ${path}: ${res.status} — ${buf.toString('utf8').slice(0, 200) || 'не PDF'}`);
+  }
+  return buf;
+}
+
 export type MeestContractInfo = { contractID?: string; contract?: string; number?: string; edrpou?: string; allowedCOD?: boolean; dateTo?: string; client?: string; clientFullName?: string };
 
 /** Перевірка доступу: дані договору (номер, ЄДРПОУ, чи дозволено наложку). */

@@ -24,7 +24,7 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
     ttnSaving, replaceTTN, saveTTN, setTtnModalOrder, registryAdded, registryAdding,
     addToRegistry, printLabel, rzLabelBusy, isAdmin, setNpReturnFor, deleteTTN,
     ttnDeleting, setRzTtnModal, addRzToReception, rzRegBusy, rzReception, printRzReception,
-    deleteRzTtn, returnRzTrack, setRzOwnTtnModal, setEpiMeestTtnModal,
+    deleteRzTtn, returnRzTrack, setRzOwnTtnModal, setEpiMeestTtnModal, setMeestTtnModal,
   } = useOrdersCtx();
   return (
     <>
@@ -468,8 +468,18 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
           // Поштомати й пункти видачі Епіцентру: накладну виписує Епіцентр за нашим
           // договором Meest — кнопкою звідси (роут epicentr-meest-ttn)
           const epiMeest = order.channel_code === 'epicentr' ? epicentrMeestProvider(order.epicentr_data) : null;
+          // Meest поза Епіцентром — наш договір 10031120, накладна через API (роут meest-ttn)
+          const ownMeest = carrier === 'meest' && order.channel_code !== 'epicentr';
           return (
             <>
+              {ownMeest && !order.tracking_number && (
+                <button onClick={() => setMeestTtnModal(order)}
+                  disabled={order.status === 'new'}
+                  title={order.status === 'new' ? 'Спершу підтвердіть замовлення' : 'Накладна Meest нашим договором — відділення чи поштомат, післяплата, платник'}
+                  style={{ height: '34px', padding: '0 14px', marginBottom: '6px', borderRadius: '9px', border: 'none', background: 'var(--violet)', color: 'var(--surface)', fontSize: '12.5px', fontWeight: 700, cursor: order.status === 'new' ? 'default' : 'pointer', opacity: order.status === 'new' ? 0.5 : 1 }}>
+                  Створити накладну Meest
+                </button>
+              )}
               {epiMeest && !order.tracking_number && (
                 <button onClick={() => setEpiMeestTtnModal(order)}
                   disabled={order.status === 'new'}
@@ -505,8 +515,8 @@ export function OrderDeliveryCard({ order, delivery, deliveryBadges, subtype, is
                   </button>
                 ) : (
                   <>
-                    {epiMeest && (
-                      <button onClick={() => printLabel(order.id, 'epicentr-meest-ttn')} disabled={rzLabelBusy === order.id}
+                    {(epiMeest || ownMeest) && (
+                      <button onClick={() => printLabel(order.id, epiMeest ? 'epicentr-meest-ttn' : 'meest-ttn')} disabled={rzLabelBusy === order.id}
                         title="Надрукувати накладну Meest"
                         style={{ height: '32px', width: '32px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {rzLabelBusy === order.id ? '…' : <Printer size={14} />}

@@ -10,6 +10,7 @@ import RozetkaDeliveryTtnModal from '../../components/admin/RozetkaDeliveryTtnMo
 import TtnDetailsModal from '../../components/admin/TtnDetailsModal';
 import RzDeliveryTtnModal from '../../components/admin/RzDeliveryTtnModal';
 import EpicentrMeestTtnModal from '../../components/admin/EpicentrMeestTtnModal';
+import MeestTtnModal from '../../components/admin/MeestTtnModal';
 import { useOrdersCtx } from './OrdersContext';
 import { Modal } from '../../components/admin/ui/Modal';
 
@@ -20,7 +21,7 @@ export function BulkSupplierSendModal() {
     returnFor, setReturnFor, router, npReturnFor, setNpReturnFor, invoiceCfg,
     setInvoiceCfg, setOrders, ttnModalOrder, setTtnModalOrder, setTtnValues, finishTtnFlow,
     ttnDetailsFor, setTtnDetailsFor, rzOwnTtnModal, rzMergeGroup, setRzOwnTtnModal, setRzMergeGroup,
-    epiMeestTtnModal, setEpiMeestTtnModal,
+    epiMeestTtnModal, setEpiMeestTtnModal, meestTtnModal, setMeestTtnModal,
     rzTtnModal, setRzTtnModal, mergeModal, setMergeModal,
   } = useOrdersCtx();
   return (
@@ -271,6 +272,25 @@ export function BulkSupplierSendModal() {
             showToast(`Накладна Meest створена: ${ttn}`, 'success', 5000);
             // Номер Епіцентр знає сам — хвіст лише відвантажує дропшип
             void finishTtnFlow([id], 'marketplace');
+          }}
+        />
+      )}
+
+      {meestTtnModal && (
+        <MeestTtnModal
+          order={{
+            id: meestTtnModal.id, order_number: meestTtnModal.order_number,
+            items: meestTtnModal.items.map(i => ({ sku: i.sku, qty: i.qty, name: i.name })),
+          }}
+          onClose={() => setMeestTtnModal(null)}
+          onCreated={ttn => {
+            const id = meestTtnModal.id;
+            setMeestTtnModal(null);
+            setOrders(prev => prev.map(o => o.id === id ? { ...o, tracking_number: ttn } : o));
+            setTtnValues(prev => ({ ...prev, [id]: ttn }));
+            showToast(`Накладна Meest створена: ${ttn}`, 'success', 5000);
+            // Як після ЕН НП: відвантаження дропшипу й номер у Prom/Rozetka
+            void finishTtnFlow([id], 'api');
           }}
         />
       )}

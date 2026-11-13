@@ -10,6 +10,7 @@ import { ROZETKA_DELIVERY_TYPE } from '../../../../../lib/rozetka-delivery';
 import { withApi } from '../../../../../lib/api-handler';
 import { getEpicentrShipmentFile } from '../../../../../lib/epicentr-api';
 import { epicentrMeestProvider } from '../../../../../lib/epicentr-meest';
+import { meestStickerPdf } from '../../../../../lib/meest-ship';
 
 /**
  * Групова печатка етикеток по вибраних замовленнях — ОДИН PDF на всі.
@@ -59,11 +60,14 @@ async function _POST(req: NextRequest) {
   const meest = rows
     .map(o => ({ ttn: o.tracking_number as string | null, provider: o.channel_code === 'epicentr' && o.delivery_type === 'meest' ? epicentrMeestProvider(o.epicentr_data) : null }))
     .filter((m): m is { ttn: string; provider: NonNullable<typeof m.provider> } => !!m.ttn && !!m.provider);
+  // Meest нашим договором (сайт/Rozetka/Prom): стікери 100×100 одним запитом
+  const ownMeestTtns = rows.filter(o => o.tracking_number && o.delivery_type === 'meest' && o.channel_code !== 'epicentr')
+    .map(o => o.tracking_number as string);
   // Без накладної або з перевізником, у якого немає друкованої форми — у «пропущені»
-  const printable = new Set([...npTtns, ...mpTtns, ...rzTtns, ...meest.map(m => m.ttn)]);
+  const printable = new Set([...npTtns, ...mpTtns, ...rzTtns, ...meest.map(m => m.ttn), ...ownMeestTtns]);
   const skipped = rows.filter(o => !o.tracking_number || !printable.has(o.tracking_number)).map(o => o.order_number);
 
-  if (!npTtns.length && !mpTtns.length && !rzTtns.length && !meest.length) {
+  if (!npTtns.length && !mpTtns.length && !rzTtns.length && !meest.length && !ownMeestTtns.length) {
     return NextResponse.json({ error: 'Серед вибраних немає накладних із етикетками (НП, Rozetka чи Meest)' }, { status: 400 });
   }
 
@@ -92,6 +96,10 @@ async function _POST(req: NextRequest) {
       return Buffer.from(file, 'base64');
     })),
   });
+  if (ownMeestTtns.length) tasks.push({
+    name: 'Meest',
+    run: async () => Promise.all(chunk(ownMeestTtns, 20).map(c => meestStickerPdf(c))),
+  });
 
   const settled = await Promise.allSettled(tasks.map(t => t.run()));
   const parts: Buffer[] = [];
@@ -113,7 +121,7 @@ async function _POST(req: NextRequest) {
 
   return NextResponse.json({
     label: Buffer.from(await merged.save()).toString('base64'),
-    counts: { np: npTtns.length, rozetkaPickup: mpTtns.length, rzDelivery: rzTtns.length, meest: meest.length },
+    counts: { np: npTtns.length, rozetkaPickup: mpTtns.length, rzDelivery: rzTtns.length, meest: meest.length + ownMeestTtns.length },
     skipped,
     errors,
   });
