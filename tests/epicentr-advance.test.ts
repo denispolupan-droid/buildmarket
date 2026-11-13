@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../lib/secrets', () => ({ readSetting: async () => 'mp_test' }));
 vi.mock('../lib/supabase-service', () => ({ createServiceClient: () => ({}) }));
 
-import { advanceEpicentrOrder, cancelEpicentrOrder, ourStatusToEpicentrStatus } from '../lib/epicentr-api';
+import { advanceEpicentrOrder, cancelEpicentrOrder, ourStatusToEpicentrStatus, ensureEpicentrTTN } from '../lib/epicentr-api';
 
 /**
  * Імітація кабінету Епіцентру: процес з листа менеджера 11.11.2026 —
@@ -34,6 +34,8 @@ function fakeFetch(url: string, init?: RequestInit): Promise<Response> {
     return Promise.resolve(new Response(null, { status: 202 }));
   }
   if (/shipment-number$/.test(path)) {
+    // Як живий Епіцентр (13.11, №26111077): номер — лише з «Підтверджено» і далі
+    if (['new', 'confirmed_by_merchant'].includes(state.status)) return json({ code: 400, errors: { number: ['validation.invalid_status'] } }, 400);
     state.ttn = JSON.parse(String(init?.body)).number;
     if (state.autoSentOnTtn && state.status === 'confirmed') state.status = 'sent';
     return Promise.resolve(new Response(null, { status: 204 }));
@@ -92,5 +94,25 @@ describe('ourStatusToEpicentrStatus', () => {
     expect(ourStatusToEpicentrStatus('awaiting_stock')).toBe('confirmed_by_merchant');
     expect(ourStatusToEpicentrStatus('picking')).toBe('confirmed');
     expect(ourStatusToEpicentrStatus('shipped')).toBe('sent');
+  });
+});
+
+describe("ensureEpicentrTTN — номер лише з «Підтверджено»", () => {
+  it("№26111077: «Підтверджено продавцем» (у нас «Очікує оплати») → спершу confirmed, потім номер", async () => {
+    state.status = "confirmed_by_merchant"; state.autoSentOnTtn = false;
+    await ensureEpicentrTTN("E1", "20451586527521");
+    expect(state.status).toBe("confirmed");
+    expect(state.ttn).toBe("20451586527521");
+  });
+  it("уже «Підтверджено» — лише номер, статус не чіпаємо", async () => {
+    state.status = "confirmed"; state.autoSentOnTtn = false;
+    await ensureEpicentrTTN("E1", "X1");
+    expect(state.calls.some(c => c.includes("change-status"))).toBe(false);
+    expect(state.ttn).toBe("X1");
+  });
+  it("той самий номер уже в картці — нічого не робимо", async () => {
+    state.status = "sent"; state.ttn = "X1";
+    await ensureEpicentrTTN("E1", "X1");
+    expect(state.calls.some(c => c.startsWith("POST") || c.startsWith("PATCH"))).toBe(false);
   });
 });

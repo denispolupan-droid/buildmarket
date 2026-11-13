@@ -305,6 +305,12 @@ export async function setEpicentrTTN(orderId: string, number: string): Promise<v
 export async function ensureEpicentrTTN(orderId: string, number: string, live?: EpicentrOrder | null): Promise<void> {
   const card = live ?? await getEpicentrOrder(orderId);
   if (card?.address?.shipment?.number === number) return;
+  // Номер Епіцентр приймає лише з «Підтверджено» і далі: з «Підтверджено продавцем»
+  // PATCH падає з validation.invalid_status (13.11.2026, №26111077 — оплата за
+  // рахунком, у нас «Очікує оплати», тож статус сам не просунувся). Доводимо покроково.
+  if (card && epicentrRank(card.statusCode) >= 0 && epicentrRank(card.statusCode) < epicentrRank('confirmed')) {
+    await advanceEpicentrOrder(orderId, 'confirmed', { live: card });
+  }
   await setEpicentrTTN(orderId, number);
 }
 
