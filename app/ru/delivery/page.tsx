@@ -53,7 +53,7 @@ export default function DeliveryRuPage() {
 
           {/* Methods */}
           <Reveal>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
 
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -115,36 +115,25 @@ export default function DeliveryRuPage() {
                 ))}
               </ul>
             </div>
-            {/* Третий способ — на всю ширину под двумя перевозчиками. Не ради
-                симметрии: адресная доставка другого класса — не массовый
-                перевозчик, а договорённость для опта, и широкая полоса под
-                карточками читается как примечание к ним. */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', gridColumn: '1 / -1' }}>
-              {/* Заголовок — отдельной строкой НАД колонками, а не внутри левой:
-                  так описание и условия начинаются с одной высоты и выравниваются
-                  по верху, иначе левая часть выше правой ровно на заголовок. */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            {/* Адресна доставка — четверта картка сітки 2×2 (13.11.2026: з Meest карток
+                перевізників стало три, і чотири однакові блоки рівніші за 3 + широкий) */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <MapPin size={20} color="#4880B8" strokeWidth={2} />
                 </div>
                 <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Адресная доставка</h2>
               </div>
-              <div className="delivery-wide">
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, flex: '1 1 300px', minWidth: 0 }}>
-                  {/* Было «доставка собственным транспортом» — своего транспорта
-                      нет, поэтому формулировка не обещает способ доставки: он
-                      зависит от объёма партии и согласуется отдельно. */}
-                  Для крупных оптовых заказов доставку по Харькову и области согласовываем
-                  отдельно: способ, стоимость и сроки зависят от объёма партии.
-                </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {['Доступно для оптовых заказов', 'Стоимость и сроки — по договорённости', 'Все детали согласовывает менеджер индивидуально'].map(i => (
-                    <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                Для крупных оптовых заказов доставку по Харькову и области согласовываем отдельно: способ, стоимость и сроки зависят от объёма партии.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {['Доступно для оптовых заказов', 'Стоимость и сроки — по договорённости', 'Все детали согласовывает менеджер индивидуально'].map(i => (
+                  <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#4880B8', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
+                  </li>
+                ))}
+              </ul>
             </div>
 
           </div>
@@ -196,18 +185,8 @@ export default function DeliveryRuPage() {
       </div>
       <Footer />
       <style>{`
-        /* Умови по центру відносно лівої колонки: опис займає три рядки, список — менше,
-           і при вирівнюванні по верху праворуч знизу лишалася мертва чверть картки */
-        .delivery-wide { display: flex; gap: 28px; align-items: flex-start; }
         @media (max-width: 640px) {
           .delivery-grid { grid-template-columns: 1fr !important; }
-          /* На узком экране широкая карточка ничем не отличается от остальных —
-             две колонки внутри превратились бы в две узкие колонки текста */
-          /* У колонці центрування ставало б горизонтальним — списку це не треба */
-          .delivery-wide { flex-direction: column; gap: 14px; align-items: stretch; }
-          /* У колонковому flex flex-basis керує ВИСОТОЮ: 300px залишали
-             всередині картки порожню діру на пів екрана */
-          .delivery-wide > * { flex: 0 0 auto !important; }
         }
       `}</style>
     </>
