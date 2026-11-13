@@ -2,10 +2,12 @@
 // чат: дані питаються інтерактивно, пароль не відображається, у вивід нічого
 // секретного не потрапляє — лише результат перевірки договору.
 //   npx tsx --env-file=.env.local scripts/set-meest-credentials.ts
+//   npx tsx --env-file=.env.local scripts/set-meest-credentials.ts --clipboard   (токен з буфера)
 //
 // Кабінет 24.meest.com → Налаштування → API інтеграції → «Створити API-інтеграцію»
 // дає або логін і пароль, або готовий токен — скрипт приймає обидва варіанти.
 import { createInterface } from 'node:readline';
+import { execFileSync } from 'node:child_process';
 import { createServiceClient } from '../lib/supabase';
 import { writeSetting } from '../lib/secrets';
 import { meestLogin, meestContractInfo, meestContractId } from '../lib/meest-api';
@@ -23,12 +25,20 @@ function ask(question: string, hidden = false): Promise<string> {
   });
 }
 
+/** Буфер обміну Windows (токен скопійовано кнопкою в кабінеті) — без виводу на екран. */
+function clipboard(): string {
+  return execFileSync('powershell.exe', ['-NoProfile', '-Command', 'Get-Clipboard -Raw'], { encoding: 'utf8' }).trim();
+}
+
 (async () => {
   const db = createServiceClient();
-  const mode = (await ask('Що дав кабінет Meest? 1 — логін і пароль, 2 — готовий токен [1]: ')) || '1';
+  // --clipboard: без запитань (можна запускати й через «!» у чаті — секрет не друкується)
+  const fromClipboard = process.argv.includes('--clipboard');
+  const mode = fromClipboard ? '2' : ((await ask('Що дав кабінет Meest? 1 — логін і пароль, 2 — готовий токен [1]: ')) || '1');
   try {
     if (mode === '2') {
-      const token = await ask('Токен: ', true);
+      const token = fromClipboard ? clipboard() : await ask('Токен: ', true);
+      if (fromClipboard && !/^[A-Za-z0-9._-]{16,}$/.test(token)) throw new Error('у буфері обміну не схоже на токен — натисніть «копіювати» біля «API токен» у кабінеті');
       if (!token) throw new Error('порожній токен');
       await writeSetting(db, 'meest_api_token', token);            // → Vault
     } else {
