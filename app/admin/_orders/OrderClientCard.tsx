@@ -7,6 +7,7 @@ import { CHANNEL_LABEL, STATUSES } from './constants';
 import { formatPhone } from './helpers';
 import { ClampedComment } from './ClampedComment';
 import { CounterpartyPicker } from './CounterpartyPicker';
+import { CompanyHint } from './CompanyHint';
 import { DropshipPaymentInfo } from './DropshipPaymentInfo';
 import type { Order } from './types';
 import { useOrdersCtx } from './OrdersContext';
@@ -192,6 +193,8 @@ export function OrderClientCard({ order, isDropship, noCallback, callbackDone, i
         </div>{/* /oc-card-body */}
         {/* Оплата — притиснута до низу картки; спільна висота з блоком ТТН (.oc-card-footer) тримає розділювачі обох карток на одній лінії */}
         <div className="oc-card-footer">
+        {/* Код ЄДРПОУ/ІПН у коментарі, а рахунок ще на фізособу — одним кліком на підприємство */}
+        <CompanyHint order={order} onApplied={patch => setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...patch } : o))} />
         {/* Два стовпці: оплата ліворуч, коментар покупця праворуч
             (рішення власника). Заголовки «Оплата» і «Коментар» — на одній
             лінії: кожен усередині свого стовпця. На вузькому екрані

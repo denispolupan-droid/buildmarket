@@ -25,6 +25,7 @@ import { importMarketplaceOrder } from './marketplace/import-order';
 import { epicentrAdapter } from './marketplace/epicentr';
 import { handleMarketplaceCancelledOrder, type CancelWatchOrder } from './marketplace-cancel-watch';
 import { createServiceClient, type TableUpdate } from './supabase-service';
+import { companyForOrder } from './customer-company';
 
 const db = createServiceClient();
 
@@ -189,24 +190,11 @@ async function fillBuyerAndAddress(existing: ExistingRow, epi: EpicentrOrder, pa
 async function fillPayer(existing: ExistingRow, epi: EpicentrOrder, patch: Record<string, unknown>) {
   const payer = epicentrPayer(epi);
   if (!payer) return;
-  patch.company = payer.name;
-  patch.invoice_as_company = true;
+  // Те саме правило, що й кнопка «Заповнити реквізити» в картці (lib/customer-company)
   const custId = (patch.customer_id as string | undefined) ?? existing.customer_id;
-  const { data: byTax } = await db.from('customers').select('id').eq('tax_number', payer.govNumber).order('created_at').limit(1);
-  const known = byTax?.[0]?.id ?? null;
-  if (known) {
-    if (known !== custId) patch.customer_id = known;
-  } else if (custId) {
-    const { data: c } = await db.from('customers').select('company, legal_name, tax_number').eq('id', custId).maybeSingle();
-    if (c && !c.tax_number) {
-      const upd: TableUpdate<'customers'> = { tax_number: payer.govNumber };
-      if (!c.legal_name) upd.legal_name = payer.name;
-      if (!c.company) upd.company = payer.name;
-      const { error } = await db.from('customers').update(upd).eq('id', custId).is('tax_number', null);
-      if (error) log.warn('epicentr.payer_fill_failed', { customer: custId, err: error.message });
-    }
-  }
-  log.info('epicentr.payer_filled', { order: existing.order_number, epi: epi.number, gov: payer.govNumber, linked: Boolean(known) });
+  const r = await companyForOrder(db, custId, { name: payer.name, code: payer.govNumber });
+  Object.assign(patch, r.orderPatch);
+  log.info('epicentr.payer_filled', { order: existing.order_number, epi: epi.number, gov: payer.govNumber, linked: Boolean(r.linkedCustomerId) });
 }
 
 /** Видаляє клієнта-заглушку, якщо на ньому не лишилось замовлень (виклик — після перенесення). */

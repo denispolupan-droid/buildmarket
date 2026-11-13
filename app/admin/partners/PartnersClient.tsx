@@ -201,6 +201,28 @@ export default function PartnersClient({
     setNewPhone('');
   }
 
+  // ── Назва за кодом ЄДРПОУ/ІПН (Нова Пошта, безкоштовно; 13.11.2026) ─────────
+  // Заповнює юр. назву (і «Компанію», якщо порожня); адресу/керівника НП не дає.
+  const [lookupBusy, setLookupBusy] = useState(false);
+  async function lookupCompany(code: string, apply: (name: string) => void) {
+    setLookupBusy(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/company-lookup?code=${encodeURIComponent(code)}`);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.company) { setError(d.error ?? 'Не знайдено'); return; }
+      apply(d.company.shortName);
+    } finally {
+      setLookupBusy(false);
+    }
+  }
+  const lookupBtn = (code: string, apply: (name: string) => void) => (
+    <button type="button" onClick={() => lookupCompany(code, apply)} disabled={lookupBusy || !/^(\d{8}|\d{10})$/.test(code.replace(/\D/g, ''))}
+      title="Знайти офіційну назву за кодом (Нова Пошта)"
+      style={{ height: '30px', padding: '0 10px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--brand-blue)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      {lookupBusy ? '…' : 'Знайти'}
+    </button>
+  );
+
   // ── Save edit ─────────────────────────────────────────────────────────────
   async function handleSaveEdit(id: string) {
     setSaving(true); setError('');
@@ -521,7 +543,10 @@ export default function PartnersClient({
                           </div>
                           <div>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>ЄДРПОУ / ІПН</div>
-                            <input value={String((editForm as Record<string, unknown>).tax_number ?? '')} onChange={e => setEditForm(prev => ({ ...prev, tax_number: e.target.value }))} style={inp} placeholder="12345678" />
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <input value={String((editForm as Record<string, unknown>).tax_number ?? '')} onChange={e => setEditForm(prev => ({ ...prev, tax_number: e.target.value }))} style={inp} placeholder="12345678" />
+                              {lookupBtn(String((editForm as Record<string, unknown>).tax_number ?? ''), name => setEditForm(prev => ({ ...prev, legal_name: name, company: prev.company || name })))}
+                            </div>
                           </div>
                           <div>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>Юрадреса</div>
@@ -853,8 +878,11 @@ export default function PartnersClient({
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase' }}>ЄДРПОУ / ІПН</div>
-                  <input placeholder="12345678" value={newForm.tax_number}
-                    onChange={e => setNewForm(prev => ({ ...prev, tax_number: e.target.value }))} style={inp} />
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input placeholder="12345678" value={newForm.tax_number}
+                      onChange={e => setNewForm(prev => ({ ...prev, tax_number: e.target.value }))} style={inp} />
+                    {lookupBtn(newForm.tax_number, name => setNewForm(prev => ({ ...prev, legal_name: name, company: prev.company || name })))}
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
