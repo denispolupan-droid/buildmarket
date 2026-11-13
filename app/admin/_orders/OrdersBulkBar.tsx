@@ -95,13 +95,15 @@ export function OrdersBulkBar() {
                 <Truck size={14} /> Об&apos;єднати в ТТН
               </button>
               {(() => {
-                // Друкуємо лише те, на що існує етикетка: НП і обидва типи Rozetka
+                // Друкуємо лише те, на що існує етикетка: НП, обидва типи Rozetka і
+                // Meest-Епіцентр (файл накладної віддає Епіцентр)
                 const printable = orders.filter(o => selectedIds.has(o.id) && o.tracking_number
-                  && ['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? ''));
+                  && (['nova', 'nova_poshta', 'rozetka_delivery', RZ_DELIVERY_TYPE].includes(o.delivery_type ?? '')
+                    || (o.delivery_type === 'meest' && o.channel_code === 'epicentr')));
                 if (printable.length === 0) return null;
                 return (
                   <button className="proc-btn" onClick={bulkPrintLabels} disabled={bulkPrinting}
-                    title="Один PDF з етикетками всіх виділених накладних — НП і Rozetka разом">
+                    title="Один PDF з етикетками всіх виділених накладних — НП, Rozetka і Meest разом">
                     <Printer size={14} /> {bulkPrinting ? 'Готую PDF…' : `Друк ТТН (${printable.length})`}
                   </button>
                 );

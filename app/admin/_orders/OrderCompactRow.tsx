@@ -57,6 +57,14 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
     setExpandedId, loadFulfillment, loadLinkedPOs, loadPayments, toggleSelect, selectedIds,
     productThumbs, copyPhone, copiedPhone, copyTtn, copiedTtn,
   } = useOrdersCtx();
+  // Колір плашки ЕН за перевізником: НП — помаранчевий, точки Rozetka — зелений,
+  // Meest — фіолетовий (13.11.2026: Meest плутали з НП, бо плашка була та сама)
+  const isMeest = order.delivery_type === 'meest';
+  const ttnTone = isRozetkaPoint
+    ? { color: 'var(--emerald-dark)', bg: 'var(--emerald-bg)', border: '#6EE7B7', short: 'Rozetka' }
+    : isMeest
+      ? { color: 'var(--violet)', bg: 'var(--violet-bg)', border: 'var(--violet-border)', short: 'Meest' }
+      : { color: '#7C2D12', bg: 'var(--orange-bg)', border: 'var(--orange-border)', short: order.delivery_type === 'ukrposhta' ? 'Укрпошта' : 'НП' };
   return (
     <>
       {/* ── Compact row ── */}
@@ -281,12 +289,10 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
               style={{
                 flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px',
                 padding: '1px 7px', borderRadius: '20px', fontWeight: 700, letterSpacing: '.02em',
-                color: isRozetkaPoint ? 'var(--emerald-dark)' : '#7C2D12',
-                background: isRozetkaPoint ? 'var(--emerald-bg)' : 'var(--orange-bg)',
-                border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : 'var(--orange-border)'}`,
+                color: ttnTone.color, background: ttnTone.bg, border: `1px solid ${ttnTone.border}`,
               }}>
               <Truck size={10} style={{ flexShrink: 0 }} />
-              {isRozetkaPoint ? 'Rozetka' : 'НП'} {order.tracking_number}
+              {ttnTone.short} {order.tracking_number}
               {inRegistry && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--status-instock)', flexShrink: 0 }} />}
               {copiedTtn === order.tracking_number && <Check size={10} strokeWidth={3} />}
             </span>
@@ -321,9 +327,7 @@ export function OrderCompactRow({ isExpanded, order, isPicked, pickedBg, rowTone
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer',
                   padding: '0 6px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 700, letterSpacing: '.02em',
-                  color: isRozetkaPoint ? 'var(--emerald-dark)' : '#7C2D12',
-                  background: isRozetkaPoint ? 'var(--emerald-bg)' : 'var(--orange-bg)',
-                  border: `1px solid ${isRozetkaPoint ? '#6EE7B7' : 'var(--orange-border)'}`,
+                  color: ttnTone.color, background: ttnTone.bg, border: `1px solid ${ttnTone.border}`,
                 }}>
                 <Truck size={9} style={{ flexShrink: 0 }} />
                 <span style={{ whiteSpace: 'nowrap' }}>{order.tracking_number}</span>

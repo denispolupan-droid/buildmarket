@@ -117,6 +117,7 @@
   --blue-border:    #BFDBFE;
   --violet:         #7C3AED;
   --violet-bg:      #F5F3FF;
+  --violet-border:  #C4B5FD;
   /* Фірмовий синій Епіцентру (theme-color epicentrk.ua) — бейдж каналу залитий,
      щоб не плутався зі світло-синім «Магазином» */
   --epicentr:       #1060C1;
@@ -192,6 +193,7 @@
   --blue-border:    #1E3A8A;
   --violet:         #A78BFA;
   --violet-bg:      #251F3A;
+  --violet-border:  #5B21B6;
   --epicentr:       #1F6FD1;
   --epicentr-ink:   #FFFFFF;
 }

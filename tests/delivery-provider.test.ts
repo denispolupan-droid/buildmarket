@@ -116,3 +116,13 @@ describe("Meest — публічний трекер (коди з таблиці 
     expect(meestUpdate([])).toBeNull();
   });
 });
+
+describe("Meest — переклад тексту, якого немає в таблиці кодів", () => {
+  it("код 11 і англійські фрази трекера → українською", () => {
+    const ev = (statusCode: string, eventDate: string, eventDescription: string) => ({ statusCode, eventDate, city: "", eventDescription });
+    expect(meestUpdate([ev("8081", "2026-11-12 18:56:12", "x"), ev("11", "2026-11-13 05:00:00", "Departure from the transit sorting center ")])!.statusText)
+      .toBe("Meest: Виїхала з транзитного сортувального центру");
+    expect(meestUpdate([ev("9998", "2026-11-13 05:00:00", "Transportation to the settlement Lviv")])!.statusText).toBe("Meest: Прямує до Lviv");
+    expect(meestUpdate([ev("9997", "2026-11-13 05:00:00", "Something new")])!.statusText).toBe("Meest: Something new");
+  });
+});

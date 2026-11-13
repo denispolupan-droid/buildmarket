@@ -8,6 +8,8 @@ import { getRozetkaDeliveryTtnPdf } from '../../../../../lib/rozetka-delivery-tt
 import { RZ_DELIVERY_TYPE } from '../../../../../lib/rz-delivery';
 import { ROZETKA_DELIVERY_TYPE } from '../../../../../lib/rozetka-delivery';
 import { withApi } from '../../../../../lib/api-handler';
+import { getEpicentrShipmentFile } from '../../../../../lib/epicentr-api';
+import { epicentrMeestProvider } from '../../../../../lib/epicentr-meest';
 
 /**
  * Групова печатка етикеток по вибраних замовленнях — ОДИН PDF на всі.
@@ -41,7 +43,7 @@ async function _POST(req: NextRequest) {
   const db = createServiceClient();
   const { data: orders } = await db
     .from('orders')
-    .select('id, order_number, tracking_number, delivery_type')
+    .select('id, order_number, tracking_number, delivery_type, channel_code, epicentr_data')
     .in('id', ids)
     .limit(ids.length);
 
@@ -52,12 +54,17 @@ async function _POST(req: NextRequest) {
   const npTtns = ttnOf(['nova', 'nova_poshta']);
   const mpTtns = ttnOf([ROZETKA_DELIVERY_TYPE]);
   const rzTtns = ttnOf([RZ_DELIVERY_TYPE]);
+  // Meest-Епіцентр (поштомати й ЦВЗ): накладну виписує Епіцентр, файл — у нього
+  // ж, по одному на номер (13.11.2026: у груповому друку Meest не було)
+  const meest = rows
+    .map(o => ({ ttn: o.tracking_number as string | null, provider: o.channel_code === 'epicentr' && o.delivery_type === 'meest' ? epicentrMeestProvider(o.epicentr_data) : null }))
+    .filter((m): m is { ttn: string; provider: NonNullable<typeof m.provider> } => !!m.ttn && !!m.provider);
   // Без накладної або з перевізником, у якого немає друкованої форми — у «пропущені»
-  const printable = new Set([...npTtns, ...mpTtns, ...rzTtns]);
+  const printable = new Set([...npTtns, ...mpTtns, ...rzTtns, ...meest.map(m => m.ttn)]);
   const skipped = rows.filter(o => !o.tracking_number || !printable.has(o.tracking_number)).map(o => o.order_number);
 
-  if (!npTtns.length && !mpTtns.length && !rzTtns.length) {
-    return NextResponse.json({ error: 'Серед вибраних немає накладних із етикетками (НП чи Rozetka)' }, { status: 400 });
+  if (!npTtns.length && !mpTtns.length && !rzTtns.length && !meest.length) {
+    return NextResponse.json({ error: 'Серед вибраних немає накладних із етикетками (НП, Rozetka чи Meest)' }, { status: 400 });
   }
 
   // Порядок частин стабільний: НП → точки видачі Rozetka → ROZETKA Доставка
@@ -76,6 +83,14 @@ async function _POST(req: NextRequest) {
   if (rzTtns.length) tasks.push({
     name: 'ROZETKA Доставка',
     run: async () => [Buffer.from(await rzLabel(rzTtns), 'base64')],
+  });
+  if (meest.length) tasks.push({
+    name: 'Meest (Епіцентр)',
+    run: async () => Promise.all(meest.map(async m => {
+      const file = await getEpicentrShipmentFile(m.provider, m.ttn);
+      if (!file) throw new Error(`Епіцентр не віддав файл накладної ${m.ttn}`);
+      return Buffer.from(file, 'base64');
+    })),
   });
 
   const settled = await Promise.allSettled(tasks.map(t => t.run()));
@@ -98,7 +113,7 @@ async function _POST(req: NextRequest) {
 
   return NextResponse.json({
     label: Buffer.from(await merged.save()).toString('base64'),
-    counts: { np: npTtns.length, rozetkaPickup: mpTtns.length, rzDelivery: rzTtns.length },
+    counts: { np: npTtns.length, rozetkaPickup: mpTtns.length, rzDelivery: rzTtns.length, meest: meest.length },
     skipped,
     errors,
   });

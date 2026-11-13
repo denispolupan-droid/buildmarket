@@ -36,7 +36,29 @@ const CODE_UA: Record<string, string> = {
   '2129': 'Сортування',
   '2331': 'Доручення призупинено',
   '5051': 'Посилка не прибула',
+  '11': 'Виїхала з транзитного сортувального центру',   // 13.11.2026, 724-0577605
 };
+
+/**
+ * Код, якого немає в таблиці, — перекладаємо відомі англійські фрази трекера,
+ * щоб у журналі не з'являвся англійський текст (13.11: «Departure from the
+ * transit sorting center»). Фазу це не змінює — вона лише за кодом.
+ */
+const PHRASE_UA: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
+  [/departure from the transit sorting cent(er|re)/i, 'Виїхала з транзитного сортувального центру'],
+  [/arriv\w* (at|to) the (transit )?sorting cent(er|re)/i, 'Прибула на сортувальний центр'],
+  [/departure from the sorting cent(er|re)/i, 'Виїхала із сортувального центру'],
+  [/transportation to the settlement\s+(.+)/i, m => `Прямує до ${m[1].trim()}`],
+  [/arriv\w* (at|to) the (delivery )?(branch|office|parcel locker|postomat)/i, 'Прибула на відділення доставки'],
+];
+
+function phraseUa(desc: string): string | null {
+  for (const [re, ua] of PHRASE_UA) {
+    const m = desc.match(re);
+    if (m) return typeof ua === 'string' ? ua : ua(m);
+  }
+  return null;
+}
 
 const CREATED_CODE = '2';
 const ARRIVED_CODE = '1214';
@@ -58,7 +80,8 @@ export function meestUpdate(events: MeestEvent[]): ParcelUpdate | null {
   const sorted = [...evs].sort((a, b) => String(a.eventDate ?? '').localeCompare(String(b.eventDate ?? '')));
   const last = sorted[sorted.length - 1];
   const code = String(last.statusCode);
-  const label = CODE_UA[code] || (last.eventDescription ?? '').trim() || `Статус ${code}`;
+  const desc = (last.eventDescription ?? '').trim();
+  const label = CODE_UA[code] || phraseUa(desc) || desc || `Статус ${code}`;
   const city = (last.city ?? '').trim();
   return {
     statusText: `Meest: ${label}${city && code !== DELIVERED_CODE ? ` (${city})` : ''}`,
