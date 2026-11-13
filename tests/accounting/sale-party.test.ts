@@ -97,10 +97,11 @@ beforeAll(async () => {
 afterAll(async () => {
   if (!db) return;
   for (const id of orderIds) await markOrderDocsAsTest(id);
-  if (orderIds.length) await db.from('orders').delete().in('id', orderIds);
   const { data, error } = await db.rpc('reset_accounting_test_data');
   // reset повертає 'REFUSED: …' текстом, а не помилкою — інакше відмова непомітна
   if (error || String(data).startsWith('REFUSED')) console.error('Cleanup error:', error?.message ?? data);
+  // Замовлення — ПІСЛЯ reset: FK RESTRICT з acc_documents/money_entries інакше не дає їх видалити (13.11.2026)
+  if (orderIds.length) { const { error: delErr } = await db.from('orders').delete().in('id', orderIds); if (delErr) console.error('Cleanup delete error:', delErr.message); }
 });
 
 describe('Варіант B — дебітор продажу за каналом грошей', () => {

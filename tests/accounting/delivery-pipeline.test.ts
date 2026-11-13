@@ -66,13 +66,18 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!db) return;
-  if (orderId) {
-    await db.from('outbox_events').delete().eq('aggregate_id', orderId);
-    await db.from('orders').delete().eq('id', orderId);
-  }
-  await db.from('supplier_sku_map').delete().eq('supplier_sku', 'PIPE-' + testSku);
+  // Спершу облік (РН, проводки), ПОТІМ замовлення: FK RESTRICT з acc_documents /
+  // money_entries не дає видалити замовлення з документами. Порядок був навпаки,
+  // видалення мовчки падало, і в тестовій базі накопичились «Доставлені» замовлення
+  // без РН — інваріант I7 валив увесь інтеграційний набір (13.11.2026, 24 штуки).
   const { error } = await db.rpc('reset_accounting_test_data');
   if (error) console.error('Cleanup error:', error.message);
+  if (orderId) {
+    await db.from('outbox_events').delete().eq('aggregate_id', orderId);
+    const { error: delErr } = await db.from('orders').delete().eq('id', orderId);
+    if (delErr) console.error('Cleanup order error:', delErr.message);
+  }
+  await db.from('supplier_sku_map').delete().eq('supplier_sku', 'PIPE-' + testSku);
 });
 
 describe('конвеєр доставки з фіктивним перевізником', () => {

@@ -32,9 +32,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!db) return;
-  if (createdOrders.length) await db.from('orders').delete().in('id', createdOrders);
   const { error } = await db.rpc('reset_accounting_test_data');
   if (error) console.error('Cleanup error:', error.message);
+  // Замовлення — ПІСЛЯ reset: FK RESTRICT з acc_documents/money_entries інакше не дає їх видалити (13.11.2026)
+  if (createdOrders.length) { const { error: delErr } = await db.from('orders').delete().in('id', createdOrders); if (delErr) console.error('Cleanup delete error:', delErr.message); }
 });
 
 async function shipParcel(ttn: string, status: 'shipped' | 'cancelled', price = 300) {

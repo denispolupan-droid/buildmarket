@@ -71,10 +71,11 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!db) return;
-  if (orderId) await db.from('orders').delete().eq('id', orderId);
   await db.from('supplier_sku_map').delete().eq('supplier_sku', 'SMOKE-' + testSku);
   const { error } = await db.rpc('reset_accounting_test_data');
   if (error) console.error('Cleanup error:', error.message);
+  // Замовлення — ПІСЛЯ reset: FK RESTRICT з acc_documents/money_entries інакше не дає їх видалити (13.11.2026)
+  if (orderId) { const { error: delErr } = await db.from('orders').delete().eq('id', orderId); if (delErr) console.error('Cleanup delete error:', delErr.message); }
 });
 
 describe('Smoke: доставка закриває замовлення документами', () => {
