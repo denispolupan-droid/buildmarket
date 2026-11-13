@@ -7,12 +7,12 @@ import { NP_BRANCHES, RZ_POINTS, RZ_CITIES } from '../../lib/site';
 
 export const metadata: Metadata = {
   title: 'Умови доставки',
-  description: `Доставка будівельної хімії по всій Україні: Нова Пошта, ${RZ_POINTS} точок видачі ROZETKA, адресна доставка. Замовлення до 14:00 — відправка в той самий день.`,
-  keywords: ['доставка будівельна хімія', 'Нова Пошта будматеріали', 'точки видачі ROZETKA', 'доставка строительная химия Украина', 'умови доставки'],
+  description: `Доставка будівельної хімії по всій Україні: Нова Пошта, Meest, ${RZ_POINTS} точок видачі ROZETKA, адресна доставка. Замовлення до 14:00 — відправка в той самий день.`,
+  keywords: ['доставка будівельна хімія', 'Нова Пошта будматеріали', 'точки видачі ROZETKA', 'доставка Meest', 'доставка строительная химия Украина', 'умови доставки'],
   alternates: { canonical: 'https://fixline.com.ua/delivery', languages: { 'uk': 'https://fixline.com.ua/delivery', 'ru': 'https://fixline.com.ua/ru/delivery', 'x-default': 'https://fixline.com.ua/delivery' } },
   openGraph: {
     title: 'Умови доставки — FIXLINE',
-    description: 'Доставка по всій Україні. Нова Пошта, точки видачі ROZETKA, адресна доставка. Відправка в день замовлення.',
+    description: 'Доставка по всій Україні. Нова Пошта, Meest, точки видачі ROZETKA, адресна доставка. Відправка в день замовлення.',
     url: 'https://fixline.com.ua/delivery',
     siteName: 'FIXLINE',
     locale: 'uk_UA',
@@ -48,7 +48,7 @@ export default function DeliveryPage() {
 
           {/* Methods */}
           <Reveal>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
 
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -91,7 +91,27 @@ export default function DeliveryPage() {
               </ul>
             </div>
 
-            {/* Третій спосіб — на всю ширину під двома перевізниками. Не заради
+
+            {/* Meest Пошта — наш договір 10031120, з 13.11.2026 доступна в кошику */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Truck size={20} color="#E60033" strokeWidth={2} />
+                </div>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Meest Пошта</h2>
+              </div>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                Доставка до відділення або поштомату Meest по всій Україні — ще один перевізник на вибір у кошику.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {['Доставка 1–3 дні', 'Відділення та поштомати по всій Україні', 'Накладений платіж або передоплата', 'Відстеження посилки на meest.com'].map(i => (
+                  <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#E60033', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Адресна доставка — на всю ширину під трьома перевізниками. Не заради
                 симетрії: адресна доставка іншого класу — не масовий перевізник,
                 а домовленість для опту, і широка смуга під картками читається
                 як примітка до них, а не як рівноцінний третій варіант. */}

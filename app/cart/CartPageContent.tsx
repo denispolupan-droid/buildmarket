@@ -502,8 +502,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     // logo — офіційні файли з сайтів перевізників (public/images/carriers, завантажено 04.11.2026)
     { value: 'nova', label: tr.deliveryNova, sub: null as string | null, logo: '/images/carriers/nova-poshta.svg' },
     ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub, logo: '/images/carriers/rozetka-mark.svg' }] : []),
-    // Meest — наш договір 10031120 (13.11.2026); логотипа поки немає — іконка
-    { value: 'meest', label: tr.deliveryMeest, sub: tr.deliveryMeestSub, logo: '' },
+    // Meest — наш договір 10031120 (13.11.2026); логотип — офіційний з meest.com
+    { value: 'meest', label: tr.deliveryMeest, sub: tr.deliveryMeestSub, logo: '/images/carriers/meest.svg' },
   ];
 
   // Спосіб міг прийти з минулого замовлення (підстановка вище) або перестати

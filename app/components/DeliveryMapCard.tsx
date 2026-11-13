@@ -39,8 +39,8 @@ export default function DeliveryMapCard() {
 
   const branches = NP_BRANCHES.toLocaleString(lang === 'ru' ? 'ru-RU' : 'uk-UA');
   const subtitle = lang === 'ru'
-    ? `Новая Почта · ${branches}+ отделений · ${RZ_POINTS} точек ROZETKA`
-    : `Нова Пошта · ${branches}+ відділень · ${RZ_POINTS} точок ROZETKA`;
+    ? `Новая Почта · ${branches}+ отделений · Meest · ${RZ_POINTS} точек ROZETKA`
+    : `Нова Пошта · ${branches}+ відділень · Meest · ${RZ_POINTS} точок ROZETKA`;
 
   return (
     <div ref={ref} className="delivery-map-card" style={{ isolation: 'isolate', willChange: 'opacity' }}>

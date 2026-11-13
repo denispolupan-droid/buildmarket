@@ -41,7 +41,7 @@ function stripShopParagraphs(text: string | null | undefined): string {
 }
 
 /** Стоп-сигнали модерації: те, за що Rozetka блокує поле опису. */
-const BANNED = [/fixline/i, /інтернет-магазин/i, /интернет-магазин/i, /новою поштою/i, /новой почтой/i, /https?:\/\//i, /www\./i];
+const BANNED = [/fixline/i, /інтернет-магазин/i, /интернет-магазин/i, /новою поштою/i, /новой почтой/i, /meest\s+пошт|доставк\S*\s+meest/i, /https?:\/\//i, /www\./i];
 
 /** Чи безпечний текст для маркетплейсу (використовується в тестах і перед записом). */
 export function isMpDescriptionClean(text: string): boolean {

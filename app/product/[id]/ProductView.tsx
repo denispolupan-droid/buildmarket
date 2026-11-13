@@ -316,7 +316,7 @@ export default async function ProductView({ id, from, isRetail }: { id: string; 
           <span><Tag size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Категорія:</span> <Link href={productCat ? `/shop/${productCat.slug}` : '/shop'} style={{color:'var(--brand-main)'}}>{categoryName}</Link></span>
           <span><BadgeCheck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Бренд:</span> <Link href={`/shop/brand/${brandToSlug(product.brand)}`} style={{color:'var(--brand-main)'}}>{product.brand}</Link></span>
           <span><Box size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Упаковка:</span> {product.pack_qty} шт</span>
-          <span><Truck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Доставка:</span> Нова Пошта · ROZETKA</span>
+          <span><Truck size={14} strokeWidth={1.8} /><span className="product-meta-strip__label">Доставка:</span> Нова Пошта · Meest · ROZETKA</span>
         </div>
 
         <ProductTabs

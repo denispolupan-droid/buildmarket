@@ -9,15 +9,15 @@ const BASE = 'https://fixline.com.ua';
 
 export const metadata: Metadata = {
   title: 'Условия доставки',
-  description: `Доставка строительной химии по всей Украине: Новая Почта, ${RZ_POINTS} точек выдачи ROZETKA, адресная доставка. Заказ до 14:00 — отправка в тот же день.`,
-  keywords: ['доставка строительная химия', 'Новая Почта стройматериалы', 'точки выдачи ROZETKA', 'условия доставки'],
+  description: `Доставка строительной химии по всей Украине: Новая Почта, Meest, ${RZ_POINTS} точек выдачи ROZETKA, адресная доставка. Заказ до 14:00 — отправка в тот же день.`,
+  keywords: ['доставка строительная химия', 'Новая Почта стройматериалы', 'точки выдачи ROZETKA', 'доставка Meest', 'условия доставки'],
   alternates: {
     canonical: `${BASE}/ru/delivery`,
     languages: { 'uk': `${BASE}/delivery`, 'ru': `${BASE}/ru/delivery`, 'x-default': `${BASE}/delivery` },
   },
   openGraph: {
     title: 'Условия доставки — FIXLINE',
-    description: 'Доставка по всей Украине. Новая Почта, точки выдачи ROZETKA, адресная доставка. Отправка в день заказа.',
+    description: 'Доставка по всей Украине. Новая Почта, Meest, точки выдачи ROZETKA, адресная доставка. Отправка в день заказа.',
     url: `${BASE}/ru/delivery`,
     siteName: 'FIXLINE',
     locale: 'ru_RU',
@@ -53,7 +53,7 @@ export default function DeliveryRuPage() {
 
           {/* Methods */}
           <Reveal>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '48px' }} className="delivery-grid">
 
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -95,6 +95,26 @@ export default function DeliveryRuPage() {
               </ul>
             </div>
 
+
+            {/* Meest Пошта — наш договір 10031120, з 13.11.2026 доступна в кошику */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Truck size={20} color="#E60033" strokeWidth={2} />
+                </div>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Meest Почта</h2>
+              </div>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                Доставка до отделения или почтомата Meest по всей Украине — ещё один перевозчик на выбор в корзине.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {['Доставка 1–3 дня', 'Отделения и почтоматы по всей Украине', 'Наложенный платёж или предоплата', 'Отслеживание посылки на meest.com'].map(i => (
+                  <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#E60033', flexShrink: 0, marginTop: '2px' }}>✓</span>{i}
+                  </li>
+                ))}
+              </ul>
+            </div>
             {/* Третий способ — на всю ширину под двумя перевозчиками. Не ради
                 симметрии: адресная доставка другого класса — не массовый
                 перевозчик, а договорённость для опта, и широкая полоса под

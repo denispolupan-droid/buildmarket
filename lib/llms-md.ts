@@ -119,7 +119,7 @@ export function productMarkdown(p: MdProductInput): string {
     facts.push(`- **Оцінка покупців:** ${p.rating.avg.toFixed(1)} з 5 (відгуків: ${p.rating.count})`);
   }
   facts.push(`- **Сторінка товару:** ${productUrl(p)}`);
-  facts.push('- **Продавець:** FIXLINE, доставка Новою Поштою та у точки ROZETKA по Україні');
+  facts.push('- **Продавець:** FIXLINE, доставка Новою Поштою, Meest та у точки ROZETKA по Україні');
   if (p.updated_at) facts.push(`- **Дані оновлено:** ${p.updated_at.slice(0, 10)}`);
   out.push(facts.join('\n'));
 
@@ -267,7 +267,7 @@ export function llmsTxt(d: LlmsTxtInput): string {
   const out: string[] = [];
   out.push('# FIXLINE');
   out.push('');
-  out.push('> Цифрова платформа будівельної хімії: герметики, піни, клеї, ґрунтовки та супутні матеріали провідних брендів. Роздріб і опт по всій Україні, доставка Новою Поштою та у точки видачі ROZETKA.');
+  out.push('> Цифрова платформа будівельної хімії: герметики, піни, клеї, ґрунтовки та супутні матеріали провідних брендів. Роздріб і опт по всій Україні, доставка Новою Поштою, Meest та у точки видачі ROZETKA.');
   out.push('');
   // Формулювання без узгодження числівника навмисно: «773 позицій» і
   // «22 позиції» — різні форми, а рядок збирається з живої цифри.
@@ -313,7 +313,7 @@ export function llmsTxt(d: LlmsTxtInput): string {
   out.push('## Довідка');
   out.push('');
   out.push(`- [Про компанію](${SITE_URL}/about): хто ми, чим відрізняємось, для кого працюємо`);
-  out.push(`- [Доставка](${SITE_URL}/delivery): Нова Пошта, точки ROZETKA, терміни й вартість`);
+  out.push(`- [Доставка](${SITE_URL}/delivery): Нова Пошта, Meest, точки ROZETKA, терміни й вартість`);
   out.push(`- [Повернення](${SITE_URL}/returns): умови повернення та обміну товару`);
   out.push(`- [Конфіденційність](${SITE_URL}/privacy): які дані збираємо, кому передаємо, права покупця`);
   out.push(`- [Оптовим клієнтам](${SITE_URL}/opt): умови співпраці, мінімальне замовлення, знижки`);
