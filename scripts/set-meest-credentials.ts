@@ -33,7 +33,8 @@ function clipboard(): string {
 (async () => {
   const db = createServiceClient();
   // --clipboard: без запитань (можна запускати й через «!» у чаті — секрет не друкується)
-  const fromClipboard = process.argv.includes('--clipboard');
+  // startsWith: при вставці команди з буфера до прапорця «приклеюється» вміст буфера
+  const fromClipboard = process.argv.some(a => a.startsWith('--clipboard'));
   const mode = fromClipboard ? '2' : ((await ask('Що дав кабінет Meest? 1 — логін і пароль, 2 — готовий токен [1]: ')) || '1');
   try {
     if (mode === '2') {
