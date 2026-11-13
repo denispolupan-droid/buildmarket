@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { NP_BRANCHES, RZ_POINTS } from '../../lib/site';
 
 export default function DeliveryMapCard() {
   const ref = useRef<HTMLDivElement>(null);
@@ -37,10 +36,9 @@ export default function DeliveryMapCard() {
     return () => observer.disconnect();
   }, []);
 
-  const branches = NP_BRANCHES.toLocaleString(lang === 'ru' ? 'ru-RU' : 'uk-UA');
-  const subtitle = lang === 'ru'
-    ? `Новая Почта · ${branches}+ отделений · Meest · ${RZ_POINTS} точек ROZETKA`
-    : `Нова Пошта · ${branches}+ відділень · Meest · ${RZ_POINTS} точок ROZETKA`;
+  // Лише служби доставки, без кількості відділень (рішення власника 13.11.2026:
+  // цифри тут нічого не додають, а рядок із ними роздувався)
+  const subtitle = lang === 'ru' ? 'Новая Почта · Meest · ROZETKA' : 'Нова Пошта · Meest · ROZETKA';
 
   return (
     <div ref={ref} className="delivery-map-card" style={{ isolation: 'isolate', willChange: 'opacity' }}>

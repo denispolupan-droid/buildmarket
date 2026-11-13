@@ -479,7 +479,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [rzDepLabel,        setRzDepLabel]        = useState('');
   // Meest (13.11.2026) ділить з ROZETKA поля точки (місто/пункт) — одночасно
   // активний лише один перевізник, а clearDelivery чистить їх при зміні; тут — лише підтип
-  const [meestPostomat,     setMeestPostomat]     = useState(false);
+  const [meestSubtype,      setMeestSubtype]      = useState<'warehouse' | 'postomat' | ''>('');
   // null — конфіг ще не приїхав; опцію не малюємо, доки не знаємо, чи вона жива
   const [rzConfig, setRzConfig] = useState<{ enabled: boolean; maxWeightKg: number | null } | null>(null);
 
@@ -524,7 +524,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const clearNovaPoint = () => { npInit.current = null; setAddress(''); setNovaCityName(''); setNovaCityRef(''); setNovaWarehouseRef(''); };
   const clearDelivery = () => {
     setDelivery(''); setNovaSubtype(''); clearNovaPoint(); rzInit.current = null;
-    setRzCityId(''); setRzCityName(''); setRzDepId(''); setRzDepLabel('');
+    setRzCityId(''); setRzCityName(''); setRzDepId(''); setRzDepLabel(''); setMeestSubtype('');
   };
 
   const [payment,   setPayment]   = useState('');
@@ -648,7 +648,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     if (delivery === 'nova' && !novaSubtype) e.add('novaSubtype');
     if (delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && !novaWarehouseRef) e.add('address');
     if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
-    if ((delivery === RZ_DELIVERY_TYPE || delivery === 'meest') && !rzDepId) e.add('rzPoint');
+    if (delivery === 'meest' && !meestSubtype) e.add('novaSubtype');
+    if ((delivery === RZ_DELIVERY_TYPE || (delivery === 'meest' && meestSubtype)) && !rzDepId) e.add('rzPoint');
     if (!payment)         e.add('payment');
     return e;
   }
@@ -763,7 +764,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
           contact: [lastName, firstName, middleName].filter(Boolean).join(' '),
           phone, email,
           deliveryType: delivery,
-          deliverySubtype: delivery === 'nova' ? novaSubtype : delivery === 'meest' ? (meestPostomat ? 'postomat' : 'warehouse') : null,
+          deliverySubtype: delivery === 'nova' ? novaSubtype : delivery === 'meest' ? (meestSubtype || null) : null,
           deliveryAddress: (delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? rzDepLabel : address) || null,
           // Ідентифікатори точок ROZETKA — uuid, а не Ref НП; лягають у ті самі
           // колонки, бо роль однакова, а перевізника видно по delivery_type.
@@ -1044,9 +1045,11 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           {delivery === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                         </div>
                         <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { if (delivery && delivery !== opt.value) clearDelivery(); setDelivery(opt.value); setReopened(r => ({ ...r, delivery: false })); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
-                        <span style={{ fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
-                          {opt.label}
-                          {opt.sub && <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
+                        {/* Назва й опис — по одному рядку (як у плитках оплати): у ряд три плитки, і
+                            перенесення «Нова / Пошта» роздувало їх до чотирьох рядків (13.11.2026) */}
+                        <span style={{ flex: 1, minWidth: 0 }} title={opt.sub ? `${opt.label} — ${opt.sub}` : opt.label}>
+                          <span className="cart-opt-line" style={{ display: 'block', fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</span>
+                          {opt.sub && <span className="cart-opt-line" style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
                         </span>
                         {opt.logo
                           // eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG, next/image тут зайвий
@@ -1138,24 +1141,62 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       )}
 
                       {/* Meest Пошта — відділення або поштомат (той самий вибір, довідники Meest) */}
+                      {/* Як у Нової Пошти: спершу тип пункту, потім список лише цього типу (13.11.2026) */}
                       {opt.value === 'meest' && delivery === 'meest' && (
-                        <div style={{ marginTop: '10px', paddingLeft: '14px' }}>
-                          <RzDeliverySelect
-                            provider="meest"
-                            weightKg={orderWeightKg}
-                            lang={lang}
-                            initialCity={rzInit.current?.city}
-                            initialCityId={rzInit.current?.cityId}
-                            initialDepartment={rzInit.current?.dep}
-                            onCityChange={setRzCityName}
-                            onCityIdChange={setRzCityId}
-                            onDepartmentChange={setRzDepLabel}
-                            onDepartmentPicked={d => setMeestPostomat(Boolean(d?.postomat))}
-                            onDepartmentIdChange={id => {
-                              setRzDepId(id);
-                              if (id) setErrors(s => { const n = new Set(s); n.delete('rzPoint'); return n; });
-                            }}
-                          />
+                        <div className={'cart-opt-sub' + (!meestSubtype ? ' cart-opt-list--row' : '')}>
+                          {(['warehouse', 'postomat'] as const).filter(sub => !meestSubtype || meestSubtype === sub).map(sub => (
+                            <label key={sub} onMouseDown={keepFocus} style={{
+                              display: 'flex', alignItems: 'center', gap: '10px',
+                              padding: '10px 14px', borderRadius: '8px', cursor: meestSubtype === sub ? 'default' : 'pointer',
+                              border: `1.5px solid ${meestSubtype === sub ? '#1E3A5F' : 'var(--border)'}`,
+                              background: meestSubtype === sub ? '#1E3A5F22' : 'var(--bg-soft)',
+                              transition: 'all 0.15s',
+                            }}>
+                              <div {...uncheckProps(meestSubtype === sub, () => { setMeestSubtype(''); setRzDepId(''); setRzDepLabel(''); })} style={{
+                                width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
+                                border: `2px solid ${meestSubtype === sub ? '#1E3A5F' : '#CBD5E1'}`,
+                                background: meestSubtype === sub ? '#1E3A5F' : 'var(--bg-card)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                {meestSubtype === sub && <Check size={8} color="#fff" strokeWidth={3} />}
+                              </div>
+                              <input type="radio" name="meest_sub" value={sub} checked={meestSubtype === sub}
+                                onChange={() => { rzInit.current = null; setMeestSubtype(sub); setRzDepId(''); setRzDepLabel(''); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }}
+                                style={{ display: 'none' }} />
+                              <span style={{ fontSize: '13px', fontWeight: meestSubtype === sub ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
+                                {sub === 'warehouse' ? tr.novaWarehouse : tr.novaPostomat}
+                              </span>
+                              {meestSubtype === sub && (
+                                <button
+                                  onClick={e => { e.preventDefault(); setMeestSubtype(''); setRzDepId(''); setRzDepLabel(''); }}
+                                  style={{ fontSize: '12px', color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                                >
+                                  {tr.change}
+                                </button>
+                              )}
+                            </label>
+                          ))}
+                          {meestSubtype && (
+                            <div style={{ marginTop: '6px' }}>
+                              <RzDeliverySelect
+                                key={meestSubtype}
+                                provider="meest"
+                                kind={meestSubtype}
+                                weightKg={orderWeightKg}
+                                lang={lang}
+                                initialCity={rzInit.current?.city || rzCityName}
+                                initialCityId={rzInit.current?.cityId || rzCityId}
+                                initialDepartment={rzInit.current?.dep}
+                                onCityChange={setRzCityName}
+                                onCityIdChange={setRzCityId}
+                                onDepartmentChange={setRzDepLabel}
+                                onDepartmentIdChange={id => {
+                                  setRzDepId(id);
+                                  if (id) setErrors(s => { const n = new Set(s); n.delete('rzPoint'); return n; });
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1192,7 +1233,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                   )}
                 </div>
                 {errors.has('delivery') &&<p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errDelivery}</p>}
-                {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errNovaSubtype}</p>}
+                {errors.has('novaSubtype') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{delivery === 'meest' ? tr.errMeestPoint : tr.errNovaSubtype}</p>}
                 {errors.has('address') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{tr.errAddress}</p>}
                 {errors.has('rzPoint') && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#EF4444' }}>{delivery === 'meest' ? tr.errMeestPoint : tr.errRzPoint}</p>}
               </Section>

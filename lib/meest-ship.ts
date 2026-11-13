@@ -51,11 +51,18 @@ const toBranch = (b: RawBranch): MeestBranch => ({
   limits: b.branchLimits ? { weightPlaceMax: b.branchLimits.weightPlaceMax, volumePlaceMax: b.branchLimits.volumePlaceMax, ...b.branchLimits.gabaritesMax } : null,
 });
 
+/**
+ * Пошук міста за початком назви. Meest шукає лише ТОЧНУ назву («хар» → нічого,
+ * 13.11.2026), але приймає SQL-шаблон «%»: «хар%» + IsBranchInCity → Харків (без
+ * російських селищ «Хара-Алдан»). Регістр не важливий; свої % і _ з вводу прибираємо.
+ */
 export async function meestSearchCities(q: string): Promise<MeestCity[]> {
-  const name = q.trim();
+  const name = q.trim().replace(/[%_]/g, '');
   if (name.length < 2) return [];
-  const r = await meestFetch<RawCity[]>('/citySearch', { body: { filters: { cityDescr: name } } });
-  return (Array.isArray(r) ? r : []).map(toCity);
+  const r = await meestFetch<RawCity[]>('/citySearch', { body: { filters: { cityDescr: `${name}%`, IsBranchInCity: true } } });
+  const low = name.toLowerCase();
+  return (Array.isArray(r) ? r : []).map(toCity)
+    .sort((a, b) => Number(b.name.toLowerCase() === low) - Number(a.name.toLowerCase() === low) || a.name.length - b.name.length);
 }
 
 export async function meestBranches(cityID: string): Promise<MeestBranch[]> {

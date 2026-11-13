@@ -19,6 +19,8 @@ type Props = {
   provider?: 'rz' | 'meest';
   /** Вибрана точка цілком (Meest: поштомат чи відділення — у підтип доставки) */
   onDepartmentPicked?: (d: Department | null) => void;
+  /** Meest: лише відділення або лише поштомати (як підтип у Нової Пошти, 13.11.2026) */
+  kind?: 'warehouse' | 'postomat';
   lang?: 'uk' | 'ru';
   /** Уже вибране раніше — щоб після повторного монтування (згорнута й
    *  розгорнута чернетка замовлення) вибір відновлювався цілком. Колбеки
@@ -63,9 +65,12 @@ const RZ_T = {
 
 export default function RzDeliverySelect({
   weightKg, lang = 'uk', initialCity = '', initialCityId = '', initialDepartment = '',
-  onCityChange, onCityIdChange, onDepartmentChange, onDepartmentIdChange, provider = 'rz', onDepartmentPicked,
+  onCityChange, onCityIdChange, onDepartmentChange, onDepartmentIdChange, provider = 'rz', onDepartmentPicked, kind,
 }: Props) {
-  const tr = provider === 'meest' ? { ...RZ_T[lang], ...MEEST_T[lang] } : RZ_T[lang];
+  const base = provider === 'meest' ? { ...RZ_T[lang], ...MEEST_T[lang] } : RZ_T[lang];
+  const kindLabel = kind === 'postomat' ? (lang === 'ru' ? 'Почтомат Meest' : 'Поштомат Meest')
+    : kind === 'warehouse' ? (lang === 'ru' ? 'Отделение Meest' : 'Відділення Meest') : null;
+  const tr = kindLabel ? { ...base, pointLabel: kindLabel } : base;
   const apiBase = provider === 'meest' ? '/api/meest' : '/api/rz-delivery';
 
   const [cityQuery,   setCityQuery]   = useState(initialCity);
@@ -108,12 +113,13 @@ export default function RzDeliverySelect({
     fetch(`${apiBase}/${provider === 'meest' ? 'branches' : 'departments'}?city=${encodeURIComponent(cityId)}&weight=${weightKg}`)
       .then(r => r.json())
       .then((d: { departments?: Department[]; total?: number }) => {
-        setDepartments(d.departments ?? []);
+        const list = d.departments ?? [];
+        setDepartments(kind ? list.filter(x => Boolean(x.postomat) === (kind === 'postomat')) : list);
         setDepTotal(d.total ?? 0);
       })
       .catch(() => { setDepartments([]); setDepTotal(0); })
       .finally(() => setDepLoading(false));
-  }, [weightKg, apiBase, provider]);
+  }, [weightKg, apiBase, provider, kind]);
 
   // Вага змінилась (покупець правив кошик у сусідній вкладці або міняв кількість) —
   // перезбираємо список і скидаємо вибір, якщо точка більше не підходить.

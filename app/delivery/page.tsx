@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Footer from '../components/Footer';
 import Reveal from '../components/Reveal';
-import { Truck, Clock, MapPin, Package, CreditCard, Phone } from 'lucide-react';
+import { Clock, MapPin, Package, CreditCard, Phone } from 'lucide-react';
 import { NP_BRANCHES, RZ_POINTS, RZ_CITIES } from '../../lib/site';
 
 export const metadata: Metadata = {
@@ -52,8 +52,10 @@ export default function DeliveryPage() {
 
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Truck size={20} color="#4880B8" strokeWidth={2} />
+                {/* Логотип перевізника замість іконки (13.11.2026) — плашка тієї ж висоти, ширина за логотипом */}
+                <div style={{ height: '44px', minWidth: '44px', padding: '0 12px', boxSizing: 'border-box', borderRadius: '10px', background: '#FFFFFF', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG */}
+                  <img src="/images/carriers/nova-poshta.svg" alt="Нова Пошта" style={{ height: '14px', width: 'auto', display: 'block' }} />
                 </div>
                 <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Нова Пошта</h2>
               </div>
@@ -74,8 +76,10 @@ export default function DeliveryPage() {
 
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Package size={20} color="#15803D" strokeWidth={2} />
+                {/* Логотип перевізника замість іконки (13.11.2026) — плашка тієї ж висоти, ширина за логотипом */}
+                <div style={{ height: '44px', minWidth: '44px', padding: '0 12px', boxSizing: 'border-box', borderRadius: '10px', background: '#FFFFFF', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG */}
+                  <img src="/images/carriers/rozetka-mark.svg" alt="ROZETKA" style={{ height: '28px', width: 'auto', display: 'block' }} />
                 </div>
                 <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Точки видачі ROZETKA</h2>
               </div>
@@ -95,8 +99,10 @@ export default function DeliveryPage() {
             {/* Meest Пошта — наш договір 10031120, з 13.11.2026 доступна в кошику */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Truck size={20} color="#E60033" strokeWidth={2} />
+                {/* Логотип перевізника замість іконки (13.11.2026) — плашка тієї ж висоти, ширина за логотипом */}
+                <div style={{ height: '44px', minWidth: '44px', padding: '0 12px', boxSizing: 'border-box', borderRadius: '10px', background: '#FFFFFF', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG */}
+                  <img src="/images/carriers/meest.svg" alt="Meest" style={{ height: '18px', width: 'auto', display: 'block' }} />
                 </div>
                 <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Meest Пошта</h2>
               </div>
