@@ -56,3 +56,15 @@ describe('isSpecialDebtor', () => {
     expect(isSpecialDebtor(null)).toBe(false);
   });
 });
+
+describe("наложка Meest (наш договір) — окремий дебітор", () => {
+  it("cod + meest → meest:cod, не np:cod", () => {
+    expect(saleDebitPartyFor({ customer_id: CUST, channel_code: "website", payment_type: "cod", delivery_type: "meest" })).toBe("meest:cod");
+    expect(saleDebitPartyFor({ customer_id: null, channel_code: "prom", payment_type: "cod", delivery_type: "meest" })).toBe("meest:cod");
+    expect(isSpecialDebtor(SALE_DEBTOR.meestCod)).toBe(true);
+  });
+  it("дропшип з Meest — як і раніше, партнер", () => {
+    const P = "partner-1";
+    expect(saleDebitPartyFor({ customer_id: null, partner_code: P, channel_code: "dropship", payment_type: "cod", delivery_type: "meest" })).toBe(P);
+  });
+});

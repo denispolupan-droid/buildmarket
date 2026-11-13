@@ -23,7 +23,7 @@ import {
   rozetkaSmartFee, promCheapDeliveryFee,
 } from '../marketplace/fees';
 import { alertAdmin } from '../alert';
-import { getNpCodFeePct } from '../np-cod-fee';
+import { getCodFeePct } from '../np-cod-fee';
 import { recordPartnerCodCollected } from './partner-ledger';
 import { loadOrderItems } from '../orders/lines-read';
 
@@ -139,7 +139,7 @@ export async function settleOrderCOD(orderId: string, createdBy = 'system'): Pro
   const db = createServiceClient();
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, channel_code, partner_code, payment_type, total_price')
+    .select('id, order_number, channel_code, partner_code, payment_type, total_price, delivery_type')
     .eq('id', orderId)
     .single();
   if (!order) return;
@@ -151,8 +151,9 @@ export async function settleOrderCOD(orderId: string, createdBy = 'system'): Pro
         p_customer_id: customer.id,
         p_cod_amount:  order.total_price,
         p_order_id:    order.id,
-        // Реальна ставка НоваПей (0,5 % за замовчуванням), а не колишні «~2 %».
-        p_np_fee_pct:  await getNpCodFeePct(db),
+        // Ставка перевізника за переказ наложки: НоваПей (0,5 % за замовчуванням)
+        // або Meest (app_settings.meest_cod_fee_pct, 13.11.2026)
+        p_np_fee_pct:  await getCodFeePct(db, order.delivery_type),
       });
       if (error) throw error;
     }

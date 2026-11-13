@@ -14,3 +14,22 @@ export async function getNpCodFeePct(db: SupabaseClient): Promise<number> {
   const v = parseFloat(String(data?.value ?? ''));
   return Number.isFinite(v) && v >= 0 ? v : NP_COD_FEE_DEFAULT;
 }
+
+/**
+ * Ставка Meest за переказ накладеного платежу (наш договір 10031120, 13.11.2026),
+ * app_settings.meest_cod_fee_pct. Тариф у відкритих джерелах не опубліковано, у
+ * договорі — уточнюється; поки ключа немає, беремо ставку НоваПей (тимчасово).
+ */
+export const MEEST_COD_FEE_KEY = 'meest_cod_fee_pct';
+
+export async function getMeestCodFeePct(db: SupabaseClient): Promise<{ pct: number; provisional: boolean }> {
+  const { data } = await db.from('app_settings').select('value').eq('key', MEEST_COD_FEE_KEY).maybeSingle();
+  const v = parseFloat(String(data?.value ?? ''));
+  if (Number.isFinite(v) && v >= 0) return { pct: v, provisional: false };
+  return { pct: await getNpCodFeePct(db), provisional: true };
+}
+
+/** Ставка за переказ наложки за перевізником посилки. */
+export async function getCodFeePct(db: SupabaseClient, deliveryType: string | null | undefined): Promise<number> {
+  return (deliveryType ?? '').trim() === 'meest' ? (await getMeestCodFeePct(db)).pct : getNpCodFeePct(db);
+}

@@ -21,6 +21,12 @@
 
 export const SALE_DEBTOR = {
   npCod:   'np:cod',
+  /**
+   * Наложка Meest (наш договір 10031120, 13.11.2026): гроші перераховує Meest на
+   * наш рахунок, не НоваПей. На np:cod такий борг висів би вічно (його закриває лише
+   * виписка NovaPay) і ламав би звірку НП — тому окремий дебітор.
+   */
+  meestCod: 'meest:cod',
   prom:    'mp:prom',
   rozetka: 'mp:rozetka',
   epicentr: 'mp:epicentr',
@@ -41,6 +47,7 @@ export type SpecialDebtor = (typeof SALE_DEBTOR)[keyof typeof SALE_DEBTOR];
 /** Людські назви службових дебіторів для екранів боргів. */
 export const SPECIAL_DEBTOR_LABEL: Record<SpecialDebtor, string> = {
   'np:cod':        'Нова Пошта — наложені платежі',
+  'meest:cod':     'Meest — наложені платежі',
   'mp:prom':       'Prom.ua — до виплати',
   'mp:rozetka':    'Rozetka — до виплати',
   'mp:epicentr':   'Епіцентр — до виплати',
@@ -89,7 +96,9 @@ export function saleDebitPartyFor(order: SalePartyOrder): string {
   if (order.channel_code === 'dropship') return order.partner_code || direct;
 
   if (order.payment_type === 'cod') {
-    return isRozetkaCarrier(order.delivery_type) ? SALE_DEBTOR.rozetka : SALE_DEBTOR.npCod;
+    if (isRozetkaCarrier(order.delivery_type)) return SALE_DEBTOR.rozetka;
+    if ((order.delivery_type ?? '').trim() === 'meest') return SALE_DEBTOR.meestCod;
+    return SALE_DEBTOR.npCod;
   }
 
   // Передоплата на площадці: гроші тримає маркетплейс і виплачує пакетом.

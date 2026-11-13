@@ -54,6 +54,8 @@ async function senderContact(): Promise<{ name: string; phone: string } | null> 
 /** Післяплата за замовчуванням: накладений платіж — залишок до сплати. */
 function defaultCod(o: OrderRow): number {
   const isCod = o.payment_method_code === 'cod' || o.payment_type === 'cod';
+  // Дропшип: amount_paid — закупка, яку партнер сплатив з балансу; наложка — уся сума клієнта
+  if (isCod && o.channel_code === 'dropship') return Number(o.total_price) || 0;
   return isCod ? Math.max(0, Math.round(((Number(o.total_price) || 0) - (Number(o.amount_paid) || 0)) * 100) / 100) : 0;
 }
 

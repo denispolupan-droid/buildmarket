@@ -11,6 +11,10 @@ import { newOrderLines, type OrderLineInput } from './orders/lines';
 export type DropshipCustomer = { id: string; name: string | null; email: string | null };
 
 export type DropshipRecipient = {
+  /** Перевізник: Нова Пошта (типово, і для Excel-імпорту) чи Meest (наш договір, 13.11.2026) */
+  carrier:        'nova' | 'meest';
+  /** Meest: пункт — поштомат (для підтипу доставки) */
+  postomat:       boolean;
   last_name:      string;
   first_name:     string;
   mid_name:       string;
@@ -27,6 +31,8 @@ const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0
 export function parseDropshipRecipient(raw: unknown): DropshipRecipient | string {
   const r = (raw ?? {}) as Record<string, unknown>;
   const rec: DropshipRecipient = {
+    carrier:        r.carrier === 'meest' ? 'meest' : 'nova',
+    postomat:       r.postomat === true,
     last_name:      str(r.last_name, 80),
     first_name:     str(r.first_name, 80),
     mid_name:       str(r.mid_name, 80),
@@ -39,7 +45,7 @@ export function parseDropshipRecipient(raw: unknown): DropshipRecipient | string
   if (!rec.last_name || !rec.first_name) return "Введіть прізвище та ім'я отримувача";
   if (rec.phone.replace(/\D/g, '').length < 10) return 'Введіть телефон отримувача';
   if (!rec.city_ref)      return 'Оберіть місто доставки';
-  if (!rec.warehouse_ref) return 'Оберіть відділення Нової Пошти';
+  if (!rec.warehouse_ref) return rec.carrier === 'meest' ? 'Оберіть відділення або поштомат Meest' : 'Оберіть відділення Нової Пошти';
   return rec;
 }
 
@@ -88,6 +94,18 @@ export async function createDropshipOrder(db: SupabaseClient, params: {
 }): Promise<CreateDropshipOrderResult> {
   const recipient = parseDropshipRecipient(params.recipient);
   if (typeof recipient === 'string') return { ok: false, error: recipient, status: 400 };
+  // Meest: пункт має існувати в обраному місті (накладну потім виписуємо на цей branchID)
+  if (recipient.carrier === 'meest') {
+    try {
+      const { meestBranches } = await import('./meest-ship');
+      const br = (await meestBranches(recipient.city_ref)).find(b => b.branchID === recipient.warehouse_ref);
+      if (!br) return { ok: false, error: 'Це відділення Meest зараз недоступне — оберіть інше', status: 400 };
+      recipient.warehouse_name = br.title;
+      recipient.postomat = br.postomat;
+    } catch {
+      /* довідник Meest не відповів — пункт перевірить менеджер при накладній */
+    }
+  }
 
   let catalog: Map<string, DropshipCatalogItem>;
   try {
@@ -127,8 +145,8 @@ export async function createDropshipOrder(db: SupabaseClient, params: {
       phone:            recipient.phone,
       email:            params.customer.email ?? params.fallbackEmail ?? '',
       company:          params.customer.name ?? '',
-      delivery_type:    'nova',
-      delivery_subtype: 'warehouse',
+      delivery_type:    recipient.carrier,
+      delivery_subtype: recipient.carrier === 'meest' && recipient.postomat ? 'postomat' : 'warehouse',
       delivery_address: `${recipient.city_name}, ${recipient.warehouse_name}`,
       delivery_city_ref:      recipient.city_ref,
       delivery_city_name:     recipient.city_name,

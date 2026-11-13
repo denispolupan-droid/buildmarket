@@ -30,14 +30,14 @@ type Db = ReturnType<typeof createServiceClient>;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-async function dropshipPartnerOf(db: Db, orderId: string): Promise<{ partner: string; orderNumber: number; paymentType: string | null; total: number } | null> {
+async function dropshipPartnerOf(db: Db, orderId: string): Promise<{ partner: string; orderNumber: number; paymentType: string | null; total: number; deliveryType: string | null } | null> {
   const { data: o } = await db
     .from('orders')
-    .select('order_number, channel_code, partner_code, payment_type, total_price')
+    .select('order_number, channel_code, partner_code, payment_type, total_price, delivery_type')
     .eq('id', orderId)
     .maybeSingle();
   if (!o || o.channel_code !== 'dropship' || !o.partner_code) return null;
-  return { partner: String(o.partner_code), orderNumber: o.order_number as number, paymentType: o.payment_type ?? null, total: Number(o.total_price) || 0 };
+  return { partner: String(o.partner_code), orderNumber: o.order_number as number, paymentType: o.payment_type ?? null, total: Number(o.total_price) || 0, deliveryType: o.delivery_type ?? null };
 }
 
 /** Поповнення балансу карткою (вебхук Monobank). */
@@ -199,18 +199,20 @@ export async function recordPartnerCodCollected(orderId: string, opts: { busines
   const gross = round2((txs ?? []).filter(t => t.tx_type === 'cod_credit').reduce((s, t) => s + Number(t.amount), 0));
   const fee   = round2(-(txs ?? []).filter(t => t.tx_type === 'np_fee').reduce((s, t) => s + Number(t.amount), 0));
   if (gross <= 0) return;
+  // Хто зібрав наложку: Meest (наш договір, 13.11.2026) чи НоваПей
+  const isMeest = (p.deliveryType ?? '').trim() === 'meest';
 
   await recordTxn({
-    debitAccount: 'customer', debitParty: SALE_DEBTOR.npCod, creditAccount: 'partner', creditParty: p.partner,
+    debitAccount: 'customer', debitParty: isMeest ? SALE_DEBTOR.meestCod : SALE_DEBTOR.npCod, creditAccount: 'partner', creditParty: p.partner,
     amount: gross, businessDate: opts.businessDate, docType: 'partner_cod', orderId,
     description: `Наложка дропшип-посилки вручена — належить партнеру (замовлення #${p.orderNumber})`,
     idempotencyKey: `partner-cod:${orderId}`, createdBy: opts.createdBy ?? 'system',
   });
   if (fee > 0) {
     await recordTxn({
-      debitAccount: 'partner', debitParty: p.partner, creditAccount: 'logistics', creditParty: 'np',
+      debitAccount: 'partner', debitParty: p.partner, creditAccount: 'logistics', creditParty: isMeest ? 'meest' : 'np',
       amount: fee, businessDate: opts.businessDate, docType: 'partner_cod', orderId,
-      description: `Комісія НоваПей за наложку утримана з партнера (замовлення #${p.orderNumber})`,
+      description: `Комісія ${isMeest ? 'Meest' : 'НоваПей'} за наложку утримана з партнера (замовлення #${p.orderNumber})`,
       idempotencyKey: `partner-cod-fee:${orderId}`, createdBy: opts.createdBy ?? 'system',
     });
   }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Trash2, ChevronLeft, Send, AlertCircle, CheckCircle, Minus, Plus } from 'lucide-react';
 import NovaPoshtaSelect from '../../../components/NovaPoshtaSelect';
+import RzDeliverySelect from '../../../components/RzDeliverySelect';
 import { DROPSHIP_MIN } from '../../../../lib/site';
 import { npCodFee } from '../../../../lib/dropship-order';
 
@@ -58,11 +59,13 @@ const lbl: React.CSSProperties = {
 };
 
 export default function NewOrderClient({
-  balanceAvail, codFeePct,
+  balanceAvail, codFeePct, meestCodFeePct,
 }: {
   balanceAvail: number;
   /** Ставка НоваПей за накладений платіж, % — та, що реально утримується при нарахуванні. */
   codFeePct: number;
+  /** Ставка Meest за переказ наложки, % (app_settings.meest_cod_fee_pct; 13.11.2026) */
+  meestCodFeePct: number;
 }) {
   const router = useRouter();
 
@@ -72,6 +75,18 @@ export default function NewOrderClient({
     city_ref: '', city_name: '', warehouse_ref: '', warehouse_name: '',
   });
   const [hasCod,  setHasCod]  = useState(true);
+  // Перевізник посилки: Нова Пошта чи Meest (наш договір, 13.11.2026)
+  const [carrier, setCarrier] = useState<'nova' | 'meest'>('nova');
+  const [meestPostomat, setMeestPostomat] = useState(false);
+  const feePct = carrier === 'meest' ? meestCodFeePct : codFeePct;
+  const feeLabel = carrier === 'meest' ? 'Meest' : 'НоваПей';
+  const carrierLabel = carrier === 'meest' ? 'Meest' : 'Новою Поштою';
+  // Зміна перевізника — пункт іншого довідника не підходить, скидаємо місто й пункт
+  function chooseCarrier(c: 'nova' | 'meest') {
+    if (c === carrier) return;
+    setCarrier(c); setMeestPostomat(false);
+    setRecipient(prev => ({ ...prev, city_ref: '', city_name: '', warehouse_ref: '', warehouse_name: '' }));
+  }
   const [comment, setComment] = useState('');
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState('');
@@ -138,7 +153,7 @@ export default function NewOrderClient({
 
   const totalCost    = items.reduce((s, i) => s + i.cost_price * i.qty, 0);
   const totalSell    = items.reduce((s, i) => s + i.selling_price * i.qty, 0);
-  const commission   = hasCod ? npCodFee(totalSell, codFeePct) : 0;
+  const commission   = hasCod ? npCodFee(totalSell, feePct) : 0;
   const netProfit    = totalSell - totalCost - commission;
   const balanceAfter = balanceAvail - totalCost;
   const hasBalance   = balanceAfter >= 0;
@@ -163,7 +178,7 @@ export default function NewOrderClient({
     if (!recipient.last_name || !recipient.first_name) { setError("Введіть прізвище та ім'я отримувача"); return; }
     if (!recipient.phone)       { setError('Введіть телефон отримувача'); return; }
     if (!recipient.city_ref)    { setError('Оберіть місто доставки'); return; }
-    if (!recipient.warehouse_ref) { setError('Оберіть відділення Нової Пошти'); return; }
+    if (!recipient.warehouse_ref) { setError(carrier === 'meest' ? 'Оберіть відділення або поштомат Meest' : 'Оберіть відділення Нової Пошти'); return; }
 
     setSaving(true);
     const res = await fetch('/api/cabinet/orders', {
@@ -171,7 +186,7 @@ export default function NewOrderClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items: items.map(i => ({ sku: i.sku, qty: i.qty, selling_price: i.selling_price })),
-        recipient, comment, has_cod: hasCod,
+        recipient: { ...recipient, carrier, postomat: meestPostomat }, comment, has_cod: hasCod,
       }),
     }).catch(() => null);
     if (!res) { setSaving(false); setError('Помилка мережі — спробуйте ще раз'); return; }
@@ -436,7 +451,7 @@ export default function NewOrderClient({
                       <strong style={{ color: '#15803D' }}>{totalSell.toFixed(2)} ₴</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Комісія НоваПей ({String(codFeePct).replace('.', ',')} %):</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>Комісія {feeLabel} ({String(feePct).replace('.', ',')} %):</span>
                       <span style={{ color: 'var(--text-secondary)' }}>−{commission.toFixed(2)} ₴</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderTop: '1px solid var(--border)', paddingTop: '5px', marginTop: '2px' }}>
@@ -445,7 +460,7 @@ export default function NewOrderClient({
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                       Після вручення посилки на баланс зараховується сума накладеного платежу мінус комісія.
-                      Якщо клієнт не забере посилку — вартість зворотної доставки Новою Поштою утримується з балансу.
+                      Якщо клієнт не забере посилку — вартість зворотної доставки {carrierLabel} утримується з балансу.
                     </div>
                   </div>
                 ) : (
@@ -497,13 +512,40 @@ export default function NewOrderClient({
               type="tel"
             />
           </div>
-          <NovaPoshtaSelect
-            mode="warehouse"
-            onCityChange={n => setR('city_name', n)}
-            onCityRefChange={r => setR('city_ref', r)}
-            onWarehouseChange={n => setR('warehouse_name', n)}
-            onWarehouseRefChange={r => setR('warehouse_ref', r)}
-          />
+          {/* Перевізник — Нова Пошта чи Meest (13.11.2026) */}
+          <div>
+            <label style={lbl}>Доставка *</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {([['nova', 'Нова Пошта', '/images/carriers/nova-poshta.svg'], ['meest', 'Meest Пошта', '/images/carriers/meest.svg']] as const).map(([v, t, logo]) => (
+                <button key={v} type="button" onClick={() => chooseCarrier(v)}
+                  style={{ flex: 1, height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                    border: `1.5px solid ${carrier === v ? '#1E3A5F' : 'var(--border)'}`, background: carrier === v ? '#1E3A5F14' : 'var(--bg-card)', color: 'var(--text-primary)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG */}
+                  <img src={logo} alt="" aria-hidden style={{ height: '16px', width: 'auto' }} />
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          {carrier === 'nova' ? (
+            <NovaPoshtaSelect
+              mode="warehouse"
+              onCityChange={n => setR('city_name', n)}
+              onCityRefChange={r => setR('city_ref', r)}
+              onWarehouseChange={n => setR('warehouse_name', n)}
+              onWarehouseRefChange={r => setR('warehouse_ref', r)}
+            />
+          ) : (
+            <RzDeliverySelect
+              provider="meest"
+              weightKg={0}
+              onCityChange={n => setR('city_name', n)}
+              onCityIdChange={id => setR('city_ref', id)}
+              onDepartmentChange={l => setR('warehouse_name', l)}
+              onDepartmentIdChange={id => setR('warehouse_ref', id)}
+              onDepartmentPicked={d => setMeestPostomat(Boolean(d?.postomat))}
+            />
+          )}
         </div>
       </div>
 
