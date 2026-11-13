@@ -5,6 +5,7 @@ import { orderItemSources } from '../../../../../lib/orders/item-sources';
 import { loadOrderLines, linesOf } from '../../../../../lib/orders/lines-read';
 import { requireStaff } from '../../../../../lib/auth-guard';
 import { withApi } from '../../../../../lib/api-handler';
+import { ttnPlaces, placesLabel } from '../../../../../lib/ttn-snapshot';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -85,7 +86,7 @@ async function _POST(req: NextRequest) {
 
   const { data: orders } = await db
     .from('orders')
-    .select('id, order_number, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
+    .select('id, order_number, contact, phone, delivery_city_name, tracking_number, ttn_snapshot, shipping_supplier_id, channel_code')
     .in('id', orderIds);
 
   if (!orders?.length) return NextResponse.json({ error: 'Orders not found' }, { status: 404 });
@@ -108,7 +109,7 @@ async function _POST(req: NextRequest) {
   // Замовлення → набір постачальників (для supplier_sent_at / shipping_supplier_id)
   const orderSuppliers = new Map<string, Set<number>>();
 
-  type OrderMeta = { contact: string; phone: string; city: string; ttn: string | null };
+  type OrderMeta = { contact: string; phone: string; city: string; ttn: string | null; places: number };
   const orderMeta = new Map<number, OrderMeta>();
 
   for (const order of orders) {
@@ -117,6 +118,8 @@ async function _POST(req: NextRequest) {
       phone:   order.phone ?? '',
       city:    order.delivery_city_name ?? '',
       ttn:     order.tracking_number ?? null,
+      // Кілька місць у ЕН — постачальнику помітна позначка, скільки коробок відвантажити
+      places:  ttnPlaces(order.ttn_snapshot, order.tracking_number),
     });
     const allItems = linesOf(linesByOrder, order.id).map(l => ({ sku: l.sku, name: l.name, brand: l.brand, qty: l.qty }));
     // Тільки те, що справді їде від постачальника: у змішаному замовленні
@@ -181,6 +184,7 @@ async function _POST(req: NextRequest) {
           <div style="background:#1E3A5F;padding:10px 14px">
             <span style="font-size:14px;font-weight:800;color:#fff;letter-spacing:0.3px">📦 Замовлення #${num}</span>
             ${ttnStr ? `<span style="margin-left:12px">${ttnStr}</span>` : ''}
+            ${(meta?.places ?? 1) > 1 ? `<span style="margin-left:12px;display:inline-block;padding:2px 8px;border-radius:6px;background:#F59E0B;color:#1E3A5F;font-size:12px;font-weight:800">${placesLabel(meta!.places)} в ЕН</span>` : ''}
           </div>
           <div style="padding:12px 14px">
             <table style="width:100%;border-collapse:collapse">

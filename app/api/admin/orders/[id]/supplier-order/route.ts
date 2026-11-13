@@ -5,6 +5,7 @@ import { orderItemSources } from '../../../../../../lib/orders/item-sources';
 import { requireStaff } from '../../../../../../lib/auth-guard';
 import { withApi } from '../../../../../../lib/api-handler';
 import { loadOrderItems } from '../../../../../../lib/orders/lines-read';
+import { ttnPlaces, placesLabel } from '../../../../../../lib/ttn-snapshot';
 
 type SkuMapping = { our_sku: string; supplier_id: number; supplier_sku: string };
 
@@ -107,7 +108,7 @@ async function _POST(
 
   const { data: order } = await db
     .from('orders')
-    .select('id, order_number, contact, phone, delivery_city_name, tracking_number, shipping_supplier_id, channel_code')
+    .select('id, order_number, contact, phone, delivery_city_name, tracking_number, ttn_snapshot, shipping_supplier_id, channel_code')
     .eq('id', id)
     .single();
 
@@ -195,6 +196,7 @@ async function _POST(
             phone:          order.phone,
             deliveryCity:   order.delivery_city_name ?? '',
             trackingNumber: order.tracking_number ?? undefined,
+            places:         ttnPlaces(order.ttn_snapshot, order.tracking_number),
             comment:        overrideComment,
             items: supplierItems.map(item => ({
               supplierSku: supplierSkus.get(item.sku) ?? item.sku,
@@ -244,6 +246,8 @@ function buildSupplierEmailHtml(data: {
   phone: string;
   deliveryCity: string;
   trackingNumber?: string;
+  /** Місць у ЕН; > 1 — помітна позначка (постачальник відвантажує стільки коробок) */
+  places?: number;
   comment?: string;
   items: { supplierSku: string; name: string; qty: number }[];
 }) {
@@ -260,6 +264,9 @@ function buildSupplierEmailHtml(data: {
     ? (data.anonymize
         ? `<p style="margin-top:12px;color:#1E3A5F;font-size:14px">ТТН (останні 4 цифри): <strong style="font-family:monospace;font-size:15px;letter-spacing:0.5px">••••&nbsp;${ttnDigits.slice(-4)}</strong></p>`
         : `<p style="margin-top:12px;color:#1E3A5F;font-size:14px">ТТН Нова Пошта: <strong style="font-family:monospace;font-size:15px;letter-spacing:0.5px">${data.trackingNumber}</strong></p>`)
+      + ((data.places ?? 1) > 1
+        ? `<p style="margin-top:6px"><span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#FEF3C7;color:#92400E;font-size:14px;font-weight:800">У цій ЕН ${placesLabel(data.places!)} — відвантажте всі під одним номером</span></p>`
+        : '')
     : '';
 
   const recipientBlock = data.anonymize

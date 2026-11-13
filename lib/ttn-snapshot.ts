@@ -50,6 +50,24 @@ export function snapshotFor(raw: unknown, ttn: string | null | undefined): TtnSn
   return s.ttn && String(s.ttn).trim().toUpperCase() === String(ttn).trim().toUpperCase() ? s : null;
 }
 
+/**
+ * Скільки місць у накладній (за знімком саме цього номера). Для листа
+ * постачальнику (13.11.2026): на ЕН із 5 місцями він має відвантажити 5 коробок,
+ * а не одну. Немає знімка чи одне місце — 1.
+ */
+export function ttnPlaces(raw: unknown, ttn: string | null | undefined): number {
+  const s = snapshotFor(raw, ttn);
+  const n = Math.max(Number(s?.places ?? 0) || 0, Array.isArray(s?.seats) ? s!.seats!.length : 0);
+  return n > 1 ? Math.round(n) : 1;
+}
+
+/** «2 місця», «5 місць», «21 місце». */
+export function placesLabel(n: number): string {
+  const d = n % 10, dd = n % 100;
+  const w = d === 1 && dd !== 11 ? 'місце' : d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? 'місця' : 'місць';
+  return `${n} ${w}`;
+}
+
 /** Число або null — для полів, які приходять із форми рядками. */
 export function numOrNull(v: unknown): number | null {
   const n = typeof v === 'string' ? parseFloat(v.replace(',', '.')) : Number(v);
