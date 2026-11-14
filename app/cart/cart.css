@@ -138,6 +138,10 @@
 .cart-carrier-logo[src*="rozetka-delivery"] { height: 15px; }
 .cart-carrier-logo[src*="meest"] { height: 17px; }
 .cart-carrier-logo[src*="rozetka-mark"] { height: 24px; }
+/* НП і Meest — лише логотип без підпису (14.11.2026): більші, щоб на око мали ту саму
+   «вагу», що й ROZETKA з підписом; вертикально по центру плитки */
+.cart-carrier-logo--solo[src*="nova-poshta"] { height: 20px; }
+.cart-carrier-logo--solo[src*="meest"] { height: 26px; }
 .cart-carrier-logo--dark { display: none; }
 [data-theme="dark"] .cart-carrier-logo--light { display: none; }
 [data-theme="dark"] .cart-carrier-logo--dark { display: block; }

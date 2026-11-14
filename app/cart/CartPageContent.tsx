@@ -509,9 +509,9 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     // logo — офіційні логотипи-написи перевізників (public/images/carriers): НП (04.11),
     // Meest (meest.com) і ROZETKA Доставка (rozetka.delivery, 14.11.2026). Напис і є
     // назвою — текстом лише для читачів екрана й підказки; logoDark — для темної теми.
-    { value: 'nova', label: tr.deliveryNova, sub: tr.deliveryNovaSub as string | null, logo: '/images/carriers/nova-poshta.svg', logoDark: '' },
+    { value: 'nova', label: tr.deliveryNova, sub: null as string | null, logo: '/images/carriers/nova-poshta.svg', logoDark: '' },
     ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub, logo: '/images/carriers/rozetka-delivery.svg', logoDark: '/images/carriers/rozetka-delivery-dark.svg' }] : []),
-    { value: 'meest', label: tr.deliveryMeest, sub: tr.deliveryMeestSub, logo: '/images/carriers/meest.svg', logoDark: '' },
+    { value: 'meest', label: tr.deliveryMeest, sub: null, logo: '/images/carriers/meest.svg', logoDark: '' },
   ];
 
   // Спосіб міг прийти з минулого замовлення (підстановка вище) або перестати
@@ -1076,7 +1076,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                         <span style={{ flex: 1, minWidth: 0 }} title={opt.sub ? `${opt.label} — ${opt.sub}` : opt.label}>
                           <span className="cart-sr-only">{opt.label}</span>
                           {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG, next/image тут зайвий */}
-                          <img src={opt.logo} alt="" aria-hidden className={'cart-carrier-logo' + (opt.logoDark ? ' cart-carrier-logo--light' : '')} />
+                          <img src={opt.logo} alt="" aria-hidden className={'cart-carrier-logo' + (opt.logoDark ? ' cart-carrier-logo--light' : '') + (opt.sub ? '' : ' cart-carrier-logo--solo')} />
                           {opt.logoDark && (
                             // eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG
                             <img src={opt.logoDark} alt="" aria-hidden className="cart-carrier-logo cart-carrier-logo--dark" />
