@@ -153,7 +153,7 @@ export default function DeliveryRuPage() {
               {[
                 { icon: Clock,      title: 'Обработка заказа',   text: 'Заказы, размещённые до 14:00 в рабочие дни, отправляем в тот же день. Заказы после 14:00 — на следующий рабочий день.' },
                 { icon: Package,    title: 'Упаковка',            text: 'Товар упаковывается в картонные коробки с наполнителем. Для хрупких и жидких материалов — усиленная упаковка без дополнительной оплаты.' },
-                { icon: CreditCard, title: 'Оплата при получении', text: 'Наложенный платёж — оплачиваете при получении посылки в отделении НП или в точке выдачи ROZETKA. Для оптовых клиентов — предоплата на счёт или через платёжную систему.' },
+                { icon: CreditCard, title: 'Оплата при получении', text: 'Наложенный платёж — оплачиваете при получении посылки в отделении Новой Почты или Meest либо в точке выдачи ROZETKA. Для оптовых клиентов — предоплата на счёт или через платёжную систему.' },
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>
