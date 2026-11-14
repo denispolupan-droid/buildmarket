@@ -17,14 +17,15 @@ export const MEEST_SENDER_BRANCH_DEFAULT = { branchID: '9f631199-08c5-11ed-80e7-
 type Descr = { descrUA?: string; descrRU?: string; descrEN?: string; descrLoc?: string };
 const ua = (d: Descr | string | undefined | null) => (typeof d === 'string' ? d : d?.descrUA ?? d?.descrLoc ?? '') || '';
 
-export type MeestCity = { cityID: string; name: string; region: string; district: string; hasBranches: boolean };
+/** courier — чи возить Meest кур'єром у цей населений пункт (isDeliveryInCity) */
+export type MeestCity = { cityID: string; name: string; region: string; district: string; hasBranches: boolean; courier: boolean };
 export type MeestBranch = {
   branchID: string; cityID: string; number: string; type: string; title: string; address: string;
   postomat: boolean; open: boolean;
   limits: { weightPlaceMax?: number; volumePlaceMax?: number; length?: number; width?: number; height?: number } | null;
 };
 
-type RawCity = { cityID: string; cityDescr: Descr; regionDescr?: Descr; districtDescr?: Descr; isBranchInCity?: boolean };
+type RawCity = { cityID: string; cityDescr: Descr; regionDescr?: Descr; districtDescr?: Descr; isBranchInCity?: boolean; isDeliveryInCity?: boolean };
 type RawBranch = {
   branchID: string; cityID: string; branchNumber?: string; branchNo?: number; branchType?: string; ShortName?: string;
   branchDescr?: Descr; addressDescr?: Descr; building?: string; isBranchOpen?: boolean; isBranchClosed?: boolean;
@@ -33,6 +34,7 @@ type RawBranch = {
 
 const toCity = (c: RawCity): MeestCity => ({
   cityID: c.cityID, name: ua(c.cityDescr), region: ua(c.regionDescr), district: ua(c.districtDescr), hasBranches: c.isBranchInCity !== false,
+  courier: c.isDeliveryInCity === true,
 });
 
 /** Поштомат: тип «АПТ» (автоматичний поштовий термінал) або назва з «поштомат». */
@@ -103,13 +105,19 @@ export async function meestFindPoint(city: string, number: string): Promise<{ ci
 
 export type MeestPlace = { weight: number; length: number; width: number; height: number; insurance: number };
 
-/** Вартість і дата доставки (сервіс Branch → Branch). */
-export async function meestCalculate(input: { receiverBranchID: string; receiverCityID: string; cod: number; places: MeestPlace[] }) {
+/**
+ * Вартість і дата доставки. Відправляємо завжди з відділення (Branch); одержувач —
+ * відділення/поштомат (Branch, з branchID) або кур'єр до дверей (Door: лише місто,
+ * перевірено наживо 14.11.2026 — Харків → Київ, 1 кг: Branch 50 ₴, Door 90 ₴).
+ */
+export async function meestCalculate(input: { receiverBranchID?: string | null; receiverCityID: string; cod: number; places: MeestPlace[]; door?: boolean }) {
   const sender = await meestSenderBranch();
   const r = await meestFetch<{ costServices?: string; estimatedDeliveryDate?: string }[] | { costServices?: string; estimatedDeliveryDate?: string }>('/calculate', { body: {
     contractID: await meestContractId(), COD: input.cod || 0,
     sender: { branchID: sender.branchID, cityID: sender.cityID, service: 'Branch' },
-    receiver: { branchID: input.receiverBranchID, cityID: input.receiverCityID, service: 'Branch' },
+    receiver: input.door
+      ? { cityID: input.receiverCityID, service: 'Door' }
+      : { branchID: input.receiverBranchID, cityID: input.receiverCityID, service: 'Branch' },
     placesItems: input.places.map(p => ({ quantity: 1, weight: p.weight, length: p.length, width: p.width, height: p.height, insurance: p.insurance })),
   } });
   const row = Array.isArray(r) ? r[0] : r;
@@ -119,7 +127,8 @@ export async function meestCalculate(input: { receiverBranchID: string; receiver
 export type MeestParcelInput = {
   orderNumber: number;
   sender: { name: string; phone: string };
-  receiver: { name: string; phone: string; branchID: string };
+  /** Пункт (branchID) або кур'єр до дверей (door: вулиця з довідника Meest, будинок, квартира) */
+  receiver: { name: string; phone: string; branchID?: string; door?: { addressID: string; building: string; flat?: string | null } };
   places: MeestPlace[];
   cod: number;
   /** Хто платить доставку: true — одержувач */
@@ -140,7 +149,13 @@ export function buildMeestParcelBody(input: MeestParcelInput, contractID: string
     info4Sticker: true,
     notation: input.notation ?? `Замовлення #${input.orderNumber}`,
     sender: { name: input.sender.name, phone: input.sender.phone, branchID: senderBranchID, service: 'Branch' },
-    receiver: { name: input.receiver.name, phone: input.receiver.phone, branchID: input.receiver.branchID, service: 'Branch' },
+    receiver: input.receiver.door
+      ? {
+          name: input.receiver.name, phone: input.receiver.phone, service: 'Door',
+          addressID: input.receiver.door.addressID, building: input.receiver.door.building,
+          ...(input.receiver.door.flat ? { flat: input.receiver.door.flat } : {}),
+        }
+      : { name: input.receiver.name, phone: input.receiver.phone, branchID: input.receiver.branchID, service: 'Branch' },
     placesItems: input.places.map(p => ({
       quantity: 1, placeWeight: p.weight, weight: p.weight, placeVolume: vol(p), volume: vol(p),
       insurance: p.insurance, length: p.length, width: p.width, height: p.height,
@@ -177,3 +192,22 @@ export async function meestTracking(trackNumber: string): Promise<MeestTrackEven
 
 export const meestEventText = (e: MeestTrackEvent) => ua(e.eventDescr);
 export const meestEventCity = (e: MeestTrackEvent) => ua(e.eventCityDescr);
+
+export type MeestStreet = { addressID: string; name: string };
+
+/** Вулиці міста за частиною назви (кур'єрська доставка). Meest приймає шаблон «%…%». */
+export async function meestSearchStreets(cityID: string, q: string): Promise<MeestStreet[]> {
+  const name = q.trim().replace(/[%_]/g, '');
+  if (name.length < 2 || !cityID) return [];
+  const r = await meestFetch<{ addressID: string; addressDescr?: Descr }[]>('/addressSearch', { body: { filters: { cityID, addressDescr: `%${name}%` } } });
+  return (Array.isArray(r) ? r : []).map(a => ({ addressID: a.addressID, name: ua(a.addressDescr) })).filter(a => a.addressID && a.name).slice(0, 30);
+}
+
+/** Вулиця за id (перевірка, що адреса з кошика справжня). */
+export async function meestStreetById(cityID: string, addressID: string): Promise<MeestStreet | null> {
+  const r = await meestFetch<{ addressID: string; addressDescr?: Descr }[]>('/addressSearch', { body: { filters: { cityID, addressID } } });
+  const a = (Array.isArray(r) ? r : [])[0];
+  return a?.addressID ? { addressID: a.addressID, name: ua(a.addressDescr) } : null;
+}
+
+export { formatMeestDoorAddress, parseMeestDoorAddress } from './meest-address';

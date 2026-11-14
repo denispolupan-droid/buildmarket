@@ -4,6 +4,7 @@ vi.mock('../lib/supabase', () => ({ createServiceClient: () => ({}) }));
 vi.mock('../lib/secrets', () => ({ readSetting: async () => null, writeSetting: async () => {} }));
 
 import { parseMeestPoint, buildMeestParcelBody, isMeestPostomat } from '../lib/meest-ship';
+import { formatMeestDoorAddress, parseMeestDoorAddress } from '../lib/meest-address';
 
 describe('parseMeestPoint — пункт Meest з адреси замовлення', () => {
   it('Rozetka / Prom / Епіцентр — місто й номер', () => {
@@ -51,5 +52,21 @@ describe('buildMeestParcelBody — тіло POST /parcel', () => {
     const b = buildMeestParcelBody({ orderNumber: 1, sender: { name: 'a', phone: 'b' }, receiver: { name: 'c', phone: 'd', branchID: 'e' }, places: [{ weight: 1, length: 10, width: 10, height: 10, insurance: 0 }], cod: 0, receiverPays: false, description: 'x' }, 'C', 'S');
     expect(b.COD).toBe(0);
     expect(b.receiverPay).toBe(false);
+  });
+});
+
+describe("кур'єр Meest — адреса й тіло посилки", () => {
+  it("формат і розбір адреси «вул. …, буд. …, кв. …»", () => {
+    const a = formatMeestDoorAddress("вул. Хрещатик", "12А", "5");
+    expect(a).toBe("вул. Хрещатик, буд. 12А, кв. 5");
+    expect(parseMeestDoorAddress(a)).toEqual({ street: "вул. Хрещатик", building: "12А", flat: "5" });
+    expect(parseMeestDoorAddress(formatMeestDoorAddress("просп. Науки", "1", ""))).toEqual({ street: "просп. Науки", building: "1", flat: null });
+    expect(parseMeestDoorAddress("Київ, Відділення №5")).toBeNull();
+  });
+  it("Door: вулиця, будинок, квартира; без branchID", () => {
+    const b = buildMeestParcelBody({ orderNumber: 1, sender: { name: "a", phone: "b" },
+      receiver: { name: "Іван", phone: "+380671112233", door: { addressID: "ST-1", building: "12А", flat: "5" } },
+      places: [{ weight: 1, length: 10, width: 10, height: 10, insurance: 100 }], cod: 0, receiverPays: true, description: "x" }, "C", "S");
+    expect(b.receiver).toEqual({ name: "Іван", phone: "+380671112233", service: "Door", addressID: "ST-1", building: "12А", flat: "5" });
   });
 });

@@ -61,6 +61,8 @@ import { phoneInputDigits as getLocalDigits, phoneInputFormat as formatPhone } f
 import { trackBeginCheckout, trackPurchase } from '../../lib/analytics';
 import ProductImage from '../components/ProductImage';
 import NovaPoshtaSelect from '../components/NovaPoshtaSelect';
+import MeestCourierSelect, { type MeestCourierValue } from '../components/MeestCourierSelect';
+import { formatMeestDoorAddress } from '../../lib/meest-address';
 import RzDeliverySelect from '../components/RzDeliverySelect';
 import { cartWeightKg } from '../../lib/parcel-weight';
 import { RZ_DELIVERY_TYPE } from '../../lib/rz-delivery';
@@ -481,7 +483,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const [rzDepLabel,        setRzDepLabel]        = useState('');
   // Meest (13.11.2026) ділить з ROZETKA поля точки (місто/пункт) — одночасно
   // активний лише один перевізник, а clearDelivery чистить їх при зміні; тут — лише підтип
-  const [meestSubtype,      setMeestSubtype]      = useState<'warehouse' | 'postomat' | ''>('');
+  const [meestSubtype,      setMeestSubtype]      = useState<'warehouse' | 'postomat' | 'courier' | ''>('');
+  // Кур'єр Meest (14.11.2026): місто, вулиця з довідника Meest, будинок, квартира
+  const [meestCourier,      setMeestCourier]      = useState<MeestCourierValue | null>(null);
+  const meestDoor = delivery === 'meest' && meestSubtype === 'courier';
   // null — конфіг ще не приїхав; опцію не малюємо, доки не знаємо, чи вона жива
   const [rzConfig, setRzConfig] = useState<{ enabled: boolean; maxWeightKg: number | null } | null>(null);
 
@@ -527,7 +532,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   const clearNovaPoint = () => { npInit.current = null; setAddress(''); setNovaCityName(''); setNovaCityRef(''); setNovaWarehouseRef(''); };
   const clearDelivery = () => {
     setDelivery(''); setNovaSubtype(''); clearNovaPoint(); rzInit.current = null;
-    setRzCityId(''); setRzCityName(''); setRzDepId(''); setRzDepLabel(''); setMeestSubtype('');
+    setRzCityId(''); setRzCityName(''); setRzDepId(''); setRzDepLabel(''); setMeestSubtype(''); setMeestCourier(null);
   };
 
   const [payment,   setPayment]   = useState('');
@@ -652,7 +657,8 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     if (delivery === 'nova' && (novaSubtype === 'warehouse' || novaSubtype === 'postomat') && !novaWarehouseRef) e.add('address');
     if (delivery === 'nova' && novaSubtype === 'courier' && !address.trim()) e.add('address');
     if (delivery === 'meest' && !meestSubtype) e.add('novaSubtype');
-    if ((delivery === RZ_DELIVERY_TYPE || (delivery === 'meest' && meestSubtype)) && !rzDepId) e.add('rzPoint');
+    if ((delivery === RZ_DELIVERY_TYPE || (delivery === 'meest' && (meestSubtype === 'warehouse' || meestSubtype === 'postomat'))) && !rzDepId) e.add('rzPoint');
+    if (delivery === 'meest' && meestSubtype === 'courier' && (!meestCourier?.cityId || !meestCourier.streetId || !meestCourier.building.trim())) e.add('address');
     if (!payment)         e.add('payment');
     return e;
   }
@@ -768,15 +774,22 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
           phone, email,
           deliveryType: delivery,
           deliverySubtype: delivery === 'nova' ? novaSubtype : delivery === 'meest' ? (meestSubtype || null) : null,
-          deliveryAddress: (delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? rzDepLabel : address) || null,
+          // Кур'єр Meest: адреса «вул. …, буд. …, кв. …», місто й id вулиці з довідника Meest
+          // (id вулиці лягає в delivery_warehouse_ref — накладну виписуємо саме на нього)
+          deliveryAddress: (meestDoor && meestCourier
+            ? formatMeestDoorAddress(meestCourier.streetName, meestCourier.building, meestCourier.flat)
+            : delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? rzDepLabel : address) || null,
           // Ідентифікатори точок ROZETKA — uuid, а не Ref НП; лягають у ті самі
           // колонки, бо роль однакова, а перевізника видно по delivery_type.
           deliveryCityRef: delivery === 'nova' ? (novaCityRef || null)
+            : meestDoor ? (meestCourier?.cityId || null)
             : delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? (rzCityId || null) : null,
           deliveryCityName: delivery === 'nova' ? (novaCityName || null)
+            : meestDoor ? (meestCourier?.cityName || null)
             : delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? (rzCityName || null) : null,
           deliveryWarehouseRef: delivery === 'nova'
             ? ((novaSubtype === 'warehouse' || novaSubtype === 'postomat') && novaWarehouseRef ? novaWarehouseRef : null)
+            : meestDoor ? (meestCourier?.streetId || null)
             : delivery === RZ_DELIVERY_TYPE || delivery === 'meest' ? (rzDepId || null) : null,
           paymentType: payment,
           comment: [comment, noCallback ? '⛔ Не передзвонювати для підтвердження' : ''].filter(Boolean).join('\n') || null,
@@ -894,6 +907,10 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       return [tr.deliveryNova, sub, place].filter(Boolean).join(' · ');
     }
     if (delivery === RZ_DELIVERY_TYPE) return [tr.deliveryRz, [shortCity(rzCityName), rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    if (meestDoor) {
+      const c = meestCourier;
+      return [tr.deliveryMeest, tr.novaCourier, c ? [c.cityName, formatMeestDoorAddress(c.streetName, c.building, c.flat)].filter(Boolean).join(', ') : ''].filter(Boolean).join(' · ');
+    }
     if (delivery === 'meest') {
       // Назва пункту Meest уже містить місто («Партнерське №54, Харків, в'їзд …») —
       // прибираємо його звідти, щоб не було «Харків, Партнерське №54, Харків, …» (14.11.2026)
@@ -1155,7 +1172,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                       {/* Як у Нової Пошти: спершу тип пункту, потім список лише цього типу (13.11.2026) */}
                       {opt.value === 'meest' && delivery === 'meest' && (
                         <div className={'cart-opt-sub' + (!meestSubtype ? ' cart-opt-list--row' : '')}>
-                          {(['warehouse', 'postomat'] as const).filter(sub => !meestSubtype || meestSubtype === sub).map(sub => (
+                          {(['warehouse', 'postomat', 'courier'] as const).filter(sub => !meestSubtype || meestSubtype === sub).map(sub => (
                             <label key={sub} onMouseDown={keepFocus} style={{
                               display: 'flex', alignItems: 'center', gap: '10px',
                               padding: '10px 14px', borderRadius: '8px', cursor: meestSubtype === sub ? 'default' : 'pointer',
@@ -1175,7 +1192,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                                 onChange={() => { rzInit.current = null; setMeestSubtype(sub); setRzDepId(''); setRzDepLabel(''); setErrors(s => { const n = new Set(s); n.delete('novaSubtype'); return n; }); }}
                                 style={{ display: 'none' }} />
                               <span style={{ fontSize: '13px', fontWeight: meestSubtype === sub ? 600 : 500, color: 'var(--text-primary)', flex: 1 }}>
-                                {sub === 'warehouse' ? tr.novaWarehouse : tr.novaPostomat}
+                                {sub === 'warehouse' ? tr.novaWarehouse : sub === 'postomat' ? tr.novaPostomat : tr.novaCourier}
                               </span>
                               {meestSubtype === sub && (
                                 <button
@@ -1187,7 +1204,16 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                               )}
                             </label>
                           ))}
-                          {meestSubtype && (
+                          {meestSubtype === 'courier' && (
+                            <div style={{ marginTop: '6px' }}>
+                              <MeestCourierSelect
+                                lang={lang}
+                                initial={meestCourier ?? (rzCityId ? { cityId: rzCityId, cityName: rzCityName } : undefined)}
+                                onChange={val => { setMeestCourier(val); if (val.streetId && val.building.trim()) setErrors(s => { const n = new Set(s); n.delete('address'); return n; }); }}
+                              />
+                            </div>
+                          )}
+                          {(meestSubtype === 'warehouse' || meestSubtype === 'postomat') && (
                             <div style={{ marginTop: '6px' }}>
                               <RzDeliverySelect
                                 key={meestSubtype}

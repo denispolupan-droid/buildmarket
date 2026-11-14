@@ -16,7 +16,8 @@ import { getRzSender, isRzDeliveryEnabled } from '../../../lib/rz-delivery-api';
 import { cartWeightKg } from '../../../lib/parcel-weight';
 import { withApi } from '../../../lib/api-handler';
 import { npWarehouseDescription } from '../../../lib/np-api';
-import { meestBranches } from '../../../lib/meest-ship';
+import { meestBranches, meestStreetById } from '../../../lib/meest-ship';
+import { parseMeestDoorAddress } from '../../../lib/meest-address';
 import { log } from '../../../lib/log';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -105,7 +106,18 @@ async function _POST(req: NextRequest) {
   // Meest (договір 10031120, 13.11.2026): пункт має існувати в обраному місті й
   // прийняти посилку такої ваги (Міні-відділення — до 10 кг). Довіднику браузера
   // не віримо: накладну потім виписуємо саме на цей branchID.
-  if (deliveryType === 'meest') {
+  // Кур'єр Meest (14.11.2026): у delivery_warehouse_ref — id вулиці з довідника Meest,
+  // в адресі — будинок; вулицю звіряємо з довідником (на неї виписуємо накладну).
+  if (deliveryType === 'meest' && deliverySubtype === 'courier') {
+    if (!deliveryWarehouseRef || !deliveryCityRef || !parseMeestDoorAddress(deliveryAddress))
+      return NextResponse.json({ error: 'Вкажіть місто, вулицю й будинок для кур\'єра Meest' }, { status: 400 });
+    try {
+      if (!await meestStreetById(String(deliveryCityRef), String(deliveryWarehouseRef)))
+        return NextResponse.json({ error: 'Цю вулицю Meest не знає — оберіть її зі списку підказок' }, { status: 400 });
+    } catch (err) {
+      log.warn('order.meest_street_check_failed', { err: err instanceof Error ? err.message : String(err) });
+    }
+  } else if (deliveryType === 'meest') {
     if (!deliveryWarehouseRef || !deliveryCityRef)
       return NextResponse.json({ error: 'Оберіть відділення або поштомат Meest' }, { status: 400 });
     try {

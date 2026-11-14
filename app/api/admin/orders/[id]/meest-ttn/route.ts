@@ -3,7 +3,7 @@ import { requireStaff } from '../../../../../../lib/auth-guard';
 import { createServiceClient } from '../../../../../../lib/supabase-service';
 import {
   meestSearchCities, meestBranches, meestCalculate, meestCreateParcel, meestStickerPdf, meestSenderBranch,
-  parseMeestPoint, meestFindPoint, type MeestPlace,
+  parseMeestPoint, meestFindPoint, parseMeestDoorAddress, type MeestPlace,
 } from '../../../../../../lib/meest-ship';
 import { epicentrPhone } from '../../../../../../lib/epicentr-meest';
 import { getRozetkaSender, getRzSettingsContact } from '../../../../../../lib/rozetka-delivery-ttn';
@@ -30,12 +30,12 @@ type OrderRow = {
   tracking_number: string | null; total_price: number | null; amount_paid: number | null; payment_type: string | null;
   payment_method_code: string | null; items: { name?: string }[] | null; contact: string | null; phone: string | null;
   delivery_city_name: string | null; delivery_address: string | null;
-  delivery_city_ref: string | null; delivery_warehouse_ref: string | null;
+  delivery_city_ref: string | null; delivery_warehouse_ref: string | null; delivery_subtype: string | null;
 };
 
 async function loadOrder(id: string): Promise<{ order?: OrderRow; error?: string; status?: number }> {
   const { data } = await createServiceClient().from('orders')
-    .select('id, order_number, channel_code, delivery_type, status, tracking_number, total_price, amount_paid, payment_type, payment_method_code, items, contact, phone, delivery_city_name, delivery_address, delivery_city_ref, delivery_warehouse_ref')
+    .select('id, order_number, channel_code, delivery_type, status, tracking_number, total_price, amount_paid, payment_type, payment_method_code, items, contact, phone, delivery_city_name, delivery_address, delivery_city_ref, delivery_warehouse_ref, delivery_subtype')
     .eq('id', id).maybeSingle();
   const order = data as OrderRow | null;
   if (!order) return { error: 'Замовлення не знайдено', status: 404 };
@@ -77,7 +77,12 @@ async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string
       return NextResponse.json({ label: (await meestStickerPdf([order.tracking_number])).toString('base64') });
     }
 
-    const parsed = parseMeestPoint(order.delivery_address, order.delivery_city_name);
+    // Кур'єр Meest (14.11.2026): місто, вулиця (id у delivery_warehouse_ref), будинок, квартира з адреси
+    const doorAddr = order.delivery_subtype === 'courier' ? parseMeestDoorAddress(order.delivery_address) : null;
+    const door = doorAddr && order.delivery_city_ref && order.delivery_warehouse_ref
+      ? { cityID: order.delivery_city_ref, cityName: order.delivery_city_name, addressID: order.delivery_warehouse_ref, ...doorAddr }
+      : null;
+    const parsed = door ? null : parseMeestPoint(order.delivery_address, order.delivery_city_name);
     // Замовлення сайту несе точний пункт (branchID/cityID з чекауту); маркетплейси — лише адресу
     const exact = async () => {
       if (!order.delivery_warehouse_ref || !order.delivery_city_ref) return null;
@@ -93,6 +98,7 @@ async function _GET(req: NextRequest, { params }: { params: Promise<{ id: string
       box, declared: Number(order.total_price) || 0, cod: defaultCod(order),
       address: order.delivery_address, recipient: { name: order.contact, phone: order.phone },
       point: point ? { city: point.city, branch: point.branch } : null,
+      door,
       cityHint: parsed?.city ?? order.delivery_city_name ?? null,
     });
   } catch (err) {
@@ -105,6 +111,8 @@ export const GET = withApi('admin/orders/[id]/meest-ttn', _GET);
 type Body = {
   calc?: boolean; branchID?: string; cityID?: string; cityName?: string; branchTitle?: string;
   weight?: number; length?: number; width?: number; height?: number; declared?: number; cod?: number; receiverPays?: boolean;
+  /** Кур'єр до дверей: вулиця з довідника Meest, будинок, квартира (cityID — місто) */
+  door?: { addressID?: string; building?: string; flat?: string | null; street?: string };
 };
 
 async function _POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -116,7 +124,12 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
   if (!r.order) return NextResponse.json({ error: r.error }, { status: r.status });
   const order = r.order;
 
-  if (!b.branchID || !b.cityID) return NextResponse.json({ error: 'Оберіть відділення або поштомат Meest' }, { status: 400 });
+  const door = b.door?.addressID && String(b.door.building ?? '').trim()
+    ? { addressID: b.door.addressID, building: String(b.door.building).trim(), flat: b.door.flat ? String(b.door.flat).trim() : null }
+    : null;
+  if (!b.cityID || (!door && !b.branchID)) {
+    return NextResponse.json({ error: b.door ? 'Вкажіть вулицю й будинок для кур\x27єра' : 'Оберіть відділення або поштомат Meest' }, { status: 400 });
+  }
   const place: MeestPlace = {
     weight: Number(b.weight), length: Math.round(Number(b.length)), width: Math.round(Number(b.width)), height: Math.round(Number(b.height)),
     insurance: Math.max(0, Number(b.declared ?? order.total_price) || 0),
@@ -128,7 +141,7 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
 
   try {
     if (b.calc) {
-      return NextResponse.json(await meestCalculate({ receiverBranchID: b.branchID, receiverCityID: b.cityID, cod, places: [place] }));
+      return NextResponse.json(await meestCalculate({ receiverBranchID: b.branchID, receiverCityID: b.cityID, cod, places: [place], door: !!door }));
     }
     if (order.tracking_number) return NextResponse.json({ error: `Накладна вже є: ${order.tracking_number}` }, { status: 409 });
     if (order.status === 'new' || order.status === 'cancelled') return NextResponse.json({ error: 'Спершу підтвердіть замовлення' }, { status: 409 });
@@ -140,7 +153,7 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
     const description = (order.items ?? []).map(i => i.name).filter(Boolean).join(', ') || `Замовлення #${order.order_number}`;
     const parcel = await meestCreateParcel({
       orderNumber: order.order_number, sender,
-      receiver: { name: order.contact, phone: `+${phone}`, branchID: b.branchID },
+      receiver: door ? { name: order.contact, phone: `+${phone}`, door } : { name: order.contact, phone: `+${phone}`, branchID: b.branchID },
       places: [place], cod, receiverPays: b.receiverPays !== false, description,
     });
     const senderBranch = await meestSenderBranch();
@@ -149,7 +162,8 @@ async function _POST(req: NextRequest, { params }: { params: Promise<{ id: strin
       cod, declared: place.insurance, weight: place.weight, dims: { length: place.length, width: place.width, height: place.height },
       places: 1, payer: b.receiverPays !== false ? 'receiver' : 'sender', description,
       sender: { name: sender.name, phone: sender.phone, city: 'Харків', point: senderBranch.title },
-      recipient: { name: order.contact, phone: order.phone, city: b.cityName ?? order.delivery_city_name, point: b.branchTitle ?? order.delivery_address },
+      recipient: { name: order.contact, phone: order.phone, city: b.cityName ?? order.delivery_city_name, point: door ? null : (b.branchTitle ?? order.delivery_address),
+        ...(door ? { address: [b.door?.street, `буд. ${door.building}`, door.flat ? `кв. ${door.flat}` : ''].filter(Boolean).join(', ') } : {}) },
       result: { delivery_cost: parcel.cost },
     };
     const db = createServiceClient();

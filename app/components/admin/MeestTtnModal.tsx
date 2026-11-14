@@ -17,6 +17,8 @@ type Info = {
   box: { length: number; width: number; height: number }; declared: number; cod: number;
   address: string | null; recipient: { name: string | null; phone: string | null };
   point: { city: City; branch: Branch } | null; cityHint: string | null;
+  /** Кур'єр до дверей (замовлення сайту з підтипом courier, 14.11.2026) */
+  door: { cityID: string; cityName: string | null; addressID: string; street: string; building: string; flat: string | null } | null;
 };
 type Props = {
   order: { id: string; order_number: number; items: { sku: string; qty: number; name: string }[] };
@@ -43,6 +45,9 @@ export default function MeestTtnModal({ order, onClose, onCreated }: Props) {
   const [receiverPays, setReceiverPays] = useState(true);
   const [calc, setCalc] = useState<{ cost: number | null; deliveryDate: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [doorBuilding, setDoorBuilding] = useState('');
+  const [doorFlat, setDoorFlat] = useState('');
+  const door = info?.door ?? null;
   const [error, setError] = useState('');
   const [autoBox, setAutoBox] = useState<{ dims: [number, number, number]; label: string } | null>(null);
   const dimsTouched = useRef(false);
@@ -53,6 +58,7 @@ export default function MeestTtnModal({ order, onClose, onCreated }: Props) {
       setInfo(d);
       setLength(String(d.box.length)); setWidth(String(d.box.width)); setHeight(String(d.box.height));
       setDeclared(String(d.declared)); setCod(String(d.cod));
+      if (d.door) { setDoorBuilding(d.door.building); setDoorFlat(d.door.flat ?? ''); }
       if (d.point) { setCity(d.point.city); setBranch(d.point.branch); setCityQ(d.point.city.name); }
       else if (d.cityHint) setCityQ(d.cityHint);
     }).catch(() => setLoadError('Не вдалося завантажити дані'));
@@ -98,9 +104,11 @@ export default function MeestTtnModal({ order, onClose, onCreated }: Props) {
       : lim.length && lim.width && lim.height && [place.length, place.width, place.height].sort((a, b) => b - a).some((v, i) => v > [lim.length!, lim.width!, lim.height!].sort((a, b) => b - a)[i])
         ? `Не влазить у габарити пункту (${lim.length}×${lim.width}×${lim.height} см)` : null)
     : null;
-  const blocked = busy || !info?.sender || !branch || !placeOk || !!limitProblem;
+  const blocked = busy || !info?.sender || (door ? !doorBuilding.trim() : !branch) || !placeOk || (!door && !!limitProblem);
   const body = () => ({
-    branchID: branch?.branchID, cityID: city?.cityID ?? branch?.cityID, cityName: city?.name, branchTitle: branch?.title,
+    ...(door
+      ? { cityID: door.cityID, cityName: door.cityName ?? undefined, door: { addressID: door.addressID, street: door.street, building: doorBuilding, flat: doorFlat || null } }
+      : { branchID: branch?.branchID, cityID: city?.cityID ?? branch?.cityID, cityName: city?.name, branchTitle: branch?.title }),
     weight: place.weight, length: place.length, width: place.width, height: place.height,
     declared: n(declared) || 0, cod: n(cod) || 0, receiverPays,
   });
@@ -108,14 +116,14 @@ export default function MeestTtnModal({ order, onClose, onCreated }: Props) {
   // Розрахунок вартості — щойно є пункт і місце
   useEffect(() => {
     setCalc(null);
-    if (!branch || !placeOk) return;
+    if ((!branch && !door) || !placeOk) return;
     const t = setTimeout(() => {
       fetch(api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body(), calc: true }) })
         .then(r => r.json()).then(d => { if (!d.error) setCalc(d); }).catch(() => {});
     }, 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch?.branchID, weight, length, width, height, cod, declared]);
+  }, [branch?.branchID, door?.addressID, doorBuilding, weight, length, width, height, cod, declared]);
 
   async function submit() {
     setError(''); setBusy(true);
@@ -168,10 +176,20 @@ export default function MeestTtnModal({ order, onClose, onCreated }: Props) {
                   {info.sender
                     ? <div style={{ marginTop: '4px' }}>Здаємо: <strong>{info.senderBranch}</strong> · {info.sender.name}, {info.sender.phone}</div>
                     : <div style={{ marginTop: '4px', color: 'var(--color-warn)' }}>Немає ПІБ/телефону відправника — Налаштування → ROZETKA Доставка</div>}
-                  {!info.point && <div style={{ marginTop: '4px', color: 'var(--color-warn)' }}>Пункт за адресою не знайдено — оберіть місто й відділення нижче.</div>}
+                  {!info.point && !info.door && <div style={{ marginTop: '4px', color: 'var(--color-warn)' }}>Пункт за адресою не знайдено — оберіть місто й відділення нижче.</div>}
                 </>}
           </div>
 
+          {door ? (
+            <div>
+              {lbl('Кур\x27єр до дверей')}
+              <div style={{ fontSize: '13px', color: 'var(--text-primary)', marginBottom: '8px' }}><strong>{door.cityName}</strong>, {door.street}</div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <label style={{ flex: 1 }}>{lbl('Будинок')}<input value={doorBuilding} onChange={e => setDoorBuilding(e.target.value)} style={inputStyle} /></label>
+                <label style={{ flex: 1 }}>{lbl('Квартира / офіс')}<input value={doorFlat} onChange={e => setDoorFlat(e.target.value)} style={inputStyle} /></label>
+              </div>
+            </div>
+          ) : (<>
           <div style={{ position: 'relative' }}>
             {lbl('Місто')}
             <input value={cityQ} onChange={e => { setCityQ(e.target.value); if (city && e.target.value !== city.name) { setCity(null); setBranch(null); } }} placeholder="Почніть вводити назву" style={inputStyle} />
@@ -211,6 +229,7 @@ export default function MeestTtnModal({ order, onClose, onCreated }: Props) {
               )}
             </div>
           )}
+          </>)}
 
           <div style={{ display: 'flex', gap: '10px' }}>
             {field(weight, setWeight, 'Вага', 'кг')}
@@ -240,7 +259,7 @@ export default function MeestTtnModal({ order, onClose, onCreated }: Props) {
               Доставка: <strong>{calc.cost != null ? `${calc.cost} ₴` : '—'}</strong>{calc.deliveryDate ? <> · орієнтовно <strong>{calc.deliveryDate}</strong></> : null}
             </div>
           )}
-          {limitProblem && <div style={{ fontSize: '12px', color: 'var(--color-warn)', background: 'var(--bg-warn)', border: '1px solid var(--amber-border)', borderRadius: '9px', padding: '9px 11px' }}>⚠ {limitProblem}</div>}
+          {!door && limitProblem && <div style={{ fontSize: '12px', color: 'var(--color-warn)', background: 'var(--bg-warn)', border: '1px solid var(--amber-border)', borderRadius: '9px', padding: '9px 11px' }}>⚠ {limitProblem}</div>}
           {error && <div style={{ fontSize: '12px', color: 'var(--color-danger)', background: 'var(--bg-danger)', border: '1px solid var(--danger-border)', borderRadius: '9px', padding: '9px 11px' }}>⚠ {error}</div>}
         </div>
 
