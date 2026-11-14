@@ -72,6 +72,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const T = {
   uk: {
     deliveryNova: 'Нова Пошта',
+    deliveryNovaSub: 'Відділення, поштомат, курʼєр',
     deliveryRz: 'ROZETKA Доставка',
     deliveryRzSub: 'Точки видачі ROZETKA',
     deliveryMeest: 'Meest Пошта',
@@ -152,6 +153,7 @@ const T = {
   },
   ru: {
     deliveryNova: 'Новая Почта',
+    deliveryNovaSub: 'Отделение, почтомат, курьер',
     deliveryRz: 'ROZETKA Доставка',
     deliveryRzSub: 'Точки выдачи ROZETKA',
     deliveryMeest: 'Meest Почта',
@@ -499,11 +501,12 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
   );
 
   const DELIVERY_OPTIONS = [
-    // logo — офіційні файли з сайтів перевізників (public/images/carriers, завантажено 04.11.2026)
-    { value: 'nova', label: tr.deliveryNova, sub: null as string | null, logo: '/images/carriers/nova-poshta.svg' },
-    ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub, logo: '/images/carriers/rozetka-mark.svg' }] : []),
-    // Meest — наш договір 10031120 (13.11.2026); логотип — офіційний з meest.com
-    { value: 'meest', label: tr.deliveryMeest, sub: tr.deliveryMeestSub, logo: '/images/carriers/meest.svg' },
+    // logo — офіційні логотипи-написи перевізників (public/images/carriers): НП (04.11),
+    // Meest (meest.com) і ROZETKA Доставка (rozetka.delivery, 14.11.2026). Напис і є
+    // назвою — текстом лише для читачів екрана й підказки; logoDark — для темної теми.
+    { value: 'nova', label: tr.deliveryNova, sub: tr.deliveryNovaSub as string | null, logo: '/images/carriers/nova-poshta.svg', logoDark: '' },
+    ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub, logo: '/images/carriers/rozetka-delivery.svg', logoDark: '/images/carriers/rozetka-delivery-dark.svg' }] : []),
+    { value: 'meest', label: tr.deliveryMeest, sub: tr.deliveryMeestSub, logo: '/images/carriers/meest.svg', logoDark: '' },
   ];
 
   // Спосіб міг прийти з минулого замовлення (підстановка вище) або перестати
@@ -1045,16 +1048,18 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           {delivery === opt.value && <Check size={10} color="#fff" strokeWidth={3} />}
                         </div>
                         <input type="radio" name="delivery" value={opt.value} checked={delivery === opt.value} onChange={() => { if (delivery && delivery !== opt.value) clearDelivery(); setDelivery(opt.value); setReopened(r => ({ ...r, delivery: false })); setErrors(s => { const n = new Set(s); n.delete('delivery'); return n; }); }} style={{ display: 'none' }} />
-                        {/* Назва й опис — по одному рядку (як у плитках оплати): у ряд три плитки, і
-                            перенесення «Нова / Пошта» роздувало їх до чотирьох рядків (13.11.2026) */}
+                        {/* Логотип-напис = назва перевізника, під ним опис одним рядком (14.11.2026):
+                            у ряд три плитки, і «назва + опис + значок» не влазили — назва різалась «…» */}
                         <span style={{ flex: 1, minWidth: 0 }} title={opt.sub ? `${opt.label} — ${opt.sub}` : opt.label}>
-                          <span className="cart-opt-line" style={{ display: 'block', fontSize: '14px', fontWeight: delivery === opt.value ? 600 : 500, color: 'var(--text-primary)' }}>{opt.label}</span>
-                          {opt.sub && <span className="cart-opt-line" style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '2px' }}>{opt.sub}</span>}
+                          <span className="cart-sr-only">{opt.label}</span>
+                          {/* eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG, next/image тут зайвий */}
+                          <img src={opt.logo} alt="" aria-hidden className={'cart-carrier-logo' + (opt.logoDark ? ' cart-carrier-logo--light' : '')} />
+                          {opt.logoDark && (
+                            // eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG
+                            <img src={opt.logoDark} alt="" aria-hidden className="cart-carrier-logo cart-carrier-logo--dark" />
+                          )}
+                          {opt.sub && <span className="cart-opt-line" style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '5px' }}>{opt.sub}</span>}
                         </span>
-                        {opt.logo
-                          // eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG, next/image тут зайвий
-                          ? <img src={opt.logo} alt="" aria-hidden className="cart-carrier-logo" />
-                          : <Truck size={22} aria-hidden color="var(--text-secondary)" style={{ flexShrink: 0 }} />}
                         {delivery === opt.value && !reopened.delivery && (
                           <button
                             onClick={e => { e.preventDefault(); clearDelivery(); }}
