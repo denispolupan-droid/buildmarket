@@ -894,7 +894,13 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
       return [tr.deliveryNova, sub, place].filter(Boolean).join(' · ');
     }
     if (delivery === RZ_DELIVERY_TYPE) return [tr.deliveryRz, [shortCity(rzCityName), rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
-    if (delivery === 'meest') return [tr.deliveryMeest, [shortCity(rzCityName), rzDepLabel].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    if (delivery === 'meest') {
+      // Назва пункту Meest уже містить місто («Партнерське №54, Харків, в'їзд …») —
+      // прибираємо його звідти, щоб не було «Харків, Партнерське №54, Харків, …» (14.11.2026)
+      const city = shortCity(rzCityName);
+      const point = rzDepLabel.split(',').map(x => x.trim()).filter(x => x && x.toLowerCase() !== city.toLowerCase()).join(', ');
+      return [tr.deliveryMeest, [city, point].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    }
     return '';
   })();
   const paymentSummary = PAYMENT_OPTIONS.find(o => o.value === payment)?.label ?? '';
