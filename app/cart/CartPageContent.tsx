@@ -510,7 +510,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
     // Meest (meest.com) і ROZETKA Доставка (rozetka.delivery, 14.11.2026). Напис і є
     // назвою — текстом лише для читачів екрана й підказки; logoDark — для темної теми.
     { value: 'nova', label: tr.deliveryNova, sub: null as string | null, logo: '/images/carriers/nova-poshta.svg', logoDark: '' },
-    ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: tr.deliveryRzSub, logo: '/images/carriers/rozetka-delivery.svg', logoDark: '/images/carriers/rozetka-delivery-dark.svg' }] : []),
+    ...(rzAvailable ? [{ value: RZ_DELIVERY_TYPE, label: tr.deliveryRz, sub: null as string | null, logo: '/images/carriers/rozetka-delivery.svg', logoDark: '/images/carriers/rozetka-delivery-dark.svg' }] : []),
     { value: 'meest', label: tr.deliveryMeest, sub: null, logo: '/images/carriers/meest.svg', logoDark: '' },
   ];
 
@@ -1079,7 +1079,7 @@ export default function CartPageContent({ lang = 'uk' }: { lang?: Lang }) {
                           <img src={opt.logo} alt="" aria-hidden className={'cart-carrier-logo' + (opt.logoDark ? ' cart-carrier-logo--light' : '') + (opt.sub ? '' : ' cart-carrier-logo--solo')} />
                           {opt.logoDark && (
                             // eslint-disable-next-line @next/next/no-img-element -- маленький статичний SVG
-                            <img src={opt.logoDark} alt="" aria-hidden className="cart-carrier-logo cart-carrier-logo--dark" />
+                            <img src={opt.logoDark} alt="" aria-hidden className={'cart-carrier-logo cart-carrier-logo--dark' + (opt.sub ? '' : ' cart-carrier-logo--solo')} />
                           )}
                           {opt.sub && <span className="cart-opt-line" style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '5px' }}>{opt.sub}</span>}
                         </span>
